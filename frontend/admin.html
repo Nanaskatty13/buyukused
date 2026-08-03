@@ -283,7 +283,7 @@
             flex: 1;
         }
 
-        /* ===== PAGE SECTIONS (toggle visibility) ===== */
+        /* ===== PAGE SECTIONS ===== */
         .page-section {
             display: none;
             animation: fadeIn 0.3s ease;
@@ -291,19 +291,12 @@
         .page-section.active {
             display: block;
         }
-
         @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
-        /* ===== STATS CARDS (Dashboard) ===== */
+        /* ===== STATS CARDS ===== */
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -315,12 +308,12 @@
             border-radius: 16px;
             padding: 20px 24px;
             border: 1px solid #e9edf2;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
             transition: 0.2s;
         }
         .stat-card:hover {
             transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.06);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.06);
         }
         .stat-card .stat-label {
             font-size: 13px;
@@ -339,12 +332,8 @@
             align-items: center;
             gap: 4px;
         }
-        .stat-card .stat-change.up {
-            color: #2ecc71;
-        }
-        .stat-card .stat-change.down {
-            color: #ef4444;
-        }
+        .stat-card .stat-change.up { color: #2ecc71; }
+        .stat-card .stat-change.down { color: #ef4444; }
         .stat-card .stat-icon {
             float: right;
             font-size: 32px;
@@ -358,7 +347,7 @@
             border-radius: 16px;
             border: 1px solid #e9edf2;
             overflow: hidden;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
         }
         .table-card .table-header {
             padding: 16px 24px;
@@ -392,7 +381,7 @@
         .table-card .table-header .table-actions input:focus,
         .table-card .table-header .table-actions select:focus {
             border-color: #0055a5;
-            box-shadow: 0 0 0 3px rgba(0, 85, 165, 0.08);
+            box-shadow: 0 0 0 3px rgba(0,85,165,0.08);
         }
         .table-card .table-header .table-actions .btn-primary {
             padding: 8px 18px;
@@ -481,38 +470,14 @@
             font-size: 12px;
             font-weight: 600;
         }
-        .status-badge.active {
-            background: #dcfce7;
-            color: #166534;
-        }
-        .status-badge.pending {
-            background: #fef9c3;
-            color: #854d0e;
-        }
-        .status-badge.inactive {
-            background: #fee2e2;
-            color: #991b1b;
-        }
-        .status-badge.verified {
-            background: #dbeafe;
-            color: #1e40af;
-        }
-        .status-badge.suspended {
-            background: #fecaca;
-            color: #991b1b;
-        }
-        .status-badge.admin {
-            background: #e0e7ff;
-            color: #3730a3;
-        }
-        .status-badge.seller {
-            background: #d1fae5;
-            color: #065f46;
-        }
-        .status-badge.buyer {
-            background: #f3e8ff;
-            color: #6b21a8;
-        }
+        .status-badge.active { background: #dcfce7; color: #166534; }
+        .status-badge.pending { background: #fef9c3; color: #854d0e; }
+        .status-badge.inactive { background: #fee2e2; color: #991b1b; }
+        .status-badge.verified { background: #dbeafe; color: #1e40af; }
+        .status-badge.suspended { background: #fecaca; color: #991b1b; }
+        .status-badge.admin { background: #e0e7ff; color: #3730a3; }
+        .status-badge.seller { background: #d1fae5; color: #065f46; }
+        .status-badge.buyer { background: #f3e8ff; color: #6b21a8; }
 
         .table-responsive table .actions-cell {
             display: flex;
@@ -549,7 +514,6 @@
         .table-responsive table .actions-cell .btn-view:hover {
             background: #bfdbfe;
         }
-
         .table-responsive table .product-thumb {
             width: 40px;
             height: 40px;
@@ -577,7 +541,7 @@
         .category-item:hover {
             border-color: #0055a5;
             transform: translateY(-3px);
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.06);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.06);
         }
         .category-item .cat-icon {
             font-size: 32px;
@@ -619,7 +583,7 @@
             background: #fee2e2;
         }
 
-        /* ===== REPORTS CHARTS ===== */
+        /* ===== REPORTS ===== */
         .reports-grid {
             display: grid;
             grid-template-columns: 2fr 1fr;
@@ -631,7 +595,7 @@
             border-radius: 16px;
             border: 1px solid #e9edf2;
             padding: 20px 24px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
         }
         .chart-card h4 {
             font-size: 15px;
@@ -656,9 +620,7 @@
             position: relative;
             opacity: 0.7;
         }
-        .chart-bar:hover {
-            opacity: 1;
-        }
+        .chart-bar:hover { opacity: 1; }
         .chart-bar .bar-label {
             position: absolute;
             bottom: -22px;
@@ -679,9 +641,7 @@
             opacity: 0;
             transition: 0.2s;
         }
-        .chart-bar:hover .bar-value {
-            opacity: 1;
-        }
+        .chart-bar:hover .bar-value { opacity: 1; }
 
         .report-stats {
             display: grid;
@@ -715,7 +675,7 @@
             border-radius: 16px;
             border: 1px solid #e9edf2;
             padding: 24px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
         }
         .settings-card h4 {
             font-size: 16px;
@@ -748,7 +708,7 @@
         .settings-card .form-group textarea:focus {
             outline: none;
             border-color: #0055a5;
-            box-shadow: 0 0 0 3px rgba(0, 85, 165, 0.08);
+            box-shadow: 0 0 0 3px rgba(0,85,165,0.08);
         }
         .settings-card .form-group .hint {
             font-size: 12px;
@@ -797,7 +757,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.6);
+            background: rgba(0,0,0,0.6);
             backdrop-filter: blur(3px);
             justify-content: center;
             align-items: center;
@@ -821,14 +781,8 @@
             overflow-y: auto;
         }
         @keyframes modalFade {
-            from {
-                opacity: 0;
-                transform: scale(0.95) translateY(10px);
-            }
-            to {
-                opacity: 1;
-                transform: scale(1) translateY(0);
-            }
+            from { opacity: 0; transform: scale(0.95) translateY(10px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
         }
         .admin-modal .close-modal {
             position: absolute;
@@ -875,7 +829,7 @@
         .admin-modal .form-group textarea:focus {
             outline: none;
             border-color: #0055a5;
-            box-shadow: 0 0 0 3px rgba(0, 85, 165, 0.08);
+            box-shadow: 0 0 0 3px rgba(0,85,165,0.08);
         }
         .admin-modal .form-actions {
             display: flex;
@@ -924,25 +878,15 @@
             border-radius: 12px;
             z-index: 9999;
             font-weight: 500;
-            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.2);
             animation: slideUp 0.3s ease;
             max-width: 90%;
         }
-        .toast.success {
-            background: #2ecc71;
-        }
-        .toast.error {
-            background: #ef4444;
-        }
+        .toast.success { background: #2ecc71; }
+        .toast.error { background: #ef4444; }
         @keyframes slideUp {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         /* ===== RESPONSIVE ===== */
@@ -951,112 +895,44 @@
                 transform: translateX(-100%);
                 width: 280px;
             }
-            .sidebar.open {
-                transform: translateX(0);
-            }
-            .main-content {
-                margin-left: 0;
-            }
-            .mobile-toggle {
-                display: block;
-            }
-            .reports-grid {
-                grid-template-columns: 1fr;
-            }
-            .settings-grid {
-                grid-template-columns: 1fr;
-            }
+            .sidebar.open { transform: translateX(0); }
+            .main-content { margin-left: 0; }
+            .mobile-toggle { display: block; }
+            .reports-grid { grid-template-columns: 1fr; }
+            .settings-grid { grid-template-columns: 1fr; }
         }
-
         @media(max-width:768px) {
-            .top-header {
-                padding: 12px 16px;
-            }
-            .top-header .page-title {
-                font-size: 18px;
-            }
-            .top-header .page-title small {
-                font-size: 12px;
-                display: block;
-                margin-left: 0;
-            }
-            .page-content {
-                padding: 16px;
-            }
-            .stats-grid {
-                grid-template-columns: 1fr 1fr;
-                gap: 12px;
-            }
-            .stat-card {
-                padding: 14px 16px;
-            }
-            .stat-card .stat-number {
-                font-size: 22px;
-            }
-            .table-card .table-header {
-                flex-direction: column;
-                align-items: stretch;
-            }
-            .table-card .table-header .table-actions {
-                flex-direction: column;
-            }
+            .top-header { padding: 12px 16px; }
+            .top-header .page-title { font-size: 18px; }
+            .top-header .page-title small { font-size: 12px; display: block; margin-left: 0; }
+            .page-content { padding: 16px; }
+            .stats-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
+            .stat-card { padding: 14px 16px; }
+            .stat-card .stat-number { font-size: 22px; }
+            .table-card .table-header { flex-direction: column; align-items: stretch; }
+            .table-card .table-header .table-actions { flex-direction: column; }
             .table-card .table-header .table-actions input,
             .table-card .table-header .table-actions select,
-            .table-card .table-header .table-actions button {
-                width: 100%;
-            }
-            .category-grid {
-                grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-            }
-            .report-stats {
-                grid-template-columns: 1fr 1fr;
-            }
-            .settings-card {
-                padding: 16px;
-            }
+            .table-card .table-header .table-actions button { width: 100%; }
+            .category-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+            .report-stats { grid-template-columns: 1fr 1fr; }
+            .settings-card { padding: 16px; }
         }
-
         @media(max-width:480px) {
-            .stats-grid {
-                grid-template-columns: 1fr 1fr;
-                gap: 10px;
-            }
-            .stat-card .stat-number {
-                font-size: 18px;
-            }
-            .stat-card .stat-label {
-                font-size: 11px;
-            }
-            .stat-card .stat-icon {
-                font-size: 24px;
-            }
-            .table-responsive table {
-                font-size: 12px;
-            }
+            .stats-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+            .stat-card .stat-number { font-size: 18px; }
+            .stat-card .stat-label { font-size: 11px; }
+            .stat-card .stat-icon { font-size: 24px; }
+            .table-responsive table { font-size: 12px; }
             .table-responsive table th,
-            .table-responsive table td {
-                padding: 8px 10px;
-            }
-            .category-grid {
-                grid-template-columns: 1fr 1fr;
-                gap: 10px;
-            }
-            .category-item {
-                padding: 14px 10px;
-            }
-            .category-item .cat-icon {
-                font-size: 24px;
-            }
-            .sidebar {
-                width: 260px;
-            }
-            .admin-modal {
-                padding: 20px;
-                width: 98%;
-            }
+            .table-responsive table td { padding: 8px 10px; }
+            .category-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+            .category-item { padding: 14px 10px; }
+            .category-item .cat-icon { font-size: 24px; }
+            .sidebar { width: 260px; }
+            .admin-modal { padding: 20px; width: 98%; }
         }
 
-        /* ===== SIDEBAR OVERLAY (mobile) ===== */
         .sidebar-overlay {
             display: none;
             position: fixed;
@@ -1064,35 +940,22 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.4);
+            background: rgba(0,0,0,0.4);
             z-index: 999;
         }
-        .sidebar-overlay.active {
-            display: block;
-        }
+        .sidebar-overlay.active { display: block; }
 
-        /* ===== SCROLLBAR ===== */
-        ::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #f1f5f9;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
-            border-radius: 4px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8;
-        }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
     </style>
 </head>
 <body>
 
     <div class="admin-wrapper">
 
-        <!-- ===== SIDEBAR OVERLAY (mobile) ===== -->
+        <!-- ===== SIDEBAR OVERLAY ===== -->
         <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
 
         <!-- ===== SIDEBAR ===== -->
@@ -1390,7 +1253,6 @@
                             <i class="fas fa-plus"></i> Add Category
                         </button>
                     </div>
-
                     <div class="category-grid" id="categoryGrid">
                         <!-- Rendered by JS -->
                     </div>
@@ -1404,34 +1266,13 @@
                         <div class="chart-card">
                             <h4>📊 Monthly Revenue</h4>
                             <div class="chart-placeholder">
-                                <div class="chart-bar" style="height:40px; background:#2ecc71;">
-                                    <span class="bar-value">₵8.2k</span>
-                                    <span class="bar-label">Jan</span>
-                                </div>
-                                <div class="chart-bar" style="height:65px; background:#2ecc71;">
-                                    <span class="bar-value">₵12.4k</span>
-                                    <span class="bar-label">Feb</span>
-                                </div>
-                                <div class="chart-bar" style="height:55px; background:#2ecc71;">
-                                    <span class="bar-value">₵10.1k</span>
-                                    <span class="bar-label">Mar</span>
-                                </div>
-                                <div class="chart-bar" style="height:85px; background:#0055a5;">
-                                    <span class="bar-value">₵18.7k</span>
-                                    <span class="bar-label">Apr</span>
-                                </div>
-                                <div class="chart-bar" style="height:95px; background:#0055a5;">
-                                    <span class="bar-value">₵22.3k</span>
-                                    <span class="bar-label">May</span>
-                                </div>
-                                <div class="chart-bar" style="height:70px; background:#0055a5;">
-                                    <span class="bar-value">₵14.9k</span>
-                                    <span class="bar-label">Jun</span>
-                                </div>
-                                <div class="chart-bar" style="height:105px; background:#2ecc71;">
-                                    <span class="bar-value">₵28.1k</span>
-                                    <span class="bar-label">Jul</span>
-                                </div>
+                                <div class="chart-bar" style="height:40px; background:#2ecc71;"><span class="bar-value">₵8.2k</span><span class="bar-label">Jan</span></div>
+                                <div class="chart-bar" style="height:65px; background:#2ecc71;"><span class="bar-value">₵12.4k</span><span class="bar-label">Feb</span></div>
+                                <div class="chart-bar" style="height:55px; background:#2ecc71;"><span class="bar-value">₵10.1k</span><span class="bar-label">Mar</span></div>
+                                <div class="chart-bar" style="height:85px; background:#0055a5;"><span class="bar-value">₵18.7k</span><span class="bar-label">Apr</span></div>
+                                <div class="chart-bar" style="height:95px; background:#0055a5;"><span class="bar-value">₵22.3k</span><span class="bar-label">May</span></div>
+                                <div class="chart-bar" style="height:70px; background:#0055a5;"><span class="bar-value">₵14.9k</span><span class="bar-label">Jun</span></div>
+                                <div class="chart-bar" style="height:105px; background:#2ecc71;"><span class="bar-value">₵28.1k</span><span class="bar-label">Jul</span></div>
                             </div>
                             <div style="margin-top:16px; display:flex; gap:20px; font-size:13px; color:#64748b; justify-content:center;">
                                 <span><span style="display:inline-block; width:12px; height:12px; background:#2ecc71; border-radius:4px;"></span> Revenue</span>
@@ -1441,9 +1282,7 @@
                         <div>
                             <div class="chart-card" style="margin-bottom:16px;">
                                 <h4>📈 Top Categories</h4>
-                                <div id="topCategoriesContainer" style="display:flex; flex-direction:column; gap:6px; margin-top:8px;">
-                                    <!-- Rendered by JS -->
-                                </div>
+                                <div id="topCategoriesContainer" style="display:flex; flex-direction:column; gap:6px; margin-top:8px;"></div>
                             </div>
                             <div class="chart-card">
                                 <h4>📋 Summary</h4>
@@ -1475,7 +1314,7 @@
                             </div>
                             <div class="form-group">
                                 <label>Contact Email</label>
-                                <input type="email" id="settingsContactEmail" value="knsmartgadgetshub@gmail.com" />
+                                <input type="email" id="settingsContactEmail" value="admin@knclassifieds.com" />
                             </div>
                             <div class="form-group">
                                 <label>Phone Number</label>
@@ -1515,11 +1354,7 @@
         </main>
     </div>
 
-    <!-- ================================================================ -->
     <!-- ===== MODALS ===== -->
-    <!-- ================================================================ -->
-
-    <!-- Add/Edit User Modal -->
     <div class="modal-overlay" id="userModal">
         <div class="admin-modal">
             <button class="close-modal" onclick="closeModal('userModal')">&times;</button>
@@ -1558,7 +1393,6 @@
         </div>
     </div>
 
-    <!-- Add/Edit Product Modal -->
     <div class="modal-overlay" id="productModal">
         <div class="admin-modal">
             <button class="close-modal" onclick="closeModal('productModal')">&times;</button>
@@ -1614,7 +1448,6 @@
         </div>
     </div>
 
-    <!-- Add/Edit Category Modal -->
     <div class="modal-overlay" id="categoryModal">
         <div class="admin-modal">
             <button class="close-modal" onclick="closeModal('categoryModal')">&times;</button>
@@ -1638,14 +1471,11 @@
         </div>
     </div>
 
-    <!-- Notification Panel -->
     <div class="modal-overlay" id="notificationPanel">
         <div class="admin-modal" style="max-width:500px;">
             <button class="close-modal" onclick="closeModal('notificationPanel')">&times;</button>
             <h3>🔔 Notifications</h3>
-            <div id="notificationList" style="max-height:400px; overflow-y:auto; margin-top:12px;">
-                <!-- Rendered by JS -->
-            </div>
+            <div id="notificationList" style="max-height:400px; overflow-y:auto; margin-top:12px;"></div>
         </div>
     </div>
 
@@ -1654,7 +1484,12 @@
     <!-- ================================================================ -->
     <script>
         // ================================================================
-        //  DATA & LOCALSTORAGE
+        //  API CONFIG
+        // ================================================================
+        const API_URL = 'http://localhost:5000';
+
+        // ================================================================
+        //  DATA STORE
         // ================================================================
         let users = JSON.parse(localStorage.getItem('kn_users') || '[]');
         let products = JSON.parse(localStorage.getItem('kn_products') || '[]');
@@ -1662,7 +1497,6 @@
         let categories = JSON.parse(localStorage.getItem('kn_categories') || '[]');
         let currentAdmin = JSON.parse(localStorage.getItem('currentUser') || 'null');
 
-        // Default categories if empty
         const defaultCategories = [
             { name: 'Cars', icon: 'fa-car' },
             { name: 'Phones', icon: 'fa-mobile-alt' },
@@ -1673,13 +1507,12 @@
             { name: 'Home', icon: 'fa-couch' },
             { name: 'Other', icon: 'fa-tag' }
         ];
-
         if (categories.length === 0) {
             categories = defaultCategories;
             localStorage.setItem('kn_categories', JSON.stringify(categories));
         }
 
-        // Ensure admin user exists
+        // Ensure admin exists
         if (!users.find(u => u.email === 'admin@kn.com')) {
             users.push({
                 id: 'admin',
@@ -1696,82 +1529,13 @@
 
         // Seed demo products if empty
         if (products.length === 0) {
-            products = [{
-                id: '1',
-                title: 'iPhone 17 Pro Max 1TB',
-                price: 23999,
-                category: 'Phones',
-                location: 'East Legon, Accra',
-                sellerId: 'admin',
-                sellerName: 'KN Admin',
-                sellerPhone: '0542928081',
-                image: 'https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=400',
-                images: ['https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=400'],
-                description: 'Brand new, sealed, warranty included.',
-                views: 1200,
-                status: 'active',
-                createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
-            }, {
-                id: '2',
-                title: 'Toyota Corolla 2020',
-                price: 75000,
-                category: 'Cars',
-                location: 'Accra',
-                sellerId: 'admin',
-                sellerName: 'KN Admin',
-                sellerPhone: '0244123456',
-                image: 'https://images.unsplash.com/photo-1626029520279-6a333a3e2fd2?w=400',
-                images: ['https://images.unsplash.com/photo-1626029520279-6a333a3e2fd2?w=400'],
-                description: 'Clean title, low mileage, AC working.',
-                views: 856,
-                status: 'active',
-                createdAt: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString()
-            }, {
-                id: '3',
-                title: '3-Bedroom House for Rent',
-                price: 4500,
-                category: 'Real Estate',
-                location: 'Tema',
-                sellerId: 'admin',
-                sellerName: 'KN Admin',
-                sellerPhone: '0209876543',
-                image: 'https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=400',
-                images: ['https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=400'],
-                description: 'Fully furnished, secure area, 2 bathrooms.',
-                views: 234,
-                status: 'pending',
-                createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString()
-            }, {
-                id: '4',
-                title: 'Marketing Manager Needed',
-                price: 2000,
-                category: 'Jobs',
-                location: 'Accra',
-                sellerId: 'admin',
-                sellerName: 'KN Admin',
-                sellerPhone: '0556789012',
-                image: 'https://images.unsplash.com/photo-1521737852567-6949f3f9f2b5?w=400',
-                images: ['https://images.unsplash.com/photo-1521737852567-6949f3f9f2b5?w=400'],
-                description: 'Full-time, 3+ years experience.',
-                views: 412,
-                status: 'active',
-                createdAt: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString()
-            }, {
-                id: '5',
-                title: 'MacBook Pro M3',
-                price: 24000,
-                category: 'Electronics',
-                location: 'Takoradi',
-                sellerId: 'admin',
-                sellerName: 'KN Admin',
-                sellerPhone: '0245123456',
-                image: 'https://images.unsplash.com/photo-1517336714739-489689fd1ca8?w=400',
-                images: ['https://images.unsplash.com/photo-1517336714739-489689fd1ca8?w=400'],
-                description: '16GB RAM, 512GB SSD, like new.',
-                views: 189,
-                status: 'inactive',
-                createdAt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString()
-            }];
+            products = [
+                { id: '1', title: 'iPhone 17 Pro Max 1TB', price: 23999, category: 'Phones', location: 'East Legon, Accra', sellerId: 'admin', sellerName: 'KN Admin', sellerPhone: '0542928081', image: 'https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=400', description: 'Brand new, sealed, warranty included.', views: 1200, status: 'active', createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString() },
+                { id: '2', title: 'Toyota Corolla 2020', price: 75000, category: 'Cars', location: 'Accra', sellerId: 'admin', sellerName: 'KN Admin', sellerPhone: '0244123456', image: 'https://images.unsplash.com/photo-1626029520279-6a333a3e2fd2?w=400', description: 'Clean title, low mileage, AC working.', views: 856, status: 'active', createdAt: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString() },
+                { id: '3', title: '3-Bedroom House for Rent', price: 4500, category: 'Real Estate', location: 'Tema', sellerId: 'admin', sellerName: 'KN Admin', sellerPhone: '0209876543', image: 'https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=400', description: 'Fully furnished, secure area.', views: 234, status: 'pending', createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString() },
+                { id: '4', title: 'Marketing Manager Needed', price: 2000, category: 'Jobs', location: 'Accra', sellerId: 'admin', sellerName: 'KN Admin', sellerPhone: '0556789012', image: 'https://images.unsplash.com/photo-1521737852567-6949f3f9f2b5?w=400', description: 'Full-time, 3+ years experience.', views: 412, status: 'active', createdAt: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString() },
+                { id: '5', title: 'MacBook Pro M3', price: 24000, category: 'Electronics', location: 'Takoradi', sellerId: 'admin', sellerName: 'KN Admin', sellerPhone: '0245123456', image: 'https://images.unsplash.com/photo-1517336714739-489689fd1ca8?w=400', description: '16GB RAM, 512GB SSD, like new.', views: 189, status: 'inactive', createdAt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString() }
+            ];
             localStorage.setItem('kn_products', JSON.stringify(products));
         }
 
@@ -1779,53 +1543,24 @@
         //  HELPERS
         // ================================================================
         function saveUsers() { localStorage.setItem('kn_users', JSON.stringify(users)); }
-
         function saveProducts() { localStorage.setItem('kn_products', JSON.stringify(products)); }
-
         function saveCategories() { localStorage.setItem('kn_categories', JSON.stringify(categories)); }
-
         function saveNotifications() { localStorage.setItem('kn_notifications', JSON.stringify(notifications)); }
 
-        function escapeHtml(s) { if (!s) return ''; return s.replace(/[&<>]/g, m => m === '&' ? '&amp;' : m === '<' ? '&lt;' :
-            '&gt;'); }
-
-        function getCategoryCount(catName) {
-            return products.filter(p => p.category === catName).length;
-        }
-
-        function getSellerProductCount(sellerId) {
-            return products.filter(p => p.sellerId === sellerId).length;
-        }
+        function escapeHtml(s) { if (!s) return ''; return s.replace(/[&<>]/g, m => m === '&' ? '&amp;' : m === '<' ? '&lt;' : '&gt;'); }
+        function formatDate(d) { if (!d) return 'N/A'; return new Date(d).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }); }
+        function formatCurrency(amount) { return '₵' + Number(amount).toLocaleString(); }
 
         function getStatusBadge(status) {
-            const map = {
-                'active': 'active',
-                'pending': 'pending',
-                'inactive': 'inactive',
-                'suspended': 'suspended',
-                'verified': 'verified'
-            };
+            const map = { 'active': 'active', 'pending': 'pending', 'inactive': 'inactive', 'suspended': 'suspended', 'verified': 'verified' };
             return `<span class="status-badge ${map[status] || 'inactive'}">${status.charAt(0).toUpperCase() + status.slice(1)}</span>`;
         }
-
         function getRoleBadge(role) {
-            const map = {
-                'admin': 'admin',
-                'seller': 'seller',
-                'buyer': 'buyer'
-            };
+            const map = { 'admin': 'admin', 'seller': 'seller', 'buyer': 'buyer' };
             return `<span class="status-badge ${map[role] || 'buyer'}">${role.charAt(0).toUpperCase() + role.slice(1)}</span>`;
         }
-
-        function formatDate(dateStr) {
-            if (!dateStr) return 'N/A';
-            const d = new Date(dateStr);
-            return d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-        }
-
-        function formatCurrency(amount) {
-            return '₵' + Number(amount).toLocaleString();
-        }
+        function getCategoryCount(name) { return products.filter(p => p.category === name).length; }
+        function getSellerProductCount(id) { return products.filter(p => p.sellerId === id).length; }
 
         function showToast(msg, type = '') {
             document.querySelectorAll('.toast').forEach(el => el.remove());
@@ -1835,14 +1570,8 @@
             document.body.appendChild(t);
             setTimeout(() => t.remove(), 3500);
         }
-
-        function closeModal(id) {
-            document.getElementById(id).classList.remove('active');
-        }
-
-        function openModal(id) {
-            document.getElementById(id).classList.add('active');
-        }
+        function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+        function openModal(id) { document.getElementById(id).classList.add('active'); }
 
         // ================================================================
         //  PAGE NAVIGATION
@@ -1870,7 +1599,6 @@
 
             if (window.innerWidth <= 992) closeSidebar();
 
-            // Refresh data when switching pages
             if (pageId === 'dashboard') renderDashboard();
             if (pageId === 'users') renderUsers();
             if (pageId === 'products') renderProducts();
@@ -1880,13 +1608,12 @@
         }
 
         // ================================================================
-        //  SIDEBAR TOGGLE
+        //  SIDEBAR
         // ================================================================
         function toggleSidebar() {
             document.getElementById('sidebar').classList.toggle('open');
             document.getElementById('sidebarOverlay').classList.toggle('active');
         }
-
         function closeSidebar() {
             document.getElementById('sidebar').classList.remove('open');
             document.getElementById('sidebarOverlay').classList.remove('active');
@@ -1945,15 +1672,12 @@
         function filterDashboardProducts() {
             const filter = document.getElementById('dashboardCategoryFilter').value;
             let filtered = products;
-            if (filter !== 'all') {
-                filtered = products.filter(p => p.category === filter);
-            }
+            if (filter !== 'all') filtered = products.filter(p => p.category === filter);
             const recent = filtered.slice(0, 4);
 
             const tbody = document.getElementById('dashboardProductsTable');
             if (recent.length === 0) {
-                tbody.innerHTML =
-                    `<tr><td colspan="6" style="text-align:center;padding:30px;color:#64748b;">No products found</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:30px;color:#64748b;">No products found</td></tr>`;
                 return;
             }
             tbody.innerHTML = recent.map(p => `
@@ -1982,14 +1706,12 @@
             const roleFilter = document.getElementById('userRoleFilter').value;
 
             let filtered = users;
-            if (search) filtered = filtered.filter(u => u.name.toLowerCase().includes(search) || u.email.toLowerCase()
-            .includes(search));
+            if (search) filtered = filtered.filter(u => u.name.toLowerCase().includes(search) || u.email.toLowerCase().includes(search));
             if (roleFilter !== 'all') filtered = filtered.filter(u => (u.role || 'buyer') === roleFilter);
 
             const tbody = document.getElementById('usersTableBody');
             if (filtered.length === 0) {
-                tbody.innerHTML =
-                    `<tr><td colspan="7" style="text-align:center;padding:30px;color:#64748b;">No users found</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:30px;color:#64748b;">No users found</td></tr>`;
                 return;
             }
             tbody.innerHTML = filtered.map(u => `
@@ -2044,7 +1766,6 @@
             if (!name || !email) { showToast('Name and email are required', 'error'); return; }
 
             if (id) {
-                // Edit existing
                 const index = users.findIndex(u => u.id === id);
                 if (index === -1) { showToast('User not found', 'error'); return; }
                 users[index].name = name;
@@ -2055,18 +1776,9 @@
                 saveUsers();
                 showToast('User updated successfully!', 'success');
             } else {
-                // Add new
                 if (!password) { showToast('Password is required for new users', 'error'); return; }
                 if (users.find(u => u.email === email)) { showToast('Email already exists', 'error'); return; }
-                users.push({
-                    id: Date.now().toString(),
-                    name,
-                    email,
-                    password,
-                    phone,
-                    role,
-                    createdAt: new Date().toISOString()
-                });
+                users.push({ id: Date.now().toString(), name, email, password, phone, role, createdAt: new Date().toISOString() });
                 saveUsers();
                 showToast('User added successfully!', 'success');
             }
@@ -2100,8 +1812,7 @@
 
             const tbody = document.getElementById('productsTableBody');
             if (filtered.length === 0) {
-                tbody.innerHTML =
-                    `<tr><td colspan="7" style="text-align:center;padding:30px;color:#64748b;">No products found</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:30px;color:#64748b;">No products found</td></tr>`;
                 return;
             }
             tbody.innerHTML = filtered.map(p => `
@@ -2124,8 +1835,8 @@
             `).join('');
         }
 
-        function viewProduct(productId) {
-            const product = products.find(p => p.id === productId);
+        function viewProduct(id) {
+            const product = products.find(p => p.id === id);
             if (!product) { showToast('Product not found', 'error'); return; }
             showToast(`📦 ${product.title} - ${formatCurrency(product.price)}`);
         }
@@ -2138,11 +1849,11 @@
             openModal('productModal');
         }
 
-        function editProduct(productId) {
-            const product = products.find(p => p.id === productId);
+        function editProduct(id) {
+            const product = products.find(p => p.id === id);
             if (!product) { showToast('Product not found', 'error'); return; }
             document.getElementById('productModalTitle').textContent = 'Edit Product';
-            document.getElementById('editProductId').value = productId;
+            document.getElementById('editProductId').value = id;
             document.getElementById('productFormTitle').value = product.title || '';
             document.getElementById('productFormPrice').value = product.price || '';
             document.getElementById('productFormCategory').value = product.category || 'Other';
@@ -2182,9 +1893,7 @@
                 const seller = users.find(u => u.name === sellerName || u.id === 'admin');
                 products.push({
                     id: Date.now().toString(),
-                    title,
-                    price,
-                    category,
+                    title, price, category,
                     location: location || 'Ghana',
                     sellerId: seller ? seller.id : 'admin',
                     sellerName: sellerName || 'Admin',
@@ -2205,9 +1914,9 @@
             renderReports();
         }
 
-        function deleteProduct(productId) {
+        function deleteProduct(id) {
             if (!confirm('Are you sure you want to delete this product?')) return;
-            products = products.filter(p => p.id !== productId);
+            products = products.filter(p => p.id !== id);
             saveProducts();
             renderProducts();
             renderDashboard();
@@ -2220,16 +1929,13 @@
         // ================================================================
         function renderSellers() {
             const search = document.getElementById('sellerSearchInput').value.toLowerCase();
-            const statusFilter = document.getElementById('sellerStatusFilter').value;
 
             let sellers = users.filter(u => u.role === 'seller');
-            if (search) sellers = sellers.filter(u => u.name.toLowerCase().includes(search) || u.email.toLowerCase()
-            .includes(search));
+            if (search) sellers = sellers.filter(u => u.name.toLowerCase().includes(search) || u.email.toLowerCase().includes(search));
 
             const tbody = document.getElementById('sellersTableBody');
             if (sellers.length === 0) {
-                tbody.innerHTML =
-                    `<tr><td colspan="7" style="text-align:center;padding:30px;color:#64748b;">No sellers found</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:30px;color:#64748b;">No sellers found</td></tr>`;
                 return;
             }
             tbody.innerHTML = sellers.map(s => {
@@ -2262,32 +1968,17 @@
             openModal('userModal');
         }
 
-        function editSeller(userId) {
-            const user = users.find(u => u.id === userId);
-            if (!user) { showToast('Seller not found', 'error'); return; }
-            document.getElementById('userModalTitle').textContent = 'Edit Seller';
-            document.getElementById('editUserId').value = userId;
-            document.getElementById('userFormName').value = user.name || '';
-            document.getElementById('userFormEmail').value = user.email || '';
-            document.getElementById('userFormPassword').value = '';
-            document.getElementById('userFormPassword').placeholder = 'Leave blank to keep current';
-            document.getElementById('userFormPassword').required = false;
-            document.getElementById('userFormPhone').value = user.phone || '';
-            document.getElementById('userFormRole').value = 'seller';
-            openModal('userModal');
-        }
+        function editSeller(id) { editUser(id);
+            setTimeout(() => document.getElementById('userFormRole').value = 'seller', 100); }
 
-        function deleteSeller(userId) {
+        function deleteSeller(id) {
             if (!confirm('Are you sure you want to delete this seller?')) return;
-            // Remove seller role but keep user
-            const user = users.find(u => u.id === userId);
-            if (user) {
-                user.role = 'buyer';
+            const user = users.find(u => u.id === id);
+            if (user) { user.role = 'buyer';
                 saveUsers();
                 renderSellers();
                 renderDashboard();
-                showToast('Seller removed', 'success');
-            }
+                showToast('Seller removed', 'success'); }
         }
 
         // ================================================================
@@ -2296,8 +1987,7 @@
         function renderCategories() {
             const grid = document.getElementById('categoryGrid');
             if (categories.length === 0) {
-                grid.innerHTML =
-                    `<div style="grid-column:1/-1; text-align:center;padding:40px;color:#64748b;">No categories yet. Add your first category!</div>`;
+                grid.innerHTML = `<div style="grid-column:1/-1; text-align:center;padding:40px;color:#64748b;">No categories yet. Add your first category!</div>`;
                 return;
             }
             grid.innerHTML = categories.map(c => {
@@ -2325,11 +2015,11 @@
             openModal('categoryModal');
         }
 
-        function editCategory(catName) {
-            const cat = categories.find(c => c.name === catName);
+        function editCategory(name) {
+            const cat = categories.find(c => c.name === name);
             if (!cat) { showToast('Category not found', 'error'); return; }
             document.getElementById('categoryModalTitle').textContent = 'Edit Category';
-            document.getElementById('editCategoryName').value = catName;
+            document.getElementById('editCategoryName').value = name;
             document.getElementById('categoryFormName').value = cat.name;
             document.getElementById('categoryFormIcon').value = cat.icon || 'fa-tag';
             openModal('categoryModal');
@@ -2344,20 +2034,15 @@
             if (!name) { showToast('Category name is required', 'error'); return; }
 
             if (oldName) {
-                // Edit existing
                 const index = categories.findIndex(c => c.name === oldName);
                 if (index === -1) { showToast('Category not found', 'error'); return; }
-                // Update products with old category name
-                if (oldName !== name) {
-                    products.forEach(p => { if (p.category === oldName) p.category = name; });
-                    saveProducts();
-                }
+                if (oldName !== name) { products.forEach(p => { if (p.category === oldName) p.category = name; });
+                    saveProducts(); }
                 categories[index].name = name;
                 categories[index].icon = icon || 'fa-tag';
                 saveCategories();
                 showToast('Category updated successfully!', 'success');
             } else {
-                // Add new
                 if (categories.find(c => c.name === name)) { showToast('Category already exists', 'error'); return; }
                 categories.push({ name, icon: icon || 'fa-tag' });
                 saveCategories();
@@ -2369,46 +2054,36 @@
             renderReports();
         }
 
-        function deleteCategory(catName) {
-            if (catName === 'Other') { showToast('Cannot delete the "Other" category', 'error'); return; }
-            if (!confirm(`Delete category "${catName}"? Products will be moved to "Other".`)) return;
-            products.forEach(p => { if (p.category === catName) p.category = 'Other'; });
+        function deleteCategory(name) {
+            if (name === 'Other') { showToast('Cannot delete the "Other" category', 'error'); return; }
+            if (!confirm(`Delete category "${name}"? Products will be moved to "Other".`)) return;
+            products.forEach(p => { if (p.category === name) p.category = 'Other'; });
             saveProducts();
-            categories = categories.filter(c => c.name !== catName);
+            categories = categories.filter(c => c.name !== name);
             saveCategories();
             renderCategories();
             renderDashboard();
             renderReports();
-            showToast(`Category "${catName}" deleted`, 'success');
+            showToast(`Category "${name}" deleted`, 'success');
         }
 
         // ================================================================
         //  REPORTS
         // ================================================================
         function renderReports() {
-            const totalUsers = users.length;
-            const totalProducts = products.length;
-            const totalRevenue = products.reduce((sum, p) => sum + (p.price || 0), 0);
-            const pending = products.filter(p => p.status === 'pending').length;
+            document.getElementById('reportProducts').textContent = products.length;
+            document.getElementById('reportUsers').textContent = users.length;
+            document.getElementById('reportRevenue').textContent = formatCurrency(products.reduce((s, p) => s + (p.price || 0), 0));
+            document.getElementById('reportPending').textContent = products.filter(p => p.status === 'pending').length;
 
-            document.getElementById('reportProducts').textContent = totalProducts;
-            document.getElementById('reportUsers').textContent = totalUsers;
-            document.getElementById('reportRevenue').textContent = formatCurrency(totalRevenue);
-            document.getElementById('reportPending').textContent = pending;
-
-            // Top categories
             const container = document.getElementById('topCategoriesContainer');
-            const catCounts = categories.map(c => ({
-                name: c.name,
-                count: getCategoryCount(c.name),
-                icon: c.icon || 'fa-tag'
-            })).sort((a, b) => b.count - a.count).slice(0, 5);
+            const catCounts = categories.map(c => ({ name: c.name, count: getCategoryCount(c.name), icon: c.icon || 'fa-tag' }))
+                .sort((a, b) => b.count - a.count).slice(0, 5);
 
             if (catCounts.length === 0) {
                 container.innerHTML = '<div style="color:#94a3b8;text-align:center;padding:10px;">No data</div>';
                 return;
             }
-
             const maxCount = Math.max(...catCounts.map(c => c.count), 1);
             container.innerHTML = catCounts.map(c => {
                 const pct = Math.round((c.count / maxCount) * 100);
@@ -2429,26 +2104,19 @@
         // ================================================================
         function toggleNotificationPanel() {
             const panel = document.getElementById('notificationPanel');
-            if (panel.classList.contains('active')) {
-                closeModal('notificationPanel');
-            } else {
-                renderNotifications();
-                openModal('notificationPanel');
-            }
+            if (panel.classList.contains('active')) { closeModal('notificationPanel'); } else { renderNotifications();
+                openModal('notificationPanel'); }
         }
 
         function renderNotifications() {
             const container = document.getElementById('notificationList');
-            // Get notifications for admin (userId = 'admin' or all)
-            const adminNotifs = notifications.filter(n => n.userId === 'admin' || n.userId === 'all');
-            const sorted = adminNotifs.sort((a, b) => b.id - a.id);
+            const adminNotifs = notifications.filter(n => n.userId === 'admin' || n.userId === 'all').sort((a, b) => b.id - a.id);
 
-            if (sorted.length === 0) {
+            if (adminNotifs.length === 0) {
                 container.innerHTML = '<div style="text-align:center;padding:30px;color:#94a3b8;">🔔 No notifications</div>';
                 return;
             }
-
-            container.innerHTML = sorted.map(n => `
+            container.innerHTML = adminNotifs.map(n => `
                 <div style="padding:12px;background:${!n.read ? '#eef2ff' : '#f8fafc'};border-radius:12px;margin-bottom:8px;border-left:3px solid #2ecc71;">
                     <div style="font-weight:700;">${escapeHtml(n.title)}</div>
                     <div style="font-size:13px;color:#475569;">${escapeHtml(n.message)}</div>
@@ -2460,8 +2128,7 @@
                 </div>
             `).join('');
 
-            // Update badge
-            const unread = sorted.filter(n => !n.read).length;
+            const unread = adminNotifs.filter(n => !n.read).length;
             document.getElementById('notifBadgeTop').textContent = unread;
         }
 
@@ -2476,20 +2143,9 @@
             notifications = notifications.filter(n => n.id != id);
             saveNotifications();
             renderNotifications();
-            updateNotifBadge();
         }
 
-        function updateNotifBadge() {
-            const adminNotifs = notifications.filter(n => n.userId === 'admin' || n.userId === 'all');
-            const unread = adminNotifs.filter(n => !n.read).length;
-            document.getElementById('notifBadgeTop').textContent = unread;
-        }
-
-        // ================================================================
-        //  MESSAGES BADGE (simulated)
-        // ================================================================
         function updateMsgBadge() {
-            // Simulate message count from localStorage messages
             const messages = JSON.parse(localStorage.getItem('kn_messages') || '[]');
             const unread = messages.filter(m => m.receiverId === 'admin' && !m.read).length;
             document.getElementById('msgBadgeTop').textContent = unread;
@@ -2499,22 +2155,14 @@
         //  SETTINGS
         // ================================================================
         function saveSettings() {
-            const siteName = document.getElementById('settingsSiteName').value.trim();
-            const siteDesc = document.getElementById('settingsSiteDesc').value.trim();
-            const email = document.getElementById('settingsContactEmail').value.trim();
-            const phone = document.getElementById('settingsContactPhone').value.trim();
-            const maintenance = document.getElementById('settingsMaintenance').checked;
-            const registration = document.getElementById('settingsRegistration').checked;
-            const approval = document.getElementById('settingsApproval').checked;
-
             const settings = {
-                siteName,
-                siteDesc,
-                email,
-                phone,
-                maintenance,
-                registration,
-                approval,
+                siteName: document.getElementById('settingsSiteName').value.trim(),
+                siteDesc: document.getElementById('settingsSiteDesc').value.trim(),
+                email: document.getElementById('settingsContactEmail').value.trim(),
+                phone: document.getElementById('settingsContactPhone').value.trim(),
+                maintenance: document.getElementById('settingsMaintenance').checked,
+                registration: document.getElementById('settingsRegistration').checked,
+                approval: document.getElementById('settingsApproval').checked,
                 updatedAt: new Date().toISOString()
             };
             localStorage.setItem('kn_settings', JSON.stringify(settings));
@@ -2528,8 +2176,7 @@
             if (settings.email) document.getElementById('settingsContactEmail').value = settings.email;
             if (settings.phone) document.getElementById('settingsContactPhone').value = settings.phone;
             if (settings.maintenance) document.getElementById('settingsMaintenance').checked = true;
-            if (settings.registration !== undefined) document.getElementById('settingsRegistration').checked = settings
-            .registration;
+            if (settings.registration !== undefined) document.getElementById('settingsRegistration').checked = settings.registration;
             if (settings.approval) document.getElementById('settingsApproval').checked = true;
         }
 
@@ -2545,15 +2192,10 @@
             renderSellers();
             renderCategories();
             renderReports();
-            updateNotifBadge();
             updateMsgBadge();
 
-            // Close sidebar on resize to desktop
-            window.addEventListener('resize', function() {
-                if (window.innerWidth > 992) closeSidebar();
-            });
+            window.addEventListener('resize', function() { if (window.innerWidth > 992) closeSidebar(); });
 
-            // Escape to close modals
             document.addEventListener('keydown', function(e) {
                 if (e.key === 'Escape') {
                     document.querySelectorAll('.modal-overlay.active').forEach(el => el.classList.remove('active'));
@@ -2564,7 +2206,9 @@
             console.log('✅ KN Classifieds Admin Panel loaded successfully!');
         }
 
-        // Expose globals
+        // ================================================================
+        //  EXPOSE GLOBALS
+        // ================================================================
         window.showPage = showPage;
         window.toggleSidebar = toggleSidebar;
         window.closeSidebar = closeSidebar;
@@ -2590,12 +2234,13 @@
         window.saveSettings = saveSettings;
         window.logout = logout;
         window.closeModal = closeModal;
+        window.openModal = openModal;
         window.showToast = showToast;
         window.filterDashboardProducts = filterDashboardProducts;
 
         // Start
         init();
     </script>
-<script src="/backend/database.js"></script>
+
 </body>
 </html>
