@@ -1,0 +1,3455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>My Profile — KN Classifieds</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+
+    <style>
+        /* ===== RESET & VARIABLES ===== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #f5f7fa;
+            color: #1e293b;
+            overflow-x: hidden;
+        }
+        a {
+            text-decoration: none;
+            color: inherit;
+        }
+        .container {
+            max-width: 1300px;
+            margin: auto;
+            padding: 0 20px;
+        }
+
+        /* ===== TOP BAR ===== */
+        .top-bar {
+            background: #ffffff;
+            border-bottom: 1px solid #e9edf2;
+            padding: 8px 0;
+            font-size: 13px;
+            color: #64748b;
+        }
+        .top-bar .container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 6px 12px;
+        }
+        .top-bar .contact-info {
+            display: flex;
+            gap: 18px;
+            flex-wrap: wrap;
+        }
+        .top-bar a {
+            color: #64748b;
+            transition: color 0.2s;
+        }
+        .top-bar a:hover {
+            color: #0055a5;
+        }
+        .top-bar i {
+            margin-right: 6px;
+        }
+
+        /* ===== HEADER / NAV ===== */
+        .nav-bar {
+            background: #ffffff;
+            padding: 12px 0;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            border-bottom: 1px solid #e9edf2;
+        }
+        .nav-bar .container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px 20px;
+        }
+        .nav-logo {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 800;
+            font-size: 24px;
+            color: #0055a5;
+        }
+        .nav-logo i {
+            color: #0055a5;
+        }
+
+        .nav-links {
+            display: flex;
+            list-style: none;
+            gap: 8px 18px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .nav-links li a {
+            color: #1e293b;
+            font-size: 14px;
+            font-weight: 500;
+            transition: color 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .nav-links li a:hover {
+            color: #0055a5;
+        }
+        .nav-links li a.post-ad-link {
+            background: #2ecc71;
+            color: #fff;
+            padding: 8px 22px;
+            border-radius: 40px;
+            font-weight: 700;
+            font-size: 14px;
+            transition: 0.2s;
+        }
+        .nav-links li a.post-ad-link:hover {
+            background: #27ae60;
+            transform: scale(1.02);
+        }
+
+        .nav-icons {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        .icon-btn {
+            background: none;
+            border: none;
+            color: #1e293b;
+            font-size: 20px;
+            cursor: pointer;
+            position: relative;
+            padding: 4px;
+            display: flex;
+            align-items: center;
+            transition: 0.2s;
+        }
+        .icon-btn:hover {
+            color: #0055a5;
+        }
+        .badge {
+            position: absolute;
+            top: -6px;
+            right: -8px;
+            background: #e74c3c;
+            color: #fff;
+            font-size: 10px;
+            font-weight: 700;
+            border-radius: 50%;
+            padding: 2px 6px;
+            min-width: 18px;
+            text-align: center;
+        }
+        .mobile-toggle {
+            display: none;
+        }
+
+        .auth-btn {
+            padding: 6px 16px;
+            border-radius: 30px;
+            font-weight: 600;
+            font-size: 13px;
+            border: 1.5px solid #0055a5;
+            background: transparent;
+            color: #0055a5;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .auth-btn:hover {
+            background: #0055a5;
+            color: #fff;
+        }
+        .auth-btn-reg {
+            background: #0055a5;
+            color: #fff;
+            border: 1.5px solid #0055a5;
+        }
+        .auth-btn-reg:hover {
+            background: #003f7a;
+        }
+
+        .user-group {
+            display: none;
+            align-items: center;
+            gap: 10px;
+        }
+        .user-group .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            object-fit: cover;
+            background: #e9edf2;
+        }
+        .user-group .profile-link {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #fff;
+            transition: opacity 0.2s;
+        }
+        .user-group .profile-link:hover {
+            opacity: 0.8;
+        }
+        .user-group span {
+            color: #fff;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        .logout-btn {
+            background: #e9edf2;
+            border: none;
+            border-radius: 30px;
+            padding: 4px 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .logout-btn:hover {
+            background: #d1d9e6;
+        }
+
+        /* ===== PAGE HEADER ===== */
+        .page-header {
+            background: linear-gradient(135deg, #0055a5 0%, #003f7a 100%);
+            padding: 25px 0 30px;
+            text-align: center;
+            color: #fff;
+        }
+        .page-header h1 {
+            font-size: 24px;
+            font-weight: 800;
+        }
+        .page-header p {
+            opacity: 0.85;
+            margin-top: 4px;
+            font-size: 14px;
+        }
+
+        /* ===== PROFILE LAYOUT ===== */
+        .profile-section {
+            padding: 30px 0 60px;
+        }
+        .profile-layout {
+            display: grid;
+            grid-template-columns: 260px 1fr;
+            gap: 30px;
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        /* ===== SIDEBAR ===== */
+        .profile-sidebar {
+            background: #fff;
+            border-radius: 20px;
+            padding: 24px 0;
+            border: 1px solid #e9edf2;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+            height: fit-content;
+            position: sticky;
+            top: 80px;
+        }
+
+        .profile-user {
+            text-align: center;
+            padding: 0 20px 20px;
+            border-bottom: 1px solid #e9edf2;
+        }
+        .profile-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: #e9edf2;
+            margin: 0 auto 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+            color: #94a3b8;
+            overflow: hidden;
+        }
+        .profile-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .profile-user .name {
+            font-weight: 700;
+            font-size: 18px;
+        }
+        .profile-user .email {
+            font-size: 13px;
+            color: #64748b;
+            margin-top: 2px;
+        }
+
+        .profile-menu {
+            padding: 12px 0;
+        }
+        .profile-menu .menu-item {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 12px 24px;
+            color: #64748b;
+            font-size: 14px;
+            font-weight: 500;
+            transition: 0.2s;
+            cursor: pointer;
+            border-left: 3px solid transparent;
+        }
+        .profile-menu .menu-item:hover {
+            background: #f8fafc;
+            color: #1e293b;
+        }
+        .profile-menu .menu-item.active {
+            background: #eef2ff;
+            color: #0055a5;
+            border-left-color: #0055a5;
+        }
+        .profile-menu .menu-item i {
+            width: 20px;
+            text-align: center;
+            font-size: 16px;
+        }
+        .profile-menu .menu-item .badge-menu {
+            margin-left: auto;
+            background: #e9edf2;
+            color: #64748b;
+            font-size: 11px;
+            padding: 2px 10px;
+            border-radius: 20px;
+        }
+        .profile-menu .menu-item .badge-menu.active-badge {
+            background: #0055a5;
+            color: #fff;
+        }
+
+        .profile-menu .divider {
+            height: 1px;
+            background: #e9edf2;
+            margin: 8px 24px;
+        }
+
+        /* ===== CONTENT ===== */
+        .profile-content {
+            background: #fff;
+            border-radius: 20px;
+            padding: 28px 32px;
+            border: 1px solid #e9edf2;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+            min-height: 500px;
+        }
+
+        .content-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .content-header h2 {
+            font-size: 22px;
+            font-weight: 700;
+        }
+        .content-header .action-link {
+            color: #0055a5;
+            font-weight: 600;
+            font-size: 14px;
+            background: none;
+            border: none;
+            cursor: pointer;
+        }
+        .content-header .action-link:hover {
+            text-decoration: underline;
+        }
+
+        /* ===== ADVERTS GRID ===== */
+        .adverts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 20px;
+        }
+        .advert-card {
+            background: #f8fafc;
+            border-radius: 14px;
+            overflow: hidden;
+            border: 1px solid #e9edf2;
+            transition: 0.3s;
+            display: flex;
+            flex-direction: column;
+        }
+        .advert-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.06);
+        }
+        .advert-card img {
+            width: 100%;
+            height: 160px;
+            object-fit: cover;
+            background: #e9edf2;
+        }
+        .advert-card .info {
+            padding: 12px 14px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        .advert-card .title {
+            font-weight: 600;
+            font-size: 15px;
+        }
+        .advert-card .price {
+            color: #0055a5;
+            font-weight: 700;
+            font-size: 18px;
+            margin-top: 2px;
+        }
+        .advert-card .meta {
+            font-size: 12px;
+            color: #64748b;
+            margin-top: 4px;
+            display: flex;
+            gap: 12px;
+        }
+
+        .advert-card .status {
+            display: inline-block;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 2px 12px;
+            border-radius: 20px;
+            margin-top: 6px;
+            align-self: flex-start;
+        }
+        .status-active {
+            background: #dcfce7;
+            color: #166534;
+        }
+        .status-pending {
+            background: #fef9c3;
+            color: #854d0e;
+        }
+        .status-sold {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .advert-card .card-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #e9edf2;
+        }
+        .advert-card .card-actions button {
+            flex: 1;
+            padding: 6px 0;
+            border: none;
+            border-radius: 30px;
+            font-weight: 600;
+            font-size: 12px;
+            cursor: pointer;
+            transition: 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+        .advert-card .btn-edit {
+            background: #e9edf2;
+            color: #1e293b;
+        }
+        .advert-card .btn-edit:hover {
+            background: #d1d9e6;
+        }
+        .advert-card .btn-delete {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+        .advert-card .btn-delete:hover {
+            background: #fecaca;
+        }
+
+        /* ===== EMPTY STATE ===== */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+        }
+        .empty-state .icon {
+            font-size: 64px;
+            color: #d1d5db;
+            margin-bottom: 16px;
+        }
+        .empty-state h3 {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: #1e293b;
+        }
+        .empty-state p {
+            color: #64748b;
+            font-size: 15px;
+            margin-bottom: 20px;
+        }
+        .empty-state .btn-create {
+            display: inline-block;
+            padding: 12px 32px;
+            background: #2ecc71;
+            color: #fff;
+            border: none;
+            border-radius: 40px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .empty-state .btn-create:hover {
+            background: #27ae60;
+            transform: scale(1.02);
+        }
+
+        /* ===== SETTINGS FORM ===== */
+        .settings-form {
+            display: none;
+        }
+        .settings-form.active {
+            display: block;
+        }
+
+        .settings-form .form-group {
+            margin-bottom: 20px;
+        }
+        .settings-form .form-label {
+            display: block;
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 4px;
+        }
+        .settings-form .form-control {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1.5px solid #e9edf2;
+            border-radius: 12px;
+            font-size: 14px;
+            font-family: inherit;
+            transition: 0.2s;
+            background: #fff;
+        }
+        .settings-form .form-control:focus {
+            outline: none;
+            border-color: #0055a5;
+            box-shadow: 0 0 0 3px rgba(0, 85, 165, 0.08);
+        }
+
+        .settings-form .photo-upload {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        .settings-form .photo-preview {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: #e9edf2;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            font-size: 36px;
+            color: #94a3b8;
+            border: 2px solid #e9edf2;
+        }
+        .settings-form .photo-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .settings-form .photo-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .settings-form .btn-upload {
+            padding: 10px 20px;
+            background: #0055a5;
+            color: #fff;
+            border: none;
+            border-radius: 40px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .settings-form .btn-upload:hover {
+            background: #003f7a;
+        }
+        .settings-form .btn-remove {
+            padding: 10px 20px;
+            background: #e9edf2;
+            color: #1e293b;
+            border: none;
+            border-radius: 40px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .settings-form .btn-remove:hover {
+            background: #d1d9e6;
+        }
+        .settings-form .btn-save {
+            padding: 12px 32px;
+            background: #2ecc71;
+            color: #fff;
+            border: none;
+            border-radius: 40px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .settings-form .btn-save:hover {
+            background: #27ae60;
+        }
+        .settings-form .btn-save:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        /* ===== EDIT PRODUCT MODAL ===== */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(3px);
+            justify-content: center;
+            align-items: center;
+            z-index: 3000;
+            opacity: 0;
+            transition: opacity 0.4s ease;
+        }
+        .modal-overlay.active {
+            display: flex;
+            opacity: 1;
+        }
+        .edit-modal {
+            background: #fff;
+            border-radius: 24px;
+            width: 94%;
+            max-width: 640px;
+            padding: 32px;
+            position: relative;
+            animation: modalFade 0.35s ease;
+            max-height: 92vh;
+            overflow-y: auto;
+        }
+        @keyframes modalFade {
+            from {
+                opacity: 0;
+                transform: scale(0.92) translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+        .edit-modal .close-modal {
+            position: absolute;
+            top: 16px;
+            right: 20px;
+            font-size: 28px;
+            cursor: pointer;
+            color: #94a3b8;
+            background: none;
+            border: none;
+        }
+        .edit-modal h3 {
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .edit-modal .form-group {
+            margin-bottom: 16px;
+        }
+        .edit-modal .form-group label {
+            display: block;
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 4px;
+        }
+        .edit-modal .form-group input,
+        .edit-modal .form-group select,
+        .edit-modal .form-group textarea {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1.5px solid #e9edf2;
+            border-radius: 12px;
+            font-size: 14px;
+            font-family: inherit;
+            transition: 0.2s;
+            background: #fff;
+        }
+        .edit-modal .form-group input:focus,
+        .edit-modal .form-group select:focus,
+        .edit-modal .form-group textarea:focus {
+            outline: none;
+            border-color: #0055a5;
+            box-shadow: 0 0 0 3px rgba(0, 85, 165, 0.08);
+        }
+        .edit-modal .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+        .edit-modal .form-group .hint {
+            font-size: 12px;
+            color: #94a3b8;
+            margin-top: 4px;
+        }
+
+        /* ===== IMAGE UPLOAD AREA (edit modal) ===== */
+        .edit-image-area {
+            border: 2px dashed #e9edf2;
+            border-radius: 16px;
+            padding: 24px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: 0.3s;
+            background: #fafbfc;
+        }
+        .edit-image-area:hover {
+            border-color: #0055a5;
+            background: #f0f4ff;
+        }
+        .edit-image-area i {
+            font-size: 32px;
+            color: #94a3b8;
+            margin-bottom: 6px;
+            display: block;
+        }
+        .edit-image-area p {
+            color: #64748b;
+            font-size: 14px;
+        }
+        .edit-image-area .small {
+            font-size: 12px;
+            color: #94a3b8;
+        }
+        .edit-image-preview-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+            gap: 12px;
+            margin-top: 16px;
+        }
+        .edit-image-preview-grid .preview-item {
+            position: relative;
+            border-radius: 12px;
+            overflow: hidden;
+            aspect-ratio: 1;
+            background: #f1f5f9;
+            border: 1px solid #e9edf2;
+        }
+        .edit-image-preview-grid .preview-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .edit-image-preview-grid .preview-item .remove-img {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            background: rgba(0, 0, 0, 0.7);
+            color: #fff;
+            border: none;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: 0.2s;
+        }
+        .edit-image-preview-grid .preview-item .remove-img:hover {
+            background: #e74c3c;
+            transform: scale(1.1);
+        }
+
+        .edit-modal .form-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+        }
+        .edit-modal .form-actions button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 40px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: 0.2s;
+            font-size: 15px;
+        }
+        .edit-modal .form-actions .btn-cancel {
+            background: #e9edf2;
+            color: #1e293b;
+        }
+        .edit-modal .form-actions .btn-cancel:hover {
+            background: #d1d9e6;
+        }
+        .edit-modal .form-actions .btn-update {
+            background: #2ecc71;
+            color: #fff;
+        }
+        .edit-modal .form-actions .btn-update:hover {
+            background: #27ae60;
+        }
+        .edit-modal .form-actions .btn-update:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        /* ===== CHAT MODAL ===== */
+        .chat-modal {
+            background: #fff;
+            border-radius: 24px;
+            width: 94%;
+            max-width: 600px;
+            max-height: 85vh;
+            display: flex;
+            flex-direction: column;
+            padding: 0;
+            position: relative;
+            animation: modalFade 0.35s ease;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+        .chat-modal .chat-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid #e9edf2;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #f8fafc;
+            flex-shrink: 0;
+        }
+        .chat-modal .chat-header .chat-user {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .chat-modal .chat-header .chat-user .avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: #e9edf2;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: #94a3b8;
+            overflow: hidden;
+        }
+        .chat-modal .chat-header .chat-user .avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .chat-modal .chat-header .chat-user .name {
+            font-weight: 700;
+            font-size: 16px;
+        }
+        .chat-modal .close-chat {
+            background: none;
+            border: none;
+            font-size: 28px;
+            cursor: pointer;
+            color: #94a3b8;
+            padding: 0 4px;
+        }
+        .chat-modal .close-chat:hover {
+            color: #1e293b;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px 20px;
+            background: #fafbfc;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .chat-message {
+            max-width: 80%;
+            padding: 10px 14px;
+            border-radius: 16px;
+            font-size: 14px;
+            line-height: 1.5;
+            word-wrap: break-word;
+            position: relative;
+        }
+        .chat-message.sent {
+            align-self: flex-end;
+            background: #0055a5;
+            color: #fff;
+            border-bottom-right-radius: 4px;
+        }
+        .chat-message.received {
+            align-self: flex-start;
+            background: #fff;
+            border: 1px solid #e9edf2;
+            border-bottom-left-radius: 4px;
+        }
+        .chat-message .msg-time {
+            font-size: 10px;
+            opacity: 0.7;
+            margin-top: 4px;
+            display: block;
+        }
+        .chat-message .msg-images {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 6px;
+        }
+        .chat-message .msg-images img {
+            max-width: 120px;
+            max-height: 120px;
+            border-radius: 8px;
+            object-fit: cover;
+            border: 1px solid rgba(0, 0, 0, 0.08);
+        }
+
+        .chat-input-area {
+            padding: 12px 20px;
+            border-top: 1px solid #e9edf2;
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+            background: #fff;
+            flex-shrink: 0;
+        }
+        .chat-input-area textarea {
+            flex: 1;
+            padding: 10px 14px;
+            border: 1.5px solid #e9edf2;
+            border-radius: 20px;
+            font-size: 14px;
+            font-family: inherit;
+            resize: none;
+            min-height: 44px;
+            max-height: 120px;
+            transition: 0.2s;
+            background: #f8fafc;
+        }
+        .chat-input-area textarea:focus {
+            outline: none;
+            border-color: #0055a5;
+            box-shadow: 0 0 0 3px rgba(0, 85, 165, 0.08);
+        }
+        .chat-input-area .chat-actions {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+        .chat-input-area .chat-actions button {
+            background: none;
+            border: none;
+            font-size: 22px;
+            cursor: pointer;
+            color: #64748b;
+            padding: 6px;
+            border-radius: 50%;
+            transition: 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .chat-input-area .chat-actions button:hover {
+            background: #f1f5f9;
+            color: #0055a5;
+        }
+        .chat-input-area .chat-actions .send-btn {
+            background: #2ecc71;
+            color: #fff;
+            border-radius: 50%;
+            width: 44px;
+            height: 44px;
+            font-size: 18px;
+        }
+        .chat-input-area .chat-actions .send-btn:hover {
+            background: #27ae60;
+            transform: scale(1.04);
+        }
+
+        /* ===== TOAST ===== */
+        .toast {
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #0f172a;
+            color: #fff;
+            padding: 12px 24px;
+            border-radius: 40px;
+            z-index: 9999;
+            font-weight: 500;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+            animation: slideUp 0.3s ease;
+            max-width: 90%;
+            text-align: center;
+        }
+        .toast.success {
+            background: #2ecc71;
+        }
+        .toast.error {
+            background: #e74c3c;
+        }
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateX(-50%) translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+            }
+        }
+
+        /* ===== CART PANEL ===== */
+        .cart-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.4);
+            z-index: 2000;
+        }
+        .cart-overlay.open {
+            display: block;
+        }
+        .cart-panel {
+            position: fixed;
+            top: 0;
+            right: -420px;
+            width: 400px;
+            height: 100%;
+            background: #fff;
+            z-index: 2100;
+            transition: right 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            box-shadow: -4px 0 20px rgba(0, 0, 0, 0.1);
+        }
+        .cart-panel.open {
+            right: 0;
+        }
+        .cart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            border-bottom: 1px solid #e9edf2;
+        }
+        .cart-header button {
+            background: none;
+            border: none;
+            font-size: 30px;
+            cursor: pointer;
+        }
+        .cart-items {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+        }
+        .cart-item {
+            display: flex;
+            gap: 12px;
+            padding: 12px;
+            background: #f8fafc;
+            border-radius: 14px;
+            margin-bottom: 12px;
+            align-items: center;
+        }
+        .cart-item img {
+            width: 60px;
+            height: 60px;
+            object-fit: cover;
+            border-radius: 10px;
+        }
+        .cart-item .details {
+            flex: 1;
+        }
+        .cart-item .title {
+            font-weight: 600;
+        }
+        .cart-item .price {
+            color: #0055a5;
+            font-weight: 700;
+        }
+        .cart-item .qty {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 4px;
+        }
+        .qty-btn {
+            background: #e9edf2;
+            border: none;
+            width: 26px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 700;
+        }
+        .remove-btn {
+            background: none;
+            border: none;
+            color: #e74c3c;
+            cursor: pointer;
+        }
+        .cart-footer {
+            padding: 16px 20px;
+            border-top: 1px solid #e9edf2;
+        }
+        .cart-total {
+            display: flex;
+            justify-content: space-between;
+            font-weight: 800;
+            font-size: 18px;
+            margin-bottom: 12px;
+        }
+        .btn-checkout {
+            width: 100%;
+            padding: 14px;
+            background: #2ecc71;
+            border: none;
+            border-radius: 40px;
+            font-weight: 700;
+            color: #fff;
+            cursor: pointer;
+        }
+        .empty-state-sm {
+            text-align: center;
+            padding: 40px 20px;
+            color: #64748b;
+        }
+
+        /* ===== SIDEBARS ===== */
+        .sidebar {
+            position: fixed;
+            top: 0;
+            right: -100%;
+            width: 100%;
+            height: 100vh;
+            background: #fff;
+            transition: 0.3s;
+            z-index: 2500;
+            display: flex;
+            flex-direction: column;
+            box-shadow: -5px 0 25px rgba(0, 0, 0, 0.1);
+        }
+        @media(min-width:500px) {
+            .sidebar {
+                width: 400px;
+                right: -400px;
+            }
+        }
+        .sidebar.open {
+            right: 0;
+        }
+        .sidebar-header {
+            background: #0055a5;
+            color: #fff;
+            padding: 18px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .close-sidebar {
+            background: rgba(255, 255, 255, 0.2);
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+        .sidebar-content {
+            padding: 16px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        /* Notification items */
+        .notif-item {
+            padding: 12px;
+            background: #f8fafc;
+            border-radius: 12px;
+            margin-bottom: 10px;
+            border-left: 3px solid #2ecc71;
+        }
+        .notif-unread {
+            background: #eef2ff;
+        }
+        .notif-title {
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+        .notif-text {
+            font-size: 13px;
+            color: #475569;
+        }
+        .notif-time {
+            font-size: 10px;
+            color: #94a3b8;
+            margin-top: 4px;
+        }
+        .notif-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+        }
+        .notif-actions button {
+            padding: 4px 12px;
+            border: none;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .notif-actions .btn-reply {
+            background: #0055a5;
+            color: #fff;
+        }
+        .notif-actions .btn-reply:hover {
+            background: #003f7a;
+        }
+        .notif-actions .btn-delete {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+        .notif-actions .btn-delete:hover {
+            background: #fecaca;
+        }
+
+        /* Conversation items in messages sidebar */
+        .conversation-item {
+            padding: 12px 14px;
+            background: #f8fafc;
+            border-radius: 12px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: 0.2s;
+            border-left: 3px solid transparent;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .conversation-item:hover {
+            background: #f1f5f9;
+        }
+        .conversation-item.unread {
+            border-left-color: #0055a5;
+            background: #eef2ff;
+        }
+        .conversation-item .conv-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #e9edf2;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: #94a3b8;
+            flex-shrink: 0;
+            overflow: hidden;
+        }
+        .conversation-item .conv-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .conversation-item .conv-info {
+            flex: 1;
+            min-width: 0;
+        }
+        .conversation-item .conv-info .conv-name {
+            font-weight: 700;
+            font-size: 15px;
+        }
+        .conversation-item .conv-info .conv-last {
+            font-size: 13px;
+            color: #64748b;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .conversation-item .conv-info .conv-time {
+            font-size: 11px;
+            color: #94a3b8;
+        }
+        .conversation-item .conv-unread-badge {
+            background: #0055a5;
+            color: #fff;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 20px;
+            flex-shrink: 0;
+        }
+
+        /* ===== AUTH MODAL ===== */
+        .auth-modal {
+            background: #fff;
+            border-radius: 32px;
+            width: 90%;
+            max-width: 480px;
+            padding: 32px;
+            position: relative;
+            animation: modalFade 0.35s ease;
+        }
+        .auth-modal .close-modal {
+            position: absolute;
+            top: 16px;
+            right: 20px;
+            font-size: 28px;
+            cursor: pointer;
+            color: #94a3b8;
+            background: none;
+            border: none;
+        }
+        .auth-modal h2 {
+            margin-bottom: 8px;
+            text-align: center;
+        }
+        .auth-modal .subtitle {
+            text-align: center;
+            color: #64748b;
+            margin-bottom: 20px;
+        }
+        .auth-modal input {
+            width: 100%;
+            padding: 14px;
+            margin-bottom: 16px;
+            border: 1.5px solid #e9edf2;
+            border-radius: 16px;
+            font-size: 14px;
+            font-family: inherit;
+        }
+        .auth-modal input:focus {
+            outline: none;
+            border-color: #0055a5;
+        }
+        .auth-modal button {
+            width: 100%;
+            padding: 14px;
+            background: #2ecc71;
+            border: none;
+            border-radius: 40px;
+            font-weight: 700;
+            color: #fff;
+            cursor: pointer;
+            margin-top: 4px;
+        }
+        .auth-modal button:hover {
+            background: #27ae60;
+        }
+        .auth-footer {
+            text-align: center;
+            margin-top: 16px;
+            font-size: 14px;
+        }
+        .auth-footer a {
+            color: #0055a5;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .error-message {
+            background: #fee2e2;
+            color: #dc2626;
+            padding: 10px;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            text-align: center;
+            display: none;
+        }
+
+        .social-login-divider {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 16px 0;
+        }
+        .social-login-divider::before,
+        .social-login-divider::after {
+            content: '';
+            flex: 1;
+            border-bottom: 1px solid #e9edf2;
+        }
+        .social-login-divider span {
+            font-size: 13px;
+            color: #94a3b8;
+        }
+        .social-btn {
+            width: 100%;
+            padding: 12px;
+            border-radius: 40px;
+            font-weight: 600;
+            border: 1.5px solid #e9edf2;
+            background: #fff;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: 0.2s;
+            margin-bottom: 10px;
+        }
+        .social-btn:hover {
+            background: #f8fafc;
+            border-color: #0055a5;
+        }
+        .social-btn.google i {
+            color: #db4437;
+            font-size: 20px;
+        }
+        .social-btn.facebook i {
+            color: #1877f2;
+            font-size: 20px;
+        }
+
+        /* ===== FOOTER ===== */
+        .footer {
+            background: #0f172a;
+            color: #cbd5e1;
+            padding: 50px 0 20px;
+            border-top: 3px solid #2ecc71;
+            margin-top: 20px;
+        }
+        .footer .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        .footer h4 {
+            color: #fff;
+            margin-bottom: 16px;
+            font-size: 17px;
+        }
+        .footer ul {
+            list-style: none;
+        }
+        .footer ul li {
+            margin-bottom: 10px;
+        }
+        .footer ul li a {
+            transition: color 0.2s;
+        }
+        .footer ul li a:hover {
+            color: #2ecc71;
+        }
+        .footer .bottom {
+            border-top: 1px solid #1e293b;
+            padding-top: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            font-size: 14px;
+        }
+        .footer .social {
+            display: flex;
+            gap: 14px;
+        }
+        .footer .social a {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            background: #1e293b;
+            border-radius: 50%;
+            transition: 0.3s;
+            color: #cbd5e1;
+        }
+        .footer .social a:hover {
+            background: #2ecc71;
+            color: #0f172a;
+        }
+        .footer .footer-contact {
+            font-size: 13px;
+            line-height: 1.8;
+        }
+        .footer .footer-contact i {
+            width: 20px;
+            color: #2ecc71;
+        }
+
+        /* ================================================================ */
+        /* ===== RESPONSIVE ===== */
+        /* ================================================================ */
+
+        /* Large tablets / small laptops */
+        @media(max-width:992px) {
+            .profile-layout {
+                grid-template-columns: 1fr;
+            }
+            .profile-sidebar {
+                position: static;
+                display: grid;
+                grid-template-columns: auto 1fr;
+                gap: 0 20px;
+                padding: 16px 20px;
+            }
+            .profile-user {
+                border-bottom: none;
+                padding: 0;
+                display: flex;
+                align-items: center;
+                gap: 16px;
+                text-align: left;
+            }
+            .profile-user .profile-avatar {
+                width: 56px;
+                height: 56px;
+                margin: 0;
+                font-size: 24px;
+            }
+            .profile-user .name {
+                font-size: 16px;
+            }
+            .profile-user .email {
+                font-size: 12px;
+            }
+            .profile-menu {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 4px 0;
+                padding: 0;
+                border-top: 1px solid #e9edf2;
+                margin-top: 12px;
+                padding-top: 12px;
+                grid-column: 1 / -1;
+            }
+            .profile-menu .menu-item {
+                padding: 6px 14px;
+                font-size: 13px;
+                border-left: none;
+                border-radius: 30px;
+                background: #f1f5f9;
+                color: #64748b;
+                gap: 8px;
+            }
+            .profile-menu .menu-item.active {
+                background: #0055a5;
+                color: #fff;
+            }
+            .profile-menu .menu-item:hover {
+                background: #e2e8f0;
+            }
+            .profile-menu .menu-item.active:hover {
+                background: #003f7a;
+            }
+            .profile-menu .divider {
+                display: none;
+            }
+            .profile-menu .menu-item .badge-menu {
+                font-size: 10px;
+                padding: 1px 8px;
+            }
+        }
+
+        /* Tablets and smaller */
+        @media(max-width:768px) {
+            /* Top bar */
+            .top-bar .container {
+                flex-direction: column;
+                align-items: stretch;
+                text-align: center;
+            }
+            .top-bar .contact-info {
+                justify-content: center;
+            }
+
+            /* Nav */
+            .nav-bar .container {
+                flex-wrap: wrap;
+            }
+            .nav-links {
+                display: none;
+                flex-direction: column;
+                width: 100%;
+                background: #fff;
+                padding: 10px 0;
+                border-top: 1px solid #e9edf2;
+                gap: 4px;
+            }
+            .nav-links.open {
+                display: flex;
+            }
+            .nav-links li a {
+                padding: 8px 16px;
+                width: 100%;
+                border-radius: 8px;
+            }
+            .nav-links li a:hover {
+                background: #f1f5f9;
+            }
+            .nav-links li a.post-ad-link {
+                width: auto;
+                margin: 4px 16px;
+                text-align: center;
+            }
+            .mobile-toggle {
+                display: block;
+            }
+
+            /* Profile sidebar - mobile */
+            .profile-sidebar {
+                grid-template-columns: 1fr;
+                gap: 12px;
+                padding: 16px;
+            }
+            .profile-user {
+                flex-direction: column;
+                text-align: center;
+            }
+            .profile-user .profile-avatar {
+                width: 72px;
+                height: 72px;
+                font-size: 30px;
+            }
+            .profile-menu {
+                justify-content: center;
+                gap: 4px;
+                padding-top: 8px;
+                margin-top: 8px;
+            }
+            .profile-menu .menu-item {
+                font-size: 12px;
+                padding: 4px 12px;
+            }
+            .profile-menu .menu-item i {
+                font-size: 14px;
+                width: 16px;
+            }
+
+            /* Content */
+            .profile-content {
+                padding: 20px;
+            }
+            .content-header h2 {
+                font-size: 20px;
+            }
+
+            /* Adverts grid */
+            .adverts-grid {
+                grid-template-columns: 1fr 1fr;
+                gap: 14px;
+            }
+            .advert-card img {
+                height: 130px;
+            }
+            .advert-card .title {
+                font-size: 14px;
+            }
+            .advert-card .price {
+                font-size: 16px;
+            }
+
+            /* Page header */
+            .page-header h1 {
+                font-size: 20px;
+            }
+
+            /* Footer */
+            .footer .grid {
+                grid-template-columns: 1fr 1fr;
+            }
+            .footer .bottom {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            /* Chat modal */
+            .chat-modal {
+                width: 98%;
+                max-height: 90vh;
+            }
+            .chat-message {
+                max-width: 90%;
+            }
+            .chat-input-area textarea {
+                font-size: 13px;
+                min-height: 36px;
+            }
+            .chat-input-area .chat-actions .send-btn {
+                width: 38px;
+                height: 38px;
+                font-size: 16px;
+            }
+        }
+
+        /* Mobile phones */
+        @media(max-width:480px) {
+            .adverts-grid {
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
+            .advert-card img {
+                height: 160px;
+            }
+            .profile-content {
+                padding: 16px;
+                border-radius: 14px;
+            }
+            .profile-sidebar {
+                padding: 12px;
+                border-radius: 14px;
+            }
+            .profile-user .profile-avatar {
+                width: 64px;
+                height: 64px;
+                font-size: 26px;
+            }
+            .profile-menu .menu-item {
+                font-size: 11px;
+                padding: 3px 10px;
+                gap: 4px;
+            }
+            .profile-menu .menu-item i {
+                font-size: 12px;
+                width: 14px;
+            }
+            .content-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .content-header h2 {
+                font-size: 18px;
+            }
+            .edit-modal {
+                padding: 20px;
+                width: 98%;
+            }
+            .edit-modal h3 {
+                font-size: 18px;
+            }
+            .edit-modal .form-actions {
+                flex-direction: column;
+            }
+            .edit-modal .form-actions button {
+                width: 100%;
+            }
+            .settings-form .photo-upload {
+                flex-direction: column;
+                align-items: center;
+            }
+            .settings-form .photo-actions {
+                justify-content: center;
+            }
+            .cart-panel {
+                width: 100%;
+                right: -100%;
+            }
+            .sidebar {
+                width: 100%;
+                right: -100%;
+            }
+            .footer .grid {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            .footer h4 {
+                margin-bottom: 10px;
+                font-size: 15px;
+            }
+            .footer .footer-contact {
+                font-size: 12px;
+            }
+            .page-header {
+                padding: 18px 0 22px;
+            }
+            .page-header h1 {
+                font-size: 18px;
+            }
+            .page-header p {
+                font-size: 13px;
+            }
+            .toast {
+                font-size: 13px;
+                padding: 10px 18px;
+                bottom: 70px;
+            }
+            .auth-modal {
+                padding: 24px 18px;
+            }
+            .edit-image-preview-grid {
+                grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+            }
+            .chat-modal {
+                max-height: 95vh;
+                border-radius: 12px;
+            }
+            .chat-messages {
+                padding: 12px;
+            }
+            .chat-input-area {
+                padding: 8px 12px;
+                flex-wrap: wrap;
+            }
+            .chat-input-area textarea {
+                min-height: 32px;
+                font-size: 13px;
+            }
+            .chat-message .msg-images img {
+                max-width: 80px;
+                max-height: 80px;
+            }
+        }
+
+        /* Very small phones */
+        @media(max-width:360px) {
+            .profile-menu .menu-item {
+                font-size: 10px;
+                padding: 2px 8px;
+            }
+            .profile-menu .menu-item i {
+                font-size: 11px;
+                width: 12px;
+            }
+            .advert-card .card-actions {
+                flex-direction: column;
+                gap: 6px;
+            }
+            .advert-card .card-actions button {
+                width: 100%;
+                padding: 8px 0;
+            }
+            .content-header .action-link {
+                font-size: 13px;
+            }
+            .chat-message {
+                max-width: 95%;
+                font-size: 13px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ===== TOP BAR ===== -->
+    <div class="top-bar">
+        <div class="container">
+            <span><i class="fas fa-store"></i> KN Classifieds — Buy & Sell Near You</span>
+            <div class="contact-info">
+                <a href="tel:+233542928081"><i class="fas fa-phone-alt"></i> 054 292 8081</a>
+                <a href="mailto:knsmartgadgetshub@gmail.com"><i class="fas fa-envelope"></i> knsmartgadgetshub@gmail.com</a>
+                <a href="#"><i class="fas fa-map-marker-alt"></i> Accra, Ghana</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== NAVIGATION ===== -->
+    <nav class="nav-bar">
+        <div class="container">
+            <a href="index.html" class="nav-logo">
+                <i class="fas fa-tag"></i> KN <span style="color:#2ecc71;">Ads</span>
+            </a>
+            <ul class="nav-links" id="navLinks">
+                <li><a href="index.html" class="nav-link"><i class="fas fa-house"></i> Home</a></li>
+                <li><a href="index.html#adsGrid" class="nav-link"><i class="fas fa-star"></i> Latest Ads</a></li>
+                <li><a href="post-free-ad.html" class="post-ad-link"><i class="fas fa-plus-circle"></i> Post Free Ad</a></li>
+            </ul>
+            <div class="nav-icons">
+                <button class="icon-btn" aria-label="Notifications" onclick="toggleSidebar('notification')">
+                    <i class="fas fa-bell"></i>
+                    <span class="badge" id="notifBadge">0</span>
+                </button>
+                <button class="icon-btn" aria-label="Messages" onclick="toggleSidebar('message')">
+                    <i class="fas fa-envelope"></i>
+                    <span class="badge" id="msgBadge">0</span>
+                </button>
+                <button class="icon-btn" aria-label="Favorites" onclick="toggleCart()">
+                    <i class="fas fa-heart"></i>
+                    <span class="badge" id="cartCount">0</span>
+                </button>
+                <div id="authGroup">
+                    <button class="auth-btn" onclick="openAuthModal('login')">Login</button>
+                    <button class="auth-btn auth-btn-reg" onclick="openAuthModal('register')">Register</button>
+                </div>
+                <div class="user-group" id="userGroup">
+                    <a href="profile.html" class="profile-link">
+                        <img id="userAvatar" class="user-avatar" src="" alt="Avatar" style="display:none;">
+                        <span id="userNameDisplay"></span>
+                    </a>
+                    <button class="logout-btn" onclick="logout()">Logout</button>
+                </div>
+                <button class="icon-btn mobile-toggle" aria-label="Menu" id="mobileToggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- ===== PAGE HEADER ===== -->
+    <section class="page-header">
+        <div class="container">
+            <h1>👤 My Profile</h1>
+            <p>Manage your account, adverts, and settings.</p>
+        </div>
+    </section>
+
+    <!-- ===== PROFILE ===== -->
+    <section class="profile-section">
+        <div class="container">
+            <div class="profile-layout">
+
+                <!-- ===== SIDEBAR ===== -->
+                <aside class="profile-sidebar">
+                    <div class="profile-user">
+                        <div class="profile-avatar" id="profileAvatar">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <div>
+                            <div class="name" id="profileName">Knsmart Gadgetshub</div>
+                            <div class="email" id="profileEmail">knsmartgadgetshub@gmail.com</div>
+                        </div>
+                    </div>
+
+                    <nav class="profile-menu">
+                        <a href="#" class="menu-item active" data-page="adverts" onclick="showPage('adverts')">
+                            <i class="fas fa-user"></i> My Profile
+                        </a>
+                        <a href="post-free-ad.html" class="menu-item">
+                            <i class="fas fa-plus-circle"></i> Sell
+                        </a>
+                        <a href="#" class="menu-item" data-page="settings" onclick="showPage('settings')">
+                            <i class="fas fa-gear"></i> Settings
+                        </a>
+                        <a href="#" class="menu-item" onclick="showToast('Add phone number feature coming soon!')">
+                            <i class="fas fa-phone"></i> ADD PHONE NUMBER
+                        </a>
+                        <div class="divider"></div>
+                        <a href="#" class="menu-item" onclick="showToast('Make money page coming soon!')">
+                            <i class="fas fa-coins"></i> Make money
+                            <span class="badge-menu" style="background:#2ecc71; color:#fff;">🤑</span>
+                        </a>
+                        <a href="#" class="menu-item" onclick="toggleSidebar('notification')">
+                            <i class="fas fa-bell"></i> Notifications
+                            <span class="badge-menu active-badge" id="notifBadgeMenu">0</span>
+                        </a>
+                        <a href="#" class="menu-item" onclick="showToast('Followers page coming soon!')">
+                            <i class="fas fa-users"></i> Followers
+                            <span class="badge-menu">0</span>
+                        </a>
+                        <a href="#" class="menu-item" data-page="adverts" onclick="showPage('adverts')">
+                            <i class="fas fa-list-ul"></i> My adverts
+                        </a>
+                        <a href="#" class="menu-item" onclick="showToast('Feedback page coming soon!')">
+                            <i class="fas fa-comment"></i> Feedback
+                        </a>
+                        <a href="#" class="menu-item" onclick="showToast('FAQ page coming soon!')">
+                            <i class="fas fa-circle-question"></i> FAQ
+                        </a>
+                        <div class="divider"></div>
+                        <a href="index.html" class="menu-item" style="color:#dc2626;" onclick="logout()">
+                            <i class="fas fa-arrow-right-from-bracket"></i> Logout
+                        </a>
+                    </nav>
+                </aside>
+
+                <!-- ===== CONTENT ===== -->
+                <main class="profile-content" id="profileContent">
+
+                    <!-- ===== ADVERTS SECTION ===== -->
+                    <div id="advertsSection">
+                        <div class="content-header">
+                            <h2>My adverts</h2>
+                            <a href="post-free-ad.html" class="action-link">
+                                <i class="fas fa-plus"></i> Create new
+                            </a>
+                        </div>
+                        <div id="advertsContainer">
+                            <!-- Populated by JavaScript -->
+                        </div>
+                    </div>
+
+                    <!-- ===== SETTINGS SECTION ===== -->
+                    <div id="settingsSection" class="settings-form">
+                        <div class="content-header">
+                            <h2>Settings</h2>
+                            <button onclick="showPage('adverts')" class="action-link">
+                                <i class="fas fa-arrow-left"></i> Back to My Adverts
+                            </button>
+                        </div>
+
+                        <form id="settingsForm" onsubmit="saveSettings(event)">
+                            <!-- Photo Upload -->
+                            <div class="form-group">
+                                <label class="form-label">Profile Photo</label>
+                                <div class="photo-upload">
+                                    <div class="photo-preview" id="settingsPhotoPreview">
+                                        <i class="fas fa-user"></i>
+                                    </div>
+                                    <div class="photo-actions">
+                                        <button type="button" class="btn-upload" onclick="document.getElementById('photoInput').click()">
+                                            <i class="fas fa-camera"></i> Choose Photo
+                                        </button>
+                                        <input type="file" id="photoInput" accept="image/*" style="display:none" onchange="previewPhoto(event)">
+                                        <button type="button" class="btn-remove" onclick="removePhoto()">Remove Photo</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Name -->
+                            <div class="form-group">
+                                <label class="form-label">Full Name</label>
+                                <input type="text" id="settingsName" class="form-control" required>
+                            </div>
+
+                            <!-- Email -->
+                            <div class="form-group">
+                                <label class="form-label">Email Address</label>
+                                <input type="email" id="settingsEmail" class="form-control" required>
+                            </div>
+
+                            <!-- Phone -->
+                            <div class="form-group">
+                                <label class="form-label">Phone Number</label>
+                                <input type="tel" id="settingsPhone" class="form-control" placeholder="e.g. 0542928081">
+                            </div>
+
+                            <button type="submit" class="btn-save" id="saveSettingsBtn">Save Changes</button>
+                        </form>
+                    </div>
+
+                </main>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== EDIT PRODUCT MODAL ===== -->
+    <div class="modal-overlay" id="editModal">
+        <div class="edit-modal">
+            <button class="close-modal" onclick="closeEditModal()">&times;</button>
+            <h3>✏️ Edit Advert</h3>
+            <form id="editForm" onsubmit="updateProduct(event)">
+                <input type="hidden" id="editProductId">
+
+                <div class="form-group">
+                    <label>Title</label>
+                    <input type="text" id="editTitle" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Category</label>
+                    <select id="editCategory">
+                        <option value="Cars">Cars</option>
+                        <option value="Phones">Phones</option>
+                        <option value="Real Estate">Real Estate</option>
+                        <option value="Jobs">Jobs</option>
+                        <option value="Electronics">Electronics</option>
+                        <option value="Fashion">Fashion</option>
+                        <option value="Home">Home</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Price (GH₵)</label>
+                    <input type="number" id="editPrice" step="0.01" min="0" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Location</label>
+                    <input type="text" id="editLocation" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Phone Number</label>
+                    <input type="tel" id="editPhone" placeholder="e.g. 0542928081">
+                    <div class="hint">Buyers will use this number to contact you.</div>
+                </div>
+
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea id="editDescription" rows="3"></textarea>
+                </div>
+
+                <!-- ===== VISUAL IMAGE UPLOAD ===== -->
+                <div class="form-group">
+                    <label>Product Images</label>
+                    <div class="edit-image-area" id="editImageUploadArea" onclick="document.getElementById('editImageInput').click()">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        <p>Click to upload images</p>
+                        <span class="small">PNG, JPG up to 5MB each • Max 6 images</span>
+                    </div>
+                    <input type="file" id="editImageInput" accept="image/*" multiple style="display:none;" />
+                    <div class="edit-image-preview-grid" id="editImagePreviewGrid">
+                        <!-- Thumbnails rendered by JS -->
+                    </div>
+                    <div class="hint">Drag & drop or click to add photos. Click the ✕ on any image to remove it.</div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn-cancel" onclick="closeEditModal()">Cancel</button>
+                    <button type="submit" class="btn-update" id="updateBtn">Update Advert</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ===== CHAT MODAL ===== -->
+    <div class="modal-overlay" id="chatModal">
+        <div class="chat-modal">
+            <div class="chat-header">
+                <div class="chat-user">
+                    <div class="avatar" id="chatAvatar"><i class="fas fa-user"></i></div>
+                    <span class="name" id="chatUserName">User</span>
+                </div>
+                <button class="close-chat" onclick="closeChatModal()">&times;</button>
+            </div>
+            <div class="chat-messages" id="chatMessages">
+                <!-- Messages will be rendered here -->
+            </div>
+            <div class="chat-input-area">
+                <textarea id="chatInput" rows="1" placeholder="Type a message..."></textarea>
+                <div class="chat-actions">
+                    <button onclick="document.getElementById('chatImageInput').click()" title="Attach image">
+                        <i class="fas fa-image"></i>
+                    </button>
+                    <input type="file" id="chatImageInput" accept="image/*" style="display:none" multiple />
+                    <button class="send-btn" onclick="sendChatMessage()">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== CART PANEL ===== -->
+    <div class="cart-overlay" id="cartOverlay" onclick="toggleCart()"></div>
+    <div class="cart-panel" id="cartPanel">
+        <div class="cart-header">
+            <h2>Your Favorites</h2>
+            <button onclick="toggleCart()">&times;</button>
+        </div>
+        <div class="cart-items" id="cartItemsList"></div>
+        <div class="cart-footer">
+            <div class="cart-total">
+                <span>Total</span>
+                <span id="cartTotalPrice">₵0.00</span>
+            </div>
+            <button class="btn-checkout" onclick="checkoutCart()">💬 WhatsApp Enquiry</button>
+        </div>
+    </div>
+
+    <!-- ===== SIDEBARS ===== -->
+    <div id="notificationSidebar" class="sidebar">
+        <div class="sidebar-header">
+            <h3>Notifications</h3>
+            <div class="close-sidebar" onclick="closeAllSidebars()">✕</div>
+        </div>
+        <div class="sidebar-content" id="notifList"></div>
+    </div>
+    <div id="messageSidebar" class="sidebar">
+        <div class="sidebar-header">
+            <h3>Messages</h3>
+            <div class="close-sidebar" onclick="closeAllSidebars()">✕</div>
+        </div>
+        <div class="sidebar-content" id="msgList"></div>
+    </div>
+
+    <!-- ===== AUTH MODAL ===== -->
+    <div class="modal-overlay" id="authModalContainer">
+        <div class="auth-modal" id="authModalContent">
+            <button class="close-modal" onclick="closeAuthModal()">&times;</button>
+            <div id="authFormContainer"></div>
+        </div>
+    </div>
+
+    <!-- ===== FOOTER ===== -->
+    <footer class="footer">
+        <div class="container">
+            <div class="grid">
+                <div>
+                    <h4>KN Classifieds</h4>
+                    <ul>
+                        <li><a href="#">About Us</a></li>
+                        <li><a href="#">How it works</a></li>
+                        <li><a href="#">Contact</a></li>
+                        <li><a href="#">Careers</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4>For Sellers</h4>
+                    <ul>
+                        <li><a href="post-free-ad.html">Post Free Ad</a></li>
+                        <li><a href="#">Pricing</a></li>
+                        <li><a href="#">Tips for Sellers</a></li>
+                        <li><a href="#">Promote Your Ad</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4>For Buyers</h4>
+                    <ul>
+                        <li><a href="#">Browse Ads</a></li>
+                        <li><a href="#">Safety Tips</a></li>
+                        <li><a href="#">Report an Ad</a></li>
+                        <li><a href="#">Buyer Protection</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4>Support</h4>
+                    <div class="footer-contact">
+                        <p><i class="fas fa-phone"></i> <a href="tel:+233542928081">054 292 8081</a></p>
+                        <p><i class="fas fa-envelope"></i> <a href="mailto:knsmartgadgetshub@gmail.com">knsmartgadgetshub@gmail.com</a></p>
+                        <p><i class="fas fa-map-marker-alt"></i> Accra, Ghana</p>
+                        <p><i class="fas fa-clock"></i> Mon–Sat, 8am – 6pm</p>
+                    </div>
+                </div>
+                <div>
+                    <h4>Legal</h4>
+                    <ul>
+                        <li><a href="#">Terms of Service</a></li>
+                        <li><a href="#">Privacy Policy</a></li>
+                        <li><a href="#">Cookie Policy</a></li>
+                        <li><a href="#">GDPR Compliance</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="bottom">
+                <span>&copy; 2026 KN Classifieds. All rights reserved.</span>
+                <div class="social">
+                    <a href="#" aria-label="Facebook"><i class="fab fa-facebook-f"></i></a>
+                    <a href="#" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
+                    <a href="#" aria-label="Twitter"><i class="fab fa-twitter"></i></a>
+                    <a href="#" aria-label="YouTube"><i class="fab fa-youtube"></i></a>
+                    <a href="#" aria-label="LinkedIn"><i class="fab fa-linkedin-in"></i></a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- ================================================================ -->
+    <!-- ===== JAVASCRIPT ===== -->
+    <!-- ================================================================ -->
+    <script>
+        // ================================================================
+        //  DATA & LOCALSTORAGE
+        // ================================================================
+        let currentUser = null;
+        let token = localStorage.getItem('token');
+        let allProducts = JSON.parse(localStorage.getItem('kn_products') || '[]');
+        let users = JSON.parse(localStorage.getItem('kn_users') || '[]');
+        let notifications = JSON.parse(localStorage.getItem('kn_notifications') || '[]');
+        let messages = JSON.parse(localStorage.getItem('kn_messages') || '[]');
+        let cart = JSON.parse(localStorage.getItem('kn_cart') || '[]');
+        let editingProductId = null;
+        let editImageData = [];
+        let currentChatUserId = null;
+
+        // Seed demo users if empty
+        if (users.length === 0) {
+            users.push({ id: 'admin', name: 'KN Admin', email: 'admin@kn.com', password: '123456', phone: '0542928081',
+                photoURL: '' });
+            localStorage.setItem('kn_users', JSON.stringify(users));
+        }
+
+        // Seed demo products if empty (for testing)
+        if (allProducts.length === 0) {
+            allProducts = [{
+                id: '1',
+                title: 'iPhone 17 Pro Max 1TB',
+                price: 23999,
+                category: 'Phones',
+                location: 'East Legon, Accra',
+                sellerId: 'admin',
+                sellerName: 'KN Admin',
+                sellerPhone: '0542928081',
+                image: 'https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=400',
+                images: ['https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=400'],
+                description: 'Brand new, sealed, warranty included.'
+            }, {
+                id: '2',
+                title: 'Toyota Corolla 2020',
+                price: 75000,
+                category: 'Cars',
+                location: 'Accra',
+                sellerId: 'admin',
+                sellerName: 'KN Admin',
+                sellerPhone: '0244123456',
+                image: 'https://images.unsplash.com/photo-1626029520279-6a333a3e2fd2?w=400',
+                images: ['https://images.unsplash.com/photo-1626029520279-6a333a3e2fd2?w=400'],
+                description: 'Clean title, low mileage, AC working.'
+            }];
+            localStorage.setItem('kn_products', JSON.stringify(allProducts));
+        }
+
+        // Seed some demo messages for testing (if empty)
+        if (messages.length === 0 && users.length > 1) {
+            // Create a sample message between admin and another user (if exists)
+            const otherUser = users.find(u => u.id !== 'admin');
+            if (otherUser) {
+                messages.push({
+                    id: Date.now().toString(),
+                    senderId: otherUser.id,
+                    receiverId: 'admin',
+                    productId: '1',
+                    message: 'Hi, is the iPhone still available?',
+                    timestamp: new Date(Date.now() - 3600000).toISOString(),
+                    read: false,
+                    images: []
+                });
+                messages.push({
+                    id: (Date.now() + 1).toString(),
+                    senderId: 'admin',
+                    receiverId: otherUser.id,
+                    productId: '1',
+                    message: 'Yes, it is. Would you like to see more photos?',
+                    timestamp: new Date(Date.now() - 1800000).toISOString(),
+                    read: true,
+                    images: []
+                });
+                localStorage.setItem('kn_messages', JSON.stringify(messages));
+            }
+        }
+
+        function saveCart() { localStorage.setItem('kn_cart', JSON.stringify(cart));
+            updateCartBadges();
+            renderCart(); }
+
+        function saveProducts() { localStorage.setItem('kn_products', JSON.stringify(allProducts)); }
+
+        function saveUsers() { localStorage.setItem('kn_users', JSON.stringify(users)); }
+
+        function saveNotifications() { localStorage.setItem('kn_notifications', JSON.stringify(notifications)); }
+
+        function saveMessages() { localStorage.setItem('kn_messages', JSON.stringify(messages)); }
+
+        function addNotification(userId, title, message) {
+            let notif = { id: Date.now(), userId, title, message, timestamp: new Date().toISOString(), read: false };
+            notifications.push(notif);
+            saveNotifications();
+            if (currentUser && currentUser.id === userId) renderNotifications();
+            updateNotifBadge();
+        }
+
+        function updateNotifBadge() {
+            if (!currentUser) return;
+            let unread = notifications.filter(n => n.userId === currentUser.id && !n.read).length;
+            document.getElementById('notifBadge').innerText = unread;
+            const menuBadge = document.getElementById('notifBadgeMenu');
+            if (menuBadge) menuBadge.innerText = unread;
+        }
+
+        function updateMsgBadge() {
+            if (!currentUser) return;
+            let unread = messages.filter(m => m.receiverId === currentUser.id && !m.read).length;
+            document.getElementById('msgBadge').innerText = unread;
+        }
+
+        function updateCartBadges() {
+            let total = cart.reduce((s, i) => s + (i.quantity || 1), 0);
+            document.getElementById('cartCount').innerText = total;
+        }
+
+        function escapeHtml(s) { if (!s) return ''; return s.replace(/[&<>]/g, m => m === '&' ? '&amp;' : m === '<' ? '&lt;' :
+            '&gt;'); }
+
+        // ================================================================
+        //  TOAST
+        // ================================================================
+        function showToast(msg, type = '') {
+            document.querySelectorAll('.toast').forEach(el => el.remove());
+            let t = document.createElement('div');
+            t.className = 'toast' + (type ? ' ' + type : '');
+            t.innerText = msg;
+            document.body.appendChild(t);
+            setTimeout(() => t.remove(), 3500);
+        }
+
+        // ================================================================
+        //  AUTH
+        // ================================================================
+        function openAuthModal(mode) {
+            const container = document.getElementById('authModalContainer');
+            const formContainer = document.getElementById('authFormContainer');
+            const socialHtml = `
+                <button class="social-btn google" onclick="signInWithGoogle()">
+                    <i class="fab fa-google"></i> Continue with Google
+                </button>
+                <button class="social-btn facebook" onclick="signInWithFacebook()">
+                    <i class="fab fa-facebook-f"></i> Continue with Facebook
+                </button>
+                <div class="social-login-divider"><span>or</span></div>
+            `;
+            if (mode === 'login') {
+                formContainer.innerHTML = `
+                    <h2>Welcome Back 👋</h2>
+                    <div class="subtitle">Login to your account</div>
+                    <div id="authError" class="error-message"></div>
+                    ${socialHtml}
+                    <input type="email" id="loginEmail" placeholder="Email address">
+                    <input type="password" id="loginPassword" placeholder="Password">
+                    <button onclick="handleLogin()">Login →</button>
+                    <div class="auth-footer">No account? <a onclick="switchAuthMode('register')">Create free account</a></div>
+                `;
+            } else {
+                formContainer.innerHTML = `
+                    <h2>Join KN Classifieds 🚀</h2>
+                    <div class="subtitle">Start posting and selling today</div>
+                    <div id="authError" class="error-message"></div>
+                    ${socialHtml}
+                    <input type="text" id="regName" placeholder="Full name">
+                    <input type="email" id="regEmail" placeholder="Email address">
+                    <input type="password" id="regPassword" placeholder="Password (min 6 chars)">
+                    <input type="tel" id="regPhone" placeholder="Phone number">
+                    <button onclick="handleRegister()">Create Account →</button>
+                    <div class="auth-footer">Already have account? <a onclick="switchAuthMode('login')">Sign in</a></div>
+                `;
+            }
+            container.classList.add('active');
+        }
+
+        function closeAuthModal() { document.getElementById('authModalContainer').classList.remove('active'); }
+
+        function switchAuthMode(mode) { openAuthModal(mode); }
+
+        function showAuthError(msg) {
+            let errDiv = document.getElementById('authError');
+            if (errDiv) { errDiv.innerText = msg;
+                errDiv.style.display = 'block';
+                setTimeout(() => { if (errDiv) errDiv.style.display = 'none'; }, 3000); }
+        }
+
+        function handleLogin() {
+            let email = document.getElementById('loginEmail')?.value.trim();
+            let pwd = document.getElementById('loginPassword')?.value;
+            if (!email || !pwd) { showAuthError('Fill all fields'); return; }
+            let user = users.find(u => u.email === email && u.password === pwd);
+            if (!user) { showAuthError('Invalid credentials'); return; }
+            setCurrentUser(user);
+            closeAuthModal();
+            showToast(`Welcome back, ${user.name}! 🎉`, 'success');
+            addNotification(currentUser.id, 'Login successful', 'You are now logged in.');
+        }
+
+        function handleRegister() {
+            let name = document.getElementById('regName')?.value.trim();
+            let email = document.getElementById('regEmail')?.value.trim();
+            let pwd = document.getElementById('regPassword')?.value;
+            let phone = document.getElementById('regPhone')?.value.trim();
+            if (!name || !email || !pwd) { showAuthError('All fields required'); return; }
+            if (pwd.length < 6) { showAuthError('Password min 6 characters'); return; }
+            if (users.find(u => u.email === email)) { showAuthError('Email already registered'); return; }
+            let newUser = { id: Date.now().toString(), name, email, password: pwd, phone: phone || '', photoURL: '' };
+            users.push(newUser);
+            saveUsers();
+            setCurrentUser(newUser);
+            closeAuthModal();
+            showToast(`Welcome, ${name}! 🎉`, 'success');
+            addNotification(currentUser.id, 'Welcome!', 'Post your first ad today.');
+        }
+
+        function signInWithGoogle() { showToast('Google sign-in coming soon!'); }
+
+        function signInWithFacebook() { showToast('Facebook sign-in coming soon!'); }
+
+        function setCurrentUser(user) {
+            currentUser = user;
+            token = user.id;
+            localStorage.setItem('token', token);
+            localStorage.setItem('currentUser', JSON.stringify(currentUser));
+            updateUIAfterAuth();
+            renderProfile();
+            renderAdverts();
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('currentUser');
+            currentUser = null;
+            token = null;
+            updateUIAfterAuth();
+            showToast('Logged out');
+            cart = [];
+            saveCart();
+            window.location.href = 'index.html';
+        }
+
+        function updateUIAfterAuth() {
+            if (currentUser) {
+                document.getElementById('authGroup').style.display = 'none';
+                document.getElementById('userGroup').style.display = 'inline-flex';
+                document.getElementById('userNameDisplay').innerHTML = currentUser.name;
+                const avatar = document.getElementById('userAvatar');
+                if (currentUser.photoURL) {
+                    avatar.src = currentUser.photoURL;
+                    avatar.style.display = 'inline-block';
+                } else {
+                    avatar.style.display = 'none';
+                }
+            } else {
+                document.getElementById('authGroup').style.display = 'flex';
+                document.getElementById('userGroup').style.display = 'none';
+                if (!window.location.pathname.includes('index.html')) {
+                    window.location.href = 'index.html';
+                }
+            }
+            renderNotifications();
+            renderMessagesSidebar();
+            renderCart();
+            updateNotifBadge();
+            updateMsgBadge();
+        }
+
+        // ================================================================
+        //  PROFILE RENDER
+        // ================================================================
+        function renderProfile() {
+            if (!currentUser) return;
+            document.getElementById('profileName').textContent = currentUser.name || 'Knsmart Gadgetshub';
+            document.getElementById('profileEmail').textContent = currentUser.email || 'knsmartgadgetshub@gmail.com';
+            const avatarContainer = document.getElementById('profileAvatar');
+            if (currentUser.photoURL) {
+                avatarContainer.innerHTML = `<img src="${currentUser.photoURL}" alt="${currentUser.name}">`;
+            } else {
+                avatarContainer.innerHTML = `<i class="fas fa-user"></i>`;
+            }
+        }
+
+        // ================================================================
+        //  ADVERTS
+        // ================================================================
+        function renderAdverts() {
+            const container = document.getElementById('advertsContainer');
+            if (!container) return;
+            const userProducts = allProducts.filter(p => p.sellerId === currentUser?.id);
+            if (userProducts.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="icon">📭</div>
+                        <h3>No adverts yet</h3>
+                        <p>There are no adverts yet. Create your first one now!</p>
+                        <a href="post-free-ad.html" class="btn-create">
+                            <i class="fas fa-plus"></i> Create new ad
+                        </a>
+                    </div>
+                `;
+                return;
+            }
+            container.innerHTML = `
+                <div class="adverts-grid">
+                    ${userProducts.map(p => `
+                        <div class="advert-card">
+                            <img src="${p.image || 'https://placehold.co/400x300?text=Ad'}" onerror="this.src='https://placehold.co/400x300'">
+                            <div class="info">
+                                <div class="title">${escapeHtml(p.title)}</div>
+                                <div class="price">GH₵ ${(p.price || 0).toLocaleString()}</div>
+                                <div class="meta">
+                                    <span>📍 ${escapeHtml(p.location || 'Ghana')}</span>
+                                    <span>${escapeHtml(p.category || 'Other')}</span>
+                                </div>
+                                <span class="status status-active">Active</span>
+                                <div class="card-actions">
+                                    <button class="btn-edit" onclick="openEditModal('${p.id}')">
+                                        <i class="fas fa-pen"></i> Edit
+                                    </button>
+                                    <button class="btn-delete" onclick="deleteProduct('${p.id}')">
+                                        <i class="fas fa-trash"></i> Delete
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        // ================================================================
+        //  EDIT PRODUCT — MODAL with VISUAL IMAGE UPLOAD
+        // ================================================================
+        function openEditModal(productId) {
+            const product = allProducts.find(p => p.id === productId);
+            if (!product) {
+                showToast('Product not found', 'error');
+                return;
+            }
+
+            editingProductId = productId;
+
+            // Populate form fields
+            document.getElementById('editProductId').value = productId;
+            document.getElementById('editTitle').value = product.title || '';
+            document.getElementById('editCategory').value = product.category || 'Other';
+            document.getElementById('editPrice').value = product.price || '';
+            document.getElementById('editLocation').value = product.location || '';
+            document.getElementById('editPhone').value = product.sellerPhone || product.phone || currentUser?.phone || '';
+            document.getElementById('editDescription').value = product.description || '';
+
+            // Populate images
+            const images = product.images && product.images.length > 0 ? product.images :
+                (product.image ? [product.image] : []);
+            editImageData = images.filter(img => img && img.trim() !== '');
+
+            // Render image previews
+            renderEditImagePreviews();
+
+            document.getElementById('editModal').classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function renderEditImagePreviews() {
+            const grid = document.getElementById('editImagePreviewGrid');
+            if (!grid) return;
+
+            if (editImageData.length === 0) {
+                grid.innerHTML = '';
+                return;
+            }
+
+            grid.innerHTML = editImageData.map((img, idx) => `
+                <div class="preview-item">
+                    <img src="${img}" alt="Product image ${idx + 1}">
+                    <button class="remove-img" onclick="removeEditImage(${idx})" title="Remove image">✕</button>
+                </div>
+            `).join('');
+        }
+
+        function removeEditImage(index) {
+            editImageData.splice(index, 1);
+            renderEditImagePreviews();
+        }
+
+        // ---- Image upload handler ----
+        document.getElementById('editImageInput').addEventListener('change', function(e) {
+            const files = e.target.files;
+            const maxFiles = 6;
+
+            if (editImageData.length + files.length > maxFiles) {
+                showToast(`Maximum ${maxFiles} images allowed.`, 'error');
+                this.value = '';
+                return;
+            }
+
+            for (let file of files) {
+                if (file.size > 5 * 1024 * 1024) {
+                    showToast(`Image "${file.name}" exceeds 5MB limit.`, 'error');
+                    continue;
+                }
+                const reader = new FileReader();
+                reader.onload = function(ev) {
+                    editImageData.push(ev.target.result);
+                    renderEditImagePreviews();
+                };
+                reader.readAsDataURL(file);
+            }
+            this.value = '';
+        });
+
+        // ---- Drag & drop support ----
+        const uploadArea = document.getElementById('editImageUploadArea');
+        if (uploadArea) {
+            uploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadArea.style.borderColor = '#0055a5';
+                uploadArea.style.background = '#f0f4ff';
+            });
+            uploadArea.addEventListener('dragleave', () => {
+                uploadArea.style.borderColor = '#e9edf2';
+                uploadArea.style.background = '#fafbfc';
+            });
+            uploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadArea.style.borderColor = '#e9edf2';
+                uploadArea.style.background = '#fafbfc';
+                const files = e.dataTransfer.files;
+                const maxFiles = 6;
+
+                if (editImageData.length + files.length > maxFiles) {
+                    showToast(`Maximum ${maxFiles} images allowed.`, 'error');
+                    return;
+                }
+
+                for (let file of files) {
+                    if (file.size > 5 * 1024 * 1024) {
+                        showToast(`Image "${file.name}" exceeds 5MB limit.`, 'error');
+                        continue;
+                    }
+                    const reader = new FileReader();
+                    reader.onload = function(ev) {
+                        editImageData.push(ev.target.result);
+                        renderEditImagePreviews();
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModal').classList.remove('active');
+            document.body.style.overflow = '';
+            editingProductId = null;
+            editImageData = [];
+            renderEditImagePreviews();
+            document.getElementById('editImageInput').value = '';
+        }
+
+        function updateProduct(e) {
+            e.preventDefault();
+            const id = document.getElementById('editProductId').value;
+            const title = document.getElementById('editTitle').value.trim();
+            const category = document.getElementById('editCategory').value;
+            const price = parseFloat(document.getElementById('editPrice').value);
+            const location = document.getElementById('editLocation').value.trim();
+            const phone = document.getElementById('editPhone').value.trim();
+            const description = document.getElementById('editDescription').value.trim();
+
+            if (!title || !price) {
+                showToast('Title and price are required.', 'error');
+                return;
+            }
+
+            const index = allProducts.findIndex(p => p.id === id);
+            if (index === -1) {
+                showToast('Product not found', 'error');
+                return;
+            }
+
+            // Use the images from editImageData (which are data URLs)
+            const images = editImageData.length > 0 ? editImageData : ['https://placehold.co/400x300?text=No+Image'];
+
+            allProducts[index] = {
+                ...allProducts[index],
+                title,
+                category,
+                price,
+                location: location || allProducts[index].location,
+                sellerPhone: phone || allProducts[index].sellerPhone || currentUser?.phone || '',
+                description: description || allProducts[index].description,
+                image: images[0] || allProducts[index].image,
+                images: images
+            };
+
+            saveProducts();
+            renderAdverts();
+            closeEditModal();
+            showToast('Advert updated successfully! 🎉', 'success');
+        }
+
+        // ================================================================
+        //  DELETE PRODUCT
+        // ================================================================
+        function deleteProduct(productId) {
+            if (!confirm('Are you sure you want to delete this advert? This action cannot be undone.')) {
+                return;
+            }
+            allProducts = allProducts.filter(p => p.id !== productId);
+            saveProducts();
+            renderAdverts();
+            showToast('Advert deleted successfully.', 'success');
+        }
+
+        // ================================================================
+        //  SETTINGS
+        // ================================================================
+        let tempPhotoDataURL = null;
+
+        function showPage(page) {
+            const advertsSection = document.getElementById('advertsSection');
+            const settingsSection = document.getElementById('settingsSection');
+            const menuItems = document.querySelectorAll('.profile-menu .menu-item[data-page]');
+
+            if (page === 'adverts') {
+                advertsSection.style.display = 'block';
+                settingsSection.classList.remove('active');
+                menuItems.forEach(item => {
+                    item.classList.toggle('active', item.dataset.page === 'adverts');
+                });
+            } else if (page === 'settings') {
+                advertsSection.style.display = 'none';
+                settingsSection.classList.add('active');
+                menuItems.forEach(item => {
+                    item.classList.toggle('active', item.dataset.page === 'settings');
+                });
+                // Populate settings form with current user data
+                document.getElementById('settingsName').value = currentUser.name || '';
+                document.getElementById('settingsEmail').value = currentUser.email || '';
+                document.getElementById('settingsPhone').value = currentUser.phone || '';
+                const preview = document.getElementById('settingsPhotoPreview');
+                if (currentUser.photoURL) {
+                    preview.innerHTML = `<img src="${currentUser.photoURL}" alt="Profile photo">`;
+                } else {
+                    preview.innerHTML = `<i class="fas fa-user"></i>`;
+                }
+                tempPhotoDataURL = currentUser.photoURL || null;
+                document.getElementById('photoInput').value = '';
+            }
+        }
+
+        function previewPhoto(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                tempPhotoDataURL = e.target.result;
+                const preview = document.getElementById('settingsPhotoPreview');
+                preview.innerHTML = `<img src="${e.target.result}" alt="Profile photo preview">`;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function removePhoto() {
+            tempPhotoDataURL = null;
+            const preview = document.getElementById('settingsPhotoPreview');
+            preview.innerHTML = `<i class="fas fa-user"></i>`;
+            document.getElementById('photoInput').value = '';
+        }
+
+        function saveSettings(e) {
+            e.preventDefault();
+            const name = document.getElementById('settingsName').value.trim();
+            const email = document.getElementById('settingsEmail').value.trim();
+            const phone = document.getElementById('settingsPhone').value.trim();
+
+            if (!name || !email) {
+                showToast('Name and email are required.', 'error');
+                return;
+            }
+
+            const userIndex = users.findIndex(u => u.id === currentUser.id);
+            if (userIndex === -1) {
+                showToast('User not found. Please login again.', 'error');
+                return;
+            }
+
+            users[userIndex].name = name;
+            users[userIndex].email = email;
+            users[userIndex].phone = phone;
+            if (tempPhotoDataURL !== null) {
+                users[userIndex].photoURL = tempPhotoDataURL;
+            }
+
+            saveUsers();
+            currentUser = users[userIndex];
+            localStorage.setItem('currentUser', JSON.stringify(currentUser));
+
+            renderProfile();
+            updateUIAfterAuth();
+            const preview = document.getElementById('settingsPhotoPreview');
+            if (currentUser.photoURL) {
+                preview.innerHTML = `<img src="${currentUser.photoURL}" alt="Profile photo">`;
+            } else {
+                preview.innerHTML = `<i class="fas fa-user"></i>`;
+            }
+
+            showToast('Settings saved successfully! 🎉', 'success');
+        }
+
+        // ================================================================
+        //  MESSAGING SYSTEM
+        // ================================================================
+
+        // Send a message (used from product detail or chat)
+        function sendMessage(receiverId, messageText, images = [], productId = null) {
+            if (!currentUser) { showToast('Please login to send a message', 'error'); return false; }
+            if (!messageText && images.length === 0) { showToast('Please type a message or add an image', 'error'); return false; }
+
+            const msg = {
+                id: Date.now().toString(),
+                senderId: currentUser.id,
+                receiverId: receiverId,
+                productId: productId || null,
+                message: messageText || '',
+                timestamp: new Date().toISOString(),
+                read: false,
+                images: images
+            };
+            messages.push(msg);
+            saveMessages();
+
+            // Add a notification to the receiver
+            addNotification(receiverId, '📩 New Message', `${currentUser.name} sent you a message.`);
+
+            // If chat modal is open for this user, refresh messages
+            if (currentChatUserId === receiverId) {
+                renderChatMessages(receiverId);
+            }
+
+            // Update message badge
+            updateMsgBadge();
+            // If message sidebar is open, refresh it
+            if (document.getElementById('messageSidebar').classList.contains('open')) {
+                renderMessagesSidebar();
+            }
+
+            return true;
+        }
+
+        // Get conversation between current user and another user
+        function getConversation(otherUserId) {
+            if (!currentUser) return [];
+            return messages.filter(m =>
+                (m.senderId === currentUser.id && m.receiverId === otherUserId) ||
+                (m.senderId === otherUserId && m.receiverId === currentUser.id)
+            ).sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+        }
+
+        // Get all conversations for current user (grouped by other user)
+        function getConversations() {
+            if (!currentUser) return [];
+            const otherUserIds = new Set();
+            messages.forEach(m => {
+                if (m.senderId === currentUser.id) otherUserIds.add(m.receiverId);
+                if (m.receiverId === currentUser.id) otherUserIds.add(m.senderId);
+            });
+            const convs = [];
+            otherUserIds.forEach(uid => {
+                const user = users.find(u => u.id === uid);
+                if (!user) return;
+                const msgs = getConversation(uid);
+                if (msgs.length === 0) return;
+                const last = msgs[msgs.length - 1];
+                const unread = msgs.filter(m => m.receiverId === currentUser.id && !m.read).length;
+                convs.push({
+                    userId: uid,
+                    user: user,
+                    lastMessage: last,
+                    unread: unread,
+                    messages: msgs
+                });
+            });
+            convs.sort((a, b) => new Date(b.lastMessage.timestamp) - new Date(a.lastMessage.timestamp));
+            return convs;
+        }
+
+        // Mark messages as read for a conversation
+        function markConversationRead(otherUserId) {
+            if (!currentUser) return;
+            messages.forEach(m => {
+                if (m.senderId === otherUserId && m.receiverId === currentUser.id && !m.read) {
+                    m.read = true;
+                }
+            });
+            saveMessages();
+            updateMsgBadge();
+            renderMessagesSidebar();
+        }
+
+        // Render messages sidebar (list of conversations)
+        function renderMessagesSidebar() {
+            const container = document.getElementById('msgList');
+            if (!currentUser) {
+                container.innerHTML = '<div class="empty-state-sm">Login to see messages</div>';
+                return;
+            }
+
+            const conversations = getConversations();
+            if (conversations.length === 0) {
+                container.innerHTML = '<div class="empty-state-sm">💬 No conversations yet.</div>';
+                return;
+            }
+
+            container.innerHTML = conversations.map(conv => {
+                const user = conv.user;
+                const avatarHtml = user.photoURL ?
+                    `<img src="${user.photoURL}" alt="${escapeHtml(user.name)}">` :
+                    `<i class="fas fa-user"></i>`;
+                const unreadBadge = conv.unread > 0 ?
+                    `<span class="conv-unread-badge">${conv.unread}</span>` :
+                    '';
+                const time = timeSince(new Date(conv.lastMessage.timestamp));
+                const lastMsg = conv.lastMessage.message || (conv.lastMessage.images.length > 0 ? '📷 Image' : '');
+                return `
+                    <div class="conversation-item ${conv.unread > 0 ? 'unread' : ''}" onclick="openChat('${conv.userId}')">
+                        <div class="conv-avatar">${avatarHtml}</div>
+                        <div class="conv-info">
+                            <div class="conv-name">${escapeHtml(user.name)}</div>
+                            <div class="conv-last">${escapeHtml(lastMsg)}</div>
+                            <div class="conv-time">${time}</div>
+                        </div>
+                        ${unreadBadge}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Open chat modal with a user
+        function openChat(otherUserId) {
+            if (!currentUser) { showToast('Please login first', 'error'); return; }
+            const user = users.find(u => u.id === otherUserId);
+            if (!user) { showToast('User not found', 'error'); return; }
+
+            currentChatUserId = otherUserId;
+            markConversationRead(otherUserId);
+
+            // Set header
+            const avatarEl = document.getElementById('chatAvatar');
+            if (user.photoURL) {
+                avatarEl.innerHTML = `<img src="${user.photoURL}" alt="${escapeHtml(user.name)}">`;
+            } else {
+                avatarEl.innerHTML = `<i class="fas fa-user"></i>`;
+            }
+            document.getElementById('chatUserName').textContent = user.name;
+
+            // Render messages
+            renderChatMessages(otherUserId);
+
+            // Show modal
+            document.getElementById('chatModal').classList.add('active');
+            document.body.style.overflow = 'hidden';
+
+            // Focus input
+            document.getElementById('chatInput').focus();
+        }
+
+        function renderChatMessages(otherUserId) {
+            const container = document.getElementById('chatMessages');
+            const msgs = getConversation(otherUserId);
+            if (msgs.length === 0) {
+                container.innerHTML = '<div style="text-align:center; padding:20px; color:#94a3b8; font-size:14px;">No messages yet. Start the conversation!</div>';
+                return;
+            }
+
+            container.innerHTML = msgs.map(m => {
+                const isSent = m.senderId === currentUser.id;
+                const time = new Date(m.timestamp).toLocaleString('en-US', { hour: '2-digit', minute: '2-digit' });
+                let imagesHtml = '';
+                if (m.images && m.images.length > 0) {
+                    imagesHtml = `<div class="msg-images">${m.images.map(img => `<img src="${img}" alt="Shared image">`).join('')}</div>`;
+                }
+                return `
+                    <div class="chat-message ${isSent ? 'sent' : 'received'}">
+                        ${escapeHtml(m.message)}
+                        ${imagesHtml}
+                        <span class="msg-time">${time}</span>
+                    </div>
+                `;
+            }).join('');
+
+            // Scroll to bottom
+            container.scrollTop = container.scrollHeight;
+        }
+
+        // Send message from chat modal
+        function sendChatMessage() {
+            const input = document.getElementById('chatInput');
+            const text = input.value.trim();
+            // Also check for images uploaded via file input
+            const fileInput = document.getElementById('chatImageInput');
+            const files = fileInput.files;
+            const imagePromises = [];
+
+            // If there are files, read them as data URLs
+            if (files.length > 0) {
+                for (let file of files) {
+                    if (file.size > 5 * 1024 * 1024) {
+                        showToast('Image exceeds 5MB limit.', 'error');
+                        continue;
+                    }
+                    const promise = new Promise((resolve) => {
+                        const reader = new FileReader();
+                        reader.onload = function(e) { resolve(e.target.result); };
+                        reader.readAsDataURL(file);
+                    });
+                    imagePromises.push(promise);
+                }
+            }
+
+            if (text === '' && imagePromises.length === 0) {
+                showToast('Please type a message or add an image', 'error');
+                return;
+            }
+
+            // Clear input immediately
+            input.value = '';
+            fileInput.value = '';
+
+            // If images, process them
+            if (imagePromises.length > 0) {
+                Promise.all(imagePromises).then(imageDataUrls => {
+                    // Filter out any that failed
+                    const validImages = imageDataUrls.filter(url => url !== null);
+                    if (validImages.length > 0 || text !== '') {
+                        sendMessage(currentChatUserId, text, validImages);
+                        renderChatMessages(currentChatUserId);
+                        // Keep focus
+                        document.getElementById('chatInput').focus();
+                    }
+                }).catch(err => { console.error(err);
+                    showToast('Error loading images', 'error'); });
+            } else {
+                // Only text
+                sendMessage(currentChatUserId, text, []);
+                renderChatMessages(currentChatUserId);
+                document.getElementById('chatInput').focus();
+            }
+        }
+
+        // Close chat modal
+        function closeChatModal() {
+            document.getElementById('chatModal').classList.remove('active');
+            document.body.style.overflow = '';
+            currentChatUserId = null;
+            // Clear any file input
+            document.getElementById('chatImageInput').value = '';
+        }
+
+        // Helper to send message from product detail (replaces the old sendMessageToSeller)
+        function sendMessageToSeller(productId) {
+            if (!currentUser) {
+                showToast('Please login to send a message', 'error');
+                openAuthModal('login');
+                return;
+            }
+            const product = allProducts.find(p => p.id === productId);
+            if (!product) { showToast('Product not found', 'error'); return; }
+
+            // Check if we have a message text from the product detail modal
+            const msgBox = document.getElementById('msgToSeller');
+            const message = msgBox ? msgBox.value.trim() : '';
+            if (!message) {
+                showToast('Please type a message first', 'error');
+                if (msgBox) msgBox.focus();
+                return;
+            }
+
+            // Send message to seller
+            const success = sendMessage(product.sellerId, message, [], productId);
+            if (success) {
+                showToast(`✅ Message sent to ${product.sellerName}!`, 'success');
+                if (msgBox) msgBox.value = '';
+                // Optionally open chat with seller
+                openChat(product.sellerId);
+            }
+        }
+
+        // Reply to a message (from notification or conversation)
+        function replyToUser(userId) {
+            if (!currentUser) { showToast('Please login first', 'error'); return; }
+            const user = users.find(u => u.id === userId);
+            if (!user) { showToast('User not found', 'error'); return; }
+            // Mark conversation as read and open chat
+            markConversationRead(userId);
+            openChat(userId);
+        }
+
+        // Delete a notification (mark as read and remove from list? We'll mark as read and then remove)
+        function deleteNotification(notifId) {
+            const index = notifications.findIndex(n => n.id == notifId);
+            if (index !== -1) {
+                notifications.splice(index, 1);
+                saveNotifications();
+                renderNotifications();
+                updateNotifBadge();
+                showToast('Notification deleted', 'success');
+            }
+        }
+
+        // ================================================================
+        //  CART
+        // ================================================================
+        function addToCart(productId) {
+            let product = allProducts.find(p => p.id === productId);
+            if (!product) return;
+            let existing = cart.find(i => i.productId === productId);
+            if (existing) { existing.quantity = (existing.quantity || 1) + 1; } else { cart.push({ productId: product.id,
+                    title: product.title, price: product.price, image: product.image, quantity: 1 }); }
+            saveCart();
+            renderCart();
+            showToast(`❤️ ${product.title} saved to favorites`, 'success');
+        }
+
+        function updateQuantity(pid, change) {
+            let item = cart.find(i => i.productId === pid);
+            if (item) {
+                let newQ = (item.quantity || 1) + change;
+                if (newQ <= 0) { cart = cart.filter(i => i.productId !== pid); } else { item.quantity = newQ; }
+                saveCart();
+                renderCart();
+            }
+        }
+
+        function removeFromCart(pid) {
+            cart = cart.filter(i => i.productId !== pid);
+            saveCart();
+            renderCart();
+            showToast('Removed from favorites');
+        }
+
+        function renderCart() {
+            const list = document.getElementById('cartItemsList');
+            const totalEl = document.getElementById('cartTotalPrice');
+            if (!list) return;
+            if (cart.length === 0) {
+                list.innerHTML = '<div class="empty-state-sm">❤️ No saved ads yet.</div>';
+                if (totalEl) totalEl.innerText = '₵0.00';
+                return;
+            }
+            let total = 0;
+            let html = '';
+            cart.forEach(item => {
+                let qty = item.quantity || 1;
+                let subtotal = item.price * qty;
+                total += subtotal;
+                html += `
+                    <div class="cart-item">
+                        <img src="${item.image || 'https://placehold.co/60'}" onerror="this.src='https://placehold.co/60'">
+                        <div class="details">
+                            <div class="title">${escapeHtml(item.title)}</div>
+                            <div class="price">GH₵ ${(item.price || 0).toLocaleString()}</div>
+                            <div class="qty">
+                                <button class="qty-btn" onclick="updateQuantity('${item.productId}', -1)">-</button>
+                                <span>${qty}</span>
+                                <button class="qty-btn" onclick="updateQuantity('${item.productId}', 1)">+</button>
+                                <button class="remove-btn" onclick="removeFromCart('${item.productId}')">🗑️</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            list.innerHTML = html;
+            if (totalEl) totalEl.innerText = `₵${total.toLocaleString()}`;
+            updateCartBadges();
+        }
+
+        function toggleCart() {
+            const overlay = document.getElementById('cartOverlay');
+            const panel = document.getElementById('cartPanel');
+            overlay.classList.toggle('open');
+            panel.classList.toggle('open');
+            renderCart();
+        }
+
+        function checkoutCart() {
+            if (cart.length === 0) { showToast('No saved ads', 'error'); return; }
+            let msg = "❤️ *KN Classifieds Favorites* ❤️\n";
+            let total = 0;
+            cart.forEach(i => {
+                let q = i.quantity || 1;
+                let sub = i.price * q;
+                total += sub;
+                msg += `📦 ${i.title} x${q} = GH₵ ${sub.toLocaleString()}\n`;
+            });
+            msg += `\n💰 TOTAL: GH₵ ${total.toLocaleString()}\n📍 Location: \n📞 Contact: `;
+            let phone = currentUser?.phone || '0542928081';
+            window.open(`https://wa.me/${phone.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`, '_blank');
+        }
+
+        // ================================================================
+        //  SIDEBARS
+        // ================================================================
+        function toggleSidebar(type) {
+            closeAllSidebars();
+            let sidebar = type === 'notification' ? document.getElementById('notificationSidebar') :
+                type === 'message' ? document.getElementById('messageSidebar') : null;
+            if (sidebar) sidebar.classList.add('open');
+            if (type === 'notification') renderNotifications();
+            if (type === 'message') renderMessagesSidebar();
+        }
+
+        function closeAllSidebars() {
+            document.querySelectorAll('.sidebar').forEach(s => s.classList.remove('open'));
+        }
+
+        // ================================================================
+        //  NOTIFICATIONS (with delete and reply)
+        // ================================================================
+        function renderNotifications() {
+            let container = document.getElementById('notifList');
+            if (!currentUser) { container.innerHTML =
+                    '<div class="empty-state-sm">Login to see notifications</div>'; return; }
+            let myNotifs = notifications.filter(n => n.userId === currentUser.id).sort((a, b) => b.id - a.id);
+            if (myNotifs.length === 0) { container.innerHTML =
+                '<div class="empty-state-sm">🔔 No notifications</div>'; return; }
+
+            container.innerHTML = myNotifs.map(n => {
+                // Check if this notification is about a message (contains "message" or "sent you")
+                const isMessageNotif = n.title.toLowerCase().includes('message') || n.message.toLowerCase().includes(
+                'sent you');
+                let actionsHtml = '';
+                if (isMessageNotif) {
+                    // Try to extract sender name from message
+                    const senderName = n.message.match(/^(.*?) sent you/);
+                    const sender = senderName ? users.find(u => u.name === senderName[1]) : null;
+                    if (sender) {
+                        actionsHtml = `
+                            <div class="notif-actions">
+                                <button class="btn-reply" onclick="replyToUser('${sender.id}')">Reply</button>
+                                <button class="btn-delete" onclick="deleteNotification('${n.id}')">Delete</button>
+                            </div>
+                        `;
+                    } else {
+                        actionsHtml = `
+                            <div class="notif-actions">
+                                <button class="btn-delete" onclick="deleteNotification('${n.id}')">Delete</button>
+                            </div>
+                        `;
+                    }
+                } else {
+                    actionsHtml = `
+                        <div class="notif-actions">
+                            <button class="btn-delete" onclick="deleteNotification('${n.id}')">Delete</button>
+                        </div>
+                    `;
+                }
+
+                return `
+                    <div class="notif-item ${!n.read ? 'notif-unread' : ''}">
+                        <div class="notif-title">${escapeHtml(n.title)}</div>
+                        <div class="notif-text">${escapeHtml(n.message)}</div>
+                        <div class="notif-time">${new Date(n.timestamp).toLocaleString()}</div>
+                        ${actionsHtml}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function markNotifRead(id) {
+            let n = notifications.find(x => x.id == id);
+            if (n && !n.read) { n.read = true;
+                saveNotifications();
+                renderNotifications();
+                updateNotifBadge(); }
+        }
+
+        // ================================================================
+        //  UTILITY: timeSince
+        // ================================================================
+        function timeSince(date) {
+            const seconds = Math.floor((new Date() - date) / 1000);
+            let interval = Math.floor(seconds / 31536000);
+            if (interval > 1) return interval + ' years ago';
+            interval = Math.floor(seconds / 2592000);
+            if (interval > 1) return interval + ' months ago';
+            interval = Math.floor(seconds / 86400);
+            if (interval > 1) return interval + ' days ago';
+            interval = Math.floor(seconds / 3600);
+            if (interval > 1) return interval + ' hours ago';
+            interval = Math.floor(seconds / 60);
+            if (interval > 1) return interval + ' minutes ago';
+            return 'just now';
+        }
+
+        // ================================================================
+        //  MOBILE NAV TOGGLE
+        // ================================================================
+        document.getElementById('mobileToggle').addEventListener('click', () => {
+            document.getElementById('navLinks').classList.toggle('open');
+        });
+
+        // ================================================================
+        //  INIT
+        // ================================================================
+        function init() {
+            let stored = localStorage.getItem('currentUser');
+            if (stored) {
+                try {
+                    currentUser = JSON.parse(stored);
+                    token = localStorage.getItem('token');
+                } catch (e) {}
+            }
+
+            if (!currentUser) {
+                window.location.href = 'index.html';
+                return;
+            }
+
+            updateUIAfterAuth();
+            renderProfile();
+            renderAdverts();
+            renderCart();
+            updateCartBadges();
+            updateNotifBadge();
+            updateMsgBadge();
+            document.getElementById('advertsSection').style.display = 'block';
+            document.getElementById('settingsSection').classList.remove('active');
+
+            // Chat input enter key
+            document.getElementById('chatInput').addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendChatMessage();
+                }
+            });
+
+            // Chat image input change
+            document.getElementById('chatImageInput').addEventListener('change', function() {
+                if (this.files.length > 0) {
+                    // Auto send after selecting images? We'll let user click send.
+                    // But we can show a preview? For simplicity, we just let them send with text.
+                }
+            });
+        }
+        init();
+
+        // Expose global functions
+        window.showPage = showPage;
+        window.previewPhoto = previewPhoto;
+        window.removePhoto = removePhoto;
+        window.saveSettings = saveSettings;
+        window.openEditModal = openEditModal;
+        window.closeEditModal = closeEditModal;
+        window.updateProduct = updateProduct;
+        window.deleteProduct = deleteProduct;
+        window.removeEditImage = removeEditImage;
+        window.toggleCart = toggleCart;
+        window.checkoutCart = checkoutCart;
+        window.updateQuantity = updateQuantity;
+        window.removeFromCart = removeFromCart;
+        window.toggleSidebar = toggleSidebar;
+        window.closeAllSidebars = closeAllSidebars;
+        window.openAuthModal = openAuthModal;
+        window.closeAuthModal = closeAuthModal;
+        window.switchAuthMode = switchAuthMode;
+        window.handleLogin = handleLogin;
+        window.handleRegister = handleRegister;
+        window.logout = logout;
+        window.markNotifRead = markNotifRead;
+        window.signInWithGoogle = signInWithGoogle;
+        window.signInWithFacebook = signInWithFacebook;
+        window.showToast = showToast;
+        window.openChat = openChat;
+        window.closeChatModal = closeChatModal;
+        window.sendChatMessage = sendChatMessage;
+        window.sendMessageToSeller = sendMessageToSeller;
+        window.replyToUser = replyToUser;
+        window.deleteNotification = deleteNotification;
+        window.renderMessagesSidebar = renderMessagesSidebar;
+    </script>
+
+</body>
+</html>

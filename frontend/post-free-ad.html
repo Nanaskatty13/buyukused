@@ -1,0 +1,1764 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Post Free Ad — KN Classifieds</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+
+    <style>
+        /* ===== RESET & VARIABLES ===== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #f5f7fa;
+            color: #1e293b;
+            overflow-x: hidden;
+        }
+        a {
+            text-decoration: none;
+            color: inherit;
+        }
+        .container {
+            max-width: 1300px;
+            margin: auto;
+            padding: 0 20px;
+        }
+
+        /* ===== TOP BAR ===== */
+        .top-bar {
+            background: #ffffff;
+            border-bottom: 1px solid #e9edf2;
+            padding: 8px 0;
+            font-size: 13px;
+            color: #64748b;
+        }
+        .top-bar .container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 6px 12px;
+        }
+        .top-bar .contact-info {
+            display: flex;
+            gap: 18px;
+            flex-wrap: wrap;
+        }
+        .top-bar a {
+            color: #64748b;
+            transition: color 0.2s;
+        }
+        .top-bar a:hover {
+            color: #0055a5;
+        }
+        .top-bar i {
+            margin-right: 6px;
+        }
+
+        /* ===== HEADER / NAV ===== */
+        .nav-bar {
+            background: #ffffff;
+            padding: 12px 0;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            border-bottom: 1px solid #e9edf2;
+        }
+        .nav-bar .container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px 20px;
+        }
+        .nav-logo {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 800;
+            font-size: 24px;
+            color: #0055a5;
+        }
+        .nav-logo i {
+            color: #0055a5;
+        }
+
+        .nav-links {
+            display: flex;
+            list-style: none;
+            gap: 8px 18px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .nav-links li a {
+            color: #1e293b;
+            font-size: 14px;
+            font-weight: 500;
+            transition: color 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .nav-links li a:hover {
+            color: #0055a5;
+        }
+        .nav-links li a.post-ad-link {
+            background: #2ecc71;
+            color: #fff;
+            padding: 8px 22px;
+            border-radius: 40px;
+            font-weight: 700;
+            font-size: 14px;
+            transition: 0.2s;
+        }
+        .nav-links li a.post-ad-link:hover {
+            background: #27ae60;
+            transform: scale(1.02);
+        }
+
+        .nav-icons {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        .icon-btn {
+            background: none;
+            border: none;
+            color: #1e293b;
+            font-size: 20px;
+            cursor: pointer;
+            position: relative;
+            padding: 4px;
+            display: flex;
+            align-items: center;
+            transition: 0.2s;
+        }
+        .icon-btn:hover {
+            color: #0055a5;
+        }
+        .badge {
+            position: absolute;
+            top: -6px;
+            right: -8px;
+            background: #e74c3c;
+            color: #fff;
+            font-size: 10px;
+            font-weight: 700;
+            border-radius: 50%;
+            padding: 2px 6px;
+            min-width: 18px;
+            text-align: center;
+        }
+        .mobile-toggle {
+            display: none;
+        }
+
+        .auth-btn {
+            padding: 6px 16px;
+            border-radius: 30px;
+            font-weight: 600;
+            font-size: 13px;
+            border: 1.5px solid #0055a5;
+            background: transparent;
+            color: #0055a5;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .auth-btn:hover {
+            background: #0055a5;
+            color: #fff;
+        }
+        .auth-btn-reg {
+            background: #0055a5;
+            color: #fff;
+            border: 1.5px solid #0055a5;
+        }
+        .auth-btn-reg:hover {
+            background: #003f7a;
+        }
+
+        .user-group {
+            display: none;
+            align-items: center;
+            gap: 10px;
+        }
+        .user-group .avatar-wrapper {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            overflow: hidden;
+            background: #e9edf2;
+            flex-shrink: 0;
+        }
+        .user-group .user-avatar {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: none;
+        }
+        .user-group .default-avatar {
+            display: none;
+            font-size: 28px;
+            color: #64748b;
+        }
+        .user-group .profile-link {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #fff;
+            transition: opacity 0.2s;
+        }
+        .user-group .profile-link:hover {
+            opacity: 0.8;
+        }
+        .user-group span {
+            color: #fff;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        .logout-btn {
+            background: #e9edf2;
+            border: none;
+            border-radius: 30px;
+            padding: 4px 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .logout-btn:hover {
+            background: #d1d9e6;
+        }
+
+        /* ===== HERO / FORM SECTION ===== */
+        .hero-post {
+            background: linear-gradient(135deg, #0055a5 0%, #003f7a 100%);
+            padding: 40px 0 50px;
+            text-align: center;
+            color: #fff;
+        }
+        .hero-post h1 {
+            font-size: 32px;
+            font-weight: 800;
+            margin-bottom: 8px;
+        }
+        .hero-post p {
+            opacity: 0.85;
+            font-size: 16px;
+            margin-bottom: 6px;
+        }
+        .hero-post .sub {
+            opacity: 0.7;
+            font-size: 14px;
+        }
+
+        /* ===== POST FORM ===== */
+        .form-section {
+            padding: 40px 0 60px;
+            background: #f5f7fa;
+        }
+        .form-card {
+            max-width: 820px;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 28px;
+            padding: 40px 48px;
+            box-shadow: 0 8px 40px rgba(0, 0, 0, 0.06);
+            border: 1px solid #e9edf2;
+        }
+        .form-card .step-indicator {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            margin-bottom: 32px;
+            flex-wrap: wrap;
+        }
+        .form-card .step-indicator .step {
+            font-size: 12px;
+            font-weight: 600;
+            color: #94a3b8;
+            background: #f1f5f9;
+            padding: 6px 16px;
+            border-radius: 40px;
+            transition: 0.2s;
+        }
+        .form-card .step-indicator .step.active {
+            background: #0055a5;
+            color: #fff;
+        }
+        .form-card .step-indicator .step.done {
+            background: #2ecc71;
+            color: #fff;
+        }
+
+        .form-group {
+            margin-bottom: 22px;
+        }
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 6px;
+            color: #1e293b;
+        }
+        .form-group label .required {
+            color: #e74c3c;
+            margin-left: 2px;
+        }
+        .form-group .hint {
+            font-size: 12px;
+            color: #94a3b8;
+            margin-top: 4px;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 14px 18px;
+            border: 1.5px solid #e9edf2;
+            border-radius: 16px;
+            font-size: 15px;
+            font-family: inherit;
+            background: #fff;
+            transition: 0.2s;
+            color: #1e293b;
+        }
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #0055a5;
+            box-shadow: 0 0 0 4px rgba(0, 85, 165, 0.08);
+        }
+        .form-group textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 18px;
+        }
+
+        /* Image upload */
+        .image-upload-area {
+            border: 2px dashed #e9edf2;
+            border-radius: 16px;
+            padding: 30px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: 0.3s;
+            background: #fafbfc;
+        }
+        .image-upload-area:hover {
+            border-color: #0055a5;
+            background: #f0f4ff;
+        }
+        .image-upload-area i {
+            font-size: 40px;
+            color: #94a3b8;
+            margin-bottom: 8px;
+            display: block;
+        }
+        .image-upload-area p {
+            color: #64748b;
+            font-size: 14px;
+        }
+        .image-upload-area .small {
+            font-size: 12px;
+            color: #94a3b8;
+        }
+        .image-preview-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 12px;
+            margin-top: 16px;
+        }
+        .image-preview-grid .preview-item {
+            position: relative;
+            border-radius: 12px;
+            overflow: hidden;
+            aspect-ratio: 1;
+            background: #f1f5f9;
+            border: 1px solid #e9edf2;
+        }
+        .image-preview-grid .preview-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .image-preview-grid .preview-item .remove-img {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            background: rgba(0, 0, 0, 0.6);
+            color: #fff;
+            border: none;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: 0.2s;
+        }
+        .image-preview-grid .preview-item .remove-img:hover {
+            background: #e74c3c;
+        }
+
+        /* Submit button */
+        .btn-submit {
+            width: 100%;
+            padding: 16px;
+            background: #2ecc71;
+            border: none;
+            border-radius: 40px;
+            font-weight: 700;
+            font-size: 18px;
+            color: #fff;
+            cursor: pointer;
+            transition: 0.2s;
+            margin-top: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        .btn-submit:hover {
+            background: #27ae60;
+            transform: scale(1.01);
+        }
+        .btn-submit:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* ===== TOAST ===== */
+        .toast {
+            position: fixed;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1e293b;
+            color: #fff;
+            padding: 14px 32px;
+            border-radius: 40px;
+            font-weight: 500;
+            z-index: 5000;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+            animation: toastFade 0.3s ease;
+            max-width: 90%;
+            text-align: center;
+        }
+        .toast.success {
+            background: #2ecc71;
+        }
+        .toast.error {
+            background: #e74c3c;
+        }
+        @keyframes toastFade {
+            from {
+                opacity: 0;
+                transform: translateX(-50%) translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+            }
+        }
+
+        /* ===== SUCCESS MODAL ===== */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(3px);
+            justify-content: center;
+            align-items: center;
+            z-index: 3000;
+        }
+        .modal-overlay.active {
+            display: flex;
+        }
+        .success-modal {
+            background: #fff;
+            border-radius: 32px;
+            width: 90%;
+            max-width: 480px;
+            padding: 40px 36px;
+            position: relative;
+            animation: modalFade 0.3s;
+            text-align: center;
+        }
+        @keyframes modalFade {
+            from {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+        .success-modal .icon {
+            font-size: 64px;
+            color: #2ecc71;
+            margin-bottom: 12px;
+        }
+        .success-modal h2 {
+            font-size: 24px;
+            margin-bottom: 6px;
+        }
+        .success-modal p {
+            color: #64748b;
+            font-size: 15px;
+            margin-bottom: 24px;
+            line-height: 1.6;
+        }
+        .success-modal .btn-group {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .success-modal .btn-group a {
+            padding: 12px 28px;
+            border-radius: 40px;
+            font-weight: 600;
+            font-size: 15px;
+            transition: 0.2s;
+        }
+        .success-modal .btn-group .btn-primary {
+            background: #0055a5;
+            color: #fff;
+        }
+        .success-modal .btn-group .btn-primary:hover {
+            background: #003f7a;
+        }
+        .success-modal .btn-group .btn-outline {
+            background: transparent;
+            border: 1.5px solid #e9edf2;
+            color: #1e293b;
+        }
+        .success-modal .btn-group .btn-outline:hover {
+            background: #f1f5f9;
+        }
+        .close-modal {
+            position: absolute;
+            top: 16px;
+            right: 20px;
+            font-size: 28px;
+            cursor: pointer;
+            color: #94a3b8;
+        }
+
+        /* ===== FOOTER ===== */
+        .footer {
+            background: #0f172a;
+            color: #cbd5e1;
+            padding: 50px 0 20px;
+            border-top: 3px solid #2ecc71;
+        }
+        .footer .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        .footer h4 {
+            color: #fff;
+            margin-bottom: 16px;
+            font-size: 17px;
+        }
+        .footer ul {
+            list-style: none;
+        }
+        .footer ul li {
+            margin-bottom: 10px;
+        }
+        .footer ul li a {
+            transition: color 0.2s;
+        }
+        .footer ul li a:hover {
+            color: #2ecc71;
+        }
+        .footer .bottom {
+            border-top: 1px solid #1e293b;
+            padding-top: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            font-size: 14px;
+        }
+        .footer .social {
+            display: flex;
+            gap: 14px;
+        }
+        .footer .social a {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            background: #1e293b;
+            border-radius: 50%;
+            transition: 0.3s;
+            color: #cbd5e1;
+        }
+        .footer .social a:hover {
+            background: #2ecc71;
+            color: #0f172a;
+        }
+
+        /* ===== FLOATING WHATSAPP ===== */
+        .whatsapp-float {
+            position: fixed;
+            bottom: 30px;
+            right: 20px;
+            background: #25D366;
+            color: #fff;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 30px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+            z-index: 1500;
+            transition: 0.2s;
+        }
+        .whatsapp-float:hover {
+            transform: scale(1.08);
+        }
+
+        /* ===== RESPONSIVE ===== */
+        @media(max-width:768px) {
+            .top-bar .container {
+                flex-direction: column;
+                align-items: stretch;
+                text-align: center;
+            }
+            .top-bar .contact-info {
+                justify-content: center;
+            }
+            .nav-bar .container {
+                flex-wrap: wrap;
+            }
+            .nav-links {
+                display: none;
+                flex-direction: column;
+                width: 100%;
+                background: #fff;
+                padding: 10px 0;
+                border-top: 1px solid #e9edf2;
+            }
+            .nav-links.open {
+                display: flex;
+            }
+            .mobile-toggle {
+                display: block;
+            }
+            .hero-post {
+                padding: 30px 0 36px;
+            }
+            .hero-post h1 {
+                font-size: 24px;
+            }
+            .form-card {
+                padding: 24px 20px;
+                border-radius: 20px;
+            }
+            .form-row {
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
+            .form-group {
+                margin-bottom: 16px;
+            }
+            .form-card .step-indicator .step {
+                font-size: 10px;
+                padding: 4px 12px;
+            }
+            .btn-submit {
+                font-size: 16px;
+                padding: 14px;
+            }
+            .success-modal {
+                padding: 30px 20px;
+            }
+            .footer .grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+        @media(max-width:480px) {
+            .form-card {
+                padding: 18px 14px;
+            }
+            .form-group input,
+            .form-group select,
+            .form-group textarea {
+                padding: 12px 14px;
+                font-size: 14px;
+            }
+            .image-upload-area {
+                padding: 20px 12px;
+            }
+            .image-upload-area i {
+                font-size: 30px;
+            }
+            .image-preview-grid {
+                grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+            }
+            .hero-post h1 {
+                font-size: 20px;
+            }
+            .success-modal .btn-group a {
+                width: 100%;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ===== TOP BAR ===== -->
+    <div class="top-bar">
+        <div class="container">
+            <span><i class="fas fa-store"></i> KN Classifieds — Buy & Sell Near You</span>
+            <div class="contact-info">
+                <a href="tel:+233542928081"><i class="fas fa-phone-alt"></i> 054 292 8081</a>
+                <a href="mailto:knsmartgadgetshub@gmail.com"><i class="fas fa-envelope"></i> knsmartgadgetshub@gmail.com</a>
+                <a href="#"><i class="fas fa-map-marker-alt"></i> Accra, Ghana</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== NAVIGATION ===== -->
+    <nav class="nav-bar">
+        <div class="container">
+            <a href="index.html" class="nav-logo">
+                <i class="fas fa-tag"></i> KN <span style="color:#2ecc71;">Ads</span>
+            </a>
+
+            <ul class="nav-links" id="navLinks">
+                <li><a href="index.html"><i class="fas fa-house"></i> Home</a></li>
+                <li><a href="index.html#adsGrid"><i class="fas fa-star"></i> Latest Ads</a></li>
+                <li><a href="post-free-ad.html" class="post-ad-link"><i class="fas fa-plus-circle"></i> Post Free Ad</a></li>
+            </ul>
+
+            <div class="nav-icons">
+                <button class="icon-btn" aria-label="Notifications" onclick="toggleSidebar('notification')">
+                    <i class="fas fa-bell"></i>
+                    <span class="badge" id="notifBadge">0</span>
+                </button>
+                <button class="icon-btn" aria-label="Messages" onclick="toggleSidebar('message')">
+                    <i class="fas fa-envelope"></i>
+                    <span class="badge" id="msgBadge">0</span>
+                </button>
+                <button class="icon-btn" aria-label="Favorites" onclick="toggleCart()">
+                    <i class="fas fa-heart"></i>
+                    <span class="badge" id="cartCount">0</span>
+                </button>
+                <div id="authGroup">
+                    <button class="auth-btn" onclick="openAuthModal('login')">Login</button>
+                    <button class="auth-btn auth-btn-reg" onclick="openAuthModal('register')">Register</button>
+                </div>
+                <div class="user-group" id="userGroup">
+                    <a href="profile.html" class="profile-link">
+                        <span class="avatar-wrapper">
+                            <img id="userAvatar" class="user-avatar" src="" alt="Avatar">
+                            <i id="defaultAvatar" class="fas fa-user-circle default-avatar"></i>
+                        </span>
+                        <span id="userNameDisplay"></span>
+                    </a>
+                    <button class="logout-btn" onclick="logout()">Logout</button>
+                </div>
+                <button class="icon-btn mobile-toggle" aria-label="Menu" id="mobileToggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- ===== HERO ===== -->
+    <section class="hero-post">
+        <div class="container">
+            <h1>📢 Post Your Free Ad</h1>
+            <p>Reach thousands of buyers in Ghana — completely free!</p>
+            <div class="sub"><i class="fas fa-check-circle" style="color:#2ecc71;"></i> No hidden fees &bull; 1-minute setup</div>
+        </div>
+    </section>
+
+    <!-- ===== FORM ===== -->
+    <section class="form-section">
+        <div class="container">
+            <div class="form-card" id="postFormCard">
+                <!-- Step indicator -->
+                <div class="step-indicator">
+                    <span class="step active" id="step1">1. Details</span>
+                    <span class="step" id="step2">2. Media</span>
+                    <span class="step" id="step3">3. Publish</span>
+                </div>
+
+                <form id="postAdForm" onsubmit="handleSubmit(event)">
+                    <!-- ===== STEP 1: DETAILS ===== -->
+                    <div id="step1Content">
+                        <div class="form-group">
+                            <label>Ad Title <span class="required">*</span></label>
+                            <input type="text" id="adTitle" placeholder="e.g. Toyota Corolla 2020, iPhone 17 Pro Max" required />
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Category <span class="required">*</span></label>
+                                <select id="adCategory" required>
+                                    <option value="">Select category</option>
+                                    <option value="Cars">Cars</option>
+                                    <option value="Phones">Phones</option>
+                                    <option value="Real Estate">Real Estate</option>
+                                    <option value="Jobs">Jobs</option>
+                                    <option value="Electronics">Electronics</option>
+                                    <option value="Fashion">Fashion</option>
+                                    <option value="Home">Home</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Price (GH₵) <span class="required">*</span></label>
+                                <input type="number" id="adPrice" placeholder="e.g. 5000" min="0" step="0.01" required />
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Location <span class="required">*</span></label>
+                                <input type="text" id="adLocation" placeholder="e.g. Accra, Kumasi, Tema" required />
+                            </div>
+                            <div class="form-group">
+                                <label>Condition</label>
+                                <select id="adCondition">
+                                    <option value="Brand New">Brand New</option>
+                                    <option value="Used - Like New">Used - Like New</option>
+                                    <option value="Used - Good">Used - Good</option>
+                                    <option value="Used - Fair">Used - Fair</option>
+                                    <option value="For Parts">For Parts</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Description <span class="required">*</span></label>
+                            <textarea id="adDescription" placeholder="Describe your item in detail — condition, specs, features, why it's great..." required></textarea>
+                            <div class="hint">Min 20 characters. Be specific to attract more buyers.</div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Brand / Make</label>
+                                <input type="text" id="adBrand" placeholder="e.g. Apple, Toyota, Samsung" />
+                            </div>
+                            <div class="form-group">
+                                <label>Model</label>
+                                <input type="text" id="adModel" placeholder="e.g. iPhone 17 Pro Max, Corolla 2020" />
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Phone Number <span class="required">*</span></label>
+                                <input type="tel" id="adPhone" placeholder="e.g. 0542928081" required />
+                                <div class="hint">Buyers will contact you via WhatsApp or call.</div>
+                            </div>
+                            <div class="form-group">
+                                <label>Other Specs (optional)</label>
+                                <input type="text" id="adSpecs" placeholder="e.g. 256GB, 8GB RAM, Silver" />
+                            </div>
+                        </div>
+
+                        <button type="button" class="btn-submit" style="background:#0055a5;" onclick="goToStep(2)">
+                            Next: Add Photos <i class="fas fa-arrow-right"></i>
+                        </button>
+                    </div>
+
+                    <!-- ===== STEP 2: MEDIA ===== -->
+                    <div id="step2Content" style="display:none;">
+                        <div class="form-group">
+                            <label>Upload Images</label>
+                            <div class="image-upload-area" id="imageUploadArea" onclick="document.getElementById('imageInput').click()">
+                                <i class="fas fa-cloud-upload-alt"></i>
+                                <p>Click to upload images</p>
+                                <span class="small">PNG, JPG up to 5MB each • Max 6 images</span>
+                            </div>
+                            <input type="file" id="imageInput" accept="image/*" multiple style="display:none;" />
+                            <div class="image-preview-grid" id="imagePreviewGrid"></div>
+                            <div class="hint">Upload clear photos to get more views.</div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Video URL (optional)</label>
+                            <input type="url" id="adVideo" placeholder="https://www.youtube.com/watch?v=..." />
+                            <div class="hint">Add a YouTube or Vimeo link to showcase your item.</div>
+                        </div>
+
+                        <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:8px;">
+                            <button type="button" class="btn-submit" style="background:#94a3b8; flex:1;" onclick="goToStep(1)">
+                                <i class="fas fa-arrow-left"></i> Back
+                            </button>
+                            <button type="button" class="btn-submit" style="background:#0055a5; flex:2;" onclick="goToStep(3)">
+                                Review & Publish <i class="fas fa-arrow-right"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- ===== STEP 3: PUBLISH ===== -->
+                    <div id="step3Content" style="display:none;">
+                        <div style="background:#f8fafc; border-radius:16px; padding:20px; margin-bottom:20px;">
+                            <h4 style="margin-bottom:12px;">📋 Review your ad</h4>
+                            <div id="reviewContent" style="font-size:14px; color:#475569; line-height:1.8;"></div>
+                        </div>
+
+                        <div style="display:flex; gap:12px; flex-wrap:wrap;">
+                            <button type="button" class="btn-submit" style="background:#94a3b8; flex:1;" onclick="goToStep(2)">
+                                <i class="fas fa-arrow-left"></i> Back
+                            </button>
+                            <button type="submit" class="btn-submit" style="flex:2;" id="publishBtn">
+                                <i class="fas fa-rocket"></i> Publish Ad
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== FOOTER ===== -->
+    <footer class="footer">
+        <div class="container">
+            <div class="grid">
+                <div><h4>KN Classifieds</h4><ul><li><a href="#">About Us</a></li><li><a href="#">How it works</a></li><li><a href="#">Contact</a></li></ul></div>
+                <div><h4>For Sellers</h4>
+                    <ul>
+                        <li><a href="post-free-ad.html">Post Free Ad</a></li>
+                        <li><a href="#">Pricing</a></li>
+                        <li><a href="#">Tips</a></li>
+                    </ul>
+                </div>
+                <div><h4>For Buyers</h4><ul><li><a href="#">Browse Ads</a></li><li><a href="#">Safety Tips</a></li><li><a href="#">Report Ad</a></li></ul></div>
+                <div><h4>Support</h4><ul><li><a href="tel:+233542928081">Call Us</a></li><li><a href="mailto:knsmartgadgetshub@gmail.com">Email</a></li><li><a href="https://wa.me/233542928081" target="_blank">WhatsApp</a></li></ul></div>
+                <div><h4>Legal</h4><ul><li><a href="#">Terms</a></li><li><a href="#">Privacy</a></li><li><a href="#">Cookies</a></li></ul></div>
+            </div>
+            <div class="bottom">
+                <span>&copy; 2026 KN Classifieds. All rights reserved.</span>
+                <div class="social">
+                    <a href="#" aria-label="Facebook"><i class="fab fa-facebook-f"></i></a>
+                    <a href="#" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
+                    <a href="#" aria-label="Twitter"><i class="fab fa-twitter"></i></a>
+                    <a href="#" aria-label="YouTube"><i class="fab fa-youtube"></i></a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- ===== FLOATING WHATSAPP ===== -->
+    <a href="https://wa.me/233542928081?text=Hello%20KN%20Classifieds%2C%20I%20have%20a%20question." target="_blank" rel="noopener noreferrer" class="whatsapp-float" aria-label="Chat on WhatsApp">
+        <i class="fab fa-whatsapp"></i>
+    </a>
+
+    <!-- ===== SIDEBARS (same as index) ===== -->
+    <div id="notificationSidebar" class="sidebar" style="position:fixed; top:0; right:-100%; width:100%; height:100vh; background:#fff; transition:0.3s; z-index:2500; display:flex; flex-direction:column; box-shadow:-5px 0 25px rgba(0,0,0,0.1); max-width:400px;">
+        <div class="sidebar-header" style="background:#0055a5; color:#fff; padding:18px 20px; display:flex; justify-content:space-between; align-items:center;">
+            <h3>Notifications</h3>
+            <div class="close-sidebar" onclick="closeAllSidebars()" style="background:rgba(255,255,255,0.2); width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer;">✕</div>
+        </div>
+        <div class="sidebar-content" id="notifList" style="padding:16px; overflow-y:auto; flex:1;"></div>
+    </div>
+    <div id="messageSidebar" class="sidebar" style="position:fixed; top:0; right:-100%; width:100%; height:100vh; background:#fff; transition:0.3s; z-index:2500; display:flex; flex-direction:column; box-shadow:-5px 0 25px rgba(0,0,0,0.1); max-width:400px;">
+        <div class="sidebar-header" style="background:#0055a5; color:#fff; padding:18px 20px; display:flex; justify-content:space-between; align-items:center;">
+            <h3>Messages</h3>
+            <div class="close-sidebar" onclick="closeAllSidebars()" style="background:rgba(255,255,255,0.2); width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer;">✕</div>
+        </div>
+        <div class="sidebar-content" id="msgList" style="padding:16px; overflow-y:auto; flex:1;"></div>
+    </div>
+
+    <!-- ===== CART PANEL ===== -->
+    <div class="cart-overlay" id="cartOverlay" onclick="toggleCart()" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); z-index:2000;"></div>
+    <div class="cart-panel" id="cartPanel" style="position:fixed; top:0; right:-420px; width:400px; height:100%; background:#fff; z-index:2100; transition:right 0.3s ease; display:flex; flex-direction:column; box-shadow:-4px 0 20px rgba(0,0,0,0.1);">
+        <div class="cart-header" style="display:flex; justify-content:space-between; align-items:center; padding:20px; border-bottom:1px solid #e9edf2;">
+            <h2>Your Favorites</h2>
+            <button onclick="toggleCart()" style="background:none; border:none; font-size:30px; cursor:pointer;">&times;</button>
+        </div>
+        <div class="cart-items" id="cartItemsList" style="flex:1; overflow-y:auto; padding:16px;"></div>
+        <div class="cart-footer" style="padding:16px 20px; border-top:1px solid #e9edf2;">
+            <div class="cart-total" style="display:flex; justify-content:space-between; font-weight:800; font-size:18px; margin-bottom:12px;">
+                <span>Total</span><span id="cartTotalPrice">₵0.00</span>
+            </div>
+            <button class="btn-checkout" onclick="checkoutCart()" style="width:100%; padding:14px; background:#2ecc71; border:none; border-radius:40px; font-weight:700; color:#fff; cursor:pointer;">💬 WhatsApp Enquiry</button>
+        </div>
+    </div>
+
+    <!-- ===== AUTH MODAL ===== -->
+    <div class="modal-overlay" id="authModalContainer">
+        <div class="auth-modal" style="background:#fff; border-radius:32px; width:90%; max-width:480px; padding:32px; position:relative; animation:modalFade 0.3s;">
+            <span class="close-modal" onclick="closeAuthModal()" style="position:absolute; top:16px; right:20px; font-size:28px; cursor:pointer; color:#94a3b8;">&times;</span>
+            <div id="authFormContainer"></div>
+        </div>
+    </div>
+
+    <!-- ===== FORGOT MODAL ===== -->
+    <div class="modal-overlay" id="forgotModal">
+        <div class="forgot-modal" style="background:#fff; border-radius:32px; width:90%; max-width:480px; padding:32px; position:relative; animation:modalFade 0.3s;">
+            <span class="close-modal" onclick="closeForgotModal()" style="position:absolute; top:16px; right:20px; font-size:28px; cursor:pointer; color:#94a3b8;">&times;</span>
+            <h3 style="margin-bottom:8px;">🔐 Reset Password</h3>
+            <p style="color:#64748b; margin-bottom:20px;">Enter your email and we'll send a reset link.</p>
+            <input type="email" id="forgotEmail" placeholder="Your email" style="width:100%; padding:14px; margin-bottom:16px; border:1.5px solid #e9edf2; border-radius:16px; font-size:14px; font-family:inherit;">
+            <button id="resetBtn" onclick="sendResetEmail()" style="width:100%; padding:14px; background:#2ecc71; border:none; border-radius:40px; font-weight:700; color:#fff; cursor:pointer;">Send Link</button>
+            <div class="auth-footer" style="text-align:center; margin-top:16px; font-size:14px;">
+                <a onclick="closeForgotModal(); openAuthModal('login')" style="color:#0055a5; font-weight:700; cursor:pointer;">Back to Login</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== SUCCESS MODAL ===== -->
+    <div class="modal-overlay" id="successModal">
+        <div class="success-modal">
+            <span class="close-modal" onclick="closeSuccessModal()">&times;</span>
+            <div class="icon"><i class="fas fa-check-circle"></i></div>
+            <h2>🎉 Ad Published!</h2>
+            <p>Your ad is now live and visible to thousands of buyers in Ghana. You'll receive notifications when someone is interested.</p>
+            <div class="btn-group">
+                <a href="index.html" class="btn-primary" style="background:#0055a5; color:#fff; padding:12px 28px; border-radius:40px; font-weight:600; font-size:15px; transition:0.2s;">Browse Ads</a>
+                <a href="post-free-ad.html" class="btn-outline" style="background:transparent; border:1.5px solid #e9edf2; color:#1e293b; padding:12px 28px; border-radius:40px; font-weight:600; font-size:15px; transition:0.2s;">Post Another</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================================================================ -->
+    <!-- ===== JAVASCRIPT ===== -->
+    <!-- ================================================================ -->
+    <script>
+        // ================================================================
+        //  DATA & LOCALSTORAGE HELPERS
+        // ================================================================
+        const API_URL = 'http://localhost:5000';
+        let currentUser = null;
+        let token = localStorage.getItem('token');
+        let allProducts = JSON.parse(localStorage.getItem('kn_products') || '[]');
+        let users = JSON.parse(localStorage.getItem('kn_users') || '[]');
+        let notifications = JSON.parse(localStorage.getItem('kn_notifications') || '[]');
+        let cart = JSON.parse(localStorage.getItem('kn_cart') || '[]');
+
+        // ---- Seed data if empty ----
+        if (allProducts.length === 0) {
+            allProducts = [{
+                id: '1',
+                title: 'New Apple iPhone 17 Pro Max 1 TB Silver',
+                price: 23999,
+                category: 'Phones',
+                location: 'East Legon, Greater Accra',
+                sellerId: 'admin',
+                sellerName: 'Compuville Systems',
+                image: 'https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=400',
+                description: 'Brand new 17 pro max unlocked 1 sim + esim, silver/white colour.',
+                images: ['https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=400'],
+                brand: 'Apple',
+                model: 'iPhone 17 Pro Max',
+                condition: 'Brand New',
+                secondCondition: 'No faults',
+                storage: '1 TB',
+                ram: '12 GB',
+                color: 'Silver',
+                views: 100,
+                createdAt: new Date(Date.now() - 3 * 3600 * 1000).toISOString(),
+                promo: 'top',
+                phone: '0542928081',
+                sellerPhone: '0542928081',
+                verified: true,
+                yearsOnPlatform: 5
+            }, {
+                id: '2',
+                title: 'Toyota Corolla 2020',
+                price: 75000,
+                category: 'Cars',
+                location: 'Accra',
+                sellerId: 'admin',
+                sellerName: 'KN Admin',
+                image: 'https://images.unsplash.com/photo-1626029520279-6a333a3e2fd2?w=400',
+                description: 'Clean title, low mileage, AC working.'
+            }, {
+                id: '3',
+                title: '3-Bedroom House for Rent',
+                price: 4500,
+                category: 'Real Estate',
+                location: 'Tema',
+                sellerId: 'admin',
+                sellerName: 'KN Admin',
+                image: 'https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=400',
+                description: 'Fully furnished, secure area, 2 bathrooms.'
+            }, {
+                id: '4',
+                title: 'Marketing Manager Needed',
+                price: 2000,
+                category: 'Jobs',
+                location: 'Accra',
+                sellerId: 'admin',
+                sellerName: 'KN Admin',
+                image: 'https://images.unsplash.com/photo-1521737852567-6949f3f9f2b5?w=400',
+                description: 'Full-time, 3+ years experience, competitive salary.'
+            }, {
+                id: '5',
+                title: 'MacBook Pro M3',
+                price: 24000,
+                category: 'Electronics',
+                location: 'Takoradi',
+                sellerId: 'admin',
+                sellerName: 'KN Admin',
+                image: 'https://images.unsplash.com/photo-1517336714739-489689fd1ca8?w=400',
+                description: '16GB RAM, 512GB SSD, like new.'
+            }, ];
+            localStorage.setItem('kn_products', JSON.stringify(allProducts));
+        }
+        if (users.length === 0) {
+            users.push({ id: 'admin', name: 'KN Admin', email: 'admin@kn.com', password: '123456', phone: '0542928081',
+                photoURL: '' });
+            localStorage.setItem('kn_users', JSON.stringify(users));
+        }
+
+        function saveProducts() { localStorage.setItem('kn_products', JSON.stringify(allProducts)); }
+
+        function saveUsers() { localStorage.setItem('kn_users', JSON.stringify(users)); }
+
+        function saveNotifications() { localStorage.setItem('kn_notifications', JSON.stringify(notifications)); }
+
+        function saveCart() { localStorage.setItem('kn_cart', JSON.stringify(cart));
+            updateCartBadges();
+            renderCart(); }
+
+        function addNotification(userId, title, message) {
+            let notif = { id: Date.now(), userId, title, message, timestamp: new Date().toISOString(), read: false };
+            notifications.push(notif);
+            saveNotifications();
+            if (currentUser && currentUser.id === userId) renderNotifications();
+            updateNotifBadge();
+        }
+
+        function updateNotifBadge() {
+            if (!currentUser) return;
+            let unread = notifications.filter(n => n.userId === currentUser.id && !n.read).length;
+            document.getElementById('notifBadge').innerText = unread;
+        }
+
+        function updateMsgBadge() { document.getElementById('msgBadge').innerText = "0"; }
+
+        function updateCartBadges() {
+            let total = cart.reduce((s, i) => s + (i.quantity || 1), 0);
+            document.getElementById('cartCount').innerText = total;
+            // also update floating badge if exists
+            let fc = document.getElementById('floatingCartCount');
+            if (fc) fc.innerText = total;
+        }
+
+        function escapeHtml(s) { if (!s) return ''; return s.replace(/[&<>]/g, m => m === '&' ? '&amp;' : m === '<' ? '&lt;' :
+            '&gt;'); }
+
+        function showToast(msg, type = '') {
+            let t = document.createElement('div');
+            t.className = 'toast' + (type ? ' ' + type : '');
+            t.innerText = msg;
+            document.body.appendChild(t);
+            setTimeout(() => t.remove(), 4000);
+        }
+
+        // ================================================================
+        //  AUTH
+        // ================================================================
+        function openAuthModal(mode) {
+            const container = document.getElementById('authModalContainer');
+            const formContainer = document.getElementById('authFormContainer');
+            const socialHtml = `
+                <button class="social-btn google" onclick="signInWithGoogle()" style="width:100%; padding:12px; border-radius:40px; font-weight:600; border:1.5px solid #e9edf2; background:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:10px; transition:0.2s; margin-bottom:10px;">
+                    <i class="fab fa-google" style="color:#db4437; font-size:20px;"></i> Continue with Google
+                </button>
+                <button class="social-btn facebook" onclick="signInWithFacebook()" style="width:100%; padding:12px; border-radius:40px; font-weight:600; border:1.5px solid #e9edf2; background:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:10px; transition:0.2s; margin-bottom:10px;">
+                    <i class="fab fa-facebook-f" style="color:#1877f2; font-size:20px;"></i> Continue with Facebook
+                </button>
+                <div class="social-login-divider" style="display:flex; align-items:center; gap:12px; margin:16px 0;">
+                    <span style="flex:1; border-bottom:1px solid #e9edf2;"></span>
+                    <span style="font-size:13px; color:#94a3b8;">or</span>
+                    <span style="flex:1; border-bottom:1px solid #e9edf2;"></span>
+                </div>
+            `;
+            if (mode === 'login') {
+                formContainer.innerHTML = `
+                    <h2 style="margin-bottom:8px; text-align:center;">Welcome Back 👋</h2>
+                    <div class="subtitle" style="text-align:center; color:#64748b; margin-bottom:20px;">Login to your account</div>
+                    <div id="authError" class="error-message" style="background:#fee2e2; color:#dc2626; padding:10px; border-radius:12px; margin-bottom:16px; text-align:center; display:none;"></div>
+                    ${socialHtml}
+                    <input type="email" id="loginEmail" placeholder="Email address" style="width:100%; padding:14px; margin-bottom:16px; border:1.5px solid #e9edf2; border-radius:16px; font-size:14px; font-family:inherit;">
+                    <input type="password" id="loginPassword" placeholder="Password" style="width:100%; padding:14px; margin-bottom:16px; border:1.5px solid #e9edf2; border-radius:16px; font-size:14px; font-family:inherit;">
+                    <button onclick="handleLogin()" style="width:100%; padding:14px; background:#2ecc71; border:none; border-radius:40px; font-weight:700; color:#fff; cursor:pointer;">Login →</button>
+                    <div class="auth-footer" style="text-align:center; margin-top:16px; font-size:14px;"><a onclick="openForgotModal()" style="color:#0055a5; font-weight:700; cursor:pointer;">Forgot Password?</a></div>
+                    <div class="auth-footer" style="text-align:center; margin-top:8px; font-size:14px;">No account? <a onclick="switchAuthMode('register')" style="color:#0055a5; font-weight:700; cursor:pointer;">Create free account</a></div>
+                `;
+            } else {
+                formContainer.innerHTML = `
+                    <h2 style="margin-bottom:8px; text-align:center;">Join KN Classifieds 🚀</h2>
+                    <div class="subtitle" style="text-align:center; color:#64748b; margin-bottom:20px;">Start posting and replying today</div>
+                    <div id="authError" class="error-message" style="background:#fee2e2; color:#dc2626; padding:10px; border-radius:12px; margin-bottom:16px; text-align:center; display:none;"></div>
+                    ${socialHtml}
+                    <input type="text" id="regName" placeholder="Full name" style="width:100%; padding:14px; margin-bottom:16px; border:1.5px solid #e9edf2; border-radius:16px; font-size:14px; font-family:inherit;">
+                    <input type="email" id="regEmail" placeholder="Email address" style="width:100%; padding:14px; margin-bottom:16px; border:1.5px solid #e9edf2; border-radius:16px; font-size:14px; font-family:inherit;">
+                    <input type="password" id="regPassword" placeholder="Password (min 6 chars)" style="width:100%; padding:14px; margin-bottom:16px; border:1.5px solid #e9edf2; border-radius:16px; font-size:14px; font-family:inherit;">
+                    <input type="tel" id="regPhone" placeholder="Phone number" style="width:100%; padding:14px; margin-bottom:16px; border:1.5px solid #e9edf2; border-radius:16px; font-size:14px; font-family:inherit;">
+                    <button onclick="handleRegister()" style="width:100%; padding:14px; background:#2ecc71; border:none; border-radius:40px; font-weight:700; color:#fff; cursor:pointer;">Create Account →</button>
+                    <div class="auth-footer" style="text-align:center; margin-top:16px; font-size:14px;">Already have account? <a onclick="switchAuthMode('login')" style="color:#0055a5; font-weight:700; cursor:pointer;">Sign in</a></div>
+                `;
+            }
+            container.classList.add('active');
+        }
+
+        function closeAuthModal() { document.getElementById('authModalContainer').classList.remove('active'); }
+
+        function switchAuthMode(mode) { openAuthModal(mode); }
+
+        function showAuthError(msg) {
+            let errDiv = document.getElementById('authError');
+            if (errDiv) { errDiv.innerText = msg;
+                errDiv.style.display = 'block';
+                setTimeout(() => { if (errDiv) errDiv.style.display = 'none'; }, 3000); }
+        }
+
+        function handleLogin() {
+            let email = document.getElementById('loginEmail')?.value.trim();
+            let pwd = document.getElementById('loginPassword')?.value;
+            if (!email || !pwd) { showAuthError('Fill all fields'); return; }
+            let localUser = users.find(u => u.email === email && u.password === pwd);
+            if (!localUser) { showAuthError('Invalid credentials'); return; }
+            setCurrentUser(localUser);
+            closeAuthModal();
+            showToast(`Welcome back, ${localUser.name}! 🎉`, 'success');
+            addNotification(currentUser.id, 'Login successful', 'You are now logged in.');
+        }
+
+        function handleRegister() {
+            let name = document.getElementById('regName')?.value.trim();
+            let email = document.getElementById('regEmail')?.value.trim();
+            let pwd = document.getElementById('regPassword')?.value;
+            let phone = document.getElementById('regPhone')?.value.trim();
+            if (!name || !email || !pwd) { showAuthError('All fields required'); return; }
+            if (pwd.length < 6) { showAuthError('Password min 6 characters'); return; }
+            if (users.find(u => u.email === email)) { showAuthError('Email already registered'); return; }
+            let newUser = { id: Date.now().toString(), name, email, password: pwd, phone: phone || '', photoURL: '' };
+            users.push(newUser);
+            saveUsers();
+            setCurrentUser(newUser);
+            closeAuthModal();
+            showToast(`Welcome, ${name}! 🎉`, 'success');
+            addNotification(currentUser.id, 'Welcome!', 'Post your first ad today.');
+        }
+
+        function signInWithGoogle() {
+            window.location.href = `${API_URL}/auth/google`;
+        }
+
+        function signInWithFacebook() {
+            window.location.href = `${API_URL}/auth/facebook`;
+        }
+
+        function setCurrentUser(user) {
+            currentUser = user;
+            token = localStorage.getItem('token');
+            localStorage.setItem('currentUser', JSON.stringify(currentUser));
+            updateUIAfterAuth();
+        }
+
+        function logout() {
+            fetch(`${API_URL}/auth/logout`, { method: 'POST' }).catch(() => {});
+            localStorage.removeItem('token');
+            localStorage.removeItem('currentUser');
+            currentUser = null;
+            token = null;
+            updateUIAfterAuth();
+            showToast('Logged out');
+            cart = [];
+            saveCart();
+        }
+
+        function updateUIAfterAuth() {
+            if (currentUser) {
+                document.getElementById('authGroup').style.display = 'none';
+                document.getElementById('userGroup').style.display = 'inline-flex';
+                document.getElementById('userNameDisplay').innerHTML = currentUser.name;
+                const avatar = document.getElementById('userAvatar');
+                const defaultIcon = document.getElementById('defaultAvatar');
+                if (currentUser.photoURL && currentUser.photoURL !== '') {
+                    avatar.src = currentUser.photoURL;
+                    avatar.style.display = 'inline-block';
+                    defaultIcon.style.display = 'none';
+                } else {
+                    avatar.style.display = 'none';
+                    defaultIcon.style.display = 'inline-block';
+                }
+            } else {
+                document.getElementById('authGroup').style.display = 'flex';
+                document.getElementById('userGroup').style.display = 'none';
+            }
+            renderNotifications();
+            renderMessages();
+            renderCart();
+            updateNotifBadge();
+            updateMsgBadge();
+        }
+
+        function openForgotModal() {
+            closeAuthModal();
+            document.getElementById('forgotModal').classList.add('active');
+        }
+
+        function closeForgotModal() {
+            document.getElementById('forgotModal').classList.remove('active');
+        }
+
+        function sendResetEmail() {
+            const email = document.getElementById('forgotEmail')?.value.trim();
+            if (!email) { showToast('Please enter your email', 'error'); return; }
+            showToast('📧 Password reset link sent (demo). Check your console.', 'success');
+            console.log(`Reset password for: ${email}`);
+            closeForgotModal();
+            document.getElementById('forgotEmail').value = '';
+        }
+
+        // ================================================================
+        //  SIDEBARS & CART
+        // ================================================================
+        function toggleSidebar(type) {
+            closeAllSidebars();
+            let sidebar = type === 'notification' ? document.getElementById('notificationSidebar') :
+                type === 'message' ? document.getElementById('messageSidebar') : null;
+            if (sidebar) sidebar.style.right = '0';
+            if (type === 'notification') renderNotifications();
+            if (type === 'message') renderMessages();
+        }
+
+        function closeAllSidebars() {
+            document.querySelectorAll('.sidebar').forEach(s => s.style.right = '-100%');
+        }
+
+        function renderNotifications() {
+            let container = document.getElementById('notifList');
+            if (!currentUser) { container.innerHTML = '<div class="empty-state" style="text-align:center; padding:40px 20px; color:#64748b;">Login to see notifications</div>'; return; }
+            let myNotifs = notifications.filter(n => n.userId === currentUser.id).sort((a, b) => b.id - a.id);
+            if (myNotifs.length === 0) { container.innerHTML =
+                '<div class="empty-state" style="text-align:center; padding:40px 20px; color:#64748b;">🔔 No notifications</div>'; return; }
+            container.innerHTML = myNotifs.map(n =>
+                `<div class="notif-item" style="padding:12px; background:${!n.read ? '#eef2ff' : '#f8fafc'}; border-radius:12px; margin-bottom:10px; border-left:3px solid #2ecc71;">
+                    <div class="notif-title" style="font-weight:700; margin-bottom:4px;">${escapeHtml(n.title)}</div>
+                    <div class="notif-text" style="font-size:13px; color:#475569;">${escapeHtml(n.message)}</div>
+                    <div class="notif-time" style="font-size:10px; color:#94a3b8; margin-top:4px;">${new Date(n.timestamp).toLocaleString()}</div>
+                    ${!n.read ? `<button class="mark-read-btn" onclick="markNotifRead('${n.id}')" style="background:none; border:none; color:#0055a5; cursor:pointer; margin-top:4px; font-size:12px;">✓ Mark read</button>` : ''}
+                </div>`
+            ).join('');
+        }
+
+        function markNotifRead(id) {
+            let n = notifications.find(x => x.id == id);
+            if (n && !n.read) { n.read = true;
+                saveNotifications();
+                renderNotifications();
+                updateNotifBadge(); }
+        }
+
+        function renderMessages() {
+            document.getElementById('msgList').innerHTML =
+                '<div class="empty-state" style="text-align:center; padding:40px 20px; color:#64748b;">💬 No messages yet. Contact sellers directly via WhatsApp!</div>';
+        }
+
+        function toggleCart() {
+            const overlay = document.getElementById('cartOverlay');
+            const panel = document.getElementById('cartPanel');
+            if (panel.style.right === '0px') {
+                panel.style.right = '-420px';
+                overlay.style.display = 'none';
+            } else {
+                panel.style.right = '0px';
+                overlay.style.display = 'block';
+                renderCart();
+            }
+        }
+
+        function renderCart() {
+            const list = document.getElementById('cartItemsList');
+            const totalEl = document.getElementById('cartTotalPrice');
+            if (!list) return;
+            if (cart.length === 0) {
+                list.innerHTML = '<div class="empty-state" style="text-align:center; padding:40px 20px; color:#64748b;">❤️ No saved ads yet.</div>';
+                if (totalEl) totalEl.innerText = '₵0.00';
+                return;
+            }
+            let total = 0;
+            let html = '';
+            cart.forEach(item => {
+                let qty = item.quantity || 1;
+                let subtotal = item.price * qty;
+                total += subtotal;
+                html += `
+                    <div class="cart-item" style="display:flex; gap:12px; padding:12px; background:#f8fafc; border-radius:14px; margin-bottom:12px; align-items:center;">
+                        <img src="${item.image || 'https://placehold.co/60'}" onerror="this.src='https://placehold.co/60'" style="width:60px; height:60px; object-fit:cover; border-radius:10px;">
+                        <div class="details" style="flex:1;">
+                            <div class="title" style="font-weight:600;">${escapeHtml(item.title)}</div>
+                            <div class="price" style="color:#0055a5; font-weight:700;">GH₵ ${item.price.toLocaleString()}</div>
+                            <div class="qty" style="display:flex; align-items:center; gap:8px; margin-top:4px;">
+                                <button class="qty-btn" onclick="updateQuantity('${item.productId}', -1)" style="background:#e9edf2; border:none; width:26px; border-radius:6px; cursor:pointer; font-weight:700;">-</button>
+                                <span>${qty}</span>
+                                <button class="qty-btn" onclick="updateQuantity('${item.productId}', 1)" style="background:#e9edf2; border:none; width:26px; border-radius:6px; cursor:pointer; font-weight:700;">+</button>
+                                <button class="remove-btn" onclick="removeFromCart('${item.productId}')" style="background:none; border:none; color:#e74c3c; cursor:pointer;">🗑️</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            list.innerHTML = html;
+            if (totalEl) totalEl.innerText = `₵${total.toLocaleString()}`;
+            updateCartBadges();
+        }
+
+        function addToCart(productId) {
+            let product = allProducts.find(p => p.id === productId);
+            if (!product) return;
+            let existing = cart.find(i => i.productId === productId);
+            if (existing) { existing.quantity = (existing.quantity || 1) + 1; } else { cart.push({ productId: product.id,
+                    title: product.title, price: product.price, image: product.image, quantity: 1 }); }
+            saveCart();
+            renderCart();
+            showToast(`❤️ ${product.title} saved to favorites`, 'success');
+            if (currentUser) addNotification(currentUser.id, 'Favorite', `You saved ${product.title}`);
+        }
+
+        function updateQuantity(pid, change) {
+            let item = cart.find(i => i.productId === pid);
+            if (item) {
+                let newQ = (item.quantity || 1) + change;
+                if (newQ <= 0) { cart = cart.filter(i => i.productId !== pid); } else { item.quantity = newQ; }
+                saveCart();
+                renderCart();
+            }
+        }
+
+        function removeFromCart(pid) {
+            cart = cart.filter(i => i.productId !== pid);
+            saveCart();
+            renderCart();
+            showToast('Removed from favorites');
+        }
+
+        function checkoutCart() {
+            if (cart.length === 0) { showToast('No saved ads', 'error'); return; }
+            let msg = "❤️ *KN Classifieds Favorites* ❤️\n";
+            let total = 0;
+            cart.forEach(i => {
+                let q = i.quantity || 1;
+                let sub = i.price * q;
+                total += sub;
+                msg += `📦 ${i.title} x${q} = GH₵ ${sub.toLocaleString()}\n`;
+            });
+            msg += `\n💰 TOTAL: GH₵ ${total.toLocaleString()}\n📍 Location: \n📞 Contact: `;
+            let phone = currentUser?.phone || '0542928081';
+            window.open(`https://wa.me/${phone.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`, '_blank');
+        }
+
+        // ================================================================
+        //  POST AD FORM — STEPPER
+        // ================================================================
+        let uploadedImages = [];
+
+        function goToStep(step) {
+            // Validate step1 before going to step2
+            if (step === 2) {
+                const title = document.getElementById('adTitle').value.trim();
+                const category = document.getElementById('adCategory').value;
+                const price = document.getElementById('adPrice').value;
+                const location = document.getElementById('adLocation').value.trim();
+                const desc = document.getElementById('adDescription').value.trim();
+                const phone = document.getElementById('adPhone').value.trim();
+                if (!title || !category || !price || !location || desc.length < 20 || !phone) {
+                    showToast('Please fill all required fields (Title, Category, Price, Location, Description min 20 chars, Phone)', 'error');
+                    return;
+                }
+                if (desc.length < 20) {
+                    showToast('Description must be at least 20 characters.', 'error');
+                    return;
+                }
+                // Build review
+                buildReview();
+            }
+            if (step === 3) {
+                // Step 3 is review, already built in step 2 transition
+            }
+
+            document.getElementById('step1Content').style.display = step === 1 ? 'block' : 'none';
+            document.getElementById('step2Content').style.display = step === 2 ? 'block' : 'none';
+            document.getElementById('step3Content').style.display = step === 3 ? 'block' : 'none';
+
+            document.querySelectorAll('.step-indicator .step').forEach(el => el.classList.remove('active', 'done'));
+            document.getElementById('step1').classList.add(step >= 1 ? 'done' : '');
+            document.getElementById('step2').classList.add(step >= 2 ? 'done' : '');
+            document.getElementById('step3').classList.add(step >= 3 ? 'done' : '');
+            document.getElementById(`step${step}`).classList.add('active');
+
+            // Scroll to top of form
+            document.getElementById('postFormCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        function buildReview() {
+            const title = document.getElementById('adTitle').value.trim();
+            const category = document.getElementById('adCategory').value;
+            const price = document.getElementById('adPrice').value;
+            const location = document.getElementById('adLocation').value.trim();
+            const desc = document.getElementById('adDescription').value.trim();
+            const condition = document.getElementById('adCondition').value;
+            const brand = document.getElementById('adBrand').value.trim() || '—';
+            const model = document.getElementById('adModel').value.trim() || '—';
+            const phone = document.getElementById('adPhone').value.trim();
+            const specs = document.getElementById('adSpecs').value.trim() || '—';
+            const video = document.getElementById('adVideo').value.trim() || 'None';
+            const imgCount = uploadedImages.length;
+
+            document.getElementById('reviewContent').innerHTML = `
+                <div><strong>Title:</strong> ${escapeHtml(title)}</div>
+                <div><strong>Category:</strong> ${escapeHtml(category)}</div>
+                <div><strong>Price:</strong> GH₵ ${escapeHtml(price)}</div>
+                <div><strong>Location:</strong> ${escapeHtml(location)}</div>
+                <div><strong>Condition:</strong> ${escapeHtml(condition)}</div>
+                <div><strong>Brand:</strong> ${escapeHtml(brand)}</div>
+                <div><strong>Model:</strong> ${escapeHtml(model)}</div>
+                <div><strong>Phone:</strong> ${escapeHtml(phone)}</div>
+                <div><strong>Specs:</strong> ${escapeHtml(specs)}</div>
+                <div><strong>Video:</strong> ${escapeHtml(video)}</div>
+                <div><strong>Images:</strong> ${imgCount} uploaded</div>
+                <div style="margin-top:8px;"><strong>Description:</strong><br>${escapeHtml(desc)}</div>
+            `;
+        }
+
+        // ---- Image upload ----
+        document.getElementById('imageInput').addEventListener('change', function(e) {
+            const files = e.target.files;
+            const maxFiles = 6;
+            if (uploadedImages.length + files.length > maxFiles) {
+                showToast(`Max ${maxFiles} images allowed`, 'error');
+                return;
+            }
+            for (let file of files) {
+                if (file.size > 5 * 1024 * 1024) {
+                    showToast(`Image ${file.name} exceeds 5MB`, 'error');
+                    continue;
+                }
+                const reader = new FileReader();
+                reader.onload = function(ev) {
+                    uploadedImages.push(ev.target.result);
+                    renderImagePreviews();
+                };
+                reader.readAsDataURL(file);
+            }
+            e.target.value = '';
+        });
+
+        function renderImagePreviews() {
+            const grid = document.getElementById('imagePreviewGrid');
+            if (uploadedImages.length === 0) {
+                grid.innerHTML = '';
+                return;
+            }
+            grid.innerHTML = uploadedImages.map((img, idx) =>
+                `<div class="preview-item" style="position:relative; border-radius:12px; overflow:hidden; aspect-ratio:1; background:#f1f5f9; border:1px solid #e9edf2;">
+                    <img src="${img}" style="width:100%; height:100%; object-fit:cover;">
+                    <button class="remove-img" onclick="removeImage(${idx})" style="position:absolute; top:4px; right:4px; background:rgba(0,0,0,0.6); color:#fff; border:none; border-radius:50%; width:24px; height:24px; cursor:pointer; font-size:12px; display:flex; align-items:center; justify-content:center; transition:0.2s;">✕</button>
+                </div>`
+            ).join('');
+        }
+
+        function removeImage(idx) {
+            uploadedImages.splice(idx, 1);
+            renderImagePreviews();
+        }
+
+        // ---- Drag & drop ----
+        const uploadArea = document.getElementById('imageUploadArea');
+        uploadArea.addEventListener('dragover', (e) => { e.preventDefault();
+            uploadArea.style.borderColor = '#0055a5';
+            uploadArea.style.background = '#f0f4ff'; });
+        uploadArea.addEventListener('dragleave', () => { uploadArea.style.borderColor = '#e9edf2';
+            uploadArea.style.background = '#fafbfc'; });
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#e9edf2';
+            uploadArea.style.background = '#fafbfc';
+            const files = e.dataTransfer.files;
+            const maxFiles = 6;
+            if (uploadedImages.length + files.length > maxFiles) { showToast(`Max ${maxFiles} images allowed`, 'error'); return; }
+            for (let file of files) {
+                if (file.size > 5 * 1024 * 1024) { showToast(`Image ${file.name} exceeds 5MB`, 'error'); continue; }
+                const reader = new FileReader();
+                reader.onload = function(ev) { uploadedImages.push(ev.target.result);
+                    renderImagePreviews(); };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // ---- Form submit ----
+        function handleSubmit(e) {
+            e.preventDefault();
+            if (!currentUser) {
+                showToast('Please login to post an ad', 'error');
+                openAuthModal('login');
+                return;
+            }
+
+            const btn = document.getElementById('publishBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Publishing...';
+
+            const title = document.getElementById('adTitle').value.trim();
+            const category = document.getElementById('adCategory').value;
+            const price = parseFloat(document.getElementById('adPrice').value);
+            const location = document.getElementById('adLocation').value.trim();
+            const desc = document.getElementById('adDescription').value.trim();
+            const condition = document.getElementById('adCondition').value;
+            const brand = document.getElementById('adBrand').value.trim();
+            const model = document.getElementById('adModel').value.trim();
+            const phone = document.getElementById('adPhone').value.trim();
+            const specs = document.getElementById('adSpecs').value.trim();
+            const video = document.getElementById('adVideo').value.trim();
+
+            // Validate
+            if (!title || !category || !price || !location || desc.length < 20 || !phone) {
+                showToast('Please fill all required fields', 'error');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-rocket"></i> Publish Ad';
+                return;
+            }
+
+            // Build product object
+            const newProduct = {
+                id: Date.now().toString(),
+                title,
+                category,
+                price,
+                location,
+                description: desc,
+                condition,
+                brand: brand || '',
+                model: model || '',
+                phone,
+                specs: specs || '',
+                video: video || '',
+                sellerId: currentUser.id,
+                sellerName: currentUser.name,
+                sellerPhone: phone,
+                image: uploadedImages.length > 0 ? uploadedImages[0] : 'https://placehold.co/400x300?text=Ad',
+                images: uploadedImages,
+                views: 0,
+                createdAt: new Date().toISOString(),
+                verified: false,
+                yearsOnPlatform: 0
+            };
+
+            // Save
+            allProducts.unshift(newProduct);
+            saveProducts();
+            addNotification(currentUser.id, '📢 New Ad Published', `${title} is now live!`);
+
+            // Reset
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-rocket"></i> Publish Ad';
+
+            // Show success
+            document.getElementById('successModal').classList.add('active');
+
+            // Reset form
+            document.getElementById('postAdForm').reset();
+            uploadedImages = [];
+            renderImagePreviews();
+            goToStep(1);
+
+            showToast('🎉 Ad published successfully!', 'success');
+        }
+
+        function closeSuccessModal() {
+            document.getElementById('successModal').classList.remove('active');
+            window.location.href = 'index.html';
+        }
+
+        // ================================================================
+        //  MOBILE NAV TOGGLE
+        // ================================================================
+        document.getElementById('mobileToggle').addEventListener('click', () => {
+            document.getElementById('navLinks').classList.toggle('open');
+        });
+
+        // ================================================================
+        //  INIT
+        // ================================================================
+        function init() {
+            let stored = localStorage.getItem('currentUser');
+            if (stored) { try { currentUser = JSON.parse(stored);
+                    token = localStorage.getItem('token'); } catch (e) {} }
+            updateUIAfterAuth();
+            renderCart();
+            updateCartBadges();
+            // Show step 1 by default
+            goToStep(1);
+        }
+        init();
+
+        // ---- Expose globals ----
+        window.goToStep = goToStep;
+        window.handleSubmit = handleSubmit;
+        window.removeImage = removeImage;
+        window.openAuthModal = openAuthModal;
+        window.closeAuthModal = closeAuthModal;
+        window.switchAuthMode = switchAuthMode;
+        window.handleLogin = handleLogin;
+        window.handleRegister = handleRegister;
+        window.logout = logout;
+        window.openForgotModal = openForgotModal;
+        window.closeForgotModal = closeForgotModal;
+        window.sendResetEmail = sendResetEmail;
+        window.signInWithGoogle = signInWithGoogle;
+        window.signInWithFacebook = signInWithFacebook;
+        window.toggleSidebar = toggleSidebar;
+        window.closeAllSidebars = closeAllSidebars;
+        window.toggleCart = toggleCart;
+        window.addToCart = addToCart;
+        window.updateQuantity = updateQuantity;
+        window.removeFromCart = removeFromCart;
+        window.checkoutCart = checkoutCart;
+        window.markNotifRead = markNotifRead;
+        window.closeSuccessModal = closeSuccessModal;
+        window.showToast = showToast;
+    </script>
+
+</body>
+</html>
