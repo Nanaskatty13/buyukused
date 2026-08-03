@@ -1063,7 +1063,7 @@
         // ================================================================
         //  DATA & LOCALSTORAGE HELPERS
         // ================================================================
-        const API_URL = import.meta.env.VITE_API_URL;
+        const API_URL = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
         let currentUser = null;
         let token = localStorage.getItem('token');
         let allProducts = JSON.parse(localStorage.getItem('kn_products') || '[]');

@@ -11,53 +11,1492 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
 
     <style>
-        /* ===== YOUR EXISTING CSS – unchanged ===== */
-        /* (copy all the CSS from your current file – it’s the same) */
-        /* For brevity I’m omitting the CSS here – keep yours */
+        /* ===== RESET & VARIABLES ===== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #f1f5f9;
+            color: #1e293b;
+            overflow-x: hidden;
+        }
+        a {
+            text-decoration: none;
+            color: inherit;
+        }
+
+        /* ===== ADMIN LAYOUT ===== */
+        .admin-wrapper {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* ===== SIDEBAR ===== */
+        .sidebar {
+            width: 260px;
+            background: #0f172a;
+            color: #cbd5e1;
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            z-index: 1000;
+            transition: transform 0.3s ease;
+            overflow-y: auto;
+        }
+        .sidebar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .sidebar::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+        .sidebar::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 4px;
+        }
+
+        .sidebar-brand {
+            padding: 24px 20px 20px;
+            border-bottom: 1px solid #1e293b;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .sidebar-brand .logo-icon {
+            font-size: 28px;
+            color: #2ecc71;
+        }
+        .sidebar-brand .brand-text {
+            font-size: 20px;
+            font-weight: 800;
+            color: #fff;
+        }
+        .sidebar-brand .brand-text span {
+            color: #2ecc71;
+        }
+        .sidebar-brand .brand-sub {
+            font-size: 11px;
+            color: #64748b;
+            font-weight: 400;
+            display: block;
+            margin-top: -2px;
+        }
+
+        .sidebar-nav {
+            padding: 16px 0;
+            flex: 1;
+        }
+        .sidebar-nav .nav-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: #475569;
+            padding: 8px 24px 6px;
+            font-weight: 600;
+        }
+        .sidebar-nav .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 10px 24px;
+            color: #94a3b8;
+            transition: 0.2s;
+            cursor: pointer;
+            border-left: 3px solid transparent;
+            font-size: 14px;
+            font-weight: 500;
+            position: relative;
+        }
+        .sidebar-nav .nav-item:hover {
+            background: #1e293b;
+            color: #e2e8f0;
+        }
+        .sidebar-nav .nav-item.active {
+            background: #1e293b;
+            color: #fff;
+            border-left-color: #2ecc71;
+        }
+        .sidebar-nav .nav-item i {
+            width: 20px;
+            text-align: center;
+            font-size: 16px;
+        }
+        .sidebar-nav .nav-item .badge-nav {
+            margin-left: auto;
+            background: #2ecc71;
+            color: #0f172a;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 1px 10px;
+            border-radius: 20px;
+        }
+        .sidebar-nav .nav-item .badge-nav.danger {
+            background: #ef4444;
+            color: #fff;
+        }
+        .sidebar-nav .nav-item .badge-nav.warning {
+            background: #f59e0b;
+            color: #fff;
+        }
+
+        .sidebar-footer {
+            padding: 16px 24px;
+            border-top: 1px solid #1e293b;
+            font-size: 12px;
+            color: #64748b;
+        }
+        .sidebar-footer .user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+        .sidebar-footer .user-info .avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: #2ecc71;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            color: #0f172a;
+            font-size: 14px;
+        }
+        .sidebar-footer .user-info .name {
+            font-weight: 600;
+            color: #e2e8f0;
+            font-size: 14px;
+        }
+        .sidebar-footer .user-info .role {
+            font-size: 11px;
+            color: #64748b;
+        }
+        .sidebar-footer .logout-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #94a3b8;
+            font-size: 13px;
+            transition: 0.2s;
+            cursor: pointer;
+            padding: 4px 0;
+        }
+        .sidebar-footer .logout-btn:hover {
+            color: #ef4444;
+        }
+
+        /* ===== MAIN CONTENT ===== */
+        .main-content {
+            flex: 1;
+            margin-left: 260px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ===== TOP HEADER ===== */
+        .top-header {
+            background: #fff;
+            padding: 16px 32px;
+            border-bottom: 1px solid #e9edf2;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 500;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .top-header .page-title {
+            font-size: 20px;
+            font-weight: 700;
+        }
+        .top-header .page-title small {
+            font-weight: 400;
+            font-size: 14px;
+            color: #64748b;
+            margin-left: 8px;
+        }
+        .top-header .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .top-header .header-actions .icon-btn {
+            background: none;
+            border: none;
+            font-size: 20px;
+            color: #64748b;
+            cursor: pointer;
+            transition: 0.2s;
+            position: relative;
+            padding: 4px;
+        }
+        .top-header .header-actions .icon-btn:hover {
+            color: #0055a5;
+        }
+        .top-header .header-actions .icon-btn .badge {
+            position: absolute;
+            top: -4px;
+            right: -4px;
+            background: #ef4444;
+            color: #fff;
+            font-size: 10px;
+            font-weight: 700;
+            border-radius: 50%;
+            padding: 1px 6px;
+            min-width: 18px;
+            text-align: center;
+        }
+        .top-header .header-actions .admin-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: #0055a5;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        .mobile-toggle {
+            display: none;
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: #1e293b;
+            cursor: pointer;
+        }
+
+        /* ===== PAGE CONTENT ===== */
+        .page-content {
+            padding: 28px 32px;
+            flex: 1;
+        }
+
+        /* ===== PAGE SECTIONS ===== */
+        .page-section {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+        .page-section.active {
+            display: block;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ===== STATS CARDS ===== */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 28px;
+        }
+        .stat-card {
+            background: #fff;
+            border-radius: 16px;
+            padding: 20px 24px;
+            border: 1px solid #e9edf2;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+            transition: 0.2s;
+        }
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.06);
+        }
+        .stat-card .stat-label {
+            font-size: 13px;
+            color: #64748b;
+            font-weight: 500;
+        }
+        .stat-card .stat-number {
+            font-size: 28px;
+            font-weight: 800;
+            margin: 4px 0 2px;
+        }
+        .stat-card .stat-change {
+            font-size: 12px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .stat-card .stat-change.up { color: #2ecc71; }
+        .stat-card .stat-change.down { color: #ef4444; }
+        .stat-card .stat-icon {
+            float: right;
+            font-size: 32px;
+            color: #0055a5;
+            opacity: 0.2;
+        }
+
+        /* ===== TABLE CARD ===== */
+        .table-card {
+            background: #fff;
+            border-radius: 16px;
+            border: 1px solid #e9edf2;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .table-card .table-header {
+            padding: 16px 24px;
+            border-bottom: 1px solid #e9edf2;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .table-card .table-header h3 {
+            font-size: 16px;
+            font-weight: 700;
+        }
+        .table-card .table-header .table-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .table-card .table-header .table-actions input,
+        .table-card .table-header .table-actions select {
+            padding: 8px 14px;
+            border: 1.5px solid #e9edf2;
+            border-radius: 10px;
+            font-size: 13px;
+            font-family: inherit;
+            background: #fff;
+            outline: none;
+            transition: 0.2s;
+        }
+        .table-card .table-header .table-actions input:focus,
+        .table-card .table-header .table-actions select:focus {
+            border-color: #0055a5;
+            box-shadow: 0 0 0 3px rgba(0,85,165,0.08);
+        }
+        .table-card .table-header .table-actions .btn-primary {
+            padding: 8px 18px;
+            background: #0055a5;
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            transition: 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .table-card .table-header .table-actions .btn-primary:hover {
+            background: #003f7a;
+        }
+        .table-card .table-header .table-actions .btn-success {
+            padding: 8px 18px;
+            background: #2ecc71;
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            transition: 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .table-card .table-header .table-actions .btn-success:hover {
+            background: #27ae60;
+        }
+        .table-card .table-header .table-actions .btn-danger {
+            padding: 8px 18px;
+            background: #ef4444;
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            transition: 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .table-card .table-header .table-actions .btn-danger:hover {
+            background: #dc2626;
+        }
+
+        .table-responsive {
+            overflow-x: auto;
+            padding: 0 4px 4px;
+        }
+        .table-responsive table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+        .table-responsive table th {
+            text-align: left;
+            padding: 12px 16px;
+            background: #f8fafc;
+            font-weight: 600;
+            color: #475569;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            border-bottom: 1px solid #e9edf2;
+        }
+        .table-responsive table td {
+            padding: 12px 16px;
+            border-bottom: 1px solid #f1f5f9;
+            vertical-align: middle;
+        }
+        .table-responsive table tr:hover td {
+            background: #f8fafc;
+        }
+        .table-responsive table .status-badge {
+            display: inline-block;
+            padding: 2px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .status-badge.active { background: #dcfce7; color: #166534; }
+        .status-badge.pending { background: #fef9c3; color: #854d0e; }
+        .status-badge.inactive { background: #fee2e2; color: #991b1b; }
+        .status-badge.verified { background: #dbeafe; color: #1e40af; }
+        .status-badge.suspended { background: #fecaca; color: #991b1b; }
+        .status-badge.admin { background: #e0e7ff; color: #3730a3; }
+        .status-badge.seller { background: #d1fae5; color: #065f46; }
+        .status-badge.buyer { background: #f3e8ff; color: #6b21a8; }
+
+        .table-responsive table .actions-cell {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        .table-responsive table .actions-cell button {
+            padding: 4px 10px;
+            border: none;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .table-responsive table .actions-cell .btn-edit {
+            background: #e9edf2;
+            color: #1e293b;
+        }
+        .table-responsive table .actions-cell .btn-edit:hover {
+            background: #d1d9e6;
+        }
+        .table-responsive table .actions-cell .btn-delete {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+        .table-responsive table .actions-cell .btn-delete:hover {
+            background: #fecaca;
+        }
+        .table-responsive table .actions-cell .btn-view {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+        .table-responsive table .actions-cell .btn-view:hover {
+            background: #bfdbfe;
+        }
+        .table-responsive table .product-thumb {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            object-fit: cover;
+            background: #f1f5f9;
+        }
+
+        /* ===== CATEGORY GRID ===== */
+        .category-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 16px;
+        }
+        .category-item {
+            background: #fff;
+            border: 1px solid #e9edf2;
+            border-radius: 14px;
+            padding: 20px 16px;
+            text-align: center;
+            transition: 0.2s;
+            cursor: default;
+            position: relative;
+        }
+        .category-item:hover {
+            border-color: #0055a5;
+            transform: translateY(-3px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.06);
+        }
+        .category-item .cat-icon {
+            font-size: 32px;
+            color: #0055a5;
+            margin-bottom: 8px;
+            display: block;
+        }
+        .category-item .cat-name {
+            font-weight: 600;
+            font-size: 14px;
+        }
+        .category-item .cat-count {
+            font-size: 12px;
+            color: #64748b;
+        }
+        .category-item .cat-actions {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            display: flex;
+            gap: 4px;
+        }
+        .category-item .cat-actions button {
+            background: none;
+            border: none;
+            color: #94a3b8;
+            cursor: pointer;
+            font-size: 13px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            transition: 0.2s;
+        }
+        .category-item .cat-actions button:hover {
+            background: #f1f5f9;
+            color: #1e293b;
+        }
+        .category-item .cat-actions .delete-cat:hover {
+            color: #ef4444;
+            background: #fee2e2;
+        }
+
+        /* ===== REPORTS ===== */
+        .reports-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+        .chart-card {
+            background: #fff;
+            border-radius: 16px;
+            border: 1px solid #e9edf2;
+            padding: 20px 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .chart-card h4 {
+            font-size: 15px;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+        .chart-placeholder {
+            height: 200px;
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            gap: 8px;
+            padding-top: 10px;
+            border-bottom: 1px solid #e9edf2;
+        }
+        .chart-bar {
+            flex: 1;
+            background: #0055a5;
+            border-radius: 4px 4px 0 0;
+            min-height: 12px;
+            transition: 0.3s;
+            position: relative;
+            opacity: 0.7;
+        }
+        .chart-bar:hover { opacity: 1; }
+        .chart-bar .bar-label {
+            position: absolute;
+            bottom: -22px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 10px;
+            color: #94a3b8;
+            white-space: nowrap;
+        }
+        .chart-bar .bar-value {
+            position: absolute;
+            top: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 11px;
+            font-weight: 600;
+            color: #1e293b;
+            opacity: 0;
+            transition: 0.2s;
+        }
+        .chart-bar:hover .bar-value { opacity: 1; }
+
+        .report-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 12px;
+        }
+        .report-stat {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 14px 16px;
+            text-align: center;
+        }
+        .report-stat .num {
+            font-size: 22px;
+            font-weight: 800;
+        }
+        .report-stat .label {
+            font-size: 12px;
+            color: #64748b;
+        }
+
+        /* ===== SETTINGS ===== */
+        .settings-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+        .settings-card {
+            background: #fff;
+            border-radius: 16px;
+            border: 1px solid #e9edf2;
+            padding: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .settings-card h4 {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+        .settings-card .form-group {
+            margin-bottom: 16px;
+        }
+        .settings-card .form-group label {
+            display: block;
+            font-weight: 600;
+            font-size: 13px;
+            margin-bottom: 4px;
+        }
+        .settings-card .form-group input,
+        .settings-card .form-group select,
+        .settings-card .form-group textarea {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1.5px solid #e9edf2;
+            border-radius: 10px;
+            font-size: 14px;
+            font-family: inherit;
+            transition: 0.2s;
+            background: #fff;
+        }
+        .settings-card .form-group input:focus,
+        .settings-card .form-group select:focus,
+        .settings-card .form-group textarea:focus {
+            outline: none;
+            border-color: #0055a5;
+            box-shadow: 0 0 0 3px rgba(0,85,165,0.08);
+        }
+        .settings-card .form-group .hint {
+            font-size: 12px;
+            color: #94a3b8;
+            margin-top: 4px;
+        }
+        .settings-card .btn-save {
+            padding: 10px 28px;
+            background: #2ecc71;
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .settings-card .btn-save:hover {
+            background: #27ae60;
+        }
+        .settings-card .toggle-group {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .settings-card .toggle-group label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 500;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        .settings-card .toggle-group input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: #0055a5;
+            cursor: pointer;
+        }
+
+        /* ===== MODALS ===== */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(3px);
+            justify-content: center;
+            align-items: center;
+            z-index: 3000;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .modal-overlay.active {
+            display: flex;
+            opacity: 1;
+        }
+        .admin-modal {
+            background: #fff;
+            border-radius: 24px;
+            width: 94%;
+            max-width: 520px;
+            padding: 32px;
+            position: relative;
+            animation: modalFade 0.3s ease;
+            max-height: 92vh;
+            overflow-y: auto;
+        }
+        @keyframes modalFade {
+            from { opacity: 0; transform: scale(0.95) translateY(10px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        .admin-modal .close-modal {
+            position: absolute;
+            top: 16px;
+            right: 20px;
+            font-size: 28px;
+            cursor: pointer;
+            color: #94a3b8;
+            background: none;
+            border: none;
+        }
+        .admin-modal .close-modal:hover {
+            color: #1e293b;
+        }
+        .admin-modal h3 {
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .admin-modal .form-group {
+            margin-bottom: 16px;
+        }
+        .admin-modal .form-group label {
+            display: block;
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 4px;
+        }
+        .admin-modal .form-group input,
+        .admin-modal .form-group select,
+        .admin-modal .form-group textarea {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1.5px solid #e9edf2;
+            border-radius: 12px;
+            font-size: 14px;
+            font-family: inherit;
+            transition: 0.2s;
+            background: #fff;
+        }
+        .admin-modal .form-group input:focus,
+        .admin-modal .form-group select:focus,
+        .admin-modal .form-group textarea:focus {
+            outline: none;
+            border-color: #0055a5;
+            box-shadow: 0 0 0 3px rgba(0,85,165,0.08);
+        }
+        .admin-modal .form-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+        }
+        .admin-modal .form-actions button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 40px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: 0.2s;
+            font-size: 15px;
+        }
+        .admin-modal .form-actions .btn-cancel {
+            background: #e9edf2;
+            color: #1e293b;
+        }
+        .admin-modal .form-actions .btn-cancel:hover {
+            background: #d1d9e6;
+        }
+        .admin-modal .form-actions .btn-submit {
+            background: #2ecc71;
+            color: #fff;
+        }
+        .admin-modal .form-actions .btn-submit:hover {
+            background: #27ae60;
+        }
+        .admin-modal .form-actions .btn-submit.danger {
+            background: #ef4444;
+        }
+        .admin-modal .form-actions .btn-submit.danger:hover {
+            background: #dc2626;
+        }
+
+        /* ===== TOAST ===== */
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: #0f172a;
+            color: #fff;
+            padding: 14px 24px;
+            border-radius: 12px;
+            z-index: 9999;
+            font-weight: 500;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+            animation: slideUp 0.3s ease;
+            max-width: 90%;
+        }
+        .toast.success { background: #2ecc71; }
+        .toast.error { background: #ef4444; }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ===== RESPONSIVE ===== */
+        @media(max-width:992px) {
+            .sidebar {
+                transform: translateX(-100%);
+                width: 280px;
+            }
+            .sidebar.open { transform: translateX(0); }
+            .main-content { margin-left: 0; }
+            .mobile-toggle { display: block; }
+            .reports-grid { grid-template-columns: 1fr; }
+            .settings-grid { grid-template-columns: 1fr; }
+        }
+        @media(max-width:768px) {
+            .top-header { padding: 12px 16px; }
+            .top-header .page-title { font-size: 18px; }
+            .top-header .page-title small { font-size: 12px; display: block; margin-left: 0; }
+            .page-content { padding: 16px; }
+            .stats-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
+            .stat-card { padding: 14px 16px; }
+            .stat-card .stat-number { font-size: 22px; }
+            .table-card .table-header { flex-direction: column; align-items: stretch; }
+            .table-card .table-header .table-actions { flex-direction: column; }
+            .table-card .table-header .table-actions input,
+            .table-card .table-header .table-actions select,
+            .table-card .table-header .table-actions button { width: 100%; }
+            .category-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+            .report-stats { grid-template-columns: 1fr 1fr; }
+            .settings-card { padding: 16px; }
+        }
+        @media(max-width:480px) {
+            .stats-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+            .stat-card .stat-number { font-size: 18px; }
+            .stat-card .stat-label { font-size: 11px; }
+            .stat-card .stat-icon { font-size: 24px; }
+            .table-responsive table { font-size: 12px; }
+            .table-responsive table th,
+            .table-responsive table td { padding: 8px 10px; }
+            .category-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+            .category-item { padding: 14px 10px; }
+            .category-item .cat-icon { font-size: 24px; }
+            .sidebar { width: 260px; }
+            .admin-modal { padding: 20px; width: 98%; }
+        }
+
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.4);
+            z-index: 999;
+        }
+        .sidebar-overlay.active { display: block; }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
     </style>
 </head>
 <body>
 
-    <!-- ===== YOUR EXISTING HTML – unchanged ===== -->
-    <!-- (all HTML from top to the modals remains exactly as you have) -->
+    <div class="admin-wrapper">
+
+        <!-- ===== SIDEBAR OVERLAY ===== -->
+        <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+        <!-- ===== SIDEBAR ===== -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-brand">
+                <i class="fas fa-tag logo-icon"></i>
+                <div>
+                    <div class="brand-text">KN <span>Ads</span></div>
+                    <span class="brand-sub">Admin Panel</span>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <div class="nav-label">Main</div>
+                <a href="#" class="nav-item active" data-page="dashboard" onclick="showPage('dashboard')">
+                    <i class="fas fa-chart-pie"></i> Dashboard
+                </a>
+                <a href="#" class="nav-item" data-page="users" onclick="showPage('users')">
+                    <i class="fas fa-users"></i> Users
+                    <span class="badge-nav" id="userBadge">0</span>
+                </a>
+                <a href="#" class="nav-item" data-page="products" onclick="showPage('products')">
+                    <i class="fas fa-box"></i> Products
+                    <span class="badge-nav" id="productBadge">0</span>
+                </a>
+                <a href="#" class="nav-item" data-page="sellers" onclick="showPage('sellers')">
+                    <i class="fas fa-store"></i> Sellers
+                    <span class="badge-nav" id="sellerBadge">0</span>
+                </a>
+
+                <div class="nav-label" style="margin-top:12px;">Management</div>
+                <a href="#" class="nav-item" data-page="categories" onclick="showPage('categories')">
+                    <i class="fas fa-tags"></i> Categories
+                    <span class="badge-nav" id="categoryBadge">0</span>
+                </a>
+                <a href="#" class="nav-item" data-page="reports" onclick="showPage('reports')">
+                    <i class="fas fa-chart-line"></i> Reports
+                </a>
+                <a href="#" class="nav-item" data-page="settings" onclick="showPage('settings')">
+                    <i class="fas fa-gear"></i> Settings
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <div class="avatar" id="adminAvatar">KN</div>
+                    <div>
+                        <div class="name" id="adminName">KN Admin</div>
+                        <div class="role" id="adminRole">Super Admin</div>
+                    </div>
+                </div>
+                <a href="index.html" class="logout-btn" onclick="logout()">
+                    <i class="fas fa-arrow-right-from-bracket"></i> Logout
+                </a>
+            </div>
+        </aside>
+
+        <!-- ===== MAIN CONTENT ===== -->
+        <main class="main-content">
+
+            <!-- ===== TOP HEADER ===== -->
+            <header class="top-header">
+                <div style="display:flex; align-items:center; gap:12px;">
+                    <button class="mobile-toggle" onclick="toggleSidebar()">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <div class="page-title" id="pageTitle">Dashboard <small>Overview</small></div>
+                </div>
+                <div class="header-actions">
+                    <button class="icon-btn" onclick="toggleNotificationPanel()">
+                        <i class="fas fa-bell"></i>
+                        <span class="badge" id="notifBadgeTop">0</span>
+                    </button>
+                    <button class="icon-btn" onclick="showToast('📬 Messages coming soon!')">
+                        <i class="fas fa-envelope"></i>
+                        <span class="badge" id="msgBadgeTop">0</span>
+                    </button>
+                    <div class="admin-avatar" id="topAdminAvatar" onclick="showToast('👤 Admin profile')">KN</div>
+                </div>
+            </header>
+
+            <!-- ===== PAGE CONTENT ===== -->
+            <div class="page-content">
+
+                <!-- ============================================================ -->
+                <!-- DASHBOARD -->
+                <!-- ============================================================ -->
+                <section class="page-section active" id="page-dashboard">
+                    <div class="stats-grid" id="statsGrid">
+                        <div class="stat-card">
+                            <div class="stat-icon"><i class="fas fa-users"></i></div>
+                            <div class="stat-label">Total Users</div>
+                            <div class="stat-number" id="statUsers">0</div>
+                            <span class="stat-change up"><i class="fas fa-arrow-up"></i> 0%</span>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon"><i class="fas fa-box"></i></div>
+                            <div class="stat-label">Total Products</div>
+                            <div class="stat-number" id="statProducts">0</div>
+                            <span class="stat-change up"><i class="fas fa-arrow-up"></i> 0%</span>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon"><i class="fas fa-store"></i></div>
+                            <div class="stat-label">Active Sellers</div>
+                            <div class="stat-number" id="statSellers">0</div>
+                            <span class="stat-change up"><i class="fas fa-arrow-up"></i> 0%</span>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon"><i class="fas fa-eye"></i></div>
+                            <div class="stat-label">Total Views</div>
+                            <div class="stat-number" id="statViews">0</div>
+                            <span class="stat-change up"><i class="fas fa-arrow-up"></i> 0%</span>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon"><i class="fas fa-credit-card"></i></div>
+                            <div class="stat-label">Revenue (GH₵)</div>
+                            <div class="stat-number" id="statRevenue">₵0</div>
+                            <span class="stat-change up"><i class="fas fa-arrow-up"></i> 0%</span>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon"><i class="fas fa-clock"></i></div>
+                            <div class="stat-label">Pending Approval</div>
+                            <div class="stat-number" id="statPending">0</div>
+                            <span class="stat-change down"><i class="fas fa-arrow-down"></i> 0%</span>
+                        </div>
+                    </div>
+
+                    <div class="table-card">
+                        <div class="table-header">
+                            <h3>Recent Products</h3>
+                            <div class="table-actions">
+                                <select id="dashboardCategoryFilter" onchange="filterDashboardProducts()">
+                                    <option value="all">All Categories</option>
+                                    <option value="Cars">Cars</option>
+                                    <option value="Phones">Phones</option>
+                                    <option value="Real Estate">Real Estate</option>
+                                    <option value="Jobs">Jobs</option>
+                                    <option value="Electronics">Electronics</option>
+                                    <option value="Fashion">Fashion</option>
+                                    <option value="Home">Home</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                                <button class="btn-primary" onclick="showPage('products')"><i class="fas fa-eye"></i> View All</button>
+                            </div>
+                        </div>
+                        <div class="table-responsive">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Product</th>
+                                        <th>Seller</th>
+                                        <th>Price</th>
+                                        <th>Category</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="dashboardProductsTable">
+                                    <!-- Rendered by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ============================================================ -->
+                <!-- USERS -->
+                <!-- ============================================================ -->
+                <section class="page-section" id="page-users">
+                    <div class="table-card">
+                        <div class="table-header">
+                            <h3>All Users</h3>
+                            <div class="table-actions">
+                                <input type="text" id="userSearchInput" placeholder="Search users..." oninput="renderUsers()" />
+                                <select id="userRoleFilter" onchange="renderUsers()">
+                                    <option value="all">All Roles</option>
+                                    <option value="admin">Admin</option>
+                                    <option value="seller">Seller</option>
+                                    <option value="buyer">Buyer</option>
+                                </select>
+                                <button class="btn-success" onclick="openAddUserModal()"><i class="fas fa-plus"></i> Add User</button>
+                            </div>
+                        </div>
+                        <div class="table-responsive">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Email</th>
+                                        <th>Phone</th>
+                                        <th>Role</th>
+                                        <th>Status</th>
+                                        <th>Joined</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="usersTableBody">
+                                    <!-- Rendered by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ============================================================ -->
+                <!-- PRODUCTS -->
+                <!-- ============================================================ -->
+                <section class="page-section" id="page-products">
+                    <div class="table-card">
+                        <div class="table-header">
+                            <h3>All Products</h3>
+                            <div class="table-actions">
+                                <input type="text" id="productSearchInput" placeholder="Search products..." oninput="renderProducts()" />
+                                <select id="productCategoryFilter" onchange="renderProducts()">
+                                    <option value="all">All Categories</option>
+                                    <option value="Cars">Cars</option>
+                                    <option value="Phones">Phones</option>
+                                    <option value="Real Estate">Real Estate</option>
+                                    <option value="Jobs">Jobs</option>
+                                    <option value="Electronics">Electronics</option>
+                                    <option value="Fashion">Fashion</option>
+                                    <option value="Home">Home</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                                <button class="btn-success" onclick="openAddProductModal()"><i class="fas fa-plus"></i> Add Product</button>
+                            </div>
+                        </div>
+                        <div class="table-responsive">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Product</th>
+                                        <th>Seller</th>
+                                        <th>Price</th>
+                                        <th>Category</th>
+                                        <th>Status</th>
+                                        <th>Views</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="productsTableBody">
+                                    <!-- Rendered by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ============================================================ -->
+                <!-- SELLERS -->
+                <!-- ============================================================ -->
+                <section class="page-section" id="page-sellers">
+                    <div class="table-card">
+                        <div class="table-header">
+                            <h3>All Sellers</h3>
+                            <div class="table-actions">
+                                <input type="text" id="sellerSearchInput" placeholder="Search sellers..." oninput="renderSellers()" />
+                                <select id="sellerStatusFilter" onchange="renderSellers()">
+                                    <option value="all">All Status</option>
+                                    <option value="active">Active</option>
+                                    <option value="pending">Pending</option>
+                                    <option value="suspended">Suspended</option>
+                                </select>
+                                <button class="btn-success" onclick="openAddSellerModal()"><i class="fas fa-plus"></i> Add Seller</button>
+                            </div>
+                        </div>
+                        <div class="table-responsive">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Seller</th>
+                                        <th>Email</th>
+                                        <th>Phone</th>
+                                        <th>Products</th>
+                                        <th>Status</th>
+                                        <th>Joined</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="sellersTableBody">
+                                    <!-- Rendered by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ============================================================ -->
+                <!-- CATEGORIES -->
+                <!-- ============================================================ -->
+                <section class="page-section" id="page-categories">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
+                        <h3 style="font-size:20px; font-weight:700;">Categories</h3>
+                        <button class="btn-success" onclick="openAddCategoryModal()" style="padding:10px 24px; background:#2ecc71; color:#fff; border:none; border-radius:12px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:8px;">
+                            <i class="fas fa-plus"></i> Add Category
+                        </button>
+                    </div>
+                    <div class="category-grid" id="categoryGrid">
+                        <!-- Rendered by JS -->
+                    </div>
+                </section>
+
+                <!-- ============================================================ -->
+                <!-- REPORTS -->
+                <!-- ============================================================ -->
+                <section class="page-section" id="page-reports">
+                    <div class="reports-grid">
+                        <div class="chart-card">
+                            <h4>📊 Monthly Revenue</h4>
+                            <div class="chart-placeholder">
+                                <div class="chart-bar" style="height:40px; background:#2ecc71;"><span class="bar-value">₵8.2k</span><span class="bar-label">Jan</span></div>
+                                <div class="chart-bar" style="height:65px; background:#2ecc71;"><span class="bar-value">₵12.4k</span><span class="bar-label">Feb</span></div>
+                                <div class="chart-bar" style="height:55px; background:#2ecc71;"><span class="bar-value">₵10.1k</span><span class="bar-label">Mar</span></div>
+                                <div class="chart-bar" style="height:85px; background:#0055a5;"><span class="bar-value">₵18.7k</span><span class="bar-label">Apr</span></div>
+                                <div class="chart-bar" style="height:95px; background:#0055a5;"><span class="bar-value">₵22.3k</span><span class="bar-label">May</span></div>
+                                <div class="chart-bar" style="height:70px; background:#0055a5;"><span class="bar-value">₵14.9k</span><span class="bar-label">Jun</span></div>
+                                <div class="chart-bar" style="height:105px; background:#2ecc71;"><span class="bar-value">₵28.1k</span><span class="bar-label">Jul</span></div>
+                            </div>
+                            <div style="margin-top:16px; display:flex; gap:20px; font-size:13px; color:#64748b; justify-content:center;">
+                                <span><span style="display:inline-block; width:12px; height:12px; background:#2ecc71; border-radius:4px;"></span> Revenue</span>
+                                <span><span style="display:inline-block; width:12px; height:12px; background:#0055a5; border-radius:4px;"></span> Target</span>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="chart-card" style="margin-bottom:16px;">
+                                <h4>📈 Top Categories</h4>
+                                <div id="topCategoriesContainer" style="display:flex; flex-direction:column; gap:6px; margin-top:8px;"></div>
+                            </div>
+                            <div class="chart-card">
+                                <h4>📋 Summary</h4>
+                                <div class="report-stats" id="reportSummary">
+                                    <div class="report-stat"><div class="num" style="color:#0055a5;" id="reportProducts">0</div><div class="label">Products</div></div>
+                                    <div class="report-stat"><div class="num" style="color:#2ecc71;" id="reportUsers">0</div><div class="label">Users</div></div>
+                                    <div class="report-stat"><div class="num" style="color:#f59e0b;" id="reportRevenue">₵0</div><div class="label">Revenue</div></div>
+                                    <div class="report-stat"><div class="num" style="color:#ef4444;" id="reportPending">0</div><div class="label">Pending</div></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ============================================================ -->
+                <!-- SETTINGS -->
+                <!-- ============================================================ -->
+                <section class="page-section" id="page-settings">
+                    <div class="settings-grid">
+                        <div class="settings-card">
+                            <h4>⚙️ General Settings</h4>
+                            <div class="form-group">
+                                <label>Site Name</label>
+                                <input type="text" id="settingsSiteName" value="KN Classifieds" />
+                            </div>
+                            <div class="form-group">
+                                <label>Site Description</label>
+                                <input type="text" id="settingsSiteDesc" value="Buy & Sell in Ghana" />
+                            </div>
+                            <div class="form-group">
+                                <label>Contact Email</label>
+                                <input type="email" id="settingsContactEmail" value="admin@knclassifieds.com" />
+                            </div>
+                            <div class="form-group">
+                                <label>Phone Number</label>
+                                <input type="tel" id="settingsContactPhone" value="0542928081" />
+                            </div>
+                            <button class="btn-save" onclick="saveSettings()">Save Changes</button>
+                        </div>
+
+                        <div class="settings-card">
+                            <h4>🔒 Security & Preferences</h4>
+                            <div class="form-group">
+                                <label>Maintenance Mode</label>
+                                <div class="toggle-group">
+                                    <label><input type="checkbox" id="settingsMaintenance" /> Enable maintenance mode</label>
+                                </div>
+                                <div class="hint">When enabled, only admins can access the site.</div>
+                            </div>
+                            <div class="form-group">
+                                <label>User Registration</label>
+                                <div class="toggle-group">
+                                    <label><input type="checkbox" id="settingsRegistration" checked /> Allow new registrations</label>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Product Approval</label>
+                                <div class="toggle-group">
+                                    <label><input type="checkbox" id="settingsApproval" /> Require admin approval for new products</label>
+                                </div>
+                                <div class="hint">When enabled, products must be reviewed before going live.</div>
+                            </div>
+                            <button class="btn-save" onclick="saveSettings()">Save Changes</button>
+                        </div>
+                    </div>
+                </section>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- ===== MODALS ===== -->
+    <div class="modal-overlay" id="userModal">
+        <div class="admin-modal">
+            <button class="close-modal" onclick="closeModal('userModal')">&times;</button>
+            <h3 id="userModalTitle">Add User</h3>
+            <form id="userForm" onsubmit="saveUser(event)">
+                <input type="hidden" id="editUserId" />
+                <div class="form-group">
+                    <label>Full Name</label>
+                    <input type="text" id="userFormName" placeholder="Full name" required />
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="userFormEmail" placeholder="email@example.com" required />
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="userFormPassword" placeholder="Leave blank to keep current" />
+                </div>
+                <div class="form-group">
+                    <label>Phone</label>
+                    <input type="tel" id="userFormPhone" placeholder="Phone number" />
+                </div>
+                <div class="form-group">
+                    <label>Role</label>
+                    <select id="userFormRole">
+                        <option value="buyer">Buyer</option>
+                        <option value="seller">Seller</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-cancel" onclick="closeModal('userModal')">Cancel</button>
+                    <button type="submit" class="btn-submit">Save User</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="productModal">
+        <div class="admin-modal">
+            <button class="close-modal" onclick="closeModal('productModal')">&times;</button>
+            <h3 id="productModalTitle">Add Product</h3>
+            <form id="productForm" onsubmit="saveProduct(event)">
+                <input type="hidden" id="editProductId" />
+                <div class="form-group">
+                    <label>Title</label>
+                    <input type="text" id="productFormTitle" placeholder="Product title" required />
+                </div>
+                <div class="form-group">
+                    <label>Price (GH₵)</label>
+                    <input type="number" id="productFormPrice" placeholder="0.00" step="0.01" required />
+                </div>
+                <div class="form-group">
+                    <label>Category</label>
+                    <select id="productFormCategory">
+                        <option value="Cars">Cars</option>
+                        <option value="Phones">Phones</option>
+                        <option value="Real Estate">Real Estate</option>
+                        <option value="Jobs">Jobs</option>
+                        <option value="Electronics">Electronics</option>
+                        <option value="Fashion">Fashion</option>
+                        <option value="Home">Home</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Location</label>
+                    <input type="text" id="productFormLocation" placeholder="e.g. Accra, Ghana" />
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea id="productFormDescription" rows="3" placeholder="Product description..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Seller Name</label>
+                    <input type="text" id="productFormSeller" placeholder="Seller name" />
+                </div>
+                <div class="form-group">
+                    <label>Status</label>
+                    <select id="productFormStatus">
+                        <option value="active">Active</option>
+                        <option value="pending">Pending</option>
+                        <option value="inactive">Inactive</option>
+                    </select>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-cancel" onclick="closeModal('productModal')">Cancel</button>
+                    <button type="submit" class="btn-submit">Save Product</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="categoryModal">
+        <div class="admin-modal">
+            <button class="close-modal" onclick="closeModal('categoryModal')">&times;</button>
+            <h3 id="categoryModalTitle">Add Category</h3>
+            <form id="categoryForm" onsubmit="saveCategory(event)">
+                <input type="hidden" id="editCategoryName" />
+                <div class="form-group">
+                    <label>Category Name</label>
+                    <input type="text" id="categoryFormName" placeholder="e.g. Electronics" required />
+                </div>
+                <div class="form-group">
+                    <label>Icon (Font Awesome class)</label>
+                    <input type="text" id="categoryFormIcon" placeholder="e.g. fa-laptop" value="fa-tag" />
+                    <div class="hint">Use Font Awesome icon classes like <code>fa-car</code>, <code>fa-mobile-alt</code></div>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-cancel" onclick="closeModal('categoryModal')">Cancel</button>
+                    <button type="submit" class="btn-submit">Save Category</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="notificationPanel">
+        <div class="admin-modal" style="max-width:500px;">
+            <button class="close-modal" onclick="closeModal('notificationPanel')">&times;</button>
+            <h3>🔔 Notifications</h3>
+            <div id="notificationList" style="max-height:400px; overflow-y:auto; margin-top:12px;"></div>
+        </div>
+    </div>
 
     <!-- ================================================================ -->
-    <!-- ===== NEW JAVASCRIPT – API CONNECTED ===== -->
+    <!-- ===== JAVASCRIPT ===== -->
     <!-- ================================================================ -->
     <script>
         // ================================================================
-        //  API CONFIG – change to your backend URL
+        //  API CONFIG
         // ================================================================
-        const API_URL = 'http://localhost:5000'; // e.g. 'https://your-backend.onrender.com'
+        const API_URL = import.meta.env.VITE_API_URL;
 
         // ================================================================
-        //  STATE
+        //  DATA STORE
         // ================================================================
-        let token = localStorage.getItem('token');
-        let currentUser = null;
-
-        // Users – fallback to localStorage for now
         let users = JSON.parse(localStorage.getItem('kn_users') || '[]');
-        // Ensure admin exists locally (if not, seed)
-        if (!users.find(u => u.email === 'admin@kn.com')) {
-            users.push({
-                id: 'admin',
-                name: 'KN Admin',
-                email: 'admin@kn.com',
-                password: '123456',
-                phone: '0542928081',
-                photoURL: '',
-                role: 'admin',
-                createdAt: new Date().toISOString()
-            });
-            localStorage.setItem('kn_users', JSON.stringify(users));
-        }
-
-        let products = []; // will be fetched from API
-        let notifications = []; // will be fetched from API
-
-        // Categories – still stored locally for simplicity
+        let products = JSON.parse(localStorage.getItem('kn_products') || '[]');
+        let notifications = JSON.parse(localStorage.getItem('kn_notifications') || '[]');
         let categories = JSON.parse(localStorage.getItem('kn_categories') || '[]');
+        let currentAdmin = JSON.parse(localStorage.getItem('currentUser') || 'null');
+
         const defaultCategories = [
             { name: 'Cars', icon: 'fa-car' },
             { name: 'Phones', icon: 'fa-mobile-alt' },
@@ -73,9 +1512,41 @@
             localStorage.setItem('kn_categories', JSON.stringify(categories));
         }
 
+        // Ensure admin exists
+        if (!users.find(u => u.email === 'admin@kn.com')) {
+            users.push({
+                id: 'admin',
+                name: 'KN Admin',
+                email: 'admin@kn.com',
+                password: '123456',
+                phone: '0542928081',
+                photoURL: '',
+                role: 'admin',
+                createdAt: new Date().toISOString()
+            });
+            localStorage.setItem('kn_users', JSON.stringify(users));
+        }
+
+        // Seed demo products if empty
+        if (products.length === 0) {
+            products = [
+                { id: '1', title: 'iPhone 17 Pro Max 1TB', price: 23999, category: 'Phones', location: 'East Legon, Accra', sellerId: 'admin', sellerName: 'KN Admin', sellerPhone: '0542928081', image: 'https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=400', description: 'Brand new, sealed, warranty included.', views: 1200, status: 'active', createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString() },
+                { id: '2', title: 'Toyota Corolla 2020', price: 75000, category: 'Cars', location: 'Accra', sellerId: 'admin', sellerName: 'KN Admin', sellerPhone: '0244123456', image: 'https://images.unsplash.com/photo-1626029520279-6a333a3e2fd2?w=400', description: 'Clean title, low mileage, AC working.', views: 856, status: 'active', createdAt: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString() },
+                { id: '3', title: '3-Bedroom House for Rent', price: 4500, category: 'Real Estate', location: 'Tema', sellerId: 'admin', sellerName: 'KN Admin', sellerPhone: '0209876543', image: 'https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=400', description: 'Fully furnished, secure area.', views: 234, status: 'pending', createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString() },
+                { id: '4', title: 'Marketing Manager Needed', price: 2000, category: 'Jobs', location: 'Accra', sellerId: 'admin', sellerName: 'KN Admin', sellerPhone: '0556789012', image: 'https://images.unsplash.com/photo-1521737852567-6949f3f9f2b5?w=400', description: 'Full-time, 3+ years experience.', views: 412, status: 'active', createdAt: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString() },
+                { id: '5', title: 'MacBook Pro M3', price: 24000, category: 'Electronics', location: 'Takoradi', sellerId: 'admin', sellerName: 'KN Admin', sellerPhone: '0245123456', image: 'https://images.unsplash.com/photo-1517336714739-489689fd1ca8?w=400', description: '16GB RAM, 512GB SSD, like new.', views: 189, status: 'inactive', createdAt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString() }
+            ];
+            localStorage.setItem('kn_products', JSON.stringify(products));
+        }
+
         // ================================================================
         //  HELPERS
         // ================================================================
+        function saveUsers() { localStorage.setItem('kn_users', JSON.stringify(users)); }
+        function saveProducts() { localStorage.setItem('kn_products', JSON.stringify(products)); }
+        function saveCategories() { localStorage.setItem('kn_categories', JSON.stringify(categories)); }
+        function saveNotifications() { localStorage.setItem('kn_notifications', JSON.stringify(notifications)); }
+
         function escapeHtml(s) { if (!s) return ''; return s.replace(/[&<>]/g, m => m === '&' ? '&amp;' : m === '<' ? '&lt;' : '&gt;'); }
         function formatDate(d) { if (!d) return 'N/A'; return new Date(d).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }); }
         function formatCurrency(amount) { return '₵' + Number(amount).toLocaleString(); }
@@ -88,6 +1559,8 @@
             const map = { 'admin': 'admin', 'seller': 'seller', 'buyer': 'buyer' };
             return `<span class="status-badge ${map[role] || 'buyer'}">${role.charAt(0).toUpperCase() + role.slice(1)}</span>`;
         }
+        function getCategoryCount(name) { return products.filter(p => p.category === name).length; }
+        function getSellerProductCount(id) { return products.filter(p => p.sellerId === id).length; }
 
         function showToast(msg, type = '') {
             document.querySelectorAll('.toast').forEach(el => el.remove());
@@ -101,153 +1574,77 @@
         function openModal(id) { document.getElementById(id).classList.add('active'); }
 
         // ================================================================
-        //  AUTH & PROFILE
+        //  PAGE NAVIGATION
+        // ================================================================
+        function showPage(pageId) {
+            document.querySelectorAll('.page-section').forEach(s => s.classList.remove('active'));
+            const target = document.getElementById('page-' + pageId);
+            if (target) target.classList.add('active');
+
+            document.querySelectorAll('.sidebar-nav .nav-item').forEach(item => {
+                item.classList.remove('active');
+                if (item.dataset.page === pageId) item.classList.add('active');
+            });
+
+            const titles = {
+                dashboard: 'Dashboard <small>Overview</small>',
+                users: 'Users <small>Manage all users</small>',
+                products: 'Products <small>Manage all products</small>',
+                sellers: 'Sellers <small>Manage all sellers</small>',
+                categories: 'Categories <small>Manage categories</small>',
+                reports: 'Reports <small>Analytics & insights</small>',
+                settings: 'Settings <small>System configuration</small>'
+            };
+            document.getElementById('pageTitle').innerHTML = titles[pageId] || 'Dashboard';
+
+            if (window.innerWidth <= 992) closeSidebar();
+
+            if (pageId === 'dashboard') renderDashboard();
+            if (pageId === 'users') renderUsers();
+            if (pageId === 'products') renderProducts();
+            if (pageId === 'sellers') renderSellers();
+            if (pageId === 'categories') renderCategories();
+            if (pageId === 'reports') renderReports();
+        }
+
+        // ================================================================
+        //  SIDEBAR
+        // ================================================================
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('open');
+            document.getElementById('sidebarOverlay').classList.toggle('active');
+        }
+        function closeSidebar() {
+            document.getElementById('sidebar').classList.remove('open');
+            document.getElementById('sidebarOverlay').classList.remove('active');
+        }
+
+        // ================================================================
+        //  ADMIN PROFILE
         // ================================================================
         function updateAdminProfile() {
-            if (currentUser) {
-                const initial = (currentUser.name || 'KN Admin').charAt(0).toUpperCase();
+            const admin = users.find(u => u.role === 'admin') || users[0];
+            if (admin) {
+                const initial = (admin.name || 'KN Admin').charAt(0).toUpperCase();
                 document.getElementById('adminAvatar').textContent = initial;
-                document.getElementById('adminName').textContent = currentUser.name || 'KN Admin';
+                document.getElementById('adminName').textContent = admin.name || 'KN Admin';
                 document.getElementById('adminRole').textContent = 'Super Admin';
                 document.getElementById('topAdminAvatar').textContent = initial;
             }
         }
 
+        // ================================================================
+        //  LOGOUT
+        // ================================================================
         function logout() {
-            fetch(`${API_URL}/auth/logout`, { method: 'POST' }).catch(() => {});
             localStorage.removeItem('token');
             localStorage.removeItem('currentUser');
             window.location.href = 'index.html';
         }
 
         // ================================================================
-        //  FETCH DATA FROM API
+        //  DASHBOARD
         // ================================================================
-        async function fetchProducts() {
-            try {
-                const res = await fetch(`${API_URL}/api/products`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (!res.ok) throw new Error('Failed to fetch products');
-                products = await res.json();
-                return products;
-            } catch (err) {
-                console.error('Error fetching products:', err);
-                showToast('Could not load products', 'error');
-                products = [];
-                return [];
-            }
-        }
-
-        async function fetchNotifications() {
-            try {
-                const res = await fetch(`${API_URL}/api/notifications/admin`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (!res.ok) throw new Error('Failed to fetch notifications');
-                notifications = await res.json();
-                return notifications;
-            } catch (err) {
-                console.error('Error fetching notifications:', err);
-                notifications = [];
-                return [];
-            }
-        }
-
-        // ================================================================
-        //  PRODUCT CRUD (API)
-        // ================================================================
-        async function addProduct(productData) {
-            try {
-                const res = await fetch(`${API_URL}/api/products`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
-                    body: JSON.stringify(productData)
-                });
-                if (!res.ok) throw new Error('Failed to add product');
-                const newProduct = await res.json();
-                return newProduct;
-            } catch (err) {
-                console.error('Error adding product:', err);
-                showToast('Failed to add product', 'error');
-                return null;
-            }
-        }
-
-        async function updateProduct(productId, productData) {
-            try {
-                const res = await fetch(`${API_URL}/api/products/${productId}`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
-                    body: JSON.stringify(productData)
-                });
-                if (!res.ok) throw new Error('Failed to update product');
-                const updated = await res.json();
-                return updated;
-            } catch (err) {
-                console.error('Error updating product:', err);
-                showToast('Failed to update product', 'error');
-                return null;
-            }
-        }
-
-        async function deleteProduct(productId) {
-            try {
-                const res = await fetch(`${API_URL}/api/products/${productId}`, {
-                    method: 'DELETE',
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (!res.ok) throw new Error('Failed to delete product');
-                return true;
-            } catch (err) {
-                console.error('Error deleting product:', err);
-                showToast('Failed to delete product', 'error');
-                return false;
-            }
-        }
-
-        // ================================================================
-        //  NOTIFICATION CRUD (API)
-        // ================================================================
-        async function markNotifReadApi(notifId) {
-            try {
-                const res = await fetch(`${API_URL}/api/notifications/${notifId}/read`, {
-                    method: 'PUT',
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (!res.ok) throw new Error('Failed to mark read');
-                return true;
-            } catch (err) {
-                console.error('Error marking notification read:', err);
-                return false;
-            }
-        }
-
-        async function deleteNotifApi(notifId) {
-            try {
-                const res = await fetch(`${API_URL}/api/notifications/${notifId}`, {
-                    method: 'DELETE',
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (!res.ok) throw new Error('Failed to delete notification');
-                return true;
-            } catch (err) {
-                console.error('Error deleting notification:', err);
-                return false;
-            }
-        }
-
-        // ================================================================
-        //  RENDER FUNCTIONS
-        // ================================================================
-
-        // ----- DASHBOARD -----
         function renderDashboard() {
             const totalUsers = users.length;
             const totalProducts = products.length;
@@ -294,14 +1691,16 @@
                     <td>${escapeHtml(p.category || 'Other')}</td>
                     <td>${getStatusBadge(p.status || 'active')}</td>
                     <td><div class="actions-cell">
-                        <button class="btn-view" onclick="viewProduct('${p._id}')">View</button>
-                        <button class="btn-edit" onclick="editProduct('${p._id}')">Edit</button>
+                        <button class="btn-view" onclick="viewProduct('${p.id}')">View</button>
+                        <button class="btn-edit" onclick="editProduct('${p.id}')">Edit</button>
                     </div></td>
                 </tr>
             `).join('');
         }
 
-        // ----- USERS (localStorage) -----
+        // ================================================================
+        //  USERS
+        // ================================================================
         function renderUsers() {
             const search = document.getElementById('userSearchInput').value.toLowerCase();
             const roleFilter = document.getElementById('userRoleFilter').value;
@@ -374,13 +1773,13 @@
                 users[index].phone = phone;
                 users[index].role = role;
                 if (password) users[index].password = password;
-                localStorage.setItem('kn_users', JSON.stringify(users));
+                saveUsers();
                 showToast('User updated successfully!', 'success');
             } else {
                 if (!password) { showToast('Password is required for new users', 'error'); return; }
                 if (users.find(u => u.email === email)) { showToast('Email already exists', 'error'); return; }
                 users.push({ id: Date.now().toString(), name, email, password, phone, role, createdAt: new Date().toISOString() });
-                localStorage.setItem('kn_users', JSON.stringify(users));
+                saveUsers();
                 showToast('User added successfully!', 'success');
             }
             closeModal('userModal');
@@ -394,13 +1793,15 @@
             const user = users.find(u => u.id === userId);
             if (user && user.role === 'admin') { showToast('Cannot delete the main admin', 'error'); return; }
             users = users.filter(u => u.id !== userId);
-            localStorage.setItem('kn_users', JSON.stringify(users));
+            saveUsers();
             renderUsers();
             renderDashboard();
             showToast('User deleted', 'success');
         }
 
-        // ----- PRODUCTS (API) -----
+        // ================================================================
+        //  PRODUCTS
+        // ================================================================
         function renderProducts() {
             const search = document.getElementById('productSearchInput').value.toLowerCase();
             const categoryFilter = document.getElementById('productCategoryFilter').value;
@@ -426,16 +1827,16 @@
                     <td>${getStatusBadge(p.status || 'active')}</td>
                     <td>${p.views || 0}</td>
                     <td><div class="actions-cell">
-                        <button class="btn-view" onclick="viewProduct('${p._id}')">View</button>
-                        <button class="btn-edit" onclick="editProduct('${p._id}')">Edit</button>
-                        <button class="btn-delete" onclick="deleteProductHandler('${p._id}')">Delete</button>
+                        <button class="btn-view" onclick="viewProduct('${p.id}')">View</button>
+                        <button class="btn-edit" onclick="editProduct('${p.id}')">Edit</button>
+                        <button class="btn-delete" onclick="deleteProduct('${p.id}')">Delete</button>
                     </div></td>
                 </tr>
             `).join('');
         }
 
         function viewProduct(id) {
-            const product = products.find(p => p._id === id);
+            const product = products.find(p => p.id === id);
             if (!product) { showToast('Product not found', 'error'); return; }
             showToast(`📦 ${product.title} - ${formatCurrency(product.price)}`);
         }
@@ -449,7 +1850,7 @@
         }
 
         function editProduct(id) {
-            const product = products.find(p => p._id === id);
+            const product = products.find(p => p.id === id);
             if (!product) { showToast('Product not found', 'error'); return; }
             document.getElementById('productModalTitle').textContent = 'Edit Product';
             document.getElementById('editProductId').value = id;
@@ -463,7 +1864,7 @@
             openModal('productModal');
         }
 
-        async function saveProduct(e) {
+        function saveProduct(e) {
             e.preventDefault();
             const id = document.getElementById('editProductId').value;
             const title = document.getElementById('productFormTitle').value.trim();
@@ -476,39 +1877,56 @@
 
             if (!title || !price) { showToast('Title and price are required', 'error'); return; }
 
-            const payload = { title, price, category, location, description, sellerName, status };
-
-            let result;
             if (id) {
-                result = await updateProduct(id, payload);
+                const index = products.findIndex(p => p.id === id);
+                if (index === -1) { showToast('Product not found', 'error'); return; }
+                products[index].title = title;
+                products[index].price = price;
+                products[index].category = category;
+                products[index].location = location || 'Ghana';
+                products[index].description = description || 'No description';
+                products[index].sellerName = sellerName || 'Admin';
+                products[index].status = status;
+                saveProducts();
+                showToast('Product updated successfully!', 'success');
             } else {
-                // Add product – we also need sellerId? The backend will use the token's user ID.
-                result = await addProduct(payload);
+                const seller = users.find(u => u.name === sellerName || u.id === 'admin');
+                products.push({
+                    id: Date.now().toString(),
+                    title, price, category,
+                    location: location || 'Ghana',
+                    sellerId: seller ? seller.id : 'admin',
+                    sellerName: sellerName || 'Admin',
+                    sellerPhone: seller ? seller.phone : '0542928081',
+                    image: 'https://placehold.co/400x300',
+                    images: ['https://placehold.co/400x300'],
+                    description: description || 'No description',
+                    views: 0,
+                    status: status || 'active',
+                    createdAt: new Date().toISOString()
+                });
+                saveProducts();
+                showToast('Product added successfully!', 'success');
             }
-
-            if (result) {
-                closeModal('productModal');
-                showToast(id ? 'Product updated successfully!' : 'Product added successfully!', 'success');
-                await fetchProducts(); // refresh list
-                renderProducts();
-                renderDashboard();
-                renderReports();
-            }
+            closeModal('productModal');
+            renderProducts();
+            renderDashboard();
+            renderReports();
         }
 
-        async function deleteProductHandler(id) {
+        function deleteProduct(id) {
             if (!confirm('Are you sure you want to delete this product?')) return;
-            const success = await deleteProduct(id);
-            if (success) {
-                await fetchProducts();
-                renderProducts();
-                renderDashboard();
-                renderReports();
-                showToast('Product deleted', 'success');
-            }
+            products = products.filter(p => p.id !== id);
+            saveProducts();
+            renderProducts();
+            renderDashboard();
+            renderReports();
+            showToast('Product deleted', 'success');
         }
 
-        // ----- SELLERS (derived from users) -----
+        // ================================================================
+        //  SELLERS
+        // ================================================================
         function renderSellers() {
             const search = document.getElementById('sellerSearchInput').value.toLowerCase();
 
@@ -521,7 +1939,7 @@
                 return;
             }
             tbody.innerHTML = sellers.map(s => {
-                const productCount = products.filter(p => p.sellerId === s.id).length;
+                const productCount = getSellerProductCount(s.id);
                 const status = productCount > 0 ? 'active' : 'pending';
                 return `
                     <tr>
@@ -557,14 +1975,15 @@
             if (!confirm('Are you sure you want to delete this seller?')) return;
             const user = users.find(u => u.id === id);
             if (user) { user.role = 'buyer';
-                localStorage.setItem('kn_users', JSON.stringify(users));
+                saveUsers();
                 renderSellers();
-                renderUsers();
                 renderDashboard();
                 showToast('Seller removed', 'success'); }
         }
 
-        // ----- CATEGORIES (localStorage) -----
+        // ================================================================
+        //  CATEGORIES
+        // ================================================================
         function renderCategories() {
             const grid = document.getElementById('categoryGrid');
             if (categories.length === 0) {
@@ -572,7 +1991,7 @@
                 return;
             }
             grid.innerHTML = categories.map(c => {
-                const count = products.filter(p => p.category === c.name).length;
+                const count = getCategoryCount(c.name);
                 return `
                     <div class="category-item">
                         <span class="cat-icon"><i class="fas ${c.icon || 'fa-tag'}"></i></span>
@@ -617,45 +2036,40 @@
             if (oldName) {
                 const index = categories.findIndex(c => c.name === oldName);
                 if (index === -1) { showToast('Category not found', 'error'); return; }
-                // update category in products (local) – but products come from API, so we need to update the product category in the backend
-                // For simplicity, we'll update the products array locally and then save to API (bulk update not implemented)
-                // We'll just update the category name in the local list and then call fetchProducts() to reload.
+                if (oldName !== name) { products.forEach(p => { if (p.category === oldName) p.category = name; });
+                    saveProducts(); }
                 categories[index].name = name;
                 categories[index].icon = icon || 'fa-tag';
-                localStorage.setItem('kn_categories', JSON.stringify(categories));
-                showToast('Category updated!', 'success');
-                renderCategories();
-                renderDashboard();
+                saveCategories();
+                showToast('Category updated successfully!', 'success');
             } else {
                 if (categories.find(c => c.name === name)) { showToast('Category already exists', 'error'); return; }
                 categories.push({ name, icon: icon || 'fa-tag' });
-                localStorage.setItem('kn_categories', JSON.stringify(categories));
-                showToast('Category added!', 'success');
-                renderCategories();
-                renderDashboard();
+                saveCategories();
+                showToast('Category added successfully!', 'success');
             }
             closeModal('categoryModal');
+            renderCategories();
+            renderDashboard();
+            renderReports();
         }
 
         function deleteCategory(name) {
             if (name === 'Other') { showToast('Cannot delete the "Other" category', 'error'); return; }
             if (!confirm(`Delete category "${name}"? Products will be moved to "Other".`)) return;
-            // Update products' category to "Other" – we'll do this locally and then reload products
-            // For a real solution, we would need to update each product via API, but for simplicity we'll just update the local list
-            // and then fetchProducts again.
+            products.forEach(p => { if (p.category === name) p.category = 'Other'; });
+            saveProducts();
             categories = categories.filter(c => c.name !== name);
-            localStorage.setItem('kn_categories', JSON.stringify(categories));
+            saveCategories();
             renderCategories();
             renderDashboard();
+            renderReports();
             showToast(`Category "${name}" deleted`, 'success');
-            // Optionally, we could also update products via API but we'll just reload
-            fetchProducts().then(() => {
-                renderProducts();
-                renderReports();
-            });
         }
 
-        // ----- REPORTS -----
+        // ================================================================
+        //  REPORTS
+        // ================================================================
         function renderReports() {
             document.getElementById('reportProducts').textContent = products.length;
             document.getElementById('reportUsers').textContent = users.length;
@@ -663,7 +2077,7 @@
             document.getElementById('reportPending').textContent = products.filter(p => p.status === 'pending').length;
 
             const container = document.getElementById('topCategoriesContainer');
-            const catCounts = categories.map(c => ({ name: c.name, count: products.filter(p => p.category === c.name).length, icon: c.icon || 'fa-tag' }))
+            const catCounts = categories.map(c => ({ name: c.name, count: getCategoryCount(c.name), icon: c.icon || 'fa-tag' }))
                 .sort((a, b) => b.count - a.count).slice(0, 5);
 
             if (catCounts.length === 0) {
@@ -685,21 +2099,18 @@
             }).join('');
         }
 
-        // ----- NOTIFICATIONS (API) -----
-        async function toggleNotificationPanel() {
+        // ================================================================
+        //  NOTIFICATIONS
+        // ================================================================
+        function toggleNotificationPanel() {
             const panel = document.getElementById('notificationPanel');
-            if (panel.classList.contains('active')) {
-                closeModal('notificationPanel');
-            } else {
-                await fetchNotifications();
-                renderNotifications();
-                openModal('notificationPanel');
-            }
+            if (panel.classList.contains('active')) { closeModal('notificationPanel'); } else { renderNotifications();
+                openModal('notificationPanel'); }
         }
 
         function renderNotifications() {
             const container = document.getElementById('notificationList');
-            const adminNotifs = notifications.filter(n => n.userId === 'admin' || n.userId === 'all').sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+            const adminNotifs = notifications.filter(n => n.userId === 'admin' || n.userId === 'all').sort((a, b) => b.id - a.id);
 
             if (adminNotifs.length === 0) {
                 container.innerHTML = '<div style="text-align:center;padding:30px;color:#94a3b8;">🔔 No notifications</div>';
@@ -711,8 +2122,8 @@
                     <div style="font-size:13px;color:#475569;">${escapeHtml(n.message)}</div>
                     <div style="font-size:10px;color:#94a3b8;margin-top:4px;">${new Date(n.timestamp).toLocaleString()}</div>
                     <div style="margin-top:6px;display:flex;gap:6px;">
-                        ${!n.read ? `<button onclick="markNotifRead('${n._id}')" style="padding:2px 12px;background:#0055a5;color:#fff;border:none;border-radius:12px;font-size:11px;cursor:pointer;">Mark read</button>` : ''}
-                        <button onclick="deleteNotif('${n._id}')" style="padding:2px 12px;background:#fee2e2;color:#dc2626;border:none;border-radius:12px;font-size:11px;cursor:pointer;">Delete</button>
+                        ${!n.read ? `<button onclick="markNotifRead('${n.id}')" style="padding:2px 12px;background:#0055a5;color:#fff;border:none;border-radius:12px;font-size:11px;cursor:pointer;">Mark read</button>` : ''}
+                        <button onclick="deleteNotif('${n.id}')" style="padding:2px 12px;background:#fee2e2;color:#dc2626;border:none;border-radius:12px;font-size:11px;cursor:pointer;">Delete</button>
                     </div>
                 </div>
             `).join('');
@@ -721,24 +2132,28 @@
             document.getElementById('notifBadgeTop').textContent = unread;
         }
 
-        async function markNotifRead(id) {
-            const success = await markNotifReadApi(id);
-            if (success) {
-                await fetchNotifications();
-                renderNotifications();
-            }
+        function markNotifRead(id) {
+            const n = notifications.find(x => x.id == id);
+            if (n) { n.read = true;
+                saveNotifications();
+                renderNotifications(); }
         }
 
-        async function deleteNotif(id) {
-            if (!confirm('Delete notification?')) return;
-            const success = await deleteNotifApi(id);
-            if (success) {
-                await fetchNotifications();
-                renderNotifications();
-            }
+        function deleteNotif(id) {
+            notifications = notifications.filter(n => n.id != id);
+            saveNotifications();
+            renderNotifications();
         }
 
-        // ----- SETTINGS (localStorage) -----
+        function updateMsgBadge() {
+            const messages = JSON.parse(localStorage.getItem('kn_messages') || '[]');
+            const unread = messages.filter(m => m.receiverId === 'admin' && !m.read).length;
+            document.getElementById('msgBadgeTop').textContent = unread;
+        }
+
+        // ================================================================
+        //  SETTINGS
+        // ================================================================
         function saveSettings() {
             const settings = {
                 siteName: document.getElementById('settingsSiteName').value.trim(),
@@ -751,7 +2166,7 @@
                 updatedAt: new Date().toISOString()
             };
             localStorage.setItem('kn_settings', JSON.stringify(settings));
-            showToast('Settings saved!', 'success');
+            showToast('Settings saved successfully! 🎉', 'success');
         }
 
         function loadSettings() {
@@ -766,104 +2181,21 @@
         }
 
         // ================================================================
-        //  PAGE NAVIGATION
-        // ================================================================
-        function showPage(pageId) {
-            document.querySelectorAll('.page-section').forEach(s => s.classList.remove('active'));
-            const target = document.getElementById('page-' + pageId);
-            if (target) target.classList.add('active');
-
-            document.querySelectorAll('.sidebar-nav .nav-item').forEach(item => {
-                item.classList.remove('active');
-                if (item.dataset.page === pageId) item.classList.add('active');
-            });
-
-            const titles = {
-                dashboard: 'Dashboard <small>Overview</small>',
-                users: 'Users <small>Manage all users</small>',
-                products: 'Products <small>Manage all products</small>',
-                sellers: 'Sellers <small>Manage all sellers</small>',
-                categories: 'Categories <small>Manage categories</small>',
-                reports: 'Reports <small>Analytics & insights</small>',
-                settings: 'Settings <small>System configuration</small>'
-            };
-            document.getElementById('pageTitle').innerHTML = titles[pageId] || 'Dashboard';
-
-            if (window.innerWidth <= 992) closeSidebar();
-
-            if (pageId === 'dashboard') renderDashboard();
-            if (pageId === 'users') renderUsers();
-            if (pageId === 'products') renderProducts();
-            if (pageId === 'sellers') renderSellers();
-            if (pageId === 'categories') renderCategories();
-            if (pageId === 'reports') renderReports();
-        }
-
-        // ================================================================
-        //  SIDEBAR TOGGLE
-        // ================================================================
-        function toggleSidebar() {
-            document.getElementById('sidebar').classList.toggle('open');
-            document.getElementById('sidebarOverlay').classList.toggle('active');
-        }
-        function closeSidebar() {
-            document.getElementById('sidebar').classList.remove('open');
-            document.getElementById('sidebarOverlay').classList.remove('active');
-        }
-
-        function updateMsgBadge() {
-            const messages = JSON.parse(localStorage.getItem('kn_messages') || '[]');
-            const unread = messages.filter(m => m.receiverId === 'admin' && !m.read).length;
-            document.getElementById('msgBadgeTop').textContent = unread;
-        }
-
-        // ================================================================
         //  INIT
         // ================================================================
-        async function init() {
-            // Check authentication
-            const storedUser = localStorage.getItem('currentUser');
-            if (storedUser) {
-                try { currentUser = JSON.parse(storedUser); } catch (e) {}
-            }
-            token = localStorage.getItem('token') || null;
-
-            if (!token || !currentUser) {
-                showToast('Please login as admin', 'error');
-                window.location.href = 'index.html';
-                return;
-            }
-
-            // Verify admin role
-            if (currentUser.role !== 'admin') {
-                showToast('Access denied. Admin only.', 'error');
-                window.location.href = 'index.html';
-                return;
-            }
-
+        function init() {
             updateAdminProfile();
             loadSettings();
-
-            // Fetch products and notifications
-            await fetchProducts();
-            await fetchNotifications();
-
-            // Render all sections
             renderDashboard();
             renderUsers();
             renderProducts();
             renderSellers();
             renderCategories();
             renderReports();
-            renderNotifications();
             updateMsgBadge();
 
-            // Close sidebar on resize
-            window.addEventListener('resize', function() {
-                if (window.innerWidth > 992) closeSidebar();
-            });
+            window.addEventListener('resize', function() { if (window.innerWidth > 992) closeSidebar(); });
 
-            // Escape key closes modals
             document.addEventListener('keydown', function(e) {
                 if (e.key === 'Escape') {
                     document.querySelectorAll('.modal-overlay.active').forEach(el => el.classList.remove('active'));
@@ -871,7 +2203,7 @@
                 }
             });
 
-            console.log('✅ KN Admin Dashboard (API-connected)');
+            console.log('✅ KN Classifieds Admin Panel loaded successfully!');
         }
 
         // ================================================================
@@ -886,7 +2218,7 @@
         window.saveUser = saveUser;
         window.openAddProductModal = openAddProductModal;
         window.editProduct = editProduct;
-        window.deleteProductHandler = deleteProductHandler;
+        window.deleteProduct = deleteProduct;
         window.saveProduct = saveProduct;
         window.viewProduct = viewProduct;
         window.openAddSellerModal = openAddSellerModal;
