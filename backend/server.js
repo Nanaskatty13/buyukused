@@ -49,17 +49,23 @@ app.use(compression());
 app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
 
 // ===============================
-// CORS
+// CORS – allow both local and production
 // ===============================
 const allowedOrigins = [
   "http://localhost:5173",
   "http://127.0.0.1:5173",
+  // ✅ Add your production frontend URL(s) here
+  "https://sell-platform2-rfxi0orto-nanaskatty13s-projects.vercel.app",
+  // Or use environment variable (recommended)
   process.env.FRONTEND_URL,
 ].filter(Boolean);
+
+console.log("🟢 Allowed Origins:", allowedOrigins);
 
 app.use(
   cors({
     origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps or curl)
       if (!origin) return callback(null, true);
       if (allowedOrigins.includes(origin)) {
         return callback(null, true);
@@ -171,9 +177,7 @@ const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: process.env.NODE_ENV === 'production' ? 100 : 500, // higher limit in dev
   skip: (req) => {
-    // Skip for admin users (already marked)
     if (req.skipRateLimit) return true;
-    // Skip entirely in development (optional – comment out if you prefer a limit)
     if (process.env.NODE_ENV === 'development') return true;
     return false;
   },

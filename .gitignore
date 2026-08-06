@@ -1,24 +1,106 @@
-# Dependencies
-**/node_modules/
+# ===============================
+#  DEPENDENCIES
+# ===============================
+node_modules/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
 
-# Environment variables
-**/.env
+# ===============================
+#  ENVIRONMENT VARIABLES
+# ===============================
+.env
+.env.local
+.env.*.local
+*.env
 
-# Build folders
-**/dist
-**/build
+# ===============================
+#  BUILD FOLDERS
+# ===============================
+dist/
+build/
+out/
+.next/
+*.tsbuildinfo
 
-# Logs
+# ===============================
+#  LOGS
+# ===============================
+logs/
 *.log
 npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
 
-# IDE
-.vscode/
+# ===============================
+#  UPLOADED FILES (local)
+# ===============================
 uploads/
+public/uploads/
+*.tmp
 
-# OS
+# ===============================
+#  OS FILES
+# ===============================
 .DS_Store
 Thumbs.db
+Desktop.ini
+*.swp
+*.swo
 
-# Git
-.git
+# ===============================
+#  IDE & EDITOR
+# ===============================
+.vscode/
+.idea/
+*.iml
+*.sublime-workspace
+*.sublime-project
+.project
+.classpath
+.settings/
+
+# ===============================
+#  DEBUG & COVERAGE
+# ===============================
+coverage/
+.nyc_output/
+*.coveralls.json
+*.lcov
+
+# ===============================
+#  DATABASE FILES (local)
+# ===============================
+*.sqlite
+*.db
+*.sqlite3
+*.mdb
+
+# ===============================
+#  MISCELLANEOUS
+# ===============================
+*.pid
+*.seed
+*.pid.lock
+*.log.lock
+dump.rdb
+*.pem
+*.p12
+*.key
+*.crt
+*.csr
+
+# ===============================
+#  VERCEL
+# ===============================
+.vercel/
+.vercel_cache/
+.vercel.json (if you don’t want to commit it)
+
+# ===============================
+#  GIT (keep it clean)
+# ===============================
+.git/
+.gitignore
+.gitattributes
