@@ -1,22 +1,29 @@
-// frontend/src/hooks/useOrders.js
-import { useState, useCallback, useEffect } from 'react';
-import { useAuth } from './useAuth';
-import api from '../api'; // adjust if your api.js path is different
+// frontend/src/context/OrderContext.jsx
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import { useAuth } from '../hooks/useAuth'; // or from '../context/AuthContext' if you prefer
+import api from '../api'; // adjust path if needed
 
-/**
- * Custom hook to manage orders.
- * Uses the authenticated user's token.
- *
- * @returns {Object} { orders, loading, error, fetchOrders, getOrder, createOrder, updateOrderStatus, clearError }
- */
+// Create the context
+export const OrderContext = createContext();
+
+// Custom hook to use the order context
 export const useOrders = () => {
+  const context = useContext(OrderContext);
+  if (!context) {
+    throw new Error('useOrders must be used within an OrderProvider');
+  }
+  return context;
+};
+
+// Provider component
+export const OrderProvider = ({ children }) => {
   const { user, token } = useAuth();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [selectedOrder, setSelectedOrder] = useState(null);
 
-  // Fetch all orders for the current user
+  // --- Fetch all orders for the current user ---
   const fetchOrders = useCallback(async (params = {}) => {
     if (!token) {
       setError('You must be logged in to view orders.');
@@ -36,7 +43,7 @@ export const useOrders = () => {
     }
   }, [token]);
 
-  // Fetch a single order by ID
+  // --- Fetch a single order by ID ---
   const getOrder = useCallback(async (orderId) => {
     if (!token) {
       setError('You must be logged in to view order details.');
@@ -56,7 +63,7 @@ export const useOrders = () => {
     }
   }, [token]);
 
-  // Create a new order
+  // --- Create a new order ---
   const createOrder = useCallback(async (orderData) => {
     if (!token) {
       setError('You must be logged in to create an order.');
@@ -66,7 +73,7 @@ export const useOrders = () => {
     setError(null);
     try {
       const data = await api.orders.create(orderData, token);
-      // Optionally refresh the orders list
+      // Refresh the orders list
       await fetchOrders();
       return data;
     } catch (err) {
@@ -77,7 +84,7 @@ export const useOrders = () => {
     }
   }, [token, fetchOrders]);
 
-  // Update order status (typically for admin or seller)
+  // --- Update order status (admin/seller) ---
   const updateOrderStatus = useCallback(async (orderId, status) => {
     if (!token) {
       setError('You must be logged in to update an order.');
@@ -101,19 +108,41 @@ export const useOrders = () => {
     }
   }, [token, selectedOrder]);
 
-  // Clear any error
+  // --- Delete an order (admin only) ---
+  const deleteOrder = useCallback(async (orderId) => {
+    if (!token) {
+      setError('You must be logged in to delete an order.');
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await api.orders.delete(orderId, token);
+      setOrders(prev => prev.filter(o => o._id !== orderId));
+      if (selectedOrder && selectedOrder._id === orderId) {
+        setSelectedOrder(null);
+      }
+      return data;
+    } catch (err) {
+      setError(err.message || 'Failed to delete order');
+      console.error('Error deleting order:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [token, selectedOrder]);
+
+  // --- Clear error ---
   const clearError = useCallback(() => setError(null), []);
 
-  // Auto‑fetch orders when user is authenticated (optional)
-  // You can enable this or let the component decide when to fetch.
-  // Comment out if you prefer manual fetching.
-  // useEffect(() => {
-  //   if (user && token) {
-  //     fetchOrders();
-  //   }
-  // }, [user, token, fetchOrders]);
+  // --- Auto‑fetch orders on mount if user is logged in ---
+  useEffect(() => {
+    if (user && token) {
+      fetchOrders();
+    }
+  }, [user, token, fetchOrders]);
 
-  return {
+  // Memoize the context value
+  const value = useMemo(() => ({
     orders,
     selectedOrder,
     loading,
@@ -122,6 +151,16 @@ export const useOrders = () => {
     getOrder,
     createOrder,
     updateOrderStatus,
+    deleteOrder,
     clearError,
-  };
+  }), [orders, selectedOrder, loading, error, fetchOrders, getOrder, createOrder, updateOrderStatus, deleteOrder, clearError]);
+
+  return (
+    <OrderContext.Provider value={value}>
+      {children}
+    </OrderContext.Provider>
+  );
 };
+
+// Also export the context itself
+export default OrderContext;
