@@ -15,7 +15,24 @@ const API_URL =
 
 console.log("🔗 API_URL:", API_URL);
 
-// getHeaders now defaults to getToken() – no need to pass token manually
+// ================================================================
+//  FETCH WITH TIMEOUT (prevents hanging requests)
+// ================================================================
+
+const fetchWithTimeout = (url, options = {}, timeout = 30000) => {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+  return fetch(url, {
+    ...options,
+    signal: controller.signal,
+  }).finally(() => clearTimeout(timeoutId));
+};
+
+// ================================================================
+//  HEADERS & RESPONSE HANDLER
+// ================================================================
+
 const getHeaders = (token = getToken()) => ({
   "Content-Type": "application/json",
   ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -54,7 +71,7 @@ const handleResponse = async (response) => {
 
 export const auth = {
   login: async (email, password) => {
-    const res = await fetch(`${API_URL}/auth/login`, {
+    const res = await fetchWithTimeout(`${API_URL}/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
@@ -67,7 +84,7 @@ export const auth = {
   },
 
   register: async (userData) => {
-    const res = await fetch(`${API_URL}/auth/register`, {
+    const res = await fetchWithTimeout(`${API_URL}/auth/register`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
@@ -82,7 +99,7 @@ export const auth = {
   },
 
   getMe: async (token) => {
-    const res = await fetch(`${API_URL}/auth/me`, {
+    const res = await fetchWithTimeout(`${API_URL}/auth/me`, {
       method: "GET",
       credentials: "include",
       headers: getHeaders(token),
@@ -91,7 +108,7 @@ export const auth = {
   },
 
   logout: async (token) => {
-    const res = await fetch(`${API_URL}/auth/logout`, {
+    const res = await fetchWithTimeout(`${API_URL}/auth/logout`, {
       method: "POST",
       credentials: "include",
       headers: getHeaders(token),
@@ -108,7 +125,7 @@ export const products = {
   getAll: async (params = {}) => {
     const query = new URLSearchParams(params).toString();
     const url = `${API_URL}/api/products${query ? `?${query}` : ''}`;
-    const res = await fetch(url, {
+    const res = await fetchWithTimeout(url, {
       credentials: "include",
       headers: getHeaders(),
     });
@@ -116,7 +133,7 @@ export const products = {
   },
 
   getById: async (id) => {
-    const res = await fetch(`${API_URL}/api/products/${id}`, {
+    const res = await fetchWithTimeout(`${API_URL}/api/products/${id}`, {
       credentials: "include",
       headers: getHeaders(),
     });
@@ -124,7 +141,7 @@ export const products = {
   },
 
   create: async (productData, token) => {
-    const res = await fetch(`${API_URL}/api/products`, {
+    const res = await fetchWithTimeout(`${API_URL}/api/products`, {
       method: "POST",
       credentials: "include",
       headers: getHeaders(token),
@@ -134,7 +151,7 @@ export const products = {
   },
 
   createWithFiles: async (formData, token = getToken()) => {
-    const res = await fetch(`${API_URL}/api/products`, {
+    const res = await fetchWithTimeout(`${API_URL}/api/products`, {
       method: "POST",
       credentials: "include",
       headers: {
@@ -146,7 +163,7 @@ export const products = {
   },
 
   update: async (id, productData, token) => {
-    const res = await fetch(`${API_URL}/api/products/${id}`, {
+    const res = await fetchWithTimeout(`${API_URL}/api/products/${id}`, {
       method: "PUT",
       credentials: "include",
       headers: getHeaders(token),
@@ -156,7 +173,7 @@ export const products = {
   },
 
   updateWithFiles: async (id, formData, token = getToken()) => {
-    const res = await fetch(`${API_URL}/api/products/${id}`, {
+    const res = await fetchWithTimeout(`${API_URL}/api/products/${id}`, {
       method: "PUT",
       credentials: "include",
       headers: {
@@ -168,7 +185,7 @@ export const products = {
   },
 
   delete: async (id, token) => {
-    const res = await fetch(`${API_URL}/api/products/${id}`, {
+    const res = await fetchWithTimeout(`${API_URL}/api/products/${id}`, {
       method: "DELETE",
       credentials: "include",
       headers: getHeaders(token),
@@ -185,7 +202,7 @@ export const users = {
   getAll: async (params = {}, token) => {
     const query = new URLSearchParams(params).toString();
     const url = `${API_URL}/api/users${query ? `?${query}` : ''}`;
-    const res = await fetch(url, {
+    const res = await fetchWithTimeout(url, {
       credentials: "include",
       headers: getHeaders(token),
     });
@@ -193,7 +210,7 @@ export const users = {
   },
 
   getById: async (id, token) => {
-    const res = await fetch(`${API_URL}/api/users/${id}`, {
+    const res = await fetchWithTimeout(`${API_URL}/api/users/${id}`, {
       credentials: "include",
       headers: getHeaders(token),
     });
@@ -201,7 +218,7 @@ export const users = {
   },
 
   update: async (id, userData, token) => {
-    const res = await fetch(`${API_URL}/api/users/${id}`, {
+    const res = await fetchWithTimeout(`${API_URL}/api/users/${id}`, {
       method: "PUT",
       credentials: "include",
       headers: getHeaders(token),
@@ -211,7 +228,7 @@ export const users = {
   },
 
   delete: async (id, token) => {
-    const res = await fetch(`${API_URL}/api/users/${id}`, {
+    const res = await fetchWithTimeout(`${API_URL}/api/users/${id}`, {
       method: "DELETE",
       credentials: "include",
       headers: getHeaders(token),
@@ -220,7 +237,7 @@ export const users = {
   },
 
   getStats: async (token) => {
-    const res = await fetch(`${API_URL}/api/users/stats`, {
+    const res = await fetchWithTimeout(`${API_URL}/api/users/stats`, {
       credentials: "include",
       headers: getHeaders(token),
     });
@@ -234,7 +251,7 @@ export const users = {
 
 export const notifications = {
   getForUser: async (userId, token) => {
-    const res = await fetch(`${API_URL}/api/notifications/${userId}`, {
+    const res = await fetchWithTimeout(`${API_URL}/api/notifications/${userId}`, {
       credentials: "include",
       headers: getHeaders(token),
     });
@@ -242,7 +259,7 @@ export const notifications = {
   },
 
   getForAdmin: async (token) => {
-    const res = await fetch(`${API_URL}/api/notifications/admin`, {
+    const res = await fetchWithTimeout(`${API_URL}/api/notifications/admin`, {
       credentials: "include",
       headers: getHeaders(token),
     });
@@ -250,7 +267,7 @@ export const notifications = {
   },
 
   create: async (data, token) => {
-    const res = await fetch(`${API_URL}/api/notifications`, {
+    const res = await fetchWithTimeout(`${API_URL}/api/notifications`, {
       method: "POST",
       credentials: "include",
       headers: getHeaders(token),
@@ -260,7 +277,7 @@ export const notifications = {
   },
 
   markRead: async (id, token) => {
-    const res = await fetch(`${API_URL}/api/notifications/${id}/read`, {
+    const res = await fetchWithTimeout(`${API_URL}/api/notifications/${id}/read`, {
       method: "PUT",
       credentials: "include",
       headers: getHeaders(token),
@@ -269,7 +286,7 @@ export const notifications = {
   },
 
   delete: async (id, token) => {
-    const res = await fetch(`${API_URL}/api/notifications/${id}`, {
+    const res = await fetchWithTimeout(`${API_URL}/api/notifications/${id}`, {
       method: "DELETE",
       credentials: "include",
       headers: getHeaders(token),
@@ -286,7 +303,7 @@ export const orders = {
   getAll: async (params = {}, token) => {
     const query = new URLSearchParams(params).toString();
     const url = `${API_URL}/api/orders${query ? `?${query}` : ''}`;
-    const res = await fetch(url, {
+    const res = await fetchWithTimeout(url, {
       credentials: "include",
       headers: getHeaders(token),
     });
@@ -294,7 +311,7 @@ export const orders = {
   },
 
   getById: async (id, token) => {
-    const res = await fetch(`${API_URL}/api/orders/${id}`, {
+    const res = await fetchWithTimeout(`${API_URL}/api/orders/${id}`, {
       credentials: "include",
       headers: getHeaders(token),
     });
@@ -302,7 +319,7 @@ export const orders = {
   },
 
   create: async (orderData, token) => {
-    const res = await fetch(`${API_URL}/api/orders`, {
+    const res = await fetchWithTimeout(`${API_URL}/api/orders`, {
       method: "POST",
       credentials: "include",
       headers: getHeaders(token),
@@ -312,7 +329,7 @@ export const orders = {
   },
 
   update: async (id, updates, token) => {
-    const res = await fetch(`${API_URL}/api/orders/${id}`, {
+    const res = await fetchWithTimeout(`${API_URL}/api/orders/${id}`, {
       method: "PUT",
       credentials: "include",
       headers: getHeaders(token),
@@ -322,7 +339,7 @@ export const orders = {
   },
 
   delete: async (id, token) => {
-    const res = await fetch(`${API_URL}/api/orders/${id}`, {
+    const res = await fetchWithTimeout(`${API_URL}/api/orders/${id}`, {
       method: "DELETE",
       credentials: "include",
       headers: getHeaders(token),
@@ -337,7 +354,7 @@ export const orders = {
 
 export const messages = {
   getForUser: async (userId, token) => {
-    const res = await fetch(`${API_URL}/api/messages/${userId}`, {
+    const res = await fetchWithTimeout(`${API_URL}/api/messages/${userId}`, {
       credentials: "include",
       headers: getHeaders(token),
     });
@@ -345,7 +362,7 @@ export const messages = {
   },
 
   getConversations: async (token) => {
-    const res = await fetch(`${API_URL}/api/messages/conversations`, {
+    const res = await fetchWithTimeout(`${API_URL}/api/messages/conversations`, {
       credentials: "include",
       headers: getHeaders(token),
     });
@@ -353,7 +370,7 @@ export const messages = {
   },
 
   getConversation: async (otherUserId, token) => {
-    const res = await fetch(`${API_URL}/api/messages/conversation/${otherUserId}`, {
+    const res = await fetchWithTimeout(`${API_URL}/api/messages/conversation/${otherUserId}`, {
       credentials: "include",
       headers: getHeaders(token),
     });
@@ -361,7 +378,7 @@ export const messages = {
   },
 
   send: async (receiver, message, productId, token) => {
-    const res = await fetch(`${API_URL}/api/messages`, {
+    const res = await fetchWithTimeout(`${API_URL}/api/messages`, {
       method: "POST",
       credentials: "include",
       headers: getHeaders(token),
@@ -371,7 +388,7 @@ export const messages = {
   },
 
   markRead: async (messageId, token) => {
-    const res = await fetch(`${API_URL}/api/messages/${messageId}/read`, {
+    const res = await fetchWithTimeout(`${API_URL}/api/messages/${messageId}/read`, {
       method: "PUT",
       credentials: "include",
       headers: getHeaders(token),
@@ -380,7 +397,7 @@ export const messages = {
   },
 
   delete: async (messageId, token) => {
-    const res = await fetch(`${API_URL}/api/messages/${messageId}`, {
+    const res = await fetchWithTimeout(`${API_URL}/api/messages/${messageId}`, {
       method: "DELETE",
       credentials: "include",
       headers: getHeaders(token),
@@ -395,7 +412,7 @@ export const messages = {
 
 export const favorites = {
   getAll: async (token) => {
-    const res = await fetch(`${API_URL}/api/favorites`, {
+    const res = await fetchWithTimeout(`${API_URL}/api/favorites`, {
       credentials: "include",
       headers: getHeaders(token),
     });
@@ -403,7 +420,7 @@ export const favorites = {
   },
 
   add: async (productId, token) => {
-    const res = await fetch(`${API_URL}/api/favorites`, {
+    const res = await fetchWithTimeout(`${API_URL}/api/favorites`, {
       method: "POST",
       credentials: "include",
       headers: getHeaders(token),
@@ -413,7 +430,7 @@ export const favorites = {
   },
 
   remove: async (productId, token) => {
-    const res = await fetch(`${API_URL}/api/favorites/${productId}`, {
+    const res = await fetchWithTimeout(`${API_URL}/api/favorites/${productId}`, {
       method: "DELETE",
       credentials: "include",
       headers: getHeaders(token),
@@ -519,5 +536,4 @@ const api = {
 
 export default api;
 
-// ✅ exported so you can import API_URL elsewhere if needed
 export { API_URL };
