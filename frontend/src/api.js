@@ -8,26 +8,43 @@ import { getToken, clearAuthData } from './utils/storage';
 //  API CONFIG
 // ================================================================
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-console.log('🔗 API_URL:', API_URL);
+// ✅ CORRECT: plain string, no Markdown
+const API_URL =
+  import.meta.env.VITE_API_URL ||
+  "http://localhost:5000";
 
-const getHeaders = (token) => ({
-  'Content-Type': 'application/json',
-  ...(token && { 'Authorization': `Bearer ${token}` }),
+console.log("🔗 API_URL:", API_URL);
+
+// getHeaders now defaults to getToken() – no need to pass token manually
+const getHeaders = (token = getToken()) => ({
+  "Content-Type": "application/json",
+  ...(token ? { Authorization: `Bearer ${token}` } : {}),
 });
 
 const handleResponse = async (response) => {
-  const data = await response.json();
+  let data = {};
 
-  // Auto‑logout on 401/403
-  if (response.status === 401 || response.status === 403) {
-    clearAuthData();
-    throw new Error(data.message || 'Authentication failed');
+  try {
+    data = await response.json();
+  } catch {
+    data = {};
   }
 
   if (!response.ok) {
-    throw new Error(data.message || data.error || `HTTP ${response.status}`);
+    if (
+      (response.status === 401 || response.status === 403) &&
+      !response.url.includes("/auth/login")
+    ) {
+      clearAuthData();
+    }
+
+    throw new Error(
+      data.message ||
+      data.error ||
+      `HTTP ${response.status}`
+    );
   }
+
   return data;
 };
 
@@ -38,29 +55,45 @@ const handleResponse = async (response) => {
 export const auth = {
   login: async (email, password) => {
     const res = await fetch(`${API_URL}/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({
+        email: email.trim().toLowerCase(),
+        password,
+      }),
     });
     return handleResponse(res);
   },
+
   register: async (userData) => {
     const res = await fetch(`${API_URL}/auth/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(userData),
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({
+        name: userData.name,
+        email: userData.email.trim().toLowerCase(),
+        password: userData.password,
+        phone: userData.phone || "",
+      }),
     });
     return handleResponse(res);
   },
+
   getMe: async (token) => {
     const res = await fetch(`${API_URL}/auth/me`, {
+      method: "GET",
+      credentials: "include",
       headers: getHeaders(token),
     });
     return handleResponse(res);
   },
+
   logout: async (token) => {
     const res = await fetch(`${API_URL}/auth/logout`, {
-      method: 'POST',
+      method: "POST",
+      credentials: "include",
       headers: getHeaders(token),
     });
     return handleResponse(res);
@@ -75,48 +108,69 @@ export const products = {
   getAll: async (params = {}) => {
     const query = new URLSearchParams(params).toString();
     const url = `${API_URL}/api/products${query ? `?${query}` : ''}`;
-    const res = await fetch(url);
+    const res = await fetch(url, {
+      credentials: "include",
+      headers: getHeaders(),
+    });
     return handleResponse(res);
   },
+
   getById: async (id) => {
-    const res = await fetch(`${API_URL}/api/products/${id}`);
+    const res = await fetch(`${API_URL}/api/products/${id}`, {
+      credentials: "include",
+      headers: getHeaders(),
+    });
     return handleResponse(res);
   },
+
   create: async (productData, token) => {
     const res = await fetch(`${API_URL}/api/products`, {
-      method: 'POST',
+      method: "POST",
+      credentials: "include",
       headers: getHeaders(token),
       body: JSON.stringify(productData),
     });
     return handleResponse(res);
   },
-  createWithFiles: async (formData, token) => {
+
+  createWithFiles: async (formData, token = getToken()) => {
     const res = await fetch(`${API_URL}/api/products`, {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${token}` },
+      method: "POST",
+      credentials: "include",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
       body: formData,
     });
     return handleResponse(res);
   },
+
   update: async (id, productData, token) => {
     const res = await fetch(`${API_URL}/api/products/${id}`, {
-      method: 'PUT',
+      method: "PUT",
+      credentials: "include",
       headers: getHeaders(token),
       body: JSON.stringify(productData),
     });
     return handleResponse(res);
   },
-  updateWithFiles: async (id, formData, token) => {
+
+  updateWithFiles: async (id, formData, token = getToken()) => {
     const res = await fetch(`${API_URL}/api/products/${id}`, {
-      method: 'PUT',
-      headers: { 'Authorization': `Bearer ${token}` },
+      method: "PUT",
+      credentials: "include",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
       body: formData,
     });
     return handleResponse(res);
   },
+
   delete: async (id, token) => {
     const res = await fetch(`${API_URL}/api/products/${id}`, {
-      method: 'DELETE',
+      method: "DELETE",
+      credentials: "include",
       headers: getHeaders(token),
     });
     return handleResponse(res);
@@ -131,32 +185,43 @@ export const users = {
   getAll: async (params = {}, token) => {
     const query = new URLSearchParams(params).toString();
     const url = `${API_URL}/api/users${query ? `?${query}` : ''}`;
-    const res = await fetch(url, { headers: getHeaders(token) });
-    return handleResponse(res);
-  },
-  getById: async (id, token) => {
-    const res = await fetch(`${API_URL}/api/users/${id}`, {
+    const res = await fetch(url, {
+      credentials: "include",
       headers: getHeaders(token),
     });
     return handleResponse(res);
   },
+
+  getById: async (id, token) => {
+    const res = await fetch(`${API_URL}/api/users/${id}`, {
+      credentials: "include",
+      headers: getHeaders(token),
+    });
+    return handleResponse(res);
+  },
+
   update: async (id, userData, token) => {
     const res = await fetch(`${API_URL}/api/users/${id}`, {
-      method: 'PUT',
+      method: "PUT",
+      credentials: "include",
       headers: getHeaders(token),
       body: JSON.stringify(userData),
     });
     return handleResponse(res);
   },
+
   delete: async (id, token) => {
     const res = await fetch(`${API_URL}/api/users/${id}`, {
-      method: 'DELETE',
+      method: "DELETE",
+      credentials: "include",
       headers: getHeaders(token),
     });
     return handleResponse(res);
   },
+
   getStats: async (token) => {
     const res = await fetch(`${API_URL}/api/users/stats`, {
+      credentials: "include",
       headers: getHeaders(token),
     });
     return handleResponse(res);
@@ -170,34 +235,43 @@ export const users = {
 export const notifications = {
   getForUser: async (userId, token) => {
     const res = await fetch(`${API_URL}/api/notifications/${userId}`, {
+      credentials: "include",
       headers: getHeaders(token),
     });
     return handleResponse(res);
   },
+
   getForAdmin: async (token) => {
     const res = await fetch(`${API_URL}/api/notifications/admin`, {
+      credentials: "include",
       headers: getHeaders(token),
     });
     return handleResponse(res);
   },
+
   create: async (data, token) => {
     const res = await fetch(`${API_URL}/api/notifications`, {
-      method: 'POST',
+      method: "POST",
+      credentials: "include",
       headers: getHeaders(token),
       body: JSON.stringify(data),
     });
     return handleResponse(res);
   },
+
   markRead: async (id, token) => {
     const res = await fetch(`${API_URL}/api/notifications/${id}/read`, {
-      method: 'PUT',
+      method: "PUT",
+      credentials: "include",
       headers: getHeaders(token),
     });
     return handleResponse(res);
   },
+
   delete: async (id, token) => {
     const res = await fetch(`${API_URL}/api/notifications/${id}`, {
-      method: 'DELETE',
+      method: "DELETE",
+      credentials: "include",
       headers: getHeaders(token),
     });
     return handleResponse(res);
@@ -205,41 +279,52 @@ export const notifications = {
 };
 
 // ================================================================
-//  🆕 ORDERS API
+//  ORDERS API
 // ================================================================
 
 export const orders = {
   getAll: async (params = {}, token) => {
     const query = new URLSearchParams(params).toString();
     const url = `${API_URL}/api/orders${query ? `?${query}` : ''}`;
-    const res = await fetch(url, { headers: getHeaders(token) });
-    return handleResponse(res);
-  },
-  getById: async (id, token) => {
-    const res = await fetch(`${API_URL}/api/orders/${id}`, {
+    const res = await fetch(url, {
+      credentials: "include",
       headers: getHeaders(token),
     });
     return handleResponse(res);
   },
+
+  getById: async (id, token) => {
+    const res = await fetch(`${API_URL}/api/orders/${id}`, {
+      credentials: "include",
+      headers: getHeaders(token),
+    });
+    return handleResponse(res);
+  },
+
   create: async (orderData, token) => {
     const res = await fetch(`${API_URL}/api/orders`, {
-      method: 'POST',
+      method: "POST",
+      credentials: "include",
       headers: getHeaders(token),
       body: JSON.stringify(orderData),
     });
     return handleResponse(res);
   },
+
   update: async (id, updates, token) => {
     const res = await fetch(`${API_URL}/api/orders/${id}`, {
-      method: 'PUT',
+      method: "PUT",
+      credentials: "include",
       headers: getHeaders(token),
       body: JSON.stringify(updates),
     });
     return handleResponse(res);
   },
+
   delete: async (id, token) => {
     const res = await fetch(`${API_URL}/api/orders/${id}`, {
-      method: 'DELETE',
+      method: "DELETE",
+      credentials: "include",
       headers: getHeaders(token),
     });
     return handleResponse(res);
@@ -247,46 +332,57 @@ export const orders = {
 };
 
 // ================================================================
-//  🆕 MESSAGES API
+//  MESSAGES API
 // ================================================================
 
 export const messages = {
   getForUser: async (userId, token) => {
     const res = await fetch(`${API_URL}/api/messages/${userId}`, {
+      credentials: "include",
       headers: getHeaders(token),
     });
     return handleResponse(res);
   },
+
   getConversations: async (token) => {
     const res = await fetch(`${API_URL}/api/messages/conversations`, {
+      credentials: "include",
       headers: getHeaders(token),
     });
     return handleResponse(res);
   },
+
   getConversation: async (otherUserId, token) => {
     const res = await fetch(`${API_URL}/api/messages/conversation/${otherUserId}`, {
+      credentials: "include",
       headers: getHeaders(token),
     });
     return handleResponse(res);
   },
+
   send: async (receiver, message, productId, token) => {
     const res = await fetch(`${API_URL}/api/messages`, {
-      method: 'POST',
+      method: "POST",
+      credentials: "include",
       headers: getHeaders(token),
       body: JSON.stringify({ receiver, message, productId }),
     });
     return handleResponse(res);
   },
+
   markRead: async (messageId, token) => {
     const res = await fetch(`${API_URL}/api/messages/${messageId}/read`, {
-      method: 'PUT',
+      method: "PUT",
+      credentials: "include",
       headers: getHeaders(token),
     });
     return handleResponse(res);
   },
+
   delete: async (messageId, token) => {
     const res = await fetch(`${API_URL}/api/messages/${messageId}`, {
-      method: 'DELETE',
+      method: "DELETE",
+      credentials: "include",
       headers: getHeaders(token),
     });
     return handleResponse(res);
@@ -294,27 +390,32 @@ export const messages = {
 };
 
 // ================================================================
-//  🆕 FAVORITES / WISHLIST (sync with backend)
+//  FAVORITES / WISHLIST
 // ================================================================
 
 export const favorites = {
   getAll: async (token) => {
     const res = await fetch(`${API_URL}/api/favorites`, {
+      credentials: "include",
       headers: getHeaders(token),
     });
     return handleResponse(res);
   },
+
   add: async (productId, token) => {
     const res = await fetch(`${API_URL}/api/favorites`, {
-      method: 'POST',
+      method: "POST",
+      credentials: "include",
       headers: getHeaders(token),
       body: JSON.stringify({ productId }),
     });
     return handleResponse(res);
   },
+
   remove: async (productId, token) => {
     const res = await fetch(`${API_URL}/api/favorites/${productId}`, {
-      method: 'DELETE',
+      method: "DELETE",
+      credentials: "include",
       headers: getHeaders(token),
     });
     return handleResponse(res);
@@ -322,16 +423,14 @@ export const favorites = {
 };
 
 // ================================================================
-//  NAMED EXPORTS FOR CONVENIENCE
+//  NAMED EXPORTS (convenience)
 // ================================================================
 
-// Auth
 export const login = auth.login;
 export const register = auth.register;
 export const getMe = auth.getMe;
 export const logout = auth.logout;
 
-// Products
 export const getProducts = products.getAll;
 export const getProduct = products.getById;
 export const createProduct = products.create;
@@ -340,28 +439,24 @@ export const updateProduct = products.update;
 export const updateProductWithFiles = products.updateWithFiles;
 export const deleteProduct = products.delete;
 
-// Users
 export const getUsers = users.getAll;
 export const getUser = users.getById;
 export const updateUser = users.update;
 export const deleteUser = users.delete;
 export const getUserStats = users.getStats;
 
-// Notifications
 export const getNotifications = notifications.getForUser;
 export const getAdminNotifications = notifications.getForAdmin;
 export const createNotification = notifications.create;
 export const markNotificationRead = notifications.markRead;
 export const deleteNotification = notifications.delete;
 
-// Orders
 export const getOrders = orders.getAll;
 export const getOrder = orders.getById;
 export const createOrder = orders.create;
 export const updateOrder = orders.update;
 export const deleteOrder = orders.delete;
 
-// Messages
 export const getMessages = messages.getForUser;
 export const getConversations = messages.getConversations;
 export const getConversation = messages.getConversation;
@@ -369,7 +464,6 @@ export const sendMessage = messages.send;
 export const markMessageRead = messages.markRead;
 export const deleteMessage = messages.delete;
 
-// Favorites
 export const getFavorites = favorites.getAll;
 export const addFavorite = favorites.add;
 export const removeFavorite = favorites.remove;
@@ -386,12 +480,10 @@ const api = {
   orders,
   messages,
   favorites,
-  // Auth
   login,
   register,
   getMe,
   logout,
-  // Products
   getProducts,
   getProduct,
   createProduct,
@@ -399,32 +491,27 @@ const api = {
   updateProduct,
   updateProductWithFiles,
   deleteProduct,
-  // Users
   getUsers,
   getUser,
   updateUser,
   deleteUser,
   getUserStats,
-  // Notifications
   getNotifications,
   getAdminNotifications,
   createNotification,
   markNotificationRead,
   deleteNotification,
-  // Orders
   getOrders,
   getOrder,
   createOrder,
   updateOrder,
   deleteOrder,
-  // Messages
   getMessages,
   getConversations,
   getConversation,
   sendMessage,
   markMessageRead,
   deleteMessage,
-  // Favorites
   getFavorites,
   addFavorite,
   removeFavorite,
@@ -432,4 +519,5 @@ const api = {
 
 export default api;
 
+// ✅ exported so you can import API_URL elsewhere if needed
 export { API_URL };

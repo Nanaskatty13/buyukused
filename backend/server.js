@@ -59,6 +59,7 @@ app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
 // ===============================
 // CORS
 // ===============================
+
 const allowedOrigins = [
   "http://localhost:5173",
   "http://127.0.0.1:5173",
