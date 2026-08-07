@@ -38,6 +38,15 @@ if (!process.env.SESSION_SECRET) {
 app.set("trust proxy", 1);
 
 // ===============================
+// BASE URL (for building absolute URLs)
+// ===============================
+app.use((req, res, next) => {
+  // Use BASE_URL env if set, otherwise detect from request
+  req.baseUrl = process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
+  next();
+});
+
+// ===============================
 // MIDDLEWARE
 // ===============================
 app.use(
@@ -54,7 +63,7 @@ app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
 const allowedOrigins = [
   "http://localhost:5173",
   "http://127.0.0.1:5173",
-  process.env.FRONTEND_URL, // set on Render (optional, wildcard covers it)
+  process.env.FRONTEND_URL,
 ].filter(Boolean);
 
 console.log("🟢 Allowed Origins (exact matches):", allowedOrigins);
@@ -64,11 +73,9 @@ app.use(
     origin: (origin, callback) => {
       console.log("🔍 Incoming origin:", origin);
       if (!origin) return callback(null, true);
-      // Allow exact matches
       if (allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
-      // Allow any Vercel preview/production subdomain
       if (/^https?:\/\/[a-zA-Z0-9-]+\.vercel\.app$/.test(origin)) {
         return callback(null, true);
       }
@@ -104,7 +111,6 @@ try {
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    // Ensure directory exists (in case it was deleted)
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
@@ -113,7 +119,6 @@ const storage = multer.diskStorage({
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
     const ext = path.extname(file.originalname);
-    // Sanitize filename
     const base = path.basename(file.originalname, ext).replace(/[^a-zA-Z0-9]/g, "-");
     cb(null, base + "-" + uniqueSuffix + ext);
   },
@@ -178,7 +183,7 @@ const skipIfAdmin = (req, res, next) => {
       req.skipRateLimit = true;
     }
   } catch (e) {
-    // ignore invalid tokens
+    // ignore
   }
   next();
 };
@@ -199,7 +204,7 @@ app.use("/api", limiter);
 app.use("/auth", limiter);
 
 // ===============================
-// HEALTH CHECK (useful for Render)
+// HEALTH CHECK
 // ===============================
 app.get("/health", (req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
@@ -234,25 +239,24 @@ app.use(express.static(path.join(__dirname, "public")));
 app.use("/uploads", express.static(uploadDir));
 
 // ===============================
-// 404 HANDLER (API only – falls through to catch‑all)
+// 404 HANDLER
 // ===============================
 app.use((req, res, next) => {
   if (req.path.startsWith("/api") || req.path.startsWith("/auth")) {
     return res.status(404).json({ success: false, message: "API endpoint not found" });
   }
-  next(); // let the catch‑all handle it
+  next();
 });
 
 // ===============================
-// CATCH‑ALL FOR FRONTEND (if you serve a React app from /public)
+// CATCH-ALL FOR FRONTEND
 // ===============================
 app.get("*", (req, res) => {
-  // If the request is not an API call, serve index.html
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
 // ===============================
-// ERROR HANDLER (must be last)
+// ERROR HANDLER
 // ===============================
 app.use((err, req, res, next) => {
   console.error("❌ Error:", err.message);
@@ -315,6 +319,7 @@ const start = async () => {
       console.log(`🚀 Server running on port ${PORT}`);
       console.log(`🌍 Environment: ${process.env.NODE_ENV || "development"}`);
       console.log(`📌 Allowed Origins: ${allowedOrigins.join(", ") || "(wildcard for vercel.app)"}`);
+      console.log(`🔗 Base URL: ${process.env.BASE_URL || "(auto-detected)"}`);
     });
   } catch (error) {
     console.error("❌ Server failed:", error.message);
