@@ -12,9 +12,13 @@ router.post('/register', async (req, res) => {
   try {
     const { name, email, password, phone, role } = req.body;
 
+    // Normalize email to lowercase
+    const normalizedEmail = email.toLowerCase().trim();
+
     // Check if user already exists
-    const existing = await User.findOne({ email });
+    const existing = await User.findOne({ email: normalizedEmail });
     if (existing) {
+      console.log(`⚠️ Registration attempt with existing email: ${normalizedEmail}`);
       return res.status(400).json({
         success: false,
         message: 'Email already registered',
@@ -25,13 +29,13 @@ router.post('/register', async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Create user – default role to 'buyer' if not provided
+    // Create user – default role to 'user' if not provided
     const user = new User({
       name,
-      email,
+      email: normalizedEmail,
       password: hashedPassword,
       phone: phone || '',
-      role: role || 'buyer',
+      role: role || 'user',
     });
 
     await user.save();
@@ -50,11 +54,12 @@ router.post('/register', async (req, res) => {
         id: user._id,
         name: user.name,
         email: user.email,
+        phone: user.phone,
         role: user.role,
       },
     });
   } catch (err) {
-    console.error('Register error:', err);
+    console.error('❌ Register error:', err);
     res.status(500).json({ success: false, message: err.message });
   }
 });
@@ -66,8 +71,18 @@ router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    const user = await User.findOne({ email });
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email and password are required',
+      });
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+
+    const user = await User.findOne({ email: normalizedEmail });
     if (!user) {
+      console.log(`❌ Login failed: user not found (${normalizedEmail})`);
       return res.status(401).json({
         success: false,
         message: 'Invalid credentials',
@@ -76,6 +91,7 @@ router.post('/login', async (req, res) => {
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
+      console.log(`❌ Login failed: wrong password for ${normalizedEmail}`);
       return res.status(401).json({
         success: false,
         message: 'Invalid credentials',
@@ -95,11 +111,12 @@ router.post('/login', async (req, res) => {
         id: user._id,
         name: user.name,
         email: user.email,
+        phone: user.phone,
         role: user.role,
       },
     });
   } catch (err) {
-    console.error('Login error:', err);
+    console.error('❌ Login error:', err);
     res.status(500).json({ success: false, message: err.message });
   }
 });
@@ -108,8 +125,6 @@ router.post('/login', async (req, res) => {
 //  GET CURRENT USER (protected)
 // ============================================================
 router.get('/me', async (req, res) => {
-  // This route should be protected – but we'll keep it simple here.
-  // Usually you'd use the verifyToken middleware.
   try {
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) {
@@ -122,6 +137,7 @@ router.get('/me', async (req, res) => {
     }
     res.json({ success: true, user });
   } catch (err) {
+    console.error('❌ /me error:', err);
     res.status(401).json({ success: false, message: 'Invalid token' });
   }
 });
@@ -130,7 +146,6 @@ router.get('/me', async (req, res) => {
 //  LOGOUT (optional – just discard token on frontend)
 // ============================================================
 router.post('/logout', (req, res) => {
-  // No server-side action needed for JWT; frontend discards token.
   res.json({ success: true, message: 'Logged out' });
 });
 
