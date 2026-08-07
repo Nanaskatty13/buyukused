@@ -213,6 +213,7 @@ app.get("/health", (req, res) => {
 // ROUTES
 // ===============================
 const authRoutes = require("./routes/auth");
+const adminRoutes = require("./routes/admin");
 const productRoutes = require("./routes/products");
 const notificationRoutes = require("./routes/notifications");
 const userRoutes = require("./routes/users");
@@ -230,6 +231,7 @@ app.use("/api/products", productRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/messages", messageRoutes);
+app.use("/admin", adminRoutes);
 
 // ===============================
 // STATIC FILES – ONLY FOR UPLOADS

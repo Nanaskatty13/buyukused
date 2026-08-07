@@ -1,3 +1,5 @@
+// backend/routes/admin.js
+
 const express = require("express");
 const router = express.Router();
 
@@ -11,21 +13,16 @@ const {
     deleteProduct,
     getOrders,
     updateOrderStatus
-
 } = require("../controllers/adminController");
 
-
-const { protect } = require("../middleware/auth");
-const { admin } = require("../middleware/admin");
-
+const { verifyToken, isAdmin } = require("../middleware/auth");
 
 
 // ==========================
-// Apply Admin Protection
+// ADMIN PROTECTION
 // ==========================
-router.use(protect);
-router.use(admin);
-
+router.use(verifyToken);
+router.use(isAdmin);
 
 
 // ==========================
@@ -35,7 +32,6 @@ router.get(
     "/dashboard",
     getDashboardStats
 );
-
 
 
 // ==========================
@@ -65,7 +61,6 @@ router.delete(
 );
 
 
-
 // ==========================
 // Products
 // ==========================
@@ -81,7 +76,6 @@ router.delete(
 );
 
 
-
 // ==========================
 // Orders
 // ==========================
@@ -95,7 +89,6 @@ router.put(
     "/orders/:id/status",
     updateOrderStatus
 );
-
 
 
 module.exports = router;
