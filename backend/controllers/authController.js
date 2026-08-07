@@ -3,9 +3,12 @@ const jwt = require("jsonwebtoken");
 
 
 // Generate JWT Token
-const generateToken = (id) => {
+const generateToken = (user) => {
     return jwt.sign(
-        { id },
+        {
+            id: user._id,
+            role: user.role
+        },
         process.env.JWT_SECRET,
         {
             expiresIn: "30d"
@@ -28,42 +31,52 @@ exports.register = async (req, res) => {
         } = req.body;
 
 
+        const cleanEmail = email.toLowerCase().trim();
+
+
         const existingUser = await User.findOne({
-            email
+            email: cleanEmail
         });
 
 
         if (existingUser) {
             return res.status(400).json({
-                success:false,
-                message:"User already exists"
+                success: false,
+                message: "User already exists"
             });
         }
 
 
         const user = await User.create({
             name,
-            email,
+            email: cleanEmail,
             password,
             phone
         });
 
 
         res.status(201).json({
-            success:true,
-            message:"Account created successfully",
-            token: generateToken(user._id),
-            user:{
-                id:user._id,
-                name:user.name,
-                email:user.email,
-                phone:user.phone,
-                role:user.role
+
+            success: true,
+
+            message: "Account created successfully",
+
+            token: generateToken(user),
+
+            user: {
+                id: user._id,
+                name: user.name,
+                email: user.email,
+                phone: user.phone,
+                role: user.role
             }
+
         });
 
 
     } catch(error){
+
+        console.error(error);
 
         res.status(500).json({
             success:false,
@@ -80,7 +93,7 @@ exports.register = async (req, res) => {
 // ==========================
 exports.login = async (req,res)=>{
 
-    try{
+    try {
 
         const {
             email,
@@ -88,8 +101,11 @@ exports.login = async (req,res)=>{
         } = req.body;
 
 
+        const cleanEmail = email.toLowerCase().trim();
+
+
         const user = await User.findOne({
-            email
+            email: cleanEmail
         });
 
 
@@ -97,7 +113,7 @@ exports.login = async (req,res)=>{
 
             return res.status(401).json({
                 success:false,
-                message:"Invalid email or password"
+                message:"Invalid credentials"
             });
 
         }
@@ -110,7 +126,7 @@ exports.login = async (req,res)=>{
 
             return res.status(401).json({
                 success:false,
-                message:"Invalid email or password"
+                message:"Invalid credentials"
             });
 
         }
@@ -121,7 +137,7 @@ exports.login = async (req,res)=>{
 
             success:true,
 
-            token:generateToken(user._id),
+            token:generateToken(user),
 
             user:{
                 id:user._id,
@@ -134,7 +150,10 @@ exports.login = async (req,res)=>{
         });
 
 
+
     }catch(error){
+
+        console.error(error);
 
         res.status(500).json({
             success:false,
@@ -152,9 +171,9 @@ exports.login = async (req,res)=>{
 // ==========================
 exports.getMe = async(req,res)=>{
 
-    try{
+    try {
 
-        const user = await User.findById(req.user.id)
+        const user = await User.findById(req.user._id)
         .select("-password");
 
 
@@ -192,7 +211,7 @@ exports.getMe = async(req,res)=>{
 // ==========================
 exports.updateProfile = async(req,res)=>{
 
-    try{
+    try {
 
         const {
             name,
@@ -204,7 +223,7 @@ exports.updateProfile = async(req,res)=>{
 
         const user = await User.findByIdAndUpdate(
 
-            req.user.id,
+            req.user._id,
 
             {
                 name,
