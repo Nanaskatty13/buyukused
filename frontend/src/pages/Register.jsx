@@ -4,12 +4,15 @@ import { useAuth } from '../context/AuthContext';
 import { FcGoogle } from 'react-icons/fc';
 import { FaFacebookF } from 'react-icons/fa';
 
+// 👇 Use the same API_URL as your api.js (or fallback to localhost)
+const API_URL = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
+
 const Register = () => {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     password: '',
-    confirmPassword: '',   // 👈 NEW
+    confirmPassword: '',
     phone: '',
     role: 'buyer',
   });
@@ -39,13 +42,13 @@ const Register = () => {
     if (/[^a-zA-Z0-9]/.test(password)) score++;
 
     let label = 'Weak';
-    let color = '#ef4444'; // red
+    let color = '#ef4444';
     if (score >= 4) {
       label = 'Strong';
-      color = '#22c55e'; // green
+      color = '#22c55e';
     } else if (score >= 3) {
       label = 'Medium';
-      color = '#f59e0b'; // amber
+      color = '#f59e0b';
     } else if (score >= 2) {
       label = 'Weak';
       color = '#ef4444';
@@ -70,7 +73,6 @@ const Register = () => {
     e.preventDefault();
     setError('');
 
-    // Check if passwords match
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
       return;
@@ -79,7 +81,6 @@ const Register = () => {
     setLoading(true);
 
     try {
-      // Exclude confirmPassword from registration data
       const { confirmPassword, ...registrationData } = formData;
       const result = await register(registrationData);
       if (result.success) {
@@ -114,7 +115,7 @@ const Register = () => {
         <div style={{ marginBottom: '24px' }}>
           <button
             type="button"
-            onClick={() => window.location.href = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/auth/google`}
+            onClick={() => window.location.href = `${API_URL}/auth/google`}
             style={{
               width: '100%',
               display: 'flex',
@@ -137,7 +138,7 @@ const Register = () => {
 
           <button
             type="button"
-            onClick={() => window.location.href = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/auth/facebook`}
+            onClick={() => window.location.href = `${API_URL}/auth/facebook`}
             style={{
               width: '100%',
               display: 'flex',
@@ -210,7 +211,7 @@ const Register = () => {
             />
           </div>
 
-          {/* Password field with strength bar */}
+          {/* Password field */}
           <div className="form-group" style={{ marginBottom: '16px' }}>
             <label style={{ display: 'block', fontWeight: 600, fontSize: '13px', marginBottom: '4px' }}>Password</label>
             <input
