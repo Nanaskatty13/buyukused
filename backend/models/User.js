@@ -17,8 +17,8 @@ const userSchema = new mongoose.Schema(
       lowercase: true,
       trim: true,
       validate: {
-        validator: function(v) {
-          return /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(v);
+        validator: function (v) {
+          return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
         },
         message: "Please enter a valid email address",
       },
@@ -39,6 +39,7 @@ const userSchema = new mongoose.Schema(
     location: {
       type: String,
       default: "Ghana",
+      trim: true,
     },
 
     avatar: {
@@ -64,7 +65,7 @@ const userSchema = new mongoose.Schema(
 
     role: {
       type: String,
-      enum: ["user", "buyer", "seller", "admin"],
+      enum: ["buyer", "seller", "admin"],
       default: "buyer",
     },
 
@@ -78,38 +79,108 @@ const userSchema = new mongoose.Schema(
   }
 );
 
-// Hash password before saving
-userSchema.pre("save", async function(next) {
-  if (this.isModified("password") && this.password && this.password.length > 0) {
-    if (this.password.length < 6) {
-      return next(new Error("Password must be at least 6 characters"));
-    }
-    const salt = await bcrypt.genSalt(10);
-    this.password = await bcrypt.hash(this.password, salt);
+
+// ===============================
+// PASSWORD HASHING
+// ===============================
+userSchema.pre("save", async function (next) {
+
+  if (!this.isModified("password")) {
+    return next();
   }
+
+  if (!this.password) {
+    return next();
+  }
+
+  const salt = await bcrypt.genSalt(10);
+
+  this.password = await bcrypt.hash(
+    this.password,
+    salt
+  );
+
   next();
 });
 
-// Compare password
-userSchema.methods.comparePassword = async function(password) {
-  if (!this.password || this.password === "") {
+
+// ===============================
+// COMPARE PASSWORD
+// ===============================
+userSchema.methods.comparePassword = async function(password){
+
+  if (!this.password){
     return false;
   }
-  return await bcrypt.compare(password, this.password);
+
+  return bcrypt.compare(
+    password,
+    this.password
+  );
 };
 
-// Transform JSON response
+
+// ===============================
+// ADMIN CHECK
+// ===============================
+userSchema.methods.isAdmin = function(){
+
+  return this.role === "admin";
+
+};
+
+
+// ===============================
+// SELLER CHECK
+// ===============================
+userSchema.methods.isSeller = function(){
+
+  return (
+    this.role === "seller" ||
+    this.role === "admin"
+  );
+
+};
+
+
+// ===============================
+// HIDE PASSWORD
+// ===============================
 userSchema.set("toJSON", {
-  transform: function(doc, ret) {
+
+  transform:function(doc, ret){
+
     delete ret.password;
     delete ret.__v;
+
     return ret;
-  },
+
+  }
+
 });
 
-// Static method to find by email
-userSchema.statics.findByEmail = function(email) {
-  return this.findOne({ email: email.toLowerCase() });
+
+// ===============================
+// FIND USER BY EMAIL
+// ===============================
+userSchema.statics.findByEmail = function(email){
+
+  return this.findOne({
+    email: email.toLowerCase()
+  });
+
 };
 
-module.exports = mongoose.model("User", userSchema);
+
+// ===============================
+// INDEXES
+// ===============================
+userSchema.index({
+  email:1
+});
+
+
+module.exports = mongoose.model(
+  "User",
+  userSchema
+);
