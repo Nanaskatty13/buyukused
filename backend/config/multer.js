@@ -1,64 +1,61 @@
 // backend/config/multer.js
 
 const multer = require("multer");
-const { CloudinaryStorage } = require("multer-storage-cloudinary");
-const cloudinary = require("./cloudinary");
 const path = require("path");
 
-const storage = new CloudinaryStorage({
-  cloudinary: cloudinary,
-  params: async (req, file) => {
-    const name = path
-      .basename(file.originalname, path.extname(file.originalname))
-      .replace(/[^a-zA-Z0-9]/g, "-");
+// ===============================
+// MEMORY STORAGE
+// Files stay in memory temporarily
+// then we upload them to Cloudinary
+// ===============================
 
-    return {
-      folder: "kn-classifieds/products",
-      public_id: `${name}-${Date.now()}`,
-      resource_type: "auto",
-      allowed_formats: [
-        "jpg",
-        "jpeg",
-        "png",
-        "gif",
-        "webp",
-        "mp4",
-        "mov",
-        "avi",
-        "webm",
-      ],
-    };
-  },
-});
+const storage = multer.memoryStorage();
 
+
+// ===============================
+// FILE FILTER
+// ===============================
 
 const fileFilter = (req, file, cb) => {
-  const allowed = /jpeg|jpg|png|gif|webp|mp4|mov|avi|webm/;
 
-  const extname = allowed.test(
+  const allowedTypes =
+    /jpeg|jpg|png|gif|webp|mp4|mov|avi|webm/;
+
+  const extname = allowedTypes.test(
     path.extname(file.originalname).toLowerCase()
   );
 
-  const mimetype = allowed.test(file.mimetype);
+  const mimetype = allowedTypes.test(file.mimetype);
+
 
   if (extname && mimetype) {
     return cb(null, true);
   }
 
+
   cb(
     new Error(
-      "Only images and videos are allowed"
+      "Only images (jpg, jpeg, png, gif, webp) and videos (mp4, mov, avi, webm) are allowed"
     )
   );
+
 };
 
 
+// ===============================
+// MULTER INSTANCE
+// ===============================
+
 const upload = multer({
+
   storage,
+
   limits: {
-    fileSize: 50 * 1024 * 1024,
+    fileSize: 50 * 1024 * 1024, // 50MB
   },
+
   fileFilter,
+
 });
 
 
