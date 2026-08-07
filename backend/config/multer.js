@@ -5,53 +5,41 @@ const { CloudinaryStorage } = require("multer-storage-cloudinary");
 const cloudinary = require("./cloudinary");
 const path = require("path");
 
-// ===============================
-// CLOUDINARY STORAGE
-// ===============================
-
 const storage = new CloudinaryStorage({
-  cloudinary,
-  params: {
-    folder: "kn-classifieds/products",
+  cloudinary: cloudinary,
+  params: async (req, file) => {
+    const name = path
+      .basename(file.originalname, path.extname(file.originalname))
+      .replace(/[^a-zA-Z0-9]/g, "-");
 
-    allowed_formats: [
-      "jpg",
-      "jpeg",
-      "png",
-      "gif",
-      "webp",
-      "mp4",
-      "mov",
-      "avi",
-      "webm",
-    ],
-
-    resource_type: "auto",
-
-    public_id: (req, file) => {
-      const name = path
-        .basename(file.originalname, path.extname(file.originalname))
-        .replace(/[^a-zA-Z0-9]/g, "-");
-
-      return `${name}-${Date.now()}`;
-    },
+    return {
+      folder: "kn-classifieds/products",
+      public_id: `${name}-${Date.now()}`,
+      resource_type: "auto",
+      allowed_formats: [
+        "jpg",
+        "jpeg",
+        "png",
+        "gif",
+        "webp",
+        "mp4",
+        "mov",
+        "avi",
+        "webm",
+      ],
+    };
   },
 });
 
 
-// ===============================
-// FILE FILTER
-// ===============================
-
 const fileFilter = (req, file, cb) => {
-  const allowedTypes =
-    /jpeg|jpg|png|gif|webp|mp4|mov|avi|webm/;
+  const allowed = /jpeg|jpg|png|gif|webp|mp4|mov|avi|webm/;
 
-  const extname = allowedTypes.test(
+  const extname = allowed.test(
     path.extname(file.originalname).toLowerCase()
   );
 
-  const mimetype = allowedTypes.test(file.mimetype);
+  const mimetype = allowed.test(file.mimetype);
 
   if (extname && mimetype) {
     return cb(null, true);
@@ -59,23 +47,17 @@ const fileFilter = (req, file, cb) => {
 
   cb(
     new Error(
-      "Only images (jpg, jpeg, png, gif, webp) and videos (mp4, mov, avi, webm) are allowed"
+      "Only images and videos are allowed"
     )
   );
 };
 
 
-// ===============================
-// MULTER INSTANCE
-// ===============================
-
 const upload = multer({
   storage,
-
   limits: {
-    fileSize: 50 * 1024 * 1024, // 50MB
+    fileSize: 50 * 1024 * 1024,
   },
-
   fileFilter,
 });
 
