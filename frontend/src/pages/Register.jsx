@@ -9,77 +9,29 @@ const Register = () => {
     name: '',
     email: '',
     password: '',
-    confirmPassword: '',
     phone: '',
     role: 'buyer',
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [passwordStrength, setPasswordStrength] = useState({ score: 0, label: '', color: '' });
   const { register } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
   const from = location.state?.from || '/';
 
-  // ===============================
-  // PASSWORD STRENGTH EVALUATOR
-  // ===============================
-  const evaluatePassword = (password) => {
-    if (!password) {
-      setPasswordStrength({ score: 0, label: '', color: '' });
-      return;
-    }
-
-    let score = 0;
-    if (password.length >= 6) score++;
-    if (password.length >= 10) score++;
-    if (/[a-z]/.test(password) && /[A-Z]/.test(password)) score++;
-    if (/\d/.test(password)) score++;
-    if (/[^a-zA-Z0-9]/.test(password)) score++;
-
-    let label = 'Weak';
-    let color = '#ef4444'; // red
-    if (score >= 4) {
-      label = 'Strong';
-      color = '#22c55e'; // green
-    } else if (score >= 3) {
-      label = 'Medium';
-      color = '#f59e0b'; // amber
-    } else if (score >= 2) {
-      label = 'Weak';
-      color = '#ef4444';
-    } else {
-      label = 'Very Weak';
-      color = '#dc2626';
-    }
-
-    setPasswordStrength({ score: Math.min(score / 5, 1), label, color });
-  };
-
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
-
-    if (name === 'password') {
-      evaluatePassword(value);
-    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-
-    if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
-      return;
-    }
-
     setLoading(true);
 
     try {
-      const { confirmPassword, ...registrationData } = formData;
-      const result = await register(registrationData);
+      const result = await register(formData);
       if (result.success) {
         navigate(from, { replace: true });
       } else {
@@ -229,57 +181,6 @@ const Register = () => {
                 background: 'white',
               }}
             />
-            {/* Password strength bar */}
-            {formData.password && (
-              <div style={{ marginTop: '6px' }}>
-                <div style={{
-                  width: '100%',
-                  height: '6px',
-                  background: '#e5e7eb',
-                  borderRadius: '4px',
-                  overflow: 'hidden',
-                }}>
-                  <div style={{
-                    width: `${passwordStrength.score * 100}%`,
-                    height: '100%',
-                    background: passwordStrength.color,
-                    transition: 'width 0.3s ease, background 0.3s ease',
-                    borderRadius: '4px',
-                  }} />
-                </div>
-                <span style={{ fontSize: '12px', color: passwordStrength.color, fontWeight: 600 }}>
-                  {passwordStrength.label}
-                </span>
-              </div>
-            )}
-          </div>
-
-          <div className="form-group" style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', fontWeight: 600, fontSize: '13px', marginBottom: '4px' }}>Confirm Password</label>
-            <input
-              type="password"
-              name="confirmPassword"
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              placeholder="Re‑enter your password"
-              required
-              minLength="6"
-              style={{
-                width: '100%',
-                padding: '12px 16px',
-                border: '1.5px solid var(--gray-200)',
-                borderRadius: 'var(--radius-md)',
-                fontSize: '14px',
-                fontFamily: 'inherit',
-                transition: 'var(--transition)',
-                background: 'white',
-              }}
-            />
-            {formData.confirmPassword && formData.password && formData.password !== formData.confirmPassword && (
-              <small style={{ color: '#dc2626', display: 'block', marginTop: '4px' }}>
-                ⚠️ Passwords do not match
-              </small>
-            )}
           </div>
 
           <div className="form-group" style={{ marginBottom: '16px' }}>
