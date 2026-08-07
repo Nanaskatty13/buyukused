@@ -14,6 +14,10 @@ import Profile from './pages/Profile';
 import Wishlist from './pages/Wishlist';
 import AdminDashboard from './pages/Admin/AdminDashboard';
 import PostAd from './pages/PostAd';
+import Publishing from './pages/Publishing';
+
+// Inside <Routes>
+
 
 function App() {
   return (
@@ -30,6 +34,7 @@ function App() {
           <Route path="/wishlist" element={<Wishlist />} />
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/post-ad" element={<PostAd />} />
+          <Route path="/publishing" element={<Publishing />} />
         </Routes>
         <FloatingWhatsApp />
         <FloatingPhone /> {/* <-- Add this */}
