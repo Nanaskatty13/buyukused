@@ -1,55 +1,70 @@
 // backend/routes/auth.js
-const express = require('express');
-const router = express.Router();
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const User = require('../models/User');
 
-// ============================================================
-//  REGISTER
-// ============================================================
-router.post('/register', async (req, res) => {
+const express = require("express");
+const router = express.Router();
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+const User = require("../models/User");
+
+// ===============================
+// Generate JWT
+// ===============================
+const generateToken = (user) => {
+  return jwt.sign(
+    {
+      id: user._id,
+      role: user.role,
+    },
+    process.env.JWT_SECRET,
+    {
+      expiresIn: "30d",
+    }
+  );
+};
+
+// ===============================
+// REGISTER
+// ===============================
+router.post("/register", async (req, res) => {
   try {
     const { name, email, password, phone, role } = req.body;
 
-    // Normalize email to lowercase
-    const normalizedEmail = email.toLowerCase().trim();
-
-    // Check if user already exists
-    const existing = await User.findOne({ email: normalizedEmail });
-    if (existing) {
-      console.log(`⚠️ Registration attempt with existing email: ${normalizedEmail}`);
+    if (!name || !email || !password) {
       return res.status(400).json({
         success: false,
-        message: 'Email already registered',
+        message: "Name, email and password are required",
       });
     }
 
-    // Hash password
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
+    const normalizedEmail = email.toLowerCase().trim();
 
-    // Create user – default role to 'user' if not provided
-    const user = new User({
-      name,
+    const existingUser = await User.findOne({
       email: normalizedEmail,
-      password: hashedPassword,
-      phone: phone || '',
-      role: role || 'user',
     });
 
-    await user.save();
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        message: "Email already registered",
+      });
+    }
 
-    // Generate JWT
-    const token = jwt.sign(
-      { id: user._id, email: user.email, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: '7d' }
-    );
+    // DO NOT HASH HERE
+    // User model hashes password automatically
+
+    const user = await User.create({
+      name,
+      email: normalizedEmail,
+      password,
+      phone: phone || "",
+      role: role || "buyer",
+    });
+
+    console.log("✅ User created:", user.email);
 
     res.status(201).json({
       success: true,
-      token,
+      token: generateToken(user),
       user: {
         id: user._id,
         name: user.name,
@@ -58,55 +73,53 @@ router.post('/register', async (req, res) => {
         role: user.role,
       },
     });
+
   } catch (err) {
-    console.error('❌ Register error:', err);
-    res.status(500).json({ success: false, message: err.message });
+    console.error("REGISTER ERROR:", err);
+
+    res.status(500).json({
+      success: false,
+      message: err.message,
+    });
   }
 });
 
-// ============================================================
-//  LOGIN
-// ============================================================
-router.post('/login', async (req, res) => {
+// ===============================
+// LOGIN
+// ===============================
+router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    if (!email || !password) {
-      return res.status(400).json({
-        success: false,
-        message: 'Email and password are required',
-      });
-    }
-
     const normalizedEmail = email.toLowerCase().trim();
 
-    const user = await User.findOne({ email: normalizedEmail });
+    const user = await User.findOne({
+      email: normalizedEmail,
+    });
+
+    console.log("Found user:", user);
+
     if (!user) {
-      console.log(`❌ Login failed: user not found (${normalizedEmail})`);
       return res.status(401).json({
         success: false,
-        message: 'Invalid credentials',
+        message: "Invalid credentials",
       });
     }
 
-    const isMatch = await bcrypt.compare(password, user.password);
+    const isMatch = await user.comparePassword(password);
+
+    console.log("Password match:", isMatch);
+
     if (!isMatch) {
-      console.log(`❌ Login failed: wrong password for ${normalizedEmail}`);
       return res.status(401).json({
         success: false,
-        message: 'Invalid credentials',
+        message: "Invalid credentials",
       });
     }
-
-    const token = jwt.sign(
-      { id: user._id, email: user.email, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: '7d' }
-    );
 
     res.json({
       success: true,
-      token,
+      token: generateToken(user),
       user: {
         id: user._id,
         name: user.name,
@@ -115,38 +128,65 @@ router.post('/login', async (req, res) => {
         role: user.role,
       },
     });
+
   } catch (err) {
-    console.error('❌ Login error:', err);
-    res.status(500).json({ success: false, message: err.message });
+    console.error("LOGIN ERROR:", err);
+
+    res.status(500).json({
+      success: false,
+      message: err.message,
+    });
   }
 });
 
-// ============================================================
-//  GET CURRENT USER (protected)
-// ============================================================
-router.get('/me', async (req, res) => {
+// ===============================
+// CURRENT USER
+// ===============================
+router.get("/me", async (req, res) => {
   try {
-    const token = req.headers.authorization?.split(' ')[1];
+    const token = req.headers.authorization?.split(" ")[1];
+
     if (!token) {
-      return res.status(401).json({ success: false, message: 'No token' });
+      return res.status(401).json({
+        success: false,
+        message: "No token",
+      });
     }
+
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await User.findById(decoded.id).select('-password');
+
+    const user = await User.findById(decoded.id).select("-password");
+
     if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found' });
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
     }
-    res.json({ success: true, user });
+
+    res.json({
+      success: true,
+      user,
+    });
+
   } catch (err) {
-    console.error('❌ /me error:', err);
-    res.status(401).json({ success: false, message: 'Invalid token' });
+    console.error(err);
+
+    res.status(401).json({
+      success: false,
+      message: "Invalid token",
+    });
   }
 });
 
-// ============================================================
-//  LOGOUT (optional – just discard token on frontend)
-// ============================================================
-router.post('/logout', (req, res) => {
-  res.json({ success: true, message: 'Logged out' });
+// ===============================
+// LOGOUT
+// ===============================
+router.post("/logout", (req, res) => {
+  res.json({
+    success: true,
+    message: "Logged out successfully",
+  });
 });
 
 module.exports = router;
