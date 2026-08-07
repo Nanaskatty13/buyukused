@@ -33,7 +33,7 @@ if (!process.env.SESSION_SECRET) {
 }
 
 // ===============================
-// TRUST PROXY (for secure cookies & req.protocol)
+// TRUST PROXY
 // ===============================
 app.set("trust proxy", 1);
 
@@ -41,7 +41,6 @@ app.set("trust proxy", 1);
 // BASE URL (for building absolute URLs)
 // ===============================
 app.use((req, res, next) => {
-  // Use BASE_URL env if set, otherwise detect from request
   req.baseUrl = process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
   next();
 });
@@ -58,7 +57,7 @@ app.use(compression());
 app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
 
 // ===============================
-// CORS – allow localhost and any Vercel subdomain
+// CORS
 // ===============================
 const allowedOrigins = [
   "http://localhost:5173",
@@ -95,7 +94,7 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 // ===============================
-// MULTER – robust upload directory handling
+// MULTER CONFIGURATION
 // ===============================
 const uploadDir = path.join(__dirname, "public/uploads");
 try {
@@ -233,30 +232,24 @@ app.use("/api/users", userRoutes);
 app.use("/api/messages", messageRoutes);
 
 // ===============================
-// STATIC FILES
+// STATIC FILES – ONLY FOR UPLOADS
 // ===============================
-app.use(express.static(path.join(__dirname, "public")));
+// DO NOT serve the public folder – your frontend is on Vercel.
 app.use("/uploads", express.static(uploadDir));
 
 // ===============================
-// 404 HANDLER
+// 404 HANDLER (API only)
 // ===============================
-app.use((req, res, next) => {
+app.use((req, res) => {
   if (req.path.startsWith("/api") || req.path.startsWith("/auth")) {
     return res.status(404).json({ success: false, message: "API endpoint not found" });
   }
-  next();
+  // For any other request (like missing favicon or static asset), return 404.
+  res.status(404).send("Not Found");
 });
 
 // ===============================
-// CATCH-ALL FOR FRONTEND
-// ===============================
-app.get("*", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
-});
-
-// ===============================
-// ERROR HANDLER
+// ERROR HANDLER (must be last)
 // ===============================
 app.use((err, req, res, next) => {
   console.error("❌ Error:", err.message);
