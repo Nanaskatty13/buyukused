@@ -57,12 +57,13 @@ app.use(compression());
 app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
 
 // ===============================
-// CORS
+// CORS - UPDATED
 // ===============================
 
 const allowedOrigins = [
   "http://localhost:5173",
   "http://127.0.0.1:5173",
+  "https://sell-platform2.vercel.app",      // ✅ explicitly added
   process.env.FRONTEND_URL,
 ].filter(Boolean);
 
@@ -73,17 +74,27 @@ app.use(
     origin: (origin, callback) => {
       console.log("🔍 Incoming origin:", origin);
       if (!origin) return callback(null, true);
+
+      // Exact match
       if (allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
+
+      // Allow any vercel.app subdomain
       if (/^https?:\/\/[a-zA-Z0-9-]+\.vercel\.app$/.test(origin)) {
         return callback(null, true);
       }
+
+      // Development fallback
+      if (process.env.NODE_ENV === "development") {
+        return callback(null, true);
+      }
+
       console.log("🚫 Blocked CORS:", origin);
       callback(new Error("CORS not allowed for this origin"));
     },
     credentials: true,
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
@@ -238,7 +249,6 @@ app.use("/api/admin", adminRoutes);
 // ===============================
 // STATIC FILES – ONLY FOR UPLOADS
 // ===============================
-// DO NOT serve the public folder – your frontend is on Vercel.
 app.use("/uploads", express.static(uploadDir));
 
 // ===============================
@@ -248,7 +258,6 @@ app.use((req, res) => {
   if (req.path.startsWith("/api") || req.path.startsWith("/auth")) {
     return res.status(404).json({ success: false, message: "API endpoint not found" });
   }
-  // For any other request (like missing favicon or static asset), return 404.
   res.status(404).send("Not Found");
 });
 
