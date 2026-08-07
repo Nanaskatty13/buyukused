@@ -1,315 +1,189 @@
-// controllers/adminController.js
-
 const User = require("../models/User");
 const Product = require("../models/Product");
 const Order = require("../models/Orders");
-
 
 // ==========================
 // Admin Dashboard Statistics
 // ==========================
 exports.getDashboardStats = async (req, res) => {
-  try {
+    try {
+        const users = await User.countDocuments();
+        const products = await Product.countDocuments();
 
-    const users = await User.countDocuments();
-    const products = await Product.countDocuments();
+        let orders = 0;
+        if (Order) {
+            orders = await Order.countDocuments();
+        }
 
-    let orders = 0;
+        res.json({
+            success: true,
+            stats: {
+                users,
+                products,
+                orders
+            }
+        });
 
-    if (Order) {
-      orders = await Order.countDocuments();
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
     }
-
-    res.json({
-      success: true,
-      stats: {
-        users,
-        products,
-        orders
-      }
-    });
-
-  } catch (error) {
-
-    res.status(500).json({
-      success:false,
-      message:error.message
-    });
-
-  }
 };
-
 
 
 // ==========================
 // Get All Users
 // ==========================
-exports.getUsers = async (req,res)=>{
-  try {
+exports.getUsers = async (req, res) => {
+    try {
+        const users = await User.find()
+            .select("-password")
+            .sort({ createdAt: -1 });
 
-    const users = await User.find()
-      .select("-password")
-      .sort({createdAt:-1});
+        res.json({
+            success: true,
+            users
+        });
 
-
-    res.json({
-      success:true,
-      users
-    });
-
-
-  } catch(error){
-
-    res.status(500).json({
-      success:false,
-      message:error.message
-    });
-
-  }
-};
-
-
-
-// ==========================
-// Get Single User
-// ==========================
-exports.getUserById = async(req,res)=>{
-  try {
-
-    const user = await User.findById(req.params.id)
-      .select("-password");
-
-
-    if(!user){
-      return res.status(404).json({
-        success:false,
-        message:"User not found"
-      });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
     }
-
-
-    res.json({
-      success:true,
-      user
-    });
-
-
-  } catch(error){
-
-    res.status(500).json({
-      success:false,
-      message:error.message
-    });
-
-  }
 };
-
 
 
 // ==========================
 // Update User Role
 // ==========================
-exports.updateUserRole = async(req,res)=>{
-  try {
+exports.updateUserRole = async (req, res) => {
+    try {
+        const { role } = req.body;
 
-    const {role} = req.body;
-
-
-    const user = await User.findByIdAndUpdate(
-      req.params.id,
-      {role},
-      {new:true}
-    ).select("-password");
+        const user = await User.findByIdAndUpdate(
+            req.params.id,
+            { role },
+            { new: true }
+        ).select("-password");
 
 
-    if(!user){
-      return res.status(404).json({
-        success:false,
-        message:"User not found"
-      });
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found"
+            });
+        }
+
+
+        res.json({
+            success: true,
+            user
+        });
+
+
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
     }
-
-
-    res.json({
-      success:true,
-      user
-    });
-
-
-  } catch(error){
-
-    res.status(500).json({
-      success:false,
-      message:error.message
-    });
-
-  }
 };
-
 
 
 // ==========================
 // Delete User
 // ==========================
-exports.deleteUser = async(req,res)=>{
-  try {
+exports.deleteUser = async (req, res) => {
+    try {
 
-    const user = await User.findByIdAndDelete(req.params.id);
+        const user = await User.findByIdAndDelete(req.params.id);
 
 
-    if(!user){
-      return res.status(404).json({
-        success:false,
-        message:"User not found"
-      });
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found"
+            });
+        }
+
+
+        res.json({
+            success: true,
+            message: "User deleted successfully"
+        });
+
+
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
     }
-
-
-    res.json({
-      success:true,
-      message:"User deleted successfully"
-    });
-
-
-  } catch(error){
-
-    res.status(500).json({
-      success:false,
-      message:error.message
-    });
-
-  }
 };
-
 
 
 // ==========================
 // Get All Products
 // ==========================
-exports.getProducts = async(req,res)=>{
-  try {
+exports.getProducts = async (req, res) => {
+    try {
 
-    const products = await Product.find()
-      .sort({createdAt:-1});
-
-
-    res.json({
-      success:true,
-      products
-    });
+        const products = await Product.find()
+            .populate("seller", "name email")
+            .sort({ createdAt: -1 });
 
 
-  } catch(error){
+        res.json({
+            success: true,
+            products
+        });
 
-    res.status(500).json({
-      success:false,
-      message:error.message
-    });
 
-  }
+    } catch (error) {
+
+        res.status(500).json({
+            success:false,
+            message:error.message
+        });
+
+    }
 };
-
 
 
 // ==========================
 // Delete Product
 // ==========================
-exports.deleteProduct = async(req,res)=>{
-  try {
+exports.deleteProduct = async (req,res)=>{
 
-    const product = await Product.findByIdAndDelete(req.params.id);
+    try {
+
+        const product = await Product.findByIdAndDelete(req.params.id);
 
 
-    if(!product){
-      return res.status(404).json({
-        success:false,
-        message:"Product not found"
-      });
+        if(!product){
+            return res.status(404).json({
+                success:false,
+                message:"Product not found"
+            });
+        }
+
+
+        res.json({
+            success:true,
+            message:"Product deleted successfully"
+        });
+
+
+    }catch(error){
+
+        res.status(500).json({
+            success:false,
+            message:error.message
+        });
+
     }
 
-
-    res.json({
-      success:true,
-      message:"Product deleted successfully"
-    });
-
-
-  } catch(error){
-
-    res.status(500).json({
-      success:false,
-      message:error.message
-    });
-
-  }
-};
-
-
-
-// ==========================
-// Get All Orders
-// ==========================
-exports.getOrders = async(req,res)=>{
-  try {
-
-    const orders = await Order.find()
-      .sort({createdAt:-1});
-
-
-    res.json({
-      success:true,
-      orders
-    });
-
-
-  } catch(error){
-
-    res.status(500).json({
-      success:false,
-      message:error.message
-    });
-
-  }
-};
-
-
-
-// ==========================
-// Update Order Status
-// ==========================
-exports.updateOrderStatus = async(req,res)=>{
-  try {
-
-    const {status} = req.body;
-
-
-    const order = await Order.findByIdAndUpdate(
-      req.params.id,
-      {status},
-      {new:true}
-    );
-
-
-    if(!order){
-      return res.status(404).json({
-        success:false,
-        message:"Order not found"
-      });
-    }
-
-
-    res.json({
-      success:true,
-      order
-    });
-
-
-  } catch(error){
-
-    res.status(500).json({
-      success:false,
-      message:error.message
-    });
-
-  }
 };

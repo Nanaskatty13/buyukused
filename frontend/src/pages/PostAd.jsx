@@ -87,7 +87,7 @@ const iphoneColors = [
   'Space Gray', 'Silver', 'Gold', 'Black', 'White', 'Blue', 'Coral',
   'Yellow', 'Red', 'Purple', 'Green', 'Midnight Green', 'Graphite',
   'Pacific Blue', 'Midnight', 'Starlight', 'Pink', 'Sierra Blue',
-  'Alpine Green', 'Deep Purple', 'DeepBlue', 'Space Black', 'Black Titanium',
+  'Alpine Green', 'Deep Purple', 'Space Black', 'Black Titanium',
   'White Titanium', 'Blue Titanium', 'Natural Titanium', 'Desert Titanium',
   'Teal', 'Ultramarine', 'Product Red', 'Rose Gold', 'Matte Black',
   'Jet Black', 'Burgundy', 'Crimson'

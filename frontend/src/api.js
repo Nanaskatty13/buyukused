@@ -2,66 +2,46 @@
 //  IMPORTS
 // ================================================================
 
-import { getToken, clearAuthData } from './utils/storage';
+import { getToken } from './utils/storage';
 
 // ================================================================
 //  API CONFIG
 // ================================================================
 
-// ✅ CORRECT: plain string, no Markdown
-const API_URL =
-  import.meta.env.VITE_API_URL ||
-  "http://localhost:5000";
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-console.log("🔗 API_URL:", API_URL);
+console.log('🔗 API_URL:', API_URL);
 
 // ================================================================
-//  FETCH WITH TIMEOUT (prevents hanging requests)
+//  IMAGE URL HELPER
 // ================================================================
 
-const fetchWithTimeout = (url, options = {}, timeout = 30000) => {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeout);
-
-  return fetch(url, {
-    ...options,
-    signal: controller.signal,
-  }).finally(() => clearTimeout(timeoutId));
+export const getImageUrl = (path) => {
+  if (!path) return '';
+  if (path.startsWith('http://') || path.startsWith('https://')) return path;
+  if (path.startsWith('/uploads/')) return `${API_URL}${path}`;
+  return path;
 };
 
 // ================================================================
 //  HEADERS & RESPONSE HANDLER
 // ================================================================
 
-const getHeaders = (token = getToken()) => ({
-  "Content-Type": "application/json",
-  ...(token ? { Authorization: `Bearer ${token}` } : {}),
+const getHeaders = (token) => ({
+  'Content-Type': 'application/json',
+  ...(token && { 'Authorization': `Bearer ${token}` }),
 });
 
 const handleResponse = async (response) => {
   let data = {};
-
   try {
     data = await response.json();
   } catch {
     data = {};
   }
-
   if (!response.ok) {
-    if (
-      (response.status === 401 || response.status === 403) &&
-      !response.url.includes("/auth/login")
-    ) {
-      clearAuthData();
-    }
-
-    throw new Error(
-      data.message ||
-      data.error ||
-      `HTTP ${response.status}`
-    );
+    throw new Error(data.message || data.error || `HTTP ${response.status}`);
   }
-
   return data;
 };
 
@@ -71,46 +51,30 @@ const handleResponse = async (response) => {
 
 export const auth = {
   login: async (email, password) => {
-    const res = await fetchWithTimeout(`${API_URL}/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({
-        email: email.trim().toLowerCase(),
-        password,
-      }),
+    const res = await fetch(`${API_URL}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
     });
     return handleResponse(res);
   },
-
   register: async (userData) => {
-    const res = await fetchWithTimeout(`${API_URL}/auth/register`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({
-        name: userData.name,
-        email: userData.email.trim().toLowerCase(),
-        password: userData.password,
-        phone: userData.phone || "",
-      }),
+    const res = await fetch(`${API_URL}/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(userData),
     });
     return handleResponse(res);
   },
-
   getMe: async (token) => {
-    const res = await fetchWithTimeout(`${API_URL}/auth/me`, {
-      method: "GET",
-      credentials: "include",
+    const res = await fetch(`${API_URL}/auth/me`, {
       headers: getHeaders(token),
     });
     return handleResponse(res);
   },
-
   logout: async (token) => {
-    const res = await fetchWithTimeout(`${API_URL}/auth/logout`, {
-      method: "POST",
-      credentials: "include",
+    const res = await fetch(`${API_URL}/auth/logout`, {
+      method: 'POST',
       headers: getHeaders(token),
     });
     return handleResponse(res);
@@ -122,73 +86,69 @@ export const auth = {
 // ================================================================
 
 export const products = {
+  // ===== PUBLIC ROUTES =====
   getAll: async (params = {}) => {
     const query = new URLSearchParams(params).toString();
     const url = `${API_URL}/api/products${query ? `?${query}` : ''}`;
-    const res = await fetchWithTimeout(url, {
-      credentials: "include",
-      headers: getHeaders(),
+    const res = await fetch(url, {
+      credentials: "include", // ✅ send cookies if any, but no Authorization header
     });
     return handleResponse(res);
   },
 
   getById: async (id) => {
-    const res = await fetchWithTimeout(`${API_URL}/api/products/${id}`, {
-      credentials: "include",
-      headers: getHeaders(),
+    const res = await fetch(`${API_URL}/api/products/${id}`, {
+      credentials: "include", // ✅ send cookies if any, but no Authorization header
     });
     return handleResponse(res);
   },
 
+  // ===== AUTHENTICATED ROUTES =====
   create: async (productData, token) => {
-    const res = await fetchWithTimeout(`${API_URL}/api/products`, {
-      method: "POST",
-      credentials: "include",
+    const res = await fetch(`${API_URL}/api/products`, {
+      method: 'POST',
       headers: getHeaders(token),
       body: JSON.stringify(productData),
-    });
-    return handleResponse(res);
-  },
-
-  createWithFiles: async (formData, token = getToken()) => {
-    const res = await fetchWithTimeout(`${API_URL}/api/products`, {
-      method: "POST",
-      credentials: "include",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-      body: formData,
     });
     return handleResponse(res);
   },
 
   update: async (id, productData, token) => {
-    const res = await fetchWithTimeout(`${API_URL}/api/products/${id}`, {
-      method: "PUT",
-      credentials: "include",
+    const res = await fetch(`${API_URL}/api/products/${id}`, {
+      method: 'PUT',
       headers: getHeaders(token),
       body: JSON.stringify(productData),
     });
     return handleResponse(res);
   },
 
-  updateWithFiles: async (id, formData, token = getToken()) => {
-    const res = await fetchWithTimeout(`${API_URL}/api/products/${id}`, {
-      method: "PUT",
-      credentials: "include",
+  delete: async (id, token) => {
+    const res = await fetch(`${API_URL}/api/products/${id}`, {
+      method: 'DELETE',
+      headers: getHeaders(token),
+    });
+    return handleResponse(res);
+  },
+
+  // File upload methods (authenticated)
+  createWithFiles: async (formData, token = getToken()) => {
+    const res = await fetch(`${API_URL}/api/products`, {
+      method: 'POST',
       headers: {
-        Authorization: `Bearer ${token}`,
+        'Authorization': `Bearer ${token}`,
       },
       body: formData,
     });
     return handleResponse(res);
   },
 
-  delete: async (id, token) => {
-    const res = await fetchWithTimeout(`${API_URL}/api/products/${id}`, {
-      method: "DELETE",
-      credentials: "include",
-      headers: getHeaders(token),
+  updateWithFiles: async (id, formData, token = getToken()) => {
+    const res = await fetch(`${API_URL}/api/products/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+      body: formData,
     });
     return handleResponse(res);
   },
@@ -202,43 +162,32 @@ export const users = {
   getAll: async (params = {}, token) => {
     const query = new URLSearchParams(params).toString();
     const url = `${API_URL}/api/users${query ? `?${query}` : ''}`;
-    const res = await fetchWithTimeout(url, {
-      credentials: "include",
-      headers: getHeaders(token),
-    });
+    const res = await fetch(url, { headers: getHeaders(token) });
     return handleResponse(res);
   },
-
   getById: async (id, token) => {
-    const res = await fetchWithTimeout(`${API_URL}/api/users/${id}`, {
-      credentials: "include",
+    const res = await fetch(`${API_URL}/api/users/${id}`, {
       headers: getHeaders(token),
     });
     return handleResponse(res);
   },
-
   update: async (id, userData, token) => {
-    const res = await fetchWithTimeout(`${API_URL}/api/users/${id}`, {
-      method: "PUT",
-      credentials: "include",
+    const res = await fetch(`${API_URL}/api/users/${id}`, {
+      method: 'PUT',
       headers: getHeaders(token),
       body: JSON.stringify(userData),
     });
     return handleResponse(res);
   },
-
   delete: async (id, token) => {
-    const res = await fetchWithTimeout(`${API_URL}/api/users/${id}`, {
-      method: "DELETE",
-      credentials: "include",
+    const res = await fetch(`${API_URL}/api/users/${id}`, {
+      method: 'DELETE',
       headers: getHeaders(token),
     });
     return handleResponse(res);
   },
-
   getStats: async (token) => {
-    const res = await fetchWithTimeout(`${API_URL}/api/users/stats`, {
-      credentials: "include",
+    const res = await fetch(`${API_URL}/api/users/stats`, {
       headers: getHeaders(token),
     });
     return handleResponse(res);
@@ -251,188 +200,35 @@ export const users = {
 
 export const notifications = {
   getForUser: async (userId, token) => {
-    const res = await fetchWithTimeout(`${API_URL}/api/notifications/${userId}`, {
-      credentials: "include",
+    const res = await fetch(`${API_URL}/api/notifications/${userId}`, {
       headers: getHeaders(token),
     });
     return handleResponse(res);
   },
-
   getForAdmin: async (token) => {
-    const res = await fetchWithTimeout(`${API_URL}/api/notifications/admin`, {
-      credentials: "include",
+    const res = await fetch(`${API_URL}/api/notifications/admin`, {
       headers: getHeaders(token),
     });
     return handleResponse(res);
   },
-
   create: async (data, token) => {
-    const res = await fetchWithTimeout(`${API_URL}/api/notifications`, {
-      method: "POST",
-      credentials: "include",
+    const res = await fetch(`${API_URL}/api/notifications`, {
+      method: 'POST',
       headers: getHeaders(token),
       body: JSON.stringify(data),
     });
     return handleResponse(res);
   },
-
   markRead: async (id, token) => {
-    const res = await fetchWithTimeout(`${API_URL}/api/notifications/${id}/read`, {
-      method: "PUT",
-      credentials: "include",
+    const res = await fetch(`${API_URL}/api/notifications/${id}/read`, {
+      method: 'PUT',
       headers: getHeaders(token),
     });
     return handleResponse(res);
   },
-
   delete: async (id, token) => {
-    const res = await fetchWithTimeout(`${API_URL}/api/notifications/${id}`, {
-      method: "DELETE",
-      credentials: "include",
-      headers: getHeaders(token),
-    });
-    return handleResponse(res);
-  },
-};
-
-// ================================================================
-//  ORDERS API
-// ================================================================
-
-export const orders = {
-  getAll: async (params = {}, token) => {
-    const query = new URLSearchParams(params).toString();
-    const url = `${API_URL}/api/orders${query ? `?${query}` : ''}`;
-    const res = await fetchWithTimeout(url, {
-      credentials: "include",
-      headers: getHeaders(token),
-    });
-    return handleResponse(res);
-  },
-
-  getById: async (id, token) => {
-    const res = await fetchWithTimeout(`${API_URL}/api/orders/${id}`, {
-      credentials: "include",
-      headers: getHeaders(token),
-    });
-    return handleResponse(res);
-  },
-
-  create: async (orderData, token) => {
-    const res = await fetchWithTimeout(`${API_URL}/api/orders`, {
-      method: "POST",
-      credentials: "include",
-      headers: getHeaders(token),
-      body: JSON.stringify(orderData),
-    });
-    return handleResponse(res);
-  },
-
-  update: async (id, updates, token) => {
-    const res = await fetchWithTimeout(`${API_URL}/api/orders/${id}`, {
-      method: "PUT",
-      credentials: "include",
-      headers: getHeaders(token),
-      body: JSON.stringify(updates),
-    });
-    return handleResponse(res);
-  },
-
-  delete: async (id, token) => {
-    const res = await fetchWithTimeout(`${API_URL}/api/orders/${id}`, {
-      method: "DELETE",
-      credentials: "include",
-      headers: getHeaders(token),
-    });
-    return handleResponse(res);
-  },
-};
-
-// ================================================================
-//  MESSAGES API
-// ================================================================
-
-export const messages = {
-  getForUser: async (userId, token) => {
-    const res = await fetchWithTimeout(`${API_URL}/api/messages/${userId}`, {
-      credentials: "include",
-      headers: getHeaders(token),
-    });
-    return handleResponse(res);
-  },
-
-  getConversations: async (token) => {
-    const res = await fetchWithTimeout(`${API_URL}/api/messages/conversations`, {
-      credentials: "include",
-      headers: getHeaders(token),
-    });
-    return handleResponse(res);
-  },
-
-  getConversation: async (otherUserId, token) => {
-    const res = await fetchWithTimeout(`${API_URL}/api/messages/conversation/${otherUserId}`, {
-      credentials: "include",
-      headers: getHeaders(token),
-    });
-    return handleResponse(res);
-  },
-
-  send: async (receiver, message, productId, token) => {
-    const res = await fetchWithTimeout(`${API_URL}/api/messages`, {
-      method: "POST",
-      credentials: "include",
-      headers: getHeaders(token),
-      body: JSON.stringify({ receiver, message, productId }),
-    });
-    return handleResponse(res);
-  },
-
-  markRead: async (messageId, token) => {
-    const res = await fetchWithTimeout(`${API_URL}/api/messages/${messageId}/read`, {
-      method: "PUT",
-      credentials: "include",
-      headers: getHeaders(token),
-    });
-    return handleResponse(res);
-  },
-
-  delete: async (messageId, token) => {
-    const res = await fetchWithTimeout(`${API_URL}/api/messages/${messageId}`, {
-      method: "DELETE",
-      credentials: "include",
-      headers: getHeaders(token),
-    });
-    return handleResponse(res);
-  },
-};
-
-// ================================================================
-//  FAVORITES / WISHLIST
-// ================================================================
-
-export const favorites = {
-  getAll: async (token) => {
-    const res = await fetchWithTimeout(`${API_URL}/api/favorites`, {
-      credentials: "include",
-      headers: getHeaders(token),
-    });
-    return handleResponse(res);
-  },
-
-  add: async (productId, token) => {
-    const res = await fetchWithTimeout(`${API_URL}/api/favorites`, {
-      method: "POST",
-      credentials: "include",
-      headers: getHeaders(token),
-      body: JSON.stringify({ productId }),
-    });
-    return handleResponse(res);
-  },
-
-  remove: async (productId, token) => {
-    const res = await fetchWithTimeout(`${API_URL}/api/favorites/${productId}`, {
-      method: "DELETE",
-      credentials: "include",
+    const res = await fetch(`${API_URL}/api/notifications/${id}`, {
+      method: 'DELETE',
       headers: getHeaders(token),
     });
     return handleResponse(res);
@@ -443,11 +239,13 @@ export const favorites = {
 //  NAMED EXPORTS (convenience)
 // ================================================================
 
+// Auth
 export const login = auth.login;
 export const register = auth.register;
 export const getMe = auth.getMe;
 export const logout = auth.logout;
 
+// Products
 export const getProducts = products.getAll;
 export const getProduct = products.getById;
 export const createProduct = products.create;
@@ -456,47 +254,29 @@ export const updateProduct = products.update;
 export const updateProductWithFiles = products.updateWithFiles;
 export const deleteProduct = products.delete;
 
+// Users
 export const getUsers = users.getAll;
 export const getUser = users.getById;
 export const updateUser = users.update;
 export const deleteUser = users.delete;
 export const getUserStats = users.getStats;
 
+// Notifications
 export const getNotifications = notifications.getForUser;
 export const getAdminNotifications = notifications.getForAdmin;
 export const createNotification = notifications.create;
 export const markNotificationRead = notifications.markRead;
 export const deleteNotification = notifications.delete;
 
-export const getOrders = orders.getAll;
-export const getOrder = orders.getById;
-export const createOrder = orders.create;
-export const updateOrder = orders.update;
-export const deleteOrder = orders.delete;
-
-export const getMessages = messages.getForUser;
-export const getConversations = messages.getConversations;
-export const getConversation = messages.getConversation;
-export const sendMessage = messages.send;
-export const markMessageRead = messages.markRead;
-export const deleteMessage = messages.delete;
-
-export const getFavorites = favorites.getAll;
-export const addFavorite = favorites.add;
-export const removeFavorite = favorites.remove;
-
 // ================================================================
 //  DEFAULT EXPORT
 // ================================================================
 
-const api = {
+export default {
   auth,
   products,
   users,
   notifications,
-  orders,
-  messages,
-  favorites,
   login,
   register,
   getMe,
@@ -518,22 +298,11 @@ const api = {
   createNotification,
   markNotificationRead,
   deleteNotification,
-  getOrders,
-  getOrder,
-  createOrder,
-  updateOrder,
-  deleteOrder,
-  getMessages,
-  getConversations,
-  getConversation,
-  sendMessage,
-  markMessageRead,
-  deleteMessage,
-  getFavorites,
-  addFavorite,
-  removeFavorite,
+  getImageUrl,
 };
 
-export default api;
+// ================================================================
+//  EXTRA EXPORT
+// ================================================================
 
 export { API_URL };

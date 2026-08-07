@@ -1,13 +1,7 @@
 // frontend/src/hooks/useAuth.js
 import { useContext } from 'react';
-import { AuthContext } from '../context/AuthContext';
+import AuthContext from '../context/AuthContext'; // ✅ default import (no curly braces)
 
-/**
- * Custom hook to access authentication context.
- * Must be used within an AuthProvider.
- * 
- * @returns {Object} Auth context value (user, token, login, logout, etc.)
- */
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {

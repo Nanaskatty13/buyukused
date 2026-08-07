@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
 import SearchBar from '../components/SearchBar';
-import { getProducts } from '../api';
+import { getProducts, getImageUrl } from '../api';   // ✅ correct relative path
 
 const Products = () => {
   const location = useLocation();
@@ -23,7 +23,12 @@ const Products = () => {
       setLoading(true);
       try {
         const data = await getProducts(filters);
-        setProducts(data.products || []);
+        const processedProducts = (data.products || []).map(product => ({
+          ...product,
+          images: (product.images || []).map(img => getImageUrl(img)),
+          image: product.image ? getImageUrl(product.image) : null,
+        }));
+        setProducts(processedProducts);
       } catch (error) {
         console.error('Error fetching products:', error);
       } finally {

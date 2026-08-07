@@ -12,7 +12,6 @@ try {
   console.log("✅ Product model loaded successfully");
 } catch (err) {
   console.error("❌ Failed to load Product model:", err.message);
-  // Dummy model to prevent crashes (routes will fail gracefully)
   const dummySchema = new mongoose.Schema({}, { strict: false });
   Product = mongoose.model("Product", dummySchema, "products");
 }
@@ -131,14 +130,13 @@ router.post("/", verifyToken, isSeller, upload.array("files", 5), async (req, re
       storage,
       color,
       condition,
-      negotiation,      // sent as string "true" / "false"
-      swapAccepted,     // sent as string "true" / "false"
+      negotiation,
+      swapAccepted,
       simStatus,
       batteryHealth,
       faceId,
     } = req.body;
 
-    // Basic validation
     if (!title || !price || !sellerPhone) {
       return res.status(400).json({
         success: false,
@@ -146,7 +144,6 @@ router.post("/", verifyToken, isSeller, upload.array("files", 5), async (req, re
       });
     }
 
-    // Build product object
     const productData = {
       title,
       price: parseFloat(price),
@@ -167,27 +164,17 @@ router.post("/", verifyToken, isSeller, upload.array("files", 5), async (req, re
       status: "active",
     };
 
-    // Handle file uploads
     const files = req.files || [];
     const imageUrls = [];
     let videoUrl = null;
 
     for (const file of files) {
-      // In production, you'd upload to cloud storage.
-      // For now, we store the file path (or a placeholder).
-      // We'll simulate by using the file's original name and path.
-      // Better: use a cloud storage service like Cloudinary, S3, etc.
       const filePath = `/uploads/${file.filename}`;
       if (file.mimetype.startsWith("video/")) {
         videoUrl = filePath;
       } else {
         imageUrls.push(filePath);
       }
-    }
-
-    // If no images, you might want to set a default placeholder.
-    if (imageUrls.length === 0) {
-      // Optionally, you could add a default image.
     }
 
     productData.images = imageUrls;
@@ -205,7 +192,6 @@ router.post("/", verifyToken, isSeller, upload.array("files", 5), async (req, re
     });
   } catch (err) {
     console.error("❌ Error creating product:", err);
-    // Handle multer errors (they are passed to the error handler, but we also catch here)
     if (err.code === 11000) {
       return res.status(409).json({ success: false, message: "Duplicate entry" });
     }
@@ -217,11 +203,14 @@ router.post("/", verifyToken, isSeller, upload.array("files", 5), async (req, re
 });
 
 // ================================================================
-//  UPDATE product – Seller/Admin
+//  UPDATE product – Seller/Admin (FIXED with safe comparison)
 // ================================================================
 router.put("/:id", verifyToken, upload.array("files", 5), async (req, res) => {
+  console.log(`🔍 PUT /api/products/${req.params.id} – update request`);
+
   try {
     const { id } = req.params;
+
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(404).json({ success: false, message: "Product not found" });
     }
@@ -231,11 +220,24 @@ router.put("/:id", verifyToken, upload.array("files", 5), async (req, res) => {
       return res.status(404).json({ success: false, message: "Product not found" });
     }
 
-    // Check permission: only seller or admin can update
-    if (product.sellerId.toString() !== req.userId && req.user?.role !== "admin") {
-      return res.status(403).json({ success: false, message: "Not authorized" });
+    // ✅ SAFE OWNERSHIP CHECK – using .equals() (Mongoose) + fallback string comparison
+    const isOwner = product.sellerId.equals(req.userId) ||
+                    product.sellerId.toString() === req.userId.toString();
+    const isAdmin = req.user?.role === "admin";
+
+    console.log(`🔍 Product sellerId: ${product.sellerId}`);
+    console.log(`🔍 req.userId: ${req.userId}`);
+    console.log(`🔍 isOwner: ${isOwner}, isAdmin: ${isAdmin}`);
+
+    if (!isOwner && !isAdmin) {
+      console.log(`🚫 Forbidden – user ${req.userId} is not owner (${product.sellerId}) and not admin`);
+      return res.status(403).json({
+        success: false,
+        message: "Not authorized – you do not own this product",
+      });
     }
 
+    // --- Update fields ---
     const {
       title,
       price,
@@ -254,7 +256,6 @@ router.put("/:id", verifyToken, upload.array("files", 5), async (req, res) => {
       faceId,
     } = req.body;
 
-    // Update fields if provided
     if (title) product.title = title;
     if (price) product.price = parseFloat(price);
     if (category) product.category = category;
@@ -283,6 +284,7 @@ router.put("/:id", verifyToken, upload.array("files", 5), async (req, res) => {
     }
 
     await product.save();
+    console.log(`✅ Product ${product._id} updated`);
     res.json({ success: true, product, message: "Product updated" });
   } catch (err) {
     console.error("❌ Error updating product:", err);
@@ -294,8 +296,11 @@ router.put("/:id", verifyToken, upload.array("files", 5), async (req, res) => {
 //  DELETE product – Seller/Admin
 // ================================================================
 router.delete("/:id", verifyToken, async (req, res) => {
+  console.log(`🔍 DELETE /api/products/${req.params.id} – delete request`);
+
   try {
     const { id } = req.params;
+
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(404).json({ success: false, message: "Product not found" });
     }
@@ -305,12 +310,20 @@ router.delete("/:id", verifyToken, async (req, res) => {
       return res.status(404).json({ success: false, message: "Product not found" });
     }
 
-    // Check permission
-    if (product.sellerId.toString() !== req.userId && req.user?.role !== "admin") {
-      return res.status(403).json({ success: false, message: "Not authorized" });
+    const isOwner = product.sellerId.equals(req.userId) ||
+                    product.sellerId.toString() === req.userId.toString();
+    const isAdmin = req.user?.role === "admin";
+
+    if (!isOwner && !isAdmin) {
+      console.log(`🚫 Forbidden – user ${req.userId} is not owner (${product.sellerId}) and not admin`);
+      return res.status(403).json({
+        success: false,
+        message: "Not authorized – you do not own this product",
+      });
     }
 
     await product.deleteOne();
+    console.log(`🗑️ Product ${product._id} deleted`);
     res.json({ success: true, message: "Product deleted" });
   } catch (err) {
     console.error("❌ Error deleting product:", err);

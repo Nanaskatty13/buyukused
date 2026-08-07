@@ -1,13 +1,47 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { getProducts, getNotifications, messages, API_URL } from '../api';
+import { getProducts, getNotifications } from '../api';
+
+// ===== API calls for messages =====
+const getMessages = async (userId, token) => {
+  const res = await fetch(`http://localhost:5000/api/messages/${userId}`, {
+    headers: { 'Authorization': `Bearer ${token}` },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Failed to fetch messages');
+  return data.messages;
+};
+
+const sendMessage = async (receiver, message, token, productId = null) => {
+  const res = await fetch(`http://localhost:5000/api/messages`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify({ receiver, message, productId }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Failed to send message');
+  return data.message;
+};
+
+const markMessageRead = async (messageId, token) => {
+  const res = await fetch(`http://localhost:5000/api/messages/${messageId}/read`, {
+    method: 'PUT',
+    headers: { 'Authorization': `Bearer ${token}` },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Failed to mark read');
+  return data.message;
+};
 
 const Profile = () => {
   const { user, token } = useAuth();
   const [products, setProducts] = useState([]);
   const [notifications, setNotifications] = useState([]);
-  const [messagesList, setMessagesList] = useState([]);
+  const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     totalAds: 0,
@@ -35,6 +69,7 @@ const Profile = () => {
   // ✅ Fetch data only when user and token exist
   useEffect(() => {
     const fetchData = async () => {
+      // 🛑 Guard: stop if no user or no _id or no token
       if (!user || !user._id || !token) {
         setLoading(false);
         return;
@@ -42,9 +77,9 @@ const Profile = () => {
 
       try {
         const [userProducts, userNotifs, userMessages] = await Promise.all([
-          getProducts({ sellerId: user._id }),
-          getNotifications(user._id, token),
-          messages.getForUser(user._id, token),   // ✅ using imported messages API
+          getProducts({ sellerId: user._id }), // ✅ use _id
+          getNotifications(user._id, token),   // ✅ pass token
+          getMessages(user._id, token),        // ✅ pass token
         ]);
 
         const productsList = userProducts.products || [];
@@ -53,9 +88,9 @@ const Profile = () => {
 
         setProducts(productsList);
         setNotifications(notifsList);
-        setMessagesList(messagesList);
+        setMessages(messagesList);
 
-        const unreadMsgs = messagesList.filter(m => m.receiver === user._id && !m.read).length;
+        const unreadMsgs = messagesList.filter(m => m.receiver === user._id && !m.read).length; // ✅ use _id
 
         setStats({
           totalAds: productsList.length,
@@ -71,7 +106,7 @@ const Profile = () => {
       }
     };
     fetchData();
-  }, [user, token]);
+  }, [user, token]); // ✅ depend on both
 
   if (!user) {
     return (
@@ -108,16 +143,14 @@ const Profile = () => {
     }
 
     try {
-      const res = await fetch(`${API_URL}/api/users/profile`, {
+      const res = await fetch('http://localhost:5000/api/users/profile', {
         method: 'PUT',
-        credentials: 'include',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+        headers: { 'Authorization': `Bearer ${token}` },
         body: formData,
       });
       const data = await res.json();
       if (data.success) {
+        // For simplicity, reload the page to refresh user context
         window.location.reload();
       } else {
         setEditError(data.message || 'Update failed');
@@ -130,28 +163,26 @@ const Profile = () => {
   };
 
   // ----- Messaging Handlers -----
-  const openConversation = async (otherUserId) => {
-    const msgs = messagesList.filter(m =>
+  const openConversation = (otherUserId) => {
+    const msgs = messages.filter(m =>
       (m.sender._id === otherUserId || m.receiver._id === otherUserId) &&
-      (m.sender._id === user._id || m.receiver._id === user._id)
+      (m.sender._id === user._id || m.receiver._id === user._id) // ✅ use _id
     );
     setSelectedConversation({ userId: otherUserId, messages: msgs });
-
     // Mark unread messages in this conversation as read
-    const unread = msgs.filter(m => m.receiver === user._id && !m.read);
-    for (const m of unread) {
+    const unread = msgs.filter(m => m.receiver === user._id && !m.read); // ✅ use _id
+    unread.forEach(async (m) => {
       try {
-        await messages.markRead(m._id, token);   // ✅ using imported API
-        setMessagesList(prev =>
+        await markMessageRead(m._id, token);
+        // Update local messages state
+        setMessages(prev =>
           prev.map(msg =>
             msg._id === m._id ? { ...msg, read: true } : msg
           )
         );
         setStats(prev => ({ ...prev, unreadMessages: prev.unreadMessages - 1 }));
-      } catch (err) {
-        console.error(err);
-      }
-    }
+      } catch (err) { console.error(err); }
+    });
   };
 
   const handleSendReply = async (e) => {
@@ -159,13 +190,8 @@ const Profile = () => {
     if (!replyMessage.trim()) return;
     setSendingReply(true);
     try {
-      const newMsg = await messages.send(
-        selectedConversation.userId,
-        replyMessage,
-        null,   // productId – optional
-        token
-      );
-      setMessagesList(prev => [newMsg, ...prev]);
+      const newMsg = await sendMessage(selectedConversation.userId, replyMessage, token);
+      setMessages(prev => [newMsg, ...prev]);
       setSelectedConversation(prev => ({
         ...prev,
         messages: [newMsg, ...prev.messages],
@@ -182,17 +208,17 @@ const Profile = () => {
   // ----- Get unique conversation partners -----
   const getConversations = () => {
     const partners = new Set();
-    messagesList.forEach(m => {
-      if (m.sender._id === user._id) partners.add(m.receiver._id);
-      if (m.receiver._id === user._id) partners.add(m.sender._id);
+    messages.forEach(m => {
+      if (m.sender._id === user._id) partners.add(m.receiver._id);       // ✅ use _id
+      if (m.receiver._id === user._id) partners.add(m.sender._id);       // ✅ use _id
     });
     return Array.from(partners).map(id => {
-      const msgs = messagesList.filter(m =>
+      const msgs = messages.filter(m =>
         (m.sender._id === id || m.receiver._id === id) &&
-        (m.sender._id === user._id || m.receiver._id === user._id)
+        (m.sender._id === user._id || m.receiver._id === user._id)       // ✅ use _id
       );
       const last = msgs[0] || null;
-      const unread = msgs.filter(m => m.receiver._id === user._id && !m.read).length;
+      const unread = msgs.filter(m => m.receiver._id === user._id && !m.read).length; // ✅ use _id
       const partner = msgs[0]?.sender._id === id ? msgs[0]?.sender : msgs[0]?.receiver;
       return { userId: id, partner, last, unread };
     }).sort((a, b) => new Date(b.last?.createdAt) - new Date(a.last?.createdAt));
@@ -300,7 +326,7 @@ const Profile = () => {
           )}
         </div>
         <div style={{ background: 'white', padding: '16px 20px', borderRadius: 'var(--radius-md)', border: '1px solid var(--gray-200)', textAlign: 'center' }}>
-          <div style={{ fontSize: '28px', fontWeight: 800, color: '#0ea5e9' }}>{messagesList.length}</div>
+          <div style={{ fontSize: '28px', fontWeight: 800, color: '#0ea5e9' }}>{messages.length}</div>
           <div style={{ fontSize: '13px', color: 'var(--gray-500)' }}>Messages</div>
           {stats.unreadMessages > 0 && (
             <span style={{ background: '#e74c3c', color: 'white', fontSize: '11px', padding: '1px 10px', borderRadius: 'var(--radius-full)', display: 'inline-block', marginTop: '4px' }}>
@@ -310,7 +336,7 @@ const Profile = () => {
         </div>
       </div>
 
-      {/* Main content – My Ads + Messages */}
+      {/* Main content – My Ads + Messages (the rest is unchanged) */}
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px' }}>
         <div>
           <h2 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -358,7 +384,7 @@ const Profile = () => {
           )}
         </div>
 
-        {/* Messages section */}
+        {/* Messages section – unchanged except the logic is already fixed */}
         <div>
           <h2 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <i className="fas fa-envelope" style={{ color: 'var(--primary)' }}></i> Messages
@@ -371,13 +397,14 @@ const Profile = () => {
 
           {loading ? (
             <p>Loading...</p>
-          ) : messagesList.length === 0 ? (
+          ) : messages.length === 0 ? (
             <div style={{ background: 'white', padding: '30px', borderRadius: 'var(--radius-md)', border: '1px solid var(--gray-200)', textAlign: 'center' }}>
               <p style={{ color: 'var(--gray-500)' }}>No messages yet.</p>
             </div>
           ) : (
             <div>
               {selectedConversation ? (
+                // ... conversation view (unchanged)
                 <div style={{ background: 'white', borderRadius: 'var(--radius-md)', border: '1px solid var(--gray-200)', overflow: 'hidden' }}>
                   <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--gray-200)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <strong>
@@ -430,6 +457,7 @@ const Profile = () => {
                   </form>
                 </div>
               ) : (
+                // List of conversations (unchanged)
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {getConversations().map(conv => (
                     <div

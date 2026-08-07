@@ -41,7 +41,7 @@ const productSchema = new mongoose.Schema(
     negotiation: { type: Boolean, default: false },
     swapAccepted: { type: Boolean, default: false },
 
-    // --- NEW FIELDS for detailed product info ---
+    // ✅ NEW FIELDS (from PostAd)
     batteryHealth: {
       type: Number,
       min: 0,
@@ -50,17 +50,15 @@ const productSchema = new mongoose.Schema(
     },
     faceId: {
       type: String,
+      enum: ["Working", "Not Working", "Not Available"],
       default: "",
-      trim: true,
-      // No enum – allows "Working", "Not Working", "Not Available", etc.
     },
     simStatus: {
       type: String,
       default: "",
-      trim: true,
     },
 
-    // --- Slug (SEO‑friendly URL) ---
+    // ✅ Slug (SEO-friendly URL)
     slug: {
       type: String,
       unique: true,
@@ -70,7 +68,7 @@ const productSchema = new mongoose.Schema(
   { timestamps: true, versionKey: false }
 );
 
-// Pre‑save hook to generate unique slug from title
+// ✅ Pre‑save hook to generate a unique slug from title
 productSchema.pre("save", async function (next) {
   if (!this.slug && this.title) {
     let baseSlug = this.title
@@ -89,6 +87,5 @@ productSchema.index({ createdAt: -1 });
 productSchema.index({ price: 1 });
 productSchema.index({ slug: 1 }, { unique: true });
 
-// Use existing model if already defined (for hot reload)
 const Product = mongoose.models.Product || mongoose.model("Product", productSchema);
 module.exports = Product;

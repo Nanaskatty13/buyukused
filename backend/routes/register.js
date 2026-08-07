@@ -1,20 +1,20 @@
 const express = require("express");
+const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const User = require("../models/User");
+const User = require("../models/User"); // adjust path to your User model
 
 const router = express.Router();
 
 /**
  * POST /register
  * Register a new user
+ * Body: { name, email, password, phone? }
  */
 router.post("/", async (req, res) => {
   try {
     const { name, email, password, phone } = req.body;
 
-    // ==========================
-    // Validation
-    // ==========================
+    // --- Validation ---
     if (!name || !email || !password) {
       return res.status(400).json({
         success: false,
@@ -29,15 +29,8 @@ router.post("/", async (req, res) => {
       });
     }
 
-    const normalizedEmail = email.toLowerCase().trim();
-
-    // ==========================
-    // Check existing user
-    // ==========================
-    const existingUser = await User.findOne({
-      email: normalizedEmail,
-    });
-
+    // --- Check if user already exists ---
+    const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(409).json({
         success: false,
@@ -45,54 +38,48 @@ router.post("/", async (req, res) => {
       });
     }
 
-    // ==========================
-    // Create user
-    // Password is hashed automatically
-    // by User model pre("save")
-    // ==========================
-    const newUser = await User.create({
+    // --- Hash password ---
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
+
+    // --- Create user ---
+    const newUser = new User({
       name,
-      email: normalizedEmail,
-      password,
+      email,
+      password: hashedPassword,
       phone: phone || "",
+      // You can add default role or other fields as needed
     });
 
-    console.log("✅ NEW USER CREATED:", newUser.email);
+    await newUser.save();
 
-    // ==========================
-    // Generate Token
-    // ==========================
+    // --- Generate JWT token ---
     const token = jwt.sign(
       { id: newUser._id },
       process.env.JWT_SECRET,
-      {
-        expiresIn: "7d",
-      }
+      { expiresIn: "7d" }
     );
 
-    // ==========================
-    // Response
-    // ==========================
+    // --- Return user data (without password) ---
+    const userResponse = {
+      id: newUser._id,
+      name: newUser.name,
+      email: newUser.email,
+      phone: newUser.phone,
+      photoURL: newUser.photoURL || "",
+      role: newUser.role || "buyer",
+    };
+
     res.status(201).json({
       success: true,
-      message: "Account created successfully",
       token,
-      user: {
-        id: newUser._id,
-        name: newUser.name,
-        email: newUser.email,
-        phone: newUser.phone,
-        role: newUser.role,
-        photoURL: newUser.photoURL,
-      },
+      user: userResponse,
     });
-
   } catch (error) {
-    console.error("❌ Registration Error:", error);
-
+    console.error("Registration error:", error);
     res.status(500).json({
       success: false,
-      message: error.message,
+      message: "Internal server error",
     });
   }
 });

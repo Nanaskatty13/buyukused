@@ -3,8 +3,6 @@ import { Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import Navbar from './components/Navbar';
-import FloatingWhatsApp from './components/FloatingWhatsApp';
-import FloatingPhone from './components/FloatingPhone'; // <-- import
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -13,11 +11,7 @@ import ProductDetails from './pages/ProductDetails';
 import Profile from './pages/Profile';
 import Wishlist from './pages/Wishlist';
 import AdminDashboard from './pages/Admin/AdminDashboard';
-import PostAd from './pages/PostAd';
-import Publishing from './pages/Publishing';
-
-// Inside <Routes>
-
+import PostAd from './pages/PostAd';          // ✅ import PostAd
 
 function App() {
   return (
@@ -33,11 +27,8 @@ function App() {
           <Route path="/profile" element={<Profile />} />
           <Route path="/wishlist" element={<Wishlist />} />
           <Route path="/admin" element={<AdminDashboard />} />
-          <Route path="/post-ad" element={<PostAd />} />
-          <Route path="/publishing" element={<Publishing />} />
+          <Route path="/post-ad" element={<PostAd />} />   // ✅ add this route
         </Routes>
-        <FloatingWhatsApp />
-        <FloatingPhone /> {/* <-- Add this */}
       </CartProvider>
     </AuthProvider>
   );
