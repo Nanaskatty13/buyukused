@@ -26,8 +26,11 @@ const userSchema = new mongoose.Schema(
 
     password: {
       type: String,
-      default: "",
+      required: function () {
+        return this.provider === "local";
+      },
       minlength: [6, "Password must be at least 6 characters"],
+      select: true,
     },
 
     phone: {
@@ -81,7 +84,7 @@ const userSchema = new mongoose.Schema(
 
 
 // ===============================
-// PASSWORD HASHING
+// HASH PASSWORD BEFORE SAVE
 // ===============================
 userSchema.pre("save", async function (next) {
 
@@ -93,11 +96,9 @@ userSchema.pre("save", async function (next) {
     return next();
   }
 
-  const salt = await bcrypt.genSalt(10);
-
   this.password = await bcrypt.hash(
     this.password,
-    salt
+    10
   );
 
   next();
@@ -105,7 +106,7 @@ userSchema.pre("save", async function (next) {
 
 
 // ===============================
-// COMPARE PASSWORD
+// CHECK PASSWORD
 // ===============================
 userSchema.methods.comparePassword = async function(password){
 
@@ -113,42 +114,36 @@ userSchema.methods.comparePassword = async function(password){
     return false;
   }
 
-  return bcrypt.compare(
+  return await bcrypt.compare(
     password,
     this.password
   );
+
 };
 
 
 // ===============================
-// ADMIN CHECK
+// ROLE HELPERS
 // ===============================
 userSchema.methods.isAdmin = function(){
-
   return this.role === "admin";
-
 };
 
 
-// ===============================
-// SELLER CHECK
-// ===============================
 userSchema.methods.isSeller = function(){
-
   return (
     this.role === "seller" ||
     this.role === "admin"
   );
-
 };
 
 
 // ===============================
-// HIDE PASSWORD
+// REMOVE PASSWORD FROM JSON
 // ===============================
 userSchema.set("toJSON", {
 
-  transform:function(doc, ret){
+  transform: function(doc, ret){
 
     delete ret.password;
     delete ret.__v;
@@ -161,26 +156,18 @@ userSchema.set("toJSON", {
 
 
 // ===============================
-// FIND USER BY EMAIL
+// FIND BY EMAIL
 // ===============================
 userSchema.statics.findByEmail = function(email){
 
   return this.findOne({
-    email: email.toLowerCase()
+    email: email.toLowerCase().trim()
   });
 
 };
 
 
-// ===============================
-// INDEXES
-// ===============================
-userSchema.index({
-  email:1
-});
+// REMOVE THIS LINE:
+// userSchema.index({email:1});
 
-
-module.exports = mongoose.model(
-  "User",
-  userSchema
-);
+module.exports = mongoose.model("User", userSchema);
