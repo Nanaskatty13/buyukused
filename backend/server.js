@@ -213,11 +213,11 @@ app.get("/health", (req, res) => {
 // ROUTES
 // ===============================
 const authRoutes = require("./routes/auth");
-const adminRoutes = require("./routes/admin");
 const productRoutes = require("./routes/products");
 const notificationRoutes = require("./routes/notifications");
 const userRoutes = require("./routes/users");
 const messageRoutes = require("./routes/messages");
+const adminRoutes = require("./routes/admin");
 
 console.log("✅ Routes loaded:");
 console.log(`  - Auth: ${typeof authRoutes === "function" ? "router" : typeof authRoutes}`);
@@ -232,6 +232,7 @@ app.use("/api/notifications", notificationRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/messages", messageRoutes);
 app.use("/admin", adminRoutes);
+app.use("/api/admin", adminRoutes);
 
 // ===============================
 // STATIC FILES – ONLY FOR UPLOADS

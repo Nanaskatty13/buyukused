@@ -1,104 +1,100 @@
+// backend/routes/admin.js
+
 const express = require("express");
 const router = express.Router();
 
 
 const {
-    getDashboardStats,
-    getUsers,
-    getUserById,
-    updateUserRole,
-    deleteUser,
-    getProducts,
-    deleteProduct,
-    getOrders,
-    updateOrderStatus
-
+  getDashboardStats,
+  getUsers,
+  getUserById,
+  updateUserRole,
+  deleteUser,
+  getProducts,
+  deleteProduct,
+  getOrders,
+  updateOrderStatus
 } = require("../controllers/adminController");
 
 
-const { protect } = require("../middleware/auth");
-const admin = require("../middleware/admin");
-
+// Auth middleware
+const { verifyToken, isAdmin } = require("../middleware/auth");
 
 
 // ==========================
 // Admin Authentication
 // ==========================
-router.use(protect);
-router.use(admin);
+router.use(verifyToken);
+router.use(isAdmin);
 
 
 
 // ==========================
 // Dashboard
 // ==========================
-
 router.get(
-    "/dashboard",
-    getDashboardStats
+  "/dashboard",
+  getDashboardStats
 );
 
 
 
 // ==========================
-// Users Management
+// Users
 // ==========================
-
 router.get(
-    "/users",
-    getUsers
+  "/users",
+  getUsers
 );
 
 
 router.get(
-    "/users/:id",
-    getUserById
+  "/users/:id",
+  getUserById
 );
 
 
 router.put(
-    "/users/:id/role",
-    updateUserRole
+  "/users/:id/role",
+  updateUserRole
 );
 
 
 router.delete(
-    "/users/:id",
-    deleteUser
+  "/users/:id",
+  deleteUser
 );
 
 
 
 // ==========================
-// Products Management
+// Products
 // ==========================
-
 router.get(
-    "/products",
-    getProducts
+  "/products",
+  getProducts
 );
 
 
 router.delete(
-    "/products/:id",
-    deleteProduct
+  "/products/:id",
+  deleteProduct
 );
 
 
 
 // ==========================
-// Orders Management
+// Orders
 // ==========================
-
 router.get(
-    "/orders",
-    getOrders
+  "/orders",
+  getOrders
 );
 
 
 router.put(
-    "/orders/:id/status",
-    updateOrderStatus
+  "/orders/:id/status",
+  updateOrderStatus
 );
 
 

@@ -1,94 +1,25 @@
-// backend/routes/admin.js
+// backend/middleware/admin.js
 
-const express = require("express");
-const router = express.Router();
+const admin = (req, res, next) => {
 
-const {
-    getDashboardStats,
-    getUsers,
-    getUserById,
-    updateUserRole,
-    deleteUser,
-    getProducts,
-    deleteProduct,
-    getOrders,
-    updateOrderStatus
-} = require("../controllers/adminController");
-
-const { verifyToken, isAdmin } = require("../middleware/auth");
+    if (!req.user) {
+        return res.status(401).json({
+            success: false,
+            message: "Not authenticated"
+        });
+    }
 
 
-// ==========================
-// ADMIN PROTECTION
-// ==========================
-router.use(verifyToken);
-router.use(isAdmin);
+    if (req.user.role !== "admin") {
+        return res.status(403).json({
+            success: false,
+            message: "Admin access required"
+        });
+    }
 
 
-// ==========================
-// Dashboard
-// ==========================
-router.get(
-    "/dashboard",
-    getDashboardStats
-);
+    next();
+};
 
 
-// ==========================
-// Users
-// ==========================
-router.get(
-    "/users",
-    getUsers
-);
-
-
-router.get(
-    "/users/:id",
-    getUserById
-);
-
-
-router.put(
-    "/users/:id/role",
-    updateUserRole
-);
-
-
-router.delete(
-    "/users/:id",
-    deleteUser
-);
-
-
-// ==========================
-// Products
-// ==========================
-router.get(
-    "/products",
-    getProducts
-);
-
-
-router.delete(
-    "/products/:id",
-    deleteProduct
-);
-
-
-// ==========================
-// Orders
-// ==========================
-router.get(
-    "/orders",
-    getOrders
-);
-
-
-router.put(
-    "/orders/:id/status",
-    updateOrderStatus
-);
-
-
-module.exports = router;
+module.exports = admin;
