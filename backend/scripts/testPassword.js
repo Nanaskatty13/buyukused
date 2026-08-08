@@ -1,41 +1,39 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
-const User = require('../models/User');
-require('dotenv').config();
+const dotenv = require('dotenv');
+dotenv.config();
 
-const testPassword = async () => {
+const User = require('../models/User');
+
+const MONGO_URI = process.env.MONGO_URI;
+
+if (!MONGO_URI) {
+  console.error('❌ MONGO_URI is not defined in .env');
+  process.exit(1);
+}
+
+const setPassword = async () => {
   try {
-    await mongoose.connect(process.env.MONGO_URI);
-    
-    const user = await User.findOne({ email: 'admin@kn.com' });
+    await mongoose.connect(MONGO_URI);
+    const email = 'nanaskatty0@gmail.com';
+    const plain = 'Admin123!';
+
+    const user = await User.findOne({ email });
     if (!user) {
-      console.log('❌ User not found');
+      console.error('User not found');
       process.exit(1);
     }
 
-    console.log('User found:', user.email);
-    console.log('Stored hash:', user.password);
-    console.log('Hash length:', user.password.length);
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(plain, salt);
+    await user.save();
 
-    // Test with the correct password
-    const password = 'admin123';
-    const isMatch = await bcrypt.compare(password, user.password);
-    console.log(`✅ Password "${password}" matches?`, isMatch);
-
-    // Test with a wrong password
-    const wrong = 'wrongpassword';
-    const isWrong = await bcrypt.compare(wrong, user.password);
-    console.log(`❌ Wrong password matches?`, isWrong);
-
-    // Test using the model method
-    const modelMatch = await user.comparePassword(password);
-    console.log(`✅ Model method matches?`, modelMatch);
-
+    console.log(`✅ Password reset to: ${plain}`);
     process.exit(0);
   } catch (err) {
-    console.error('Error:', err);
+    console.error(err);
     process.exit(1);
   }
 };
 
-testPassword();
+setPassword();

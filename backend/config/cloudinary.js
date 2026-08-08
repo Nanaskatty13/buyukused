@@ -1,19 +1,20 @@
-const cloudinary = require('cloudinary').v2;
-const { CloudinaryStorage } = require('multer-storage-cloudinary');
+const multer = require('multer');
+const { storage } = require('./cloudinary');   // Cloudinary storage
 
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
+const fileFilter = (req, file, cb) => {
+  const allowed = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp',
+                   'video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/webm'];
+  if (allowed.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new Error('Only images and videos are allowed'), false);
+  }
+};
+
+const upload = multer({
+  storage,  // ← Cloudinary storage
+  limits: { fileSize: 50 * 1024 * 1024 },
+  fileFilter,
 });
 
-const storage = new CloudinaryStorage({
-  cloudinary,
-  params: {
-    folder: 'products',
-    allowed_formats: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'mp4', 'mov', 'avi'],
-    resource_type: 'auto',
-  },
-});
-
-module.exports = { cloudinary, storage };
+module.exports = upload;
