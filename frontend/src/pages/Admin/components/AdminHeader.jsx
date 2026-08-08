@@ -1,7 +1,9 @@
 // frontend/src/pages/Admin/components/AdminHeader.jsx
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../../context/AuthContext';
-import { getNotifications, markNotificationRead } from '../../../api';
+
+// ✅ Fixed: correct path to your API module
+import { getNotifications, markNotificationRead } from '../../../services/api';
 
 const AdminHeader = ({
   activePage,
@@ -11,7 +13,7 @@ const AdminHeader = ({
   onSearch,
   searchTerm,
 }) => {
-  const { user, token } = useAuth(); // ✅ get token
+  const { user, token } = useAuth();
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -21,12 +23,11 @@ const AdminHeader = ({
 
   // Fetch notifications – only if user and token exist
   const fetchNotifications = async () => {
-    // Guard: user or token missing
     if (!user || !token || !user._id) return;
 
     try {
       setLoading(true);
-      const data = await getNotifications(user._id, token); // ✅ pass token
+      const data = await getNotifications(user._id, token);
       setNotifications(data.notifications || []);
     } catch (err) {
       console.error('Error fetching notifications:', err);
@@ -39,7 +40,7 @@ const AdminHeader = ({
     if (user && token) {
       fetchNotifications();
     }
-  }, [user, token]); // ✅ depend on token too
+  }, [user, token]);
 
   // Auto‑refresh every 30 seconds
   useEffect(() => {
@@ -52,7 +53,7 @@ const AdminHeader = ({
   const handleMarkAsRead = async (id) => {
     if (!token) return;
     try {
-      await markNotificationRead(id, token); // ✅ pass token
+      await markNotificationRead(id, token);
       setNotifications(prev =>
         prev.map(n => n._id === id ? { ...n, read: true } : n)
       );
@@ -67,7 +68,7 @@ const AdminHeader = ({
     try {
       const unread = notifications.filter(n => !n.read);
       for (const n of unread) {
-        await markNotificationRead(n._id, token); // ✅ pass token
+        await markNotificationRead(n._id, token);
       }
       setNotifications(prev => prev.map(n => ({ ...n, read: true })));
     } catch (err) {
@@ -91,7 +92,7 @@ const AdminHeader = ({
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
-  // ... (the rest of your JSX remains identical, just use the variables above)
+  // ─── JSX ──────────────────────────────────────────────────────────
   return (
     <header className="admin-header" style={{
       display: 'flex',
@@ -196,7 +197,7 @@ const AdminHeader = ({
           )}
         </div>
 
-        {/* User menu – keep as before */}
+        {/* User menu */}
         <div ref={userMenuRef} style={{ position: 'relative' }}>
           <button onClick={() => setShowUserMenu(!showUserMenu)} style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px' }}>
             <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: '14px' }}>

@@ -8,7 +8,10 @@ import UsersTable from './components/UsersTable';
 import ProductsTable from './components/ProductsTable';
 import ReportsChart from './components/ReportsChart';
 import Settings from './components/Settings';
-import { getProducts, getUsers, getUserStats } from '../../api';
+
+// ✅ FIXED: correct path to api.js
+import { getProducts, getUsers, getUserStats } from '../../services/api';
+
 import './styles/admin.css';
 
 // Simple notification/toast system
@@ -141,7 +144,7 @@ const AdminDashboard = () => {
   // --- Admin access guard ---
   if (!user || user.role !== 'admin') {
     return (
-      <div className="admin-access-denied">
+      <div className="admin-access-denied" style={{ padding: '40px 20px', textAlign: 'center' }}>
         <h2>Access Denied</h2>
         <p>You need admin privileges to view this page.</p>
       </div>

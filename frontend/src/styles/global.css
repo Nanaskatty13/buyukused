@@ -158,7 +158,9 @@ img {
   }
 }
 
-/* ----- NAVBAR ----- */
+/* ================================================================
+   NAVBAR
+   ================================================================ */
 .header {
   background: white;
   border-bottom: 1px solid var(--gray-200);
@@ -359,7 +361,7 @@ img {
   cursor: pointer;
 }
 
-/* ----- RESPONSIVE ----- */
+/* ----- NAVBAR RESPONSIVE ----- */
 @media (max-width: 768px) {
   .header .nav-links {
     display: none;
@@ -387,7 +389,9 @@ img {
   }
 }
 
-/* ----- USER MENU WITH DROPDOWN ----- */
+/* ================================================================
+   USER MENU WITH DROPDOWN
+   ================================================================ */
 .user-menu {
   position: relative;
   display: flex;
@@ -515,7 +519,7 @@ img {
   color: #dc2626;
 }
 
-/* ----- RESPONSIVE ----- */
+/* ----- DROPDOWN RESPONSIVE ----- */
 @media (max-width: 768px) {
   .profile-trigger .username {
     display: none;
@@ -550,122 +554,239 @@ img {
     font-size: 11px;
   }
 }
-/* For screens smaller than 500px, hide the text label */
-@media (max-width: 500px) {
-  .floating-whatsapp-text {
-    display: none !important;
-  }
-}
-/* ===== FLOATING PHONE ANIMATIONS ===== */
 
-/* Main dance animation – combines sway, bob, and slight rotation */
+/* ================================================================
+   FLOATING PHONE BUTTON
+   ================================================================ */
+
+/* ----- KEYFRAMES (defined once, used below) ----- */
 @keyframes phoneDance {
-  0% {
-    transform: translateY(0px) rotate(-3deg) scale(1);
-  }
-  20% {
-    transform: translateY(-12px) rotate(4deg) scale(1.02);
-  }
-  40% {
-    transform: translateY(-6px) rotate(-2deg) scale(0.98);
-  }
-  60% {
-    transform: translateY(-15px) rotate(5deg) scale(1.03);
-  }
-  80% {
-    transform: translateY(-8px) rotate(-4deg) scale(0.99);
-  }
-  100% {
-    transform: translateY(0px) rotate(-3deg) scale(1);
-  }
+  0% { transform: translateY(0px) rotate(-3deg) scale(1); }
+  20% { transform: translateY(-12px) rotate(4deg) scale(1.02); }
+  40% { transform: translateY(-6px) rotate(-2deg) scale(0.98); }
+  60% { transform: translateY(-15px) rotate(5deg) scale(1.03); }
+  80% { transform: translateY(-8px) rotate(-4deg) scale(0.99); }
+  100% { transform: translateY(0px) rotate(-3deg) scale(1); }
 }
 
-/* Screen glow animation */
 @keyframes screenGlow {
-  0%, 100% {
-    opacity: 0.5;
-  }
-  50% {
-    opacity: 1;
-  }
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
 }
 
-/* Icon pulse */
 @keyframes iconPulse {
-  0%, 100% {
-    transform: scale(1);
-    box-shadow: 0 4px 12px rgba(46, 204, 113, 0.4);
-  }
-  50% {
-    transform: scale(1.05);
-    box-shadow: 0 4px 24px rgba(46, 204, 113, 0.7);
-  }
+  0%, 100% { transform: scale(1); box-shadow: 0 4px 12px rgba(46,204,113,0.4); }
+  50% { transform: scale(1.05); box-shadow: 0 4px 24px rgba(46,204,113,0.7); }
 }
 
-/* Notification dot pulse */
 @keyframes notifPulse {
-  0%, 100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.4;
-    transform: scale(0.8);
-  }
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.8); }
 }
 
-/* Floating bubbles */
 @keyframes bubbleFloat {
-  0% {
-    transform: translateY(0) scale(1);
-    opacity: 0.8;
-  }
-  50% {
-    transform: translateY(-20px) scale(1.5);
-    opacity: 0.2;
-  }
-  100% {
-    transform: translateY(0) scale(1);
-    opacity: 0.8;
-  }
+  0% { transform: translateY(0) scale(1); opacity: 0.8; }
+  50% { transform: translateY(-20px) scale(1.5); opacity: 0.2; }
+  100% { transform: translateY(0) scale(1); opacity: 0.8; }
 }
 
-/* Glow pulse */
 @keyframes glowPulse {
-  0%, 100% {
-    transform: translateX(-50%) scale(1);
-    opacity: 0.6;
-  }
-  50% {
-    transform: translateX(-50%) scale(1.2);
-    opacity: 1;
-  }
+  0%, 100% { transform: translateX(-50%) scale(1); opacity: 0.6; }
+  50% { transform: translateX(-50%) scale(1.2); opacity: 1; }
 }
 
-/* ===== FLOATING PHONE ANIMATIONS ===== */
-/* ... keep all keyframes unchanged ... */
+/* Floating phone container */
+.floating-phone {
+  position: fixed;
+  bottom: 80px;
+  left: 20px;
+  width: 70px;
+  height: 140px;
+  z-index: 9999;
+  cursor: pointer;
+  animation: phoneDance 3s ease-in-out infinite;
+  filter: drop-shadow(0 8px 24px rgba(46, 204, 113, 0.3));
+  transition: transform 0.3s ease, filter 0.3s ease;
+  -webkit-tap-highlight-color: transparent;
+}
 
 .floating-phone:hover {
   animation-play-state: paused;
   transform: scale(1.05) !important;
-  filter: drop-shadow(0 20px 40px rgba(46, 204, 113, 0.4));
+  filter: drop-shadow(0 20px 40px rgba(46, 204, 113, 0.5));
 }
 
-/* Responsive: even smaller on phones */
+/* Phone body */
+.phone-body {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(145deg, #1a1a2e, #16213e);
+  border-radius: 30px;
+  border: 3px solid #2d2d44;
+  box-shadow:
+    inset 0 0 20px rgba(0, 0, 0, 0.5),
+    0 8px 32px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  overflow: hidden;
+}
+
+/* Screen */
+.phone-screen {
+  width: 90%;
+  height: 80%;
+  background: linear-gradient(135deg, #0055a5, #003f7a);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  animation: screenGlow 2s ease-in-out infinite;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Screen content */
+.phone-screen .app-name {
+  color: white;
+  font-size: 8px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  opacity: 0.8;
+  margin-top: 4px;
+}
+
+.phone-screen .icon-pulse {
+  width: 28px;
+  height: 28px;
+  background: var(--secondary);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  animation: iconPulse 1.5s ease-in-out infinite;
+  box-shadow: 0 4px 12px rgba(46, 204, 113, 0.4);
+}
+
+/* Notification dot */
+.notification-dot {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 8px;
+  height: 8px;
+  background: #e74c3c;
+  border-radius: 50%;
+  animation: notifPulse 1.5s ease-in-out infinite;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+/* Glow effect behind phone */
+.floating-phone::before {
+  content: '';
+  position: absolute;
+  bottom: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80%;
+  height: 30px;
+  background: radial-gradient(ellipse, rgba(46, 204, 113, 0.3), transparent 70%);
+  border-radius: 50%;
+  filter: blur(10px);
+  animation: glowPulse 3s ease-in-out infinite;
+}
+
+/* Home button indicator */
+.phone-body::after {
+  content: '';
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 30px;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+}
+
+/* Floating bubbles */
+.bubbles {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.bubble {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 50%;
+  animation: bubbleFloat 4s ease-in-out infinite;
+}
+
+.bubble:nth-child(1) {
+  left: 15%;
+  animation-delay: 0s;
+  width: 3px;
+  height: 3px;
+}
+.bubble:nth-child(2) {
+  left: 35%;
+  animation-delay: 0.8s;
+  width: 5px;
+  height: 5px;
+}
+.bubble:nth-child(3) {
+  left: 55%;
+  animation-delay: 1.6s;
+  width: 3px;
+  height: 3px;
+}
+.bubble:nth-child(4) {
+  left: 75%;
+  animation-delay: 2.4s;
+  width: 4px;
+  height: 4px;
+}
+.bubble:nth-child(5) {
+  left: 90%;
+  animation-delay: 3.2s;
+  width: 3px;
+  height: 3px;
+}
+
+/* ----- FLOATING PHONE RESPONSIVE ----- */
 @media (max-width: 768px) {
   .floating-phone {
     width: 60px !important;
     height: 120px !important;
-    bottom: 60px !important;
+    bottom: 70px !important;
     left: 12px !important;
   }
-  .floating-phone .icon-pulse {
-    width: 24px !important;
-    height: 24px !important;
-    font-size: 12px !important;
+  .floating-phone .phone-screen .icon-pulse {
+    width: 22px !important;
+    height: 22px !important;
+    font-size: 11px !important;
   }
-  .floating-phone .app-name {
+  .floating-phone .phone-screen .app-name {
     font-size: 6px !important;
+  }
+  .floating-phone .notification-dot {
+    width: 6px !important;
+    height: 6px !important;
+    top: 4px !important;
+    right: 4px !important;
   }
 }
 
@@ -673,15 +794,26 @@ img {
   .floating-phone {
     width: 50px !important;
     height: 100px !important;
-    bottom: 50px !important;
+    bottom: 60px !important;
     left: 8px !important;
   }
-  .floating-phone .icon-pulse {
-    width: 20px !important;
-    height: 20px !important;
-    font-size: 10px !important;
+  .floating-phone .phone-screen .icon-pulse {
+    width: 18px !important;
+    height: 18px !important;
+    font-size: 9px !important;
   }
-  .floating-phone .app-name {
+  .floating-phone .phone-screen .app-name {
     display: none !important;
+  }
+  .floating-phone .notification-dot {
+    width: 5px !important;
+    height: 5px !important;
+    top: 3px !important;
+    right: 3px !important;
+  }
+  .phone-body::after {
+    width: 20px !important;
+    height: 2px !important;
+    bottom: 6px !important;
   }
 }

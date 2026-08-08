@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { getProduct, updateProductWithFiles } from '../api';
+
+// ✅ Correct import path – your API functions live in services/api
+import { getProduct, updateProductWithFiles } from '../services/api';
+
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 

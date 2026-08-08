@@ -4,7 +4,9 @@ import Categories from '../components/Categories';
 import FeaturedProducts from '../components/FeaturedProducts';
 import FeaturedSellers from '../components/FeaturedSellers';
 import Footer from '../components/Footer';
-import { getProducts } from '../api';
+
+// ✅ Fixed: correct path to your API module
+import { getProducts } from '../services/api';
 
 const Home = () => {
   const [products, setProducts] = useState([]);

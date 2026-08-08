@@ -1,7 +1,17 @@
 // components/ProductsTable.jsx
 import React from 'react';
-import { deleteProduct } from '../../../api'; // ✅ fixed path
-import { useAuth } from '../../../context/AuthContext'; // ✅ fixed path
+
+// ✅ Fixed: Now points to the correct API file
+import { deleteProduct } from '../../../services/api';
+import { useAuth } from '../../../context/AuthContext';
+
+// Optional: helper for image URLs (since api.js doesn't export getImageUrl)
+const getImageUrl = (path) => {
+  if (!path) return 'https://placehold.co/50x50?text=No+Image';
+  if (path.startsWith('http')) return path;
+  const base = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+  return `${base}${path}`;
+};
 
 const ProductsTable = ({ products, loading, refreshData, showNotification }) => {
   const { token } = useAuth();
@@ -45,7 +55,7 @@ const ProductsTable = ({ products, loading, refreshData, showNotification }) => 
             <tr key={product._id} style={{ borderBottom: '1px solid #e5e7eb' }}>
               <td style={{ padding: '8px' }}>
                 <img 
-                  src={product.image || 'https://placehold.co/50x50?text=No+Image'} 
+                  src={getImageUrl(product.image || product.images?.[0])} 
                   alt={product.title} 
                   style={{ width: '50px', height: '50px', objectFit: 'cover', borderRadius: '4px' }} 
                 />

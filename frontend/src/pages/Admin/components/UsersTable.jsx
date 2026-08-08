@@ -1,6 +1,8 @@
 // components/UsersTable.jsx
 import React, { useState } from 'react';
-import { updateUser, deleteUser } from '../../../api';
+
+// ✅ Fixed: correct path to your API module
+import { updateUser, deleteUser } from '../../../services/api';
 import { useAuth } from '../../../context/AuthContext';
 
 const UsersTable = ({ users, loading, refreshData, showNotification }) => {
@@ -258,11 +260,6 @@ const UsersTable = ({ users, loading, refreshData, showNotification }) => {
                   <div style={{ fontWeight: 600 }}>{selectedUser.phone}</div>
                 </div>
               )}
-              {/* Optional: show total ads if the user object has it – you can compute from backend */}
-              {/* 
-                To show total ads, you would need to fetch product count from the backend.
-                If your admin GET /users endpoint returns 'productCount', you can display it here.
-              */}
             </div>
 
             <button

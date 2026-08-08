@@ -2,7 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
 import SearchBar from '../components/SearchBar';
-import { getProducts, getImageUrl } from '../api';   // ✅ correct relative path
+
+// ✅ Correct import path – now points to services/api
+import { getProducts } from '../services/api';
+
+// ✅ Local helper for image URLs (since api.js doesn't export getImageUrl)
+const getImageUrl = (path) => {
+  if (!path) return '/placeholder.png';
+  if (path.startsWith('http')) return path;
+  const base = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+  return `${base}${path}`;
+};
 
 const Products = () => {
   const location = useLocation();

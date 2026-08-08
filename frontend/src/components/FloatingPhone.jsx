@@ -3,10 +3,11 @@ import React, { useEffect, useRef } from 'react';
 const FloatingPhone = () => {
   const phoneRef = useRef(null);
 
+  // Subtle parallax on mouse move
   useEffect(() => {
     const handleMouseMove = (e) => {
       if (!phoneRef.current) return;
-      const x = (e.clientX / window.innerWidth - 0.5) * 12; // reduced movement
+      const x = (e.clientX / window.innerWidth - 0.5) * 12;
       const y = (e.clientY / window.innerHeight - 0.5) * 12;
       phoneRef.current.style.transform = `translate(${x}px, ${y}px) scale(1)`;
     };
@@ -32,9 +33,7 @@ const FloatingPhone = () => {
         cursor: 'pointer',
         filter: 'drop-shadow(0 12px 24px rgba(0, 0, 0, 0.3))',
       }}
-      onClick={() => {
-        window.open('https://wa.me/233542928081', '_blank');
-      }}
+      onClick={() => window.open('https://wa.me/233542928081', '_blank')}
       title="Chat with us on WhatsApp"
     >
       {/* Phone Frame */}
@@ -65,7 +64,7 @@ const FloatingPhone = () => {
             position: 'relative',
           }}
         >
-          {/* Dynamic background dots */}
+          {/* Background glow effect */}
           <div
             style={{
               position: 'absolute',
@@ -73,7 +72,8 @@ const FloatingPhone = () => {
               left: 0,
               width: '100%',
               height: '100%',
-              background: 'radial-gradient(circle at 30% 40%, rgba(46, 204, 113, 0.12), transparent 60%), radial-gradient(circle at 70% 60%, rgba(0, 85, 165, 0.12), transparent 60%)',
+              background:
+                'radial-gradient(circle at 30% 40%, rgba(46, 204, 113, 0.12), transparent 60%), radial-gradient(circle at 70% 60%, rgba(0, 85, 165, 0.12), transparent 60%)',
               animation: 'screenGlow 4s ease-in-out infinite',
             }}
           />
@@ -129,7 +129,7 @@ const FloatingPhone = () => {
             }}
           />
 
-          {/* Bottom bar */}
+          {/* Bottom bar (like iOS home indicator) */}
           <div
             style={{
               position: 'absolute',
@@ -171,7 +171,7 @@ const FloatingPhone = () => {
         </div>
       </div>
 
-      {/* Glow ring */}
+      {/* Outer glow ring */}
       <div
         style={{
           position: 'absolute',

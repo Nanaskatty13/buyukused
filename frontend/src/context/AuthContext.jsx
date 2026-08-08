@@ -1,6 +1,9 @@
 // src/context/AuthContext.jsx
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import api from '../api'; // adjust if your api.js is elsewhere
+
+// ✅ Fixed: correct path to your API module
+import api from '../services/api';
+
 import {
   getToken,
   setToken as setTokenStorage,

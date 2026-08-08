@@ -2,7 +2,7 @@
 //  IMPORTS (must be at the top)
 // ================================================================
 
-import { getToken } from '../utils/storage'; // ✅ kept, but moved to top
+import { getToken } from '../utils/storage';
 
 // ================================================================
 //  API CONFIG
@@ -22,6 +22,22 @@ const handleResponse = async (response) => {
     throw new Error(data.message || data.error || `HTTP ${response.status}`);
   }
   return data;
+};
+
+// ================================================================
+//  IMAGE URL HELPER
+// ================================================================
+
+/**
+ * Convert a relative image path to a full URL
+ * @param {string} path - The image path (relative or absolute)
+ * @returns {string} - Full URL or placeholder
+ */
+export const getImageUrl = (path) => {
+  if (!path) return '/placeholder.png';
+  if (path.startsWith('http')) return path;
+  if (path.startsWith('data:')) return path; // base64 images
+  return `${API_URL}${path.startsWith('/') ? path : `/${path}`}`;
 };
 
 // ================================================================
@@ -86,6 +102,14 @@ export const products = {
   createWithFiles: async (formData, token) => {
     const res = await fetch(`${API_URL}/api/products`, {
       method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` },
+      body: formData,
+    });
+    return handleResponse(res);
+  },
+  updateWithFiles: async (id, formData, token) => {
+    const res = await fetch(`${API_URL}/api/products/${id}`, {
+      method: 'PUT',
       headers: { 'Authorization': `Bearer ${token}` },
       body: formData,
     });
@@ -193,24 +217,29 @@ export const notifications = {
 //  NAMED EXPORTS FOR CONVENIENCE
 // ================================================================
 
+// Auth
 export const login = auth.login;
 export const register = auth.register;
 export const getMe = auth.getMe;
 export const logout = auth.logout;
 
+// Products
 export const getProducts = products.getAll;
 export const getProduct = products.getById;
 export const createProduct = products.create;
 export const createProductWithFiles = products.createWithFiles;
+export const updateProductWithFiles = products.updateWithFiles;
 export const updateProduct = products.update;
 export const deleteProduct = products.delete;
 
+// Users
 export const getUsers = users.getAll;
 export const getUser = users.getById;
 export const updateUser = users.update;
 export const deleteUser = users.delete;
 export const getUserStats = users.getStats;
 
+// Notifications
 export const getNotifications = notifications.getForUser;
 export const getAdminNotifications = notifications.getForAdmin;
 export const createNotification = notifications.create;
@@ -234,6 +263,7 @@ export default {
   getProduct,
   createProduct,
   createProductWithFiles,
+  updateProductWithFiles,
   updateProduct,
   deleteProduct,
   getUsers,
@@ -246,6 +276,7 @@ export default {
   createNotification,
   markNotificationRead,
   deleteNotification,
+  getImageUrl, // ✅ Added to default export
 };
 
 // ================================================================

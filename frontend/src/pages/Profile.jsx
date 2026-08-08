@@ -1,7 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { getProducts, getNotifications, messages, API_URL, getImageUrl } from '../api';
+
+// ✅ Import helpers from API
+import {
+  getProducts,
+  getNotifications,
+  getImageUrl,
+  API_URL,
+} from '../services/api';
+
+// ✅ CORRECT: named import (not namespace)
+import { messages } from '../services/messages';
 
 const Profile = () => {
   const { user, token } = useAuth();
@@ -32,9 +42,9 @@ const Profile = () => {
   const [replyMessage, setReplyMessage] = useState('');
   const [sendingReply, setSendingReply] = useState(false);
 
+  // ─── Data fetching ─────────────────────────────────────────────────────
   useEffect(() => {
     const fetchData = async () => {
-      // ✅ Guard: ensure user and token exist, and get userId from multiple possible fields
       if (!user || !token) {
         setLoading(false);
         return;
@@ -54,10 +64,6 @@ const Profile = () => {
           getNotifications(userId, token),
           messages.getForUser(userId, token),
         ]);
-
-        console.log('📦 Products response:', userProducts);
-        console.log('📦 Notifications response:', userNotifs);
-        console.log('📦 Messages response:', userMessages);
 
         const productsList = userProducts?.products || [];
         const notifsList = Array.isArray(userNotifs) ? userNotifs : [];
@@ -88,19 +94,7 @@ const Profile = () => {
     fetchData();
   }, [user, token]);
 
-  if (!user) {
-    return (
-      <div className="container" style={{ padding: '60px 20px', textAlign: 'center' }}>
-        <h2>Please Login</h2>
-        <p style={{ color: 'var(--gray-500)' }}>You need to be logged in to view your profile.</p>
-        <Link to="/login" className="btn-primary" style={{ display: 'inline-block', marginTop: '16px' }}>
-          Login
-        </Link>
-      </div>
-    );
-  }
-
-  // ----- Edit Profile Handlers -----
+  // ─── Edit Profile ──────────────────────────────────────────────────────
   const handleEditPhotoChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -144,7 +138,7 @@ const Profile = () => {
     }
   };
 
-  // ----- Messaging Handlers -----
+  // ─── Messaging ────────────────────────────────────────────────────────
   const openConversation = async (otherUserId) => {
     const msgs = messagesList.filter(
       (m) =>
@@ -194,7 +188,6 @@ const Profile = () => {
     }
   };
 
-  // ----- Get unique conversation partners -----
   const getConversations = () => {
     const partners = new Set();
     messagesList.forEach((m) => {
@@ -219,10 +212,23 @@ const Profile = () => {
       .sort((a, b) => new Date(b.last?.createdAt) - new Date(a.last?.createdAt));
   };
 
-  // ----- Render -----
+  // ─── Render ──────────────────────────────────────────────────────────
+
+  if (!user) {
+    return (
+      <div className="container" style={{ padding: '60px 20px', textAlign: 'center' }}>
+        <h2>Please Login</h2>
+        <p style={{ color: 'var(--gray-500)' }}>You need to be logged in to view your profile.</p>
+        <Link to="/login" className="btn-primary" style={{ display: 'inline-block', marginTop: '16px' }}>
+          Login
+        </Link>
+      </div>
+    );
+  }
+
   return (
     <div className="container" style={{ padding: '30px 20px' }}>
-      {/* Profile Header */}
+      {/* ─── Profile Header ─────────────────────────────────────────── */}
       <div
         className="profile-header"
         style={{
@@ -334,7 +340,7 @@ const Profile = () => {
         </div>
       </div>
 
-      {/* Stats Cards */}
+      {/* ─── Stats Cards ─────────────────────────────────────────────── */}
       <div
         style={{
           display: 'grid',
@@ -433,7 +439,7 @@ const Profile = () => {
         </div>
       </div>
 
-      {/* Main content – My Ads + Messages */}
+      {/* ─── Main content: My Ads + Messages ────────────────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px' }}>
         <div>
           <h2
@@ -765,7 +771,7 @@ const Profile = () => {
         </div>
       </div>
 
-      {/* Edit Profile Modal */}
+      {/* ─── Edit Profile Modal ──────────────────────────────────────── */}
       {showEditModal && (
         <div
           style={{

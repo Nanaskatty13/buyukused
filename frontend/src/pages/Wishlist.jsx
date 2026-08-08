@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useCart } from '../context/CartContext';
 import ProductCard from '../components/ProductCard';
-import { getProducts } from '../api';
+import { getProducts } from '../services/api';   // ✅ fixed: now points to services/api
 
 const Wishlist = () => {
   const { favorites } = useCart();

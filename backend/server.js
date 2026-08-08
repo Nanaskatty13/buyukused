@@ -53,7 +53,7 @@ app.use(compression());
 app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
 
 // ===============================
-// CORS
+// CORS – ✅ Now includes local network IP for mobile testing
 // ===============================
 const allowedOrigins = [
   "http://localhost:5173",
@@ -61,6 +61,9 @@ const allowedOrigins = [
   "https://sell-platform2.vercel.app",
   "https://sell-platform2-mcv0eniwt-nanaskatty13s-projects.vercel.app",
   process.env.FRONTEND_URL,
+  // Add your local network IP for mobile testing (e.g., http://192.168.1.100:5173)
+  // Uncomment and replace with your actual IP:
+  // "http://192.168.1.100:5173",
 ].filter(Boolean);
 
 console.log("🟢 Allowed Origins (exact matches):", allowedOrigins);
@@ -86,7 +89,7 @@ app.use(
 );
 
 // ===============================
-// BODY PARSER
+// BODY PARSER – ✅ increased limit for large JSON/urlencoded
 // ===============================
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
@@ -133,10 +136,11 @@ const fileFilter = (req, file, cb) => {
 
 const upload = multer({
   storage,
-  limits: { fileSize: 50 * 1024 * 1024 },
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB (more than enough for mobile photos)
   fileFilter,
 });
 
+// Attach multer instance to req for easy use in routes
 app.use((req, res, next) => {
   req.upload = upload;
   next();
@@ -149,7 +153,7 @@ app.use(passport.initialize());
 // ❌ No passport.session() – we use JWT, not sessions
 
 // ===============================
-// RATE LIMIT
+// RATE LIMIT – skipped for admins and in development
 // ===============================
 const skipIfAdmin = (req, res, next) => {
   const authHeader = req.headers.authorization;
@@ -290,12 +294,17 @@ const start = async () => {
     const connection = await connectDB();
     console.log(`✅ MongoDB connected to: ${connection.name}`);
 
-    app.listen(PORT, () => {
+    // ✅ Increase server timeout to 2 minutes – crucial for mobile uploads
+    const server = app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
       console.log(`🌍 Environment: ${process.env.NODE_ENV || "development"}`);
       console.log(`📌 Allowed Origins: ${allowedOrigins.join(", ") || "(wildcard for vercel.app)"}`);
       console.log(`🔗 Base URL: ${process.env.BASE_URL || "(auto-detected)"}`);
     });
+
+    // ⏱️ 120 seconds timeout for slow mobile connections
+    server.timeout = 120000;
+
   } catch (error) {
     console.error("❌ Server failed:", error.message);
     process.exit(1);
