@@ -57,11 +57,13 @@ app.use(compression());
 app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
 
 // ===============================
-// CORS
+// CORS – UPDATED with explicit main domain
 // ===============================
 const allowedOrigins = [
   "http://localhost:5173",
   "http://127.0.0.1:5173",
+  "https://sell-platform2.vercel.app",                    // ✅ Added explicitly
+  "https://sell-platform2-mcv0eniwt-nanaskatty13s-projects.vercel.app",
   process.env.FRONTEND_URL,
 ].filter(Boolean);
 
@@ -82,7 +84,7 @@ app.use(
       callback(new Error("CORS not allowed for this origin"));
     },
     credentials: true,
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"], // OPTIONS added
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
@@ -234,7 +236,6 @@ app.use("/api/messages", messageRoutes);
 // ===============================
 // STATIC FILES – ONLY FOR UPLOADS
 // ===============================
-// DO NOT serve the public folder – your frontend is on Vercel.
 app.use("/uploads", express.static(uploadDir));
 
 // ===============================
@@ -244,7 +245,6 @@ app.use((req, res) => {
   if (req.path.startsWith("/api") || req.path.startsWith("/auth")) {
     return res.status(404).json({ success: false, message: "API endpoint not found" });
   }
-  // For any other request (like missing favicon or static asset), return 404.
   res.status(404).send("Not Found");
 });
 
