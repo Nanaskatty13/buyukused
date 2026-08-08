@@ -1,4 +1,3 @@
-// backend/routes/auth.js
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
@@ -12,10 +11,8 @@ router.post('/register', async (req, res) => {
   try {
     const { name, email, password, phone, role } = req.body;
 
-    // Normalize email to lowercase
     const normalizedEmail = email.toLowerCase().trim();
 
-    // Check if user already exists
     const existing = await User.findOne({ email: normalizedEmail });
     if (existing) {
       console.log(`⚠️ Registration attempt with existing email: ${normalizedEmail}`);
@@ -25,22 +22,20 @@ router.post('/register', async (req, res) => {
       });
     }
 
-    // Hash password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Create user – default role to 'user' if not provided
+    // ✅ Default role: 'seller' – so users can post ads
     const user = new User({
       name,
       email: normalizedEmail,
       password: hashedPassword,
       phone: phone || '',
-      role: role || 'user',
+      role: role || 'seller',   // Changed from 'user'
     });
 
     await user.save();
 
-    // Generate JWT
     const token = jwt.sign(
       { id: user._id, email: user.email, role: user.role },
       process.env.JWT_SECRET,
