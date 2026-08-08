@@ -1,5 +1,4 @@
 const mongoose = require('mongoose');
-const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 require('dotenv').config();
 
@@ -7,17 +6,14 @@ const createAdmin = async () => {
   try {
     await mongoose.connect(process.env.MONGO_URI);
 
-    // Drop the old 'userName' index if it exists
+    // Drop old index if needed (optional)
     try {
       const collection = mongoose.connection.collection('users');
       await collection.dropIndex('userName_1');
       console.log('✅ Dropped old userName index');
     } catch (err) {
-      if (err.code === 27) {
-        console.log('ℹ️ Index userName_1 does not exist, skipping');
-      } else {
-        console.warn('⚠️ Could not drop index:', err.message);
-      }
+      if (err.code === 27) console.log('ℹ️ Index userName_1 does not exist, skipping');
+      else console.warn('⚠️ Could not drop index:', err.message);
     }
 
     const existing = await User.findOne({ email: 'admin@kn.com' });
@@ -26,11 +22,11 @@ const createAdmin = async () => {
       process.exit(0);
     }
 
-    const hashedPassword = await bcrypt.hash('admin123', 10);
+    // ✅ Pass plain password – the model's pre‑save hook will hash it
     const admin = new User({
       name: 'KN Admin',
       email: 'admin@kn.com',
-      password: hashedPassword,
+      password: 'admin123',   // plain text, not hashed
       phone: '0542928081',
       role: 'admin',
     });

@@ -69,7 +69,7 @@ const userSchema = new mongoose.Schema(
     role: {
       type: String,
       enum: ["buyer", "seller", "admin"],
-      default: "buyer",
+      default: "seller",   // ✅ changed from "buyer" so users can post products
     },
 
     isActive: {
@@ -87,87 +87,51 @@ const userSchema = new mongoose.Schema(
 // HASH PASSWORD BEFORE SAVE
 // ===============================
 userSchema.pre("save", async function (next) {
-
   if (!this.isModified("password")) {
     return next();
   }
-
   if (!this.password) {
     return next();
   }
-
-  this.password = await bcrypt.hash(
-    this.password,
-    10
-  );
-
+  this.password = await bcrypt.hash(this.password, 10);
   next();
 });
-
 
 // ===============================
 // CHECK PASSWORD
 // ===============================
-userSchema.methods.comparePassword = async function(password){
-
-  if (!this.password){
-    return false;
-  }
-
-  return await bcrypt.compare(
-    password,
-    this.password
-  );
-
+userSchema.methods.comparePassword = async function(password) {
+  if (!this.password) return false;
+  return await bcrypt.compare(password, this.password);
 };
-
 
 // ===============================
 // ROLE HELPERS
 // ===============================
-userSchema.methods.isAdmin = function(){
+userSchema.methods.isAdmin = function() {
   return this.role === "admin";
 };
 
-
-userSchema.methods.isSeller = function(){
-  return (
-    this.role === "seller" ||
-    this.role === "admin"
-  );
+userSchema.methods.isSeller = function() {
+  return this.role === "seller" || this.role === "admin";
 };
-
 
 // ===============================
 // REMOVE PASSWORD FROM JSON
 // ===============================
 userSchema.set("toJSON", {
-
-  transform: function(doc, ret){
-
+  transform: function(doc, ret) {
     delete ret.password;
     delete ret.__v;
-
     return ret;
-
   }
-
 });
-
 
 // ===============================
 // FIND BY EMAIL
 // ===============================
-userSchema.statics.findByEmail = function(email){
-
-  return this.findOne({
-    email: email.toLowerCase().trim()
-  });
-
+userSchema.statics.findByEmail = function(email) {
+  return this.findOne({ email: email.toLowerCase().trim() });
 };
-
-
-// REMOVE THIS LINE:
-// userSchema.index({email:1});
 
 module.exports = mongoose.model("User", userSchema);
