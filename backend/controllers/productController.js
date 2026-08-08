@@ -1,447 +1,83 @@
-const Product = require("../models/Product");
-
-
-// ==========================
-// Get All Products
-// ==========================
-exports.getProducts = async (req, res) => {
-
-    try {
-
-        const {
-            search,
-            category,
-            page = 1,
-            limit = 12
-        } = req.query;
-
-
-        let query = {};
-
-
-        // Search
-        if (search) {
-
-            query.$or = [
-
-                {
-                    name: {
-                        $regex: search,
-                        $options: "i"
-                    }
-                },
-
-                {
-                    description: {
-                        $regex: search,
-                        $options: "i"
-                    }
-                }
-
-            ];
-
-        }
-
-
-
-        // Category filter
-        if(category){
-
-            query.category = category;
-
-        }
-
-
-
-        const products = await Product.find(query)
-
-            .populate("seller", "name email phone")
-
-            .limit(limit * 1)
-
-            .skip((page - 1) * limit)
-
-            .sort({
-                createdAt:-1
-            });
-
-
-
-        const total = await Product.countDocuments(query);
-
-
-
-        res.json({
-
-            success:true,
-
-            products,
-
-            pagination:{
-
-                currentPage:Number(page),
-
-                totalPages:Math.ceil(total / limit),
-
-                totalProducts:total
-
-            }
-
-        });
-
-
-
-    } catch(error){
-
-        res.status(500).json({
-
-            success:false,
-
-            message:error.message
-
-        });
-
-    }
-
-};
-
-
-
-// ==========================
-// Get Single Product
-// ==========================
-exports.getProductById = async(req,res)=>{
-
-    try{
-
-
-        const product = await Product.findById(
-
-            req.params.id
-
-        )
-        .populate("seller","name email phone");
-
-
-
-        if(!product){
-
-            return res.status(404).json({
-
-                success:false,
-
-                message:"Product not found"
-
-            });
-
-        }
-
-
-
-        res.json({
-
-            success:true,
-
-            product
-
-        });
-
-
-
-    }catch(error){
-
-        res.status(500).json({
-
-            success:false,
-
-            message:error.message
-
-        });
-
-    }
-
-};
-
-
-
-// ==========================
-// Create Product
-// ==========================
-exports.createProduct = async(req,res)=>{
-
-    try{
-
-
-        const product = await Product.create({
-
-            ...req.body,
-
-            seller:req.user.id
-
-        });
-
-
-
-        res.status(201).json({
-
-            success:true,
-
-            message:"Product created successfully",
-
-            product
-
-        });
-
-
-
-    }catch(error){
-
-        res.status(500).json({
-
-            success:false,
-
-            message:error.message
-
-        });
-
-    }
-
-};
-
-
-
 // ==========================
 // Update Product
 // ==========================
-exports.updateProduct = async(req,res)=>{
+exports.updateProduct = async (req, res) => {
+  try {
+    const product = await Product.findById(req.params.id);
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: "Product not found",
+      });
+    }
 
-    try{
+    // 1. Update text fields (allow all fields from request body)
+    const allowedFields = [
+      'title', 'price', 'description', 'category', 'location',
+      'condition', 'storage', 'color', 'status', 'sellerPhone',
+      'batteryHealth', 'faceId', 'simStatus', 'negotiation', 'swapAccepted'
+    ];
 
-
-        const product = await Product.findByIdAndUpdate(
-
-            req.params.id,
-
-            req.body,
-
-            {
-                new:true,
-                runValidators:true
-            }
-
-        );
-
-
-
-        if(!product){
-
-            return res.status(404).json({
-
-                success:false,
-
-                message:"Product not found"
-
-            });
-
+    allowedFields.forEach(field => {
+      if (req.body[field] !== undefined) {
+        // Convert boolean-like strings to actual booleans for checkboxes
+        if (field === 'negotiation' || field === 'swapAccepted') {
+          product[field] = req.body[field] === 'true';
+        } else if (field === 'price' || field === 'batteryHealth') {
+          // Ensure numeric fields are stored as numbers
+          product[field] = req.body[field] === '' ? null : Number(req.body[field]);
+        } else {
+          product[field] = req.body[field];
         }
+      }
+    });
 
-
-
-        res.json({
-
-            success:true,
-
-            message:"Product updated successfully",
-
-            product
-
-        });
-
-
-
-    }catch(error){
-
-        res.status(500).json({
-
-            success:false,
-
-            message:error.message
-
-        });
-
+    // 2. Handle images – keep only those in imagesToKeep
+    let imagesToKeep = [];
+    if (req.body.imagesToKeep) {
+      try {
+        imagesToKeep = JSON.parse(req.body.imagesToKeep);
+      } catch (e) {
+        // If parsing fails, treat as empty array (keep none)
+        imagesToKeep = [];
+      }
     }
 
-};
-
-
-
-// ==========================
-// Delete Product
-// ==========================
-exports.deleteProduct = async(req,res)=>{
-
-    try{
-
-
-        const product = await Product.findByIdAndDelete(
-
-            req.params.id
-
-        );
-
-
-
-        if(!product){
-
-            return res.status(404).json({
-
-                success:false,
-
-                message:"Product not found"
-
-            });
-
-        }
-
-
-
-        res.json({
-
-            success:true,
-
-            message:"Product deleted successfully"
-
-        });
-
-
-
-    }catch(error){
-
-        res.status(500).json({
-
-            success:false,
-
-            message:error.message
-
-        });
-
+    // If imagesToKeep is an array, replace the product's images with it
+    // (removes any images not listed)
+    if (Array.isArray(imagesToKeep)) {
+      product.images = imagesToKeep;
     }
 
-};
-
-
-
-// ==========================
-// Update Stock
-// ==========================
-exports.updateStock = async(req,res)=>{
-
-    try{
-
-
-        const {
-            stock
-        } = req.body;
-
-
-
-        const product = await Product.findByIdAndUpdate(
-
-            req.params.id,
-
-            {
-                stock
-            },
-
-            {
-                new:true
-            }
-
-        );
-
-
-
-        if(!product){
-
-            return res.status(404).json({
-
-                success:false,
-
-                message:"Product not found"
-
-            });
-
-        }
-
-
-
-        res.json({
-
-            success:true,
-
-            message:"Stock updated",
-
-            product
-
-        });
-
-
-
-    }catch(error){
-
-        res.status(500).json({
-
-            success:false,
-
-            message:error.message
-
-        });
-
+    // 3. Append newly uploaded files (if any)
+    //    Expect the field name to be 'files' (matches frontend)
+    if (req.files && req.files.length > 0) {
+      // Build absolute URLs for the uploaded files
+      // Assumes you store files locally in /public/uploads
+      const baseUrl = `${req.protocol}://${req.get('host')}`;
+      const newImageUrls = req.files.map(file => {
+        // file.path is the full path on disk; we need the URL path
+        // e.g., /uploads/filename.jpg
+        const relativePath = `/uploads/${file.filename}`;
+        return `${baseUrl}${relativePath}`;
+      });
+      // Append to existing images
+      product.images = [...product.images, ...newImageUrls];
     }
 
-};
+    // 4. Save the updated product
+    await product.save();
 
-
-
-// ==========================
-// Get Seller Products
-// ==========================
-exports.getSellerProducts = async(req,res)=>{
-
-    try{
-
-
-        const products = await Product.find({
-
-            seller:req.user.id
-
-        })
-        .sort({
-            createdAt:-1
-        });
-
-
-
-        res.json({
-
-            success:true,
-
-            products
-
-        });
-
-
-
-    }catch(error){
-
-        res.status(500).json({
-
-            success:false,
-
-            message:error.message
-
-        });
-
-    }
-
+    res.json({
+      success: true,
+      message: "Product updated successfully",
+      product,
+    });
+  } catch (error) {
+    console.error('Update product error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
 };

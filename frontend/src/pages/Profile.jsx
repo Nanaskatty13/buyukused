@@ -1,24 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
-// ✅ Import helpers from API
 import {
   getProducts,
   getNotifications,
   getImageUrl,
   API_URL,
+  deleteProduct,
 } from '../services/api';
 
-// ✅ CORRECT: named import (not namespace)
 import { messages } from '../services/messages';
 
 const Profile = () => {
   const { user, token } = useAuth();
+  const navigate = useNavigate();
   const [products, setProducts] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [messagesList, setMessagesList] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [deletingProductId, setDeletingProductId] = useState(null);
   const [stats, setStats] = useState({
     totalAds: 0,
     totalViews: 0,
@@ -36,6 +37,7 @@ const Profile = () => {
   const [editPhotoPreview, setEditPhotoPreview] = useState(user?.photoURL || '');
   const [editLoading, setEditLoading] = useState(false);
   const [editError, setEditError] = useState('');
+  const [removePhoto, setRemovePhoto] = useState(false);
 
   // Messaging state
   const [selectedConversation, setSelectedConversation] = useState(null);
@@ -43,56 +45,83 @@ const Profile = () => {
   const [sendingReply, setSendingReply] = useState(false);
 
   // ─── Data fetching ─────────────────────────────────────────────────────
+  const loadUserData = async () => {
+    if (!user || !token) {
+      setLoading(false);
+      return;
+    }
+    const userId = user._id || user.id || user.userId;
+    if (!userId) {
+      console.warn('⚠️ No user ID found in user object:', user);
+      setLoading(false);
+      return;
+    }
+
+    try {
+      console.log('👤 Fetching data for user:', userId);
+
+      const [userProducts, userNotifs, userMessages] = await Promise.all([
+        getProducts({ sellerId: userId }),
+        getNotifications(userId, token),
+        messages.getForUser(userId, token),
+      ]);
+
+      const productsList = userProducts?.products || [];
+      const notifsList = Array.isArray(userNotifs) ? userNotifs : [];
+      const messagesList = Array.isArray(userMessages) ? userMessages : [];
+
+      setProducts(productsList);
+      setNotifications(notifsList);
+      setMessagesList(messagesList);
+
+      const unreadMsgs = messagesList.filter(
+        (m) => m.receiver === userId && !m.read
+      ).length;
+
+      setStats({
+        totalAds: productsList.length,
+        totalViews: productsList.reduce((sum, p) => sum + (p.views || 0), 0),
+        totalNotifications: notifsList.length,
+        unreadNotifications: notifsList.filter((n) => !n.read).length,
+        unreadMessages: unreadMsgs,
+      });
+    } catch (error) {
+      console.error('❌ Error fetching profile data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchData = async () => {
-      if (!user || !token) {
-        setLoading(false);
-        return;
-      }
-      const userId = user._id || user.id || user.userId;
-      if (!userId) {
-        console.warn('⚠️ No user ID found in user object:', user);
-        setLoading(false);
-        return;
-      }
-
-      try {
-        console.log('👤 Fetching data for user:', userId);
-
-        const [userProducts, userNotifs, userMessages] = await Promise.all([
-          getProducts({ sellerId: userId }),
-          getNotifications(userId, token),
-          messages.getForUser(userId, token),
-        ]);
-
-        const productsList = userProducts?.products || [];
-        const notifsList = Array.isArray(userNotifs) ? userNotifs : [];
-        const messagesList = Array.isArray(userMessages) ? userMessages : [];
-
-        setProducts(productsList);
-        setNotifications(notifsList);
-        setMessagesList(messagesList);
-
-        const unreadMsgs = messagesList.filter(
-          (m) => m.receiver === userId && !m.read
-        ).length;
-
-        setStats({
-          totalAds: productsList.length,
-          totalViews: productsList.reduce((sum, p) => sum + (p.views || 0), 0),
-          totalNotifications: notifsList.length,
-          unreadNotifications: notifsList.filter((n) => !n.read).length,
-          unreadMessages: unreadMsgs,
-        });
-      } catch (error) {
-        console.error('❌ Error fetching profile data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
+    loadUserData();
   }, [user, token]);
+
+  // ─── Delete product ──────────────────────────────────────────────────
+  const handleDeleteProduct = async (productId) => {
+    if (!window.confirm('Are you sure you want to delete this product? This action cannot be undone.')) {
+      return;
+    }
+
+    setDeletingProductId(productId);
+    try {
+      const result = await deleteProduct(productId, token);
+      if (result.success || result.message === 'Product deleted') {
+        setProducts((prev) => prev.filter((p) => p._id !== productId));
+        setStats((prev) => ({
+          ...prev,
+          totalAds: prev.totalAds - 1,
+        }));
+        alert('Product deleted successfully.');
+      } else {
+        alert(result.message || 'Failed to delete product.');
+      }
+    } catch (error) {
+      console.error('Delete error:', error);
+      alert('An error occurred while deleting the product.');
+    } finally {
+      setDeletingProductId(null);
+    }
+  };
 
   // ─── Edit Profile ──────────────────────────────────────────────────────
   const handleEditPhotoChange = (e) => {
@@ -100,7 +129,14 @@ const Profile = () => {
     if (file) {
       setEditPhoto(file);
       setEditPhotoPreview(URL.createObjectURL(file));
+      setRemovePhoto(false);
     }
+  };
+
+  const handleRemovePhoto = () => {
+    setEditPhoto(null);
+    setEditPhotoPreview('');
+    setRemovePhoto(true);
   };
 
   const handleUpdateProfile = async (e) => {
@@ -112,7 +148,11 @@ const Profile = () => {
     formData.append('name', editName);
     formData.append('email', editEmail);
     formData.append('phone', editPhone);
-    if (editPhoto) {
+
+    if (removePhoto) {
+      formData.append('removePhoto', 'true');
+      formData.append('photo', '');
+    } else if (editPhoto) {
       formData.append('photo', editPhoto);
     }
 
@@ -325,7 +365,10 @@ const Profile = () => {
           </Link>
           <button
             className="btn-outline"
-            onClick={() => setShowEditModal(true)}
+            onClick={() => {
+              setShowEditModal(true);
+              setRemovePhoto(false);
+            }}
             style={{
               padding: '10px 20px',
               border: '1.5px solid var(--gray-300)',
@@ -483,8 +526,7 @@ const Profile = () => {
               {products.slice(0, 5).map((p) => {
                 const imageUrl = p.images && p.images.length > 0 ? getImageUrl(p.images[0]) : null;
                 return (
-                  <Link
-                    to={`/product/${p._id}`}
+                  <div
                     key={p._id}
                     style={{
                       display: 'flex',
@@ -494,8 +536,8 @@ const Profile = () => {
                       background: 'white',
                       borderRadius: 'var(--radius-md)',
                       border: '1px solid var(--gray-200)',
-                      textDecoration: 'none',
                       transition: 'var(--transition)',
+                      position: 'relative',
                     }}
                   >
                     {imageUrl && (
@@ -517,7 +559,9 @@ const Profile = () => {
                     )}
                     <div style={{ flex: 1 }}>
                       <div style={{ fontWeight: 600, color: 'var(--gray-800)' }}>
-                        {p.title}
+                        <Link to={`/product/${p._id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                          {p.title}
+                        </Link>
                       </div>
                       <div style={{ fontSize: '13px', color: 'var(--gray-500)' }}>
                         {p.category} • {p.location} •{' '}
@@ -527,7 +571,56 @@ const Profile = () => {
                     <div style={{ fontWeight: 700, color: 'var(--primary)' }}>
                       ₵{p.price?.toLocaleString()}
                     </div>
-                  </Link>
+
+                    {/* Action buttons */}
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/edit-product/${p._id}`);
+                        }}
+                        style={{
+                          padding: '6px 12px',
+                          background: 'var(--primary)',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: 'var(--radius-sm)',
+                          cursor: 'pointer',
+                          fontSize: '13px',
+                          fontWeight: 600,
+                          transition: 'var(--transition)',
+                        }}
+                      >
+                        <i className="fas fa-pen"></i> Edit
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteProduct(p._id);
+                        }}
+                        disabled={deletingProductId === p._id}
+                        style={{
+                          padding: '6px 12px',
+                          background: '#dc2626',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: 'var(--radius-sm)',
+                          cursor: deletingProductId === p._id ? 'not-allowed' : 'pointer',
+                          fontSize: '13px',
+                          fontWeight: 600,
+                          opacity: deletingProductId === p._id ? 0.6 : 1,
+                          transition: 'var(--transition)',
+                        }}
+                      >
+                        {deletingProductId === p._id ? (
+                          <span className="spinner" style={{ display: 'inline-block', width: '16px', height: '16px', border: '2px solid white', borderTop: '2px solid transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }}></span>
+                        ) : (
+                          <i className="fas fa-trash"></i>
+                        )}{' '}
+                        {deletingProductId === p._id ? '' : 'Delete'}
+                      </button>
+                    </div>
+                  </div>
                 );
               })}
               {products.length > 5 && (
@@ -546,7 +639,7 @@ const Profile = () => {
           )}
         </div>
 
-        {/* Messages section */}
+        {/* Messages section – unchanged */}
         <div>
           <h2
             style={{
@@ -771,213 +864,81 @@ const Profile = () => {
         </div>
       </div>
 
-      {/* ─── Edit Profile Modal ──────────────────────────────────────── */}
+      {/* ─── Edit Profile Modal (using CSS classes) ──────────────────────── */}
       {showEditModal && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '100%',
-            backgroundColor: 'rgba(0,0,0,0.5)',
-            backdropFilter: 'blur(4px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 9999,
-            padding: '20px',
-          }}
-          onClick={() => setShowEditModal(false)}
-        >
-          <div
-            style={{
-              background: 'white',
-              borderRadius: 'var(--radius-xl)',
-              maxWidth: '480px',
-              width: '100%',
-              padding: '32px',
-              position: 'relative',
-              maxHeight: '90vh',
-              overflowY: 'auto',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              onClick={() => setShowEditModal(false)}
-              style={{
-                position: 'absolute',
-                top: '14px',
-                right: '18px',
-                fontSize: '28px',
-                cursor: 'pointer',
-                color: 'var(--gray-400)',
-                background: 'none',
-                border: 'none',
-              }}
-            >
+        <div className="edit-profile-overlay" onClick={() => setShowEditModal(false)}>
+          <div className="edit-profile-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="close-btn" onClick={() => setShowEditModal(false)}>
               &times;
             </button>
-            <h2
-              style={{
-                fontSize: '24px',
-                fontWeight: 800,
-                marginBottom: '20px',
-                textAlign: 'center',
-              }}
-            >
-              Edit Profile
-            </h2>
+            <h2>Edit Profile</h2>
 
-            {editError && (
-              <div
-                style={{
-                  background: '#fee2e2',
-                  color: '#dc2626',
-                  padding: '10px 14px',
-                  borderRadius: 'var(--radius-sm)',
-                  marginBottom: '16px',
-                }}
-              >
-                {editError}
-              </div>
-            )}
+            {editError && <div className="error-banner">{editError}</div>}
 
             <form onSubmit={handleUpdateProfile}>
-              <div className="form-group" style={{ marginBottom: '16px' }}>
-                <label
-                  style={{
-                    display: 'block',
-                    fontWeight: 600,
-                    fontSize: '13px',
-                    marginBottom: '4px',
-                  }}
-                >
-                  Profile Photo
-                </label>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                  <div
-                    style={{
-                      width: '64px',
-                      height: '64px',
-                      borderRadius: '50%',
-                      background: 'var(--gray-200)',
-                      overflow: 'hidden',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
+              <div className="form-group">
+                <label>Profile Photo</label>
+                <div className="photo-upload-row">
+                  <div className="photo-preview">
                     {editPhotoPreview ? (
-                      <img
-                        src={editPhotoPreview}
-                        alt="Preview"
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                      />
+                      <img src={editPhotoPreview} alt="Preview" />
                     ) : (
-                      <i
-                        className="fas fa-user"
-                        style={{ fontSize: '32px', color: 'var(--gray-400)' }}
-                      />
+                      <i className="fas fa-user"></i>
                     )}
                   </div>
                   <input
                     type="file"
                     accept="image/*"
                     onChange={handleEditPhotoChange}
-                    style={{ flex: 1 }}
                   />
+                  <button
+                    type="button"
+                    className="remove-photo-btn"
+                    onClick={handleRemovePhoto}
+                  >
+                    Remove Photo
+                  </button>
                 </div>
+                {removePhoto && (
+                  <small className="remove-photo-hint">
+                    Photo will be removed when you save.
+                  </small>
+                )}
               </div>
-              <div className="form-group" style={{ marginBottom: '16px' }}>
-                <label
-                  style={{
-                    display: 'block',
-                    fontWeight: 600,
-                    fontSize: '13px',
-                    marginBottom: '4px',
-                  }}
-                >
-                  Full Name
-                </label>
+
+              <div className="form-group">
+                <label>Full Name</label>
                 <input
                   type="text"
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
                   required
-                  style={{
-                    width: '100%',
-                    padding: '12px 16px',
-                    border: '1.5px solid var(--gray-200)',
-                    borderRadius: 'var(--radius-md)',
-                    fontSize: '14px',
-                  }}
                 />
               </div>
-              <div className="form-group" style={{ marginBottom: '16px' }}>
-                <label
-                  style={{
-                    display: 'block',
-                    fontWeight: 600,
-                    fontSize: '13px',
-                    marginBottom: '4px',
-                  }}
-                >
-                  Email
-                </label>
+
+              <div className="form-group">
+                <label>Email</label>
                 <input
                   type="email"
                   value={editEmail}
                   onChange={(e) => setEditEmail(e.target.value)}
                   required
-                  style={{
-                    width: '100%',
-                    padding: '12px 16px',
-                    border: '1.5px solid var(--gray-200)',
-                    borderRadius: 'var(--radius-md)',
-                    fontSize: '14px',
-                  }}
                 />
               </div>
-              <div className="form-group" style={{ marginBottom: '16px' }}>
-                <label
-                  style={{
-                    display: 'block',
-                    fontWeight: 600,
-                    fontSize: '13px',
-                    marginBottom: '4px',
-                  }}
-                >
-                  Phone
-                </label>
+
+              <div className="form-group">
+                <label>Phone</label>
                 <input
                   type="tel"
                   value={editPhone}
                   onChange={(e) => setEditPhone(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '12px 16px',
-                    border: '1.5px solid var(--gray-200)',
-                    borderRadius: 'var(--radius-md)',
-                    fontSize: '14px',
-                  }}
                 />
               </div>
+
               <button
                 type="submit"
+                className="save-btn"
                 disabled={editLoading}
-                style={{
-                  width: '100%',
-                  padding: '14px',
-                  background: 'var(--secondary)',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: 'var(--radius-full)',
-                  fontWeight: 700,
-                  fontSize: '16px',
-                  cursor: editLoading ? 'not-allowed' : 'pointer',
-                  opacity: editLoading ? 0.7 : 1,
-                }}
               >
                 {editLoading ? 'Saving...' : 'Save Changes'}
               </button>

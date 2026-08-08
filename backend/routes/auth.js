@@ -25,13 +25,12 @@ router.post('/register', async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // ✅ Default role: 'seller' – so users can post ads
     const user = new User({
       name,
       email: normalizedEmail,
       password: hashedPassword,
       phone: phone || '',
-      role: role || 'seller',   // Changed from 'user'
+      role: role || 'seller',
     });
 
     await user.save();
@@ -142,6 +141,52 @@ router.get('/me', async (req, res) => {
 // ============================================================
 router.post('/logout', (req, res) => {
   res.json({ success: true, message: 'Logged out' });
+});
+
+// ============================================================
+//  CREATE ADMIN (temporary – remove after first use)
+// ============================================================
+router.post('/create-admin', async (req, res) => {
+  try {
+    const { secret, email, password, name = 'Admin' } = req.body;
+
+    const ADMIN_SECRET = process.env.ADMIN_SECRET || 'MySuperSecret123!';
+
+    if (secret !== ADMIN_SECRET) {
+      return res.status(403).json({ success: false, message: 'Invalid secret' });
+    }
+
+    if (!email || !password) {
+      return res.status(400).json({ success: false, message: 'Email and password required' });
+    }
+
+    let user = await User.findOne({ email: email.toLowerCase().trim() });
+    if (user) {
+      if (user.role !== 'admin') {
+        user.role = 'admin';
+        await user.save();
+        return res.json({ success: true, message: 'User promoted to admin', user: { id: user._id, email: user.email, role: user.role } });
+      }
+      return res.json({ success: true, message: 'User is already admin' });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+    user = new User({
+      name,
+      email: email.toLowerCase().trim(),
+      password: hashedPassword,
+      phone: '0000000000',
+      role: 'admin',
+      isActive: true,
+    });
+    await user.save();
+
+    res.json({ success: true, message: 'Admin created successfully', user: { id: user._id, email: user.email, role: user.role } });
+  } catch (err) {
+    console.error('❌ Create admin error:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
 });
 
 module.exports = router;

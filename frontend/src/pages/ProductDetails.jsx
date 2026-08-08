@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 
-// ✅ Correct import path – your API functions live in services/api
-import { getProduct, updateProductWithFiles } from '../services/api';
+// ✅ Import API functions + image helper
+import { getProduct, updateProductWithFiles, getImageUrl } from '../services/api';
 
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
@@ -124,7 +124,6 @@ const ProductDetails = () => {
     setEditLoading(true);
 
     const formData = new FormData();
-    // Append text fields
     Object.keys(editForm).forEach(key => {
       if (key === 'price') {
         formData.append(key, parseFloat(editForm[key]) || 0);
@@ -163,7 +162,7 @@ const ProductDetails = () => {
     }
   };
 
-  // ----- Image slider helpers -----
+  // ----- Image slider helpers (with getImageUrl) -----
   const images = product?.images && product.images.length > 0 ? product.images : [];
   const hasImages = images.length > 0;
   const totalImages = hasImages ? images.length : 1;
@@ -180,8 +179,10 @@ const ProductDetails = () => {
     setCurrentImageIndex(index);
   };
   const getCurrentImage = () => {
-    if (hasImages) return images[currentImageIndex];
-    return product?.image || 'https://placehold.co/600x600?text=No+Image';
+    if (hasImages) {
+      return getImageUrl(images[currentImageIndex]);
+    }
+    return getImageUrl(product?.image) || 'https://placehold.co/600x600?text=No+Image';
   };
 
   const handleContact = () => {
@@ -287,7 +288,21 @@ const ProductDetails = () => {
             {hasImages && totalImages > 1 && (
               <div className="thumbnails" style={{ display: 'flex', gap: '10px', marginTop: '12px', overflowX: 'auto', paddingBottom: '4px' }}>
                 {images.map((img, idx) => (
-                  <img key={idx} src={img} alt={`Thumb ${idx + 1}`} onClick={() => handleThumbClick(idx)} style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: 'var(--radius-sm)', cursor: 'pointer', border: currentImageIndex === idx ? '3px solid var(--primary)' : '2px solid transparent', flexShrink: 0 }} />
+                  <img
+                    key={idx}
+                    src={getImageUrl(img)}
+                    alt={`Thumb ${idx + 1}`}
+                    onClick={() => handleThumbClick(idx)}
+                    style={{
+                      width: '80px',
+                      height: '80px',
+                      objectFit: 'cover',
+                      borderRadius: 'var(--radius-sm)',
+                      cursor: 'pointer',
+                      border: currentImageIndex === idx ? '3px solid var(--primary)' : '2px solid transparent',
+                      flexShrink: 0,
+                    }}
+                  />
                 ))}
               </div>
             )}
@@ -529,7 +544,7 @@ const ProductDetails = () => {
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                     {imagesToKeep.map((img, idx) => (
                       <div key={idx} style={{ position: 'relative', width: '80px', height: '80px', border: '1px solid var(--gray-200)', borderRadius: 'var(--radius-sm)', overflow: 'hidden' }}>
-                        <img src={img} alt={`current ${idx}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        <img src={getImageUrl(img)} alt={`current ${idx}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                         <button type="button" onClick={() => handleRemoveExistingImage(idx)} style={{ position: 'absolute', top: '2px', right: '2px', background: 'rgba(220,38,38,0.8)', color: 'white', border: 'none', borderRadius: '50%', width: '20px', height: '20px', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
                       </div>
                     ))}

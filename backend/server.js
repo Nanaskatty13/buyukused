@@ -10,6 +10,7 @@ const morgan = require("morgan");
 const multer = require("multer");
 const fs = require("fs");
 const jwt = require("jsonwebtoken");
+const bcrypt = require("bcryptjs"); // ✅ added for password hashing
 
 dotenv.config();
 
@@ -53,7 +54,7 @@ app.use(compression());
 app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
 
 // ===============================
-// CORS – ✅ Now includes local network IP for mobile testing
+// CORS
 // ===============================
 const allowedOrigins = [
   "http://localhost:5173",
@@ -61,9 +62,6 @@ const allowedOrigins = [
   "https://sell-platform2.vercel.app",
   "https://sell-platform2-mcv0eniwt-nanaskatty13s-projects.vercel.app",
   process.env.FRONTEND_URL,
-  // Add your local network IP for mobile testing (e.g., http://192.168.1.100:5173)
-  // Uncomment and replace with your actual IP:
-  // "http://192.168.1.100:5173",
 ].filter(Boolean);
 
 console.log("🟢 Allowed Origins (exact matches):", allowedOrigins);
@@ -89,7 +87,7 @@ app.use(
 );
 
 // ===============================
-// BODY PARSER – ✅ increased limit for large JSON/urlencoded
+// BODY PARSER
 // ===============================
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
@@ -136,24 +134,22 @@ const fileFilter = (req, file, cb) => {
 
 const upload = multer({
   storage,
-  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB (more than enough for mobile photos)
+  limits: { fileSize: 50 * 1024 * 1024 },
   fileFilter,
 });
 
-// Attach multer instance to req for easy use in routes
 app.use((req, res, next) => {
   req.upload = upload;
   next();
 });
 
 // ===============================
-// PASSPORT (initialize only – no session)
+// PASSPORT
 // ===============================
 app.use(passport.initialize());
-// ❌ No passport.session() – we use JWT, not sessions
 
 // ===============================
-// RATE LIMIT – skipped for admins and in development
+// RATE LIMIT
 // ===============================
 const skipIfAdmin = (req, res, next) => {
   const authHeader = req.headers.authorization;
@@ -220,12 +216,12 @@ app.use("/api/messages", messageRoutes);
 app.use("/api/admin", adminRoutes);
 
 // ===============================
-// STATIC FILES – ONLY FOR UPLOADS
+// STATIC FILES
 // ===============================
 app.use("/uploads", express.static(uploadDir));
 
 // ===============================
-// 404 HANDLER (API only)
+// 404 HANDLER
 // ===============================
 app.use((req, res) => {
   if (req.path.startsWith("/api") || req.path.startsWith("/auth")) {
@@ -235,7 +231,7 @@ app.use((req, res) => {
 });
 
 // ===============================
-// ERROR HANDLER (must be last)
+// ERROR HANDLER
 // ===============================
 app.use((err, req, res, next) => {
   console.error("❌ Error:", err.message);
@@ -289,12 +285,47 @@ process.on("unhandledRejection", (err) => {
 // ===============================
 const PORT = process.env.PORT || 5000;
 
+// ─── Helper to create default admin ────────────────────────────
+const createDefaultAdmin = async () => {
+  try {
+    const User = require("./models/User");
+    const adminEmail = process.env.ADMIN_EMAIL || "nanaskatty@gmail.com";
+    const adminPassword = process.env.ADMIN_PASSWORD || "oMEGA132?";
+
+    let user = await User.findOne({ email: adminEmail });
+    if (!user) {
+      const salt = await bcrypt.genSalt(10);
+      const hashed = await bcrypt.hash(adminPassword, salt);
+      user = new User({
+        name: "Admin",
+        email: adminEmail,
+        password: hashed,
+        phone: "0000000000",
+        role: "admin",
+        isActive: true,
+      });
+      await user.save();
+      console.log(`✅ Default admin created: ${adminEmail} / ${adminPassword}`);
+    } else if (user.role !== "admin") {
+      user.role = "admin";
+      await user.save();
+      console.log(`✅ User ${adminEmail} promoted to admin`);
+    } else {
+      console.log(`ℹ️ Admin user already exists: ${adminEmail}`);
+    }
+  } catch (err) {
+    console.warn("⚠️ Could not create admin:", err.message);
+  }
+};
+
 const start = async () => {
   try {
     const connection = await connectDB();
     console.log(`✅ MongoDB connected to: ${connection.name}`);
 
-    // ✅ Increase server timeout to 2 minutes – crucial for mobile uploads
+    // ✅ Create admin user (if not exists)
+    await createDefaultAdmin();
+
     const server = app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
       console.log(`🌍 Environment: ${process.env.NODE_ENV || "development"}`);
@@ -302,7 +333,6 @@ const start = async () => {
       console.log(`🔗 Base URL: ${process.env.BASE_URL || "(auto-detected)"}`);
     });
 
-    // ⏱️ 120 seconds timeout for slow mobile connections
     server.timeout = 120000;
 
   } catch (error) {

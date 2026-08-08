@@ -1,4 +1,4 @@
-// models/Product.js
+// backend/models/Product.js
 const mongoose = require("mongoose");
 
 const productSchema = new mongoose.Schema(
@@ -16,8 +16,8 @@ const productSchema = new mongoose.Schema(
     sellerId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     sellerName: { type: String, default: "", trim: true },
     sellerPhone: { type: String, default: "", trim: true },
-    image: { type: String, default: "" },
-    images: { type: [String], default: [] },
+    image: { type: String, default: "" },               // legacy single image
+    images: { type: [String], default: [] },             // main image array
     videos: { type: [String], default: [] },
     brand: { type: String, default: "", trim: true },
     model: { type: String, default: "", trim: true },
@@ -41,7 +41,7 @@ const productSchema = new mongoose.Schema(
     negotiation: { type: Boolean, default: false },
     swapAccepted: { type: Boolean, default: false },
 
-    // ✅ NEW FIELDS (from PostAd)
+    // Phone-specific details (from PostAd)
     batteryHealth: {
       type: Number,
       min: 0,
@@ -58,7 +58,7 @@ const productSchema = new mongoose.Schema(
       default: "",
     },
 
-    // ✅ Slug (SEO-friendly URL)
+    // SEO slug
     slug: {
       type: String,
       unique: true,
@@ -68,7 +68,7 @@ const productSchema = new mongoose.Schema(
   { timestamps: true, versionKey: false }
 );
 
-// ✅ Pre‑save hook to generate a unique slug from title
+// ─── Pre‑save hook to auto‑generate a unique slug ──────────────
 productSchema.pre("save", async function (next) {
   if (!this.slug && this.title) {
     let baseSlug = this.title
@@ -80,7 +80,7 @@ productSchema.pre("save", async function (next) {
   next();
 });
 
-// Indexes
+// ─── Indexes for fast queries ──────────────────────────────────
 productSchema.index({ title: "text", description: "text" });
 productSchema.index({ category: 1, location: 1, status: 1 });
 productSchema.index({ createdAt: -1 });

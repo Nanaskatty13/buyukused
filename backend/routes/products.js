@@ -1,11 +1,9 @@
-// routes/products.js
+// backend/routes/products.js
 const express = require("express");
 const mongoose = require("mongoose");
 const { verifyToken, isSeller } = require("../middleware/auth");
 
-// ===============================
-// SAFELY LOAD THE PRODUCT MODEL
-// ===============================
+// ─── Load Product model ──────────────────────────────────────────
 let Product;
 try {
   Product = require("../models/Product");
@@ -16,52 +14,48 @@ try {
   Product = mongoose.model("Product", dummySchema, "products");
 }
 
-// ===============================
-// SAFELY LOAD MULTER CONFIG
-// ===============================
+// ─── Load multer (expects Cloudinary storage) ───────────────────
 let upload;
 try {
-  upload = require("../config/multer");
-  console.log("✅ Multer config loaded from /config/multer");
+  const multerModule = require("../config/multer");
+  if (multerModule && typeof multerModule === 'object' && multerModule.upload) {
+    upload = multerModule.upload;
+  } else {
+    upload = multerModule;
+  }
+  if (typeof upload.array !== 'function') {
+    throw new Error('Multer instance invalid');
+  }
+  console.log("✅ Multer config loaded (Cloudinary)");
 } catch (e) {
-  console.warn("⚠️ Multer config not found, using fallback (memory storage)");
+  console.warn("⚠️ Multer config fallback used:", e.message);
   const multer = require("multer");
   upload = multer({ storage: multer.memoryStorage() });
 }
 
 const router = express.Router();
-console.log("✅ Products route mounted");
 
-// ================================================================
-//  TEST ROUTE
-// ================================================================
+// ─── Test route ──────────────────────────────────────────────────
 router.get("/test", (req, res) => {
-  console.log("🔍 /test route hit");
   res.json({ success: true, message: "Products router is alive!" });
 });
 
-// ================================================================
-//  GET all products (public)
-// ================================================================
+// ─── GET all products ────────────────────────────────────────────
 router.get("/", async (req, res) => {
   try {
     const { category, location, search, sellerId, status, limit = 20, page = 1 } = req.query;
-
     const filter = {};
     if (category && category !== "all") filter.category = category;
     if (location && location !== "all") filter.location = location;
     if (sellerId) filter.sellerId = sellerId;
     if (status) filter.status = status;
-
     if (search) {
       filter.$or = [
         { title: { $regex: search, $options: "i" } },
         { description: { $regex: search, $options: "i" } },
       ];
     }
-
     const skip = (parseInt(page, 10) - 1) * parseInt(limit, 10);
-
     const [products, total] = await Promise.all([
       Product.find(filter)
         .sort({ createdAt: -1 })
@@ -70,7 +64,6 @@ router.get("/", async (req, res) => {
         .populate("sellerId", "name phone email"),
       Product.countDocuments(filter),
     ]);
-
     res.json({
       success: true,
       products,
@@ -85,23 +78,19 @@ router.get("/", async (req, res) => {
   }
 });
 
-// ================================================================
-//  GET single product (public)
-// ================================================================
+// ─── GET single product ──────────────────────────────────────────
 router.get("/:id", async (req, res) => {
   try {
     const { id } = req.params;
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(404).json({ success: false, message: "Product not found" });
     }
-
     const product = await Product.findById(id).populate("sellerId", "name phone email");
     if (!product) {
       return res.status(404).json({ success: false, message: "Product not found" });
     }
     product.views += 1;
     await product.save();
-
     res.json({ success: true, product });
   } catch (err) {
     console.error("❌ Error fetching product:", err);
@@ -109,32 +98,14 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-// ================================================================
-//  CREATE product – Seller/Admin only
-// ================================================================
+// ─── CREATE product ──────────────────────────────────────────────
 router.post("/", verifyToken, isSeller, upload.array("files", 5), async (req, res) => {
   console.log("📩 POST /api/products received");
-  console.log("👤 User ID:", req.userId);
-  console.log("📦 Body fields:", Object.keys(req.body));
-  console.log("📎 Files count:", req.files?.length || 0);
-
   try {
     const {
-      title,
-      price,
-      category,
-      location,
-      description,
-      sellerName,
-      sellerPhone,
-      storage,
-      color,
-      condition,
-      negotiation,
-      swapAccepted,
-      simStatus,
-      batteryHealth,
-      faceId,
+      title, price, category, location, description,
+      sellerName, sellerPhone, storage, color, condition,
+      negotiation, swapAccepted, simStatus, batteryHealth, faceId
     } = req.body;
 
     if (!title || !price || !sellerPhone) {
@@ -164,53 +135,33 @@ router.post("/", verifyToken, isSeller, upload.array("files", 5), async (req, re
       status: "active",
     };
 
+    // ✅ Use Cloudinary URLs (file.path) – full URLs
     const files = req.files || [];
-    const imageUrls = [];
-    let videoUrl = null;
-
-    for (const file of files) {
-      const filePath = `/uploads/${file.filename}`;
-      if (file.mimetype.startsWith("video/")) {
-        videoUrl = filePath;
-      } else {
-        imageUrls.push(filePath);
-      }
-    }
+    const imageUrls = files
+      .filter(file => !file.mimetype.startsWith("video/"))
+      .map(file => file.path);  // Cloudinary full URL
 
     productData.images = imageUrls;
-    productData.video = videoUrl;
 
     const product = new Product(productData);
     await product.save();
-
     console.log(`✅ Product created: ${product._id}`);
-
-    res.status(201).json({
-      success: true,
-      product,
-      message: "Product created successfully",
-    });
+    res.status(201).json({ success: true, product, message: "Product created successfully" });
   } catch (err) {
     console.error("❌ Error creating product:", err);
     if (err.code === 11000) {
       return res.status(409).json({ success: false, message: "Duplicate entry" });
     }
-    res.status(500).json({
-      success: false,
-      message: err.message || "Failed to create product",
-    });
+    res.status(500).json({ success: false, message: err.message || "Failed to create product" });
   }
 });
 
-// ================================================================
-//  UPDATE product – Seller/Admin (FIXED with safe comparison)
-// ================================================================
+// ─── UPDATE product – with image removal & Cloudinary URLs ──────
 router.put("/:id", verifyToken, upload.array("files", 5), async (req, res) => {
   console.log(`🔍 PUT /api/products/${req.params.id} – update request`);
 
   try {
     const { id } = req.params;
-
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(404).json({ success: false, message: "Product not found" });
     }
@@ -220,40 +171,21 @@ router.put("/:id", verifyToken, upload.array("files", 5), async (req, res) => {
       return res.status(404).json({ success: false, message: "Product not found" });
     }
 
-    // ✅ SAFE OWNERSHIP CHECK – using .equals() (Mongoose) + fallback string comparison
     const isOwner = product.sellerId.equals(req.userId) ||
                     product.sellerId.toString() === req.userId.toString();
     const isAdmin = req.user?.role === "admin";
-
-    console.log(`🔍 Product sellerId: ${product.sellerId}`);
-    console.log(`🔍 req.userId: ${req.userId}`);
-    console.log(`🔍 isOwner: ${isOwner}, isAdmin: ${isAdmin}`);
-
     if (!isOwner && !isAdmin) {
-      console.log(`🚫 Forbidden – user ${req.userId} is not owner (${product.sellerId}) and not admin`);
       return res.status(403).json({
         success: false,
         message: "Not authorized – you do not own this product",
       });
     }
 
-    // --- Update fields ---
+    // 1. Update text fields
     const {
-      title,
-      price,
-      category,
-      location,
-      description,
-      sellerName,
-      sellerPhone,
-      storage,
-      color,
-      condition,
-      negotiation,
-      swapAccepted,
-      simStatus,
-      batteryHealth,
-      faceId,
+      title, price, category, location, description,
+      sellerName, sellerPhone, storage, color, condition,
+      negotiation, swapAccepted, simStatus, batteryHealth, faceId
     } = req.body;
 
     if (title) product.title = title;
@@ -272,19 +204,36 @@ router.put("/:id", verifyToken, upload.array("files", 5), async (req, res) => {
     if (batteryHealth) product.batteryHealth = parseInt(batteryHealth, 10);
     if (faceId) product.faceId = faceId;
 
-    // Handle new files (append to existing)
+    // 2. Handle images safely – replace with kept list (if provided)
+    if (req.body.imagesToKeep !== undefined) {
+      try {
+        const kept = JSON.parse(req.body.imagesToKeep);
+        if (Array.isArray(kept)) {
+          // imagesToKeep contains full Cloudinary URLs (or local URLs if mixed)
+          // Replace the images array with the kept list
+          product.images = kept;
+          console.log(`✅ imagesToKeep applied: ${kept.length} images kept`);
+        } else {
+          console.warn("⚠️ imagesToKeep is not an array – keeping existing images");
+        }
+      } catch (e) {
+        console.warn("⚠️ Failed to parse imagesToKeep – keeping existing images");
+      }
+    } else {
+      console.log("ℹ️ imagesToKeep not provided – keeping existing images");
+    }
+
+    // 3. Append newly uploaded files (Cloudinary URLs)
     const files = req.files || [];
     for (const file of files) {
-      const filePath = `/uploads/${file.filename}`;
-      if (file.mimetype.startsWith("video/")) {
-        product.video = filePath;
-      } else {
-        product.images.push(filePath);
+      if (!file.mimetype.startsWith("video/")) {
+        // file.path is the full Cloudinary URL
+        product.images.push(file.path);
       }
     }
 
     await product.save();
-    console.log(`✅ Product ${product._id} updated`);
+    console.log(`✅ Product ${product._id} updated, images: ${product.images.length}`);
     res.json({ success: true, product, message: "Product updated" });
   } catch (err) {
     console.error("❌ Error updating product:", err);
@@ -292,38 +241,27 @@ router.put("/:id", verifyToken, upload.array("files", 5), async (req, res) => {
   }
 });
 
-// ================================================================
-//  DELETE product – Seller/Admin
-// ================================================================
+// ─── DELETE product ──────────────────────────────────────────────
 router.delete("/:id", verifyToken, async (req, res) => {
-  console.log(`🔍 DELETE /api/products/${req.params.id} – delete request`);
-
   try {
     const { id } = req.params;
-
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(404).json({ success: false, message: "Product not found" });
     }
-
     const product = await Product.findById(id);
     if (!product) {
       return res.status(404).json({ success: false, message: "Product not found" });
     }
-
     const isOwner = product.sellerId.equals(req.userId) ||
                     product.sellerId.toString() === req.userId.toString();
     const isAdmin = req.user?.role === "admin";
-
     if (!isOwner && !isAdmin) {
-      console.log(`🚫 Forbidden – user ${req.userId} is not owner (${product.sellerId}) and not admin`);
       return res.status(403).json({
         success: false,
         message: "Not authorized – you do not own this product",
       });
     }
-
     await product.deleteOne();
-    console.log(`🗑️ Product ${product._id} deleted`);
     res.json({ success: true, message: "Product deleted" });
   } catch (err) {
     console.error("❌ Error deleting product:", err);

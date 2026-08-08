@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { FcGoogle } from 'react-icons/fc';
 import { FaFacebookF } from 'react-icons/fa';
+import { AiFillEye, AiFillEyeInvisible } from 'react-icons/ai'; // 👁️ eye icons
 
 // 👇 Set this to your actual backend URL
 const API_URL = 'https://sell-platform2.onrender.com';
@@ -22,6 +23,10 @@ const Register = () => {
   const { register } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+
+  // ─── Password visibility toggles ────────────────────────────────
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const from = location.state?.from || '/';
 
@@ -208,27 +213,53 @@ const Register = () => {
             />
           </div>
 
+          {/* ─── PASSWORD FIELD WITH TOGGLE ─── */}
           <div className="form-group" style={{ marginBottom: '16px' }}>
             <label style={{ display: 'block', fontWeight: 600, fontSize: '13px', marginBottom: '4px' }}>Password</label>
-            <input
-              type="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              placeholder="Min 6 characters"
-              required
-              minLength="6"
-              style={{
-                width: '100%',
-                padding: '12px 16px',
-                border: '1.5px solid var(--gray-200)',
-                borderRadius: 'var(--radius-md)',
-                fontSize: '14px',
-                fontFamily: 'inherit',
-                transition: 'var(--transition)',
-                background: 'white',
-              }}
-            />
+            <div style={{ position: 'relative' }}>
+              <input
+                type={showPassword ? 'text' : 'password'}
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                placeholder="Min 6 characters"
+                required
+                minLength="6"
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  paddingRight: '44px',
+                  border: '1.5px solid var(--gray-200)',
+                  borderRadius: 'var(--radius-md)',
+                  fontSize: '14px',
+                  fontFamily: 'inherit',
+                  transition: 'var(--transition)',
+                  background: 'white',
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                style={{
+                  position: 'absolute',
+                  right: '12px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: '#64748b',
+                  fontSize: '20px',
+                  padding: '4px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+                tabIndex={-1}
+              >
+                {showPassword ? <AiFillEyeInvisible /> : <AiFillEye />}
+              </button>
+            </div>
             {formData.password && (
               <div style={{ marginTop: '6px' }}>
                 <div style={{
@@ -253,27 +284,53 @@ const Register = () => {
             )}
           </div>
 
+          {/* ─── CONFIRM PASSWORD FIELD WITH TOGGLE ─── */}
           <div className="form-group" style={{ marginBottom: '16px' }}>
             <label style={{ display: 'block', fontWeight: 600, fontSize: '13px', marginBottom: '4px' }}>Confirm Password</label>
-            <input
-              type="password"
-              name="confirmPassword"
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              placeholder="Re‑enter your password"
-              required
-              minLength="6"
-              style={{
-                width: '100%',
-                padding: '12px 16px',
-                border: '1.5px solid var(--gray-200)',
-                borderRadius: 'var(--radius-md)',
-                fontSize: '14px',
-                fontFamily: 'inherit',
-                transition: 'var(--transition)',
-                background: 'white',
-              }}
-            />
+            <div style={{ position: 'relative' }}>
+              <input
+                type={showConfirmPassword ? 'text' : 'password'}
+                name="confirmPassword"
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                placeholder="Re‑enter your password"
+                required
+                minLength="6"
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  paddingRight: '44px',
+                  border: '1.5px solid var(--gray-200)',
+                  borderRadius: 'var(--radius-md)',
+                  fontSize: '14px',
+                  fontFamily: 'inherit',
+                  transition: 'var(--transition)',
+                  background: 'white',
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                style={{
+                  position: 'absolute',
+                  right: '12px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: '#64748b',
+                  fontSize: '20px',
+                  padding: '4px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+                tabIndex={-1}
+              >
+                {showConfirmPassword ? <AiFillEyeInvisible /> : <AiFillEye />}
+              </button>
+            </div>
             {formData.confirmPassword && formData.password && formData.password !== formData.confirmPassword && (
               <small style={{ color: '#dc2626', display: 'block', marginTop: '4px' }}>
                 ⚠️ Passwords do not match

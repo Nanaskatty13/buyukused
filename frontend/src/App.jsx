@@ -3,7 +3,7 @@ import { Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import Navbar from './components/Navbar';
-import FloatingPhone from './components/FloatingPhone';  // ✅ ADD THIS
+import FloatingPhone from './components/FloatingPhone';
 
 // Public pages
 import Home from './pages/Home';
@@ -17,6 +17,7 @@ import Cart from './pages/Cart';
 
 // Seller pages
 import PostAd from './pages/PostAd';
+import EditProduct from './pages/EditProduct';   // ✅ Import the edit component
 
 // Admin pages
 import AdminDashboard from './pages/Admin/AdminDashboard';
@@ -36,9 +37,10 @@ function App() {
           <Route path="/wishlist" element={<Wishlist />} />
           <Route path="/cart" element={<Cart />} />
           <Route path="/post-ad" element={<PostAd />} />
+          <Route path="/edit-product/:id" element={<EditProduct />} />   {/* ✅ Added */}
           <Route path="/admin" element={<AdminDashboard />} />
         </Routes>
-        <FloatingPhone />  {/* ✅ ADD THIS – it will appear on every page */}
+        <FloatingPhone />
       </CartProvider>
     </AuthProvider>
   );

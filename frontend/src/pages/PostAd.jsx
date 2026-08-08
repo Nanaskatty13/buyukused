@@ -1,20 +1,249 @@
+// frontend/src/pages/PostAd.jsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { createProductWithFiles } from '../services/api'; // ✅ fixed import
+import { createProductWithFiles } from '../services/api';
 
-// (Keep all your LOCATION DATA, iphoneColors, etc. unchanged – they're too long to repeat here)
-// I'll assume you keep the data arrays as they are.
+// ===============================
+// LOCATION DATA
+// ===============================
+const countries = ['Ghana'];
+const regions = [
+  'Ahafo', 'Ashanti', 'Bono', 'Bono East', 'Central', 'Eastern',
+  'Greater Accra', 'North East', 'Northern', 'Oti', 'Savannah',
+  'Upper East', 'Upper West', 'Volta', 'Western', 'Western North'
+];
+const citiesByRegion = {
+  'Greater Accra': ['Accra', 'Kwame Nkrumah Circle', 'Tema', 'Ashaiman', 'Madina', 'Adenta', 'Dzorwulu', 'Kaneshie', 'Achimota', 'Legon', 'Osu', 'Labone', 'Cantonments', 'Airport Residential', 'East Legon', 'Lakeside Estate', 'Sakumono', 'Spintex', 'Atomic', 'Ablekuma', 'Mamprobi', 'Chorkor', 'Korle Bu', 'Dansoman', 'Kisseman', 'Avenor', 'Bubuashie', 'Aboabo', 'Nima', 'Maamobi', 'Alajo', 'Kokomlemle', 'Tesano', 'Abelemkpe', 'Kotobabi', 'Roman Ridge', 'Ringway', 'Tudor', 'Asylum Down', 'North Ridge', 'South Ridge', 'Independence Avenue', 'Sarakawa', 'La', 'Teshie', 'Nungua', 'Prampram', 'Dodowa', 'Aburi', 'Nsawam', 'Amasaman', 'Weija', 'Kasoa', 'Bawjiase'],
+  'Ashanti': ['Kumasi', 'Obuasi', 'Tafo', 'Bekwai', 'Mampong', 'Ejisu', 'Kwadaso', 'Asokwa', 'Suame', 'Oforikrom', 'Nhyiaeso', 'Bantama', 'Adum', 'Kejetia', 'Manhyia'],
+  'Central': ['Cape Coast', 'Elmina', 'Saltpond', 'Winneba', 'Mfantsiman', 'Assin Foso', 'Twifo Praso', 'Kasoa'],
+  'Eastern': ['Koforidua', 'Nkawkaw', 'Akropong', 'Mpraeso', 'Akwatia', 'Nsawam', 'Aburi', 'Suhum', 'Asamankese'],
+  'Western': ['Sekondi-Takoradi', 'Tarkwa', 'Prestea', 'Axim', 'Shama', 'Apollonia', 'Elubo'],
+  'Volta': ['Ho', 'Hohoe', 'Keta', 'Akatsi', 'Sogakope', 'Jasikan', 'Kpeve'],
+  'Northern': ['Tamale', 'Yendi', 'Bimbilla', 'Walewale', 'Kpandai', 'Savelugu'],
+  'Upper East': ['Bolgatanga', 'Bawku', 'Navrongo', 'Paga', 'Zuarungu'],
+  'Upper West': ['Wa', 'Lawra', 'Jirapa', 'Nandom', 'Tumu'],
+  'Ahafo': ['Goaso', 'Mim', 'Ahafo', 'Kukuom', 'Sankore'],
+  'Bono': ['Sunyani', 'Techiman', 'Berekum', 'Dormaa Ahenkro', 'Nkoranza'],
+  'Bono East': ['Techiman', 'Atebubu', 'Kintampo', 'Jema', 'Yeji'],
+  'North East': ['Nalerigu', 'Bunkpurugu', 'Gambaga', 'Walewale'],
+  'Oti': ['Dambai', 'Jasikan', 'Kpandae', 'Nkwanta', 'Worawora'],
+  'Savannah': ['Damongo', 'Bole', 'Sawla', 'Tuna', 'Kpandai'],
+  'Western North': ['Sefwi Wiawso', 'Bibiani', 'Aowin', 'Juaboso', 'Enchi'],
+};
+
+const iphoneColors = [
+  'Space Gray', 'Orange', 'Deep Blue', 'Silver', 'Gold', 'Black', 'White', 'Blue', 'Coral',
+  'Yellow', 'Red', 'Purple', 'Green', 'Midnight Green', 'Graphite',
+  'Pacific Blue', 'Midnight', 'Starlight', 'Pink', 'Sierra Blue',
+  'Alpine Green', 'Deep Purple', 'Space Black', 'Black Titanium',
+  'White Titanium', 'Blue Titanium', 'Natural Titanium', 'Desert Titanium',
+  'Teal', 'Ultramarine', 'Product Red', 'Rose Gold', 'Matte Black',
+  'Jet Black', 'Burgundy', 'Crimson'
+];
 
 const PostAd = () => {
   const { user, token, login, register } = useAuth();
   const navigate = useNavigate();
 
-  // ... all state declarations unchanged (step, formData, mediaItems, etc.)
-  // They are identical to what you have – I'll omit them for brevity.
+  // ─── ALL STATE DECLARATIONS ──────────────────────────────────────
+  const [step, setStep] = useState(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authMode, setAuthMode] = useState('login');
 
-  // ... all handler functions (handleChange, goToNextStep, etc.) unchanged.
+  const [selectedCountry, setSelectedCountry] = useState('Ghana');
+  const [selectedRegion, setSelectedRegion] = useState('');
+  const [selectedCity, setSelectedCity] = useState('');
 
+  const [formData, setFormData] = useState({
+    title: '',
+    price: '',
+    category: 'Other',
+    location: 'Ghana',
+    description: '',
+    sellerName: '',
+    sellerPhone: '',
+    storage: '',
+    color: '',
+    condition: 'Good',
+    negotiation: false,
+    swapAccepted: false,
+    simStatus: 'Unlocked',
+    batteryHealth: '',
+    faceId: 'Working',
+  });
+
+  const [mediaItems, setMediaItems] = useState([]);
+
+  const [authEmail, setAuthEmail] = useState('');
+  const [authPassword, setAuthPassword] = useState('');
+  const [authName, setAuthName] = useState('');
+  const [authPhone, setAuthPhone] = useState('');
+  const [authError, setAuthError] = useState('');
+  const [authLoading, setAuthLoading] = useState(false);
+
+  // ─── EFFECTS ──────────────────────────────────────────────────────
+  useEffect(() => {
+    let loc = selectedCountry;
+    if (selectedRegion) loc = `${selectedRegion}, ${loc}`;
+    if (selectedCity) loc = `${selectedCity}, ${loc}`;
+    setFormData(prev => ({ ...prev, location: loc }));
+  }, [selectedCountry, selectedRegion, selectedCity]);
+
+  // ─── HANDLERS ─────────────────────────────────────────────────────
+  const handleChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value,
+    }));
+  };
+
+  const handleCountryChange = (e) => {
+    setSelectedCountry(e.target.value);
+    setSelectedRegion('');
+    setSelectedCity('');
+  };
+
+  const handleRegionChange = (e) => {
+    setSelectedRegion(e.target.value);
+    setSelectedCity('');
+  };
+
+  const handleCityChange = (e) => {
+    setSelectedCity(e.target.value);
+  };
+
+  const handleFileChange = (e) => {
+    const selected = Array.from(e.target.files);
+    const newItems = selected.map((file) => ({
+      file,
+      preview: URL.createObjectURL(file),
+      type: file.type.startsWith('video/') ? 'video' : 'image',
+    }));
+    setMediaItems(prev => [...prev, ...newItems]);
+    e.target.value = '';
+  };
+
+  const handleVideoChange = (e) => {
+    if (e.target.files.length) {
+      const file = e.target.files[0];
+      setMediaItems(prev => [
+        ...prev,
+        {
+          file,
+          preview: URL.createObjectURL(file),
+          type: 'video',
+        },
+      ]);
+      e.target.value = '';
+    }
+  };
+
+  const removeMedia = (index) => {
+    URL.revokeObjectURL(mediaItems[index].preview);
+    setMediaItems(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const goToNextStep = () => {
+    if (!formData.title || !formData.price || !formData.sellerPhone) {
+      setError('Please fill in all required fields: Title, Price, and Phone Number.');
+      return;
+    }
+    setError('');
+    setStep(2);
+  };
+
+  const goToPreviousStep = () => {
+    setStep(1);
+    setError('');
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+
+    if (!user) {
+      setShowAuthModal(true);
+      return;
+    }
+    if (!token) {
+      setError('You are not authenticated. Please log in again.');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    const form = new FormData();
+    Object.keys(formData).forEach((key) => {
+      const value = typeof formData[key] === 'boolean' ? String(formData[key]) : formData[key];
+      form.append(key, value);
+    });
+    mediaItems.forEach((item) => {
+      form.append('files', item.file);
+    });
+
+    try {
+      const data = await createProductWithFiles(form, token);
+      if (data.product) {
+        navigate('/products');
+      } else {
+        setError(data.message || 'Failed to post ad');
+      }
+    } catch (err) {
+      console.error('❌ Post ad error:', err);
+      setError(err.message || 'Something went wrong. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleAuthSubmit = async (e) => {
+    e.preventDefault();
+    setAuthError('');
+    setAuthLoading(true);
+    try {
+      let result;
+      if (authMode === 'login') {
+        result = await login(authEmail, authPassword);
+      } else {
+        result = await register({
+          name: authName,
+          email: authEmail,
+          password: authPassword,
+          phone: authPhone,
+        });
+      }
+      if (result.success) {
+        setShowAuthModal(false);
+        setAuthEmail('');
+        setAuthPassword('');
+        setAuthName('');
+        setAuthPhone('');
+        setAuthError('');
+      } else {
+        setAuthError(result.error || 'Authentication failed');
+      }
+    } catch (err) {
+      setAuthError(err.message || 'Something went wrong');
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const switchAuthMode = (mode) => {
+    setAuthMode(mode);
+    setAuthError('');
+  };
+
+  const closeAuthModal = () => {
+    setShowAuthModal(false);
+    setAuthError('');
+  };
+
+  // ─── RENDER ──────────────────────────────────────────────────────
   return (
     <div className="post-ad-container">
       <h2>📢 Post Free Ad</h2>
@@ -25,7 +254,6 @@ const PostAd = () => {
       {error && <div className="error-banner">{error}</div>}
 
       <form onSubmit={handleSubmit}>
-        {/* STEP 1 */}
         {step === 1 && (
           <>
             <div className="form-group">
@@ -67,7 +295,6 @@ const PostAd = () => {
               </select>
             </div>
 
-            {/* Location dropdowns – same as before, just with className="form-group" */}
             <div className="form-group">
               <label>Location *</label>
               <select value={selectedCountry} onChange={handleCountryChange}>
@@ -177,7 +404,6 @@ const PostAd = () => {
           </>
         )}
 
-        {/* STEP 2 – exactly the same, just with className="form-group" and step buttons */}
         {step === 2 && (
           <>
             <div className="form-group">
@@ -286,7 +512,7 @@ const PostAd = () => {
                 type="submit"
                 className="btn-primary"
                 disabled={isSubmitting}
-                style={{ flex: 2 }} // optional inline for fine-tuning
+                style={{ flex: 2 }}
               >
                 {isSubmitting ? 'Publishing...' : 'Publish Ad →'}
               </button>
@@ -295,7 +521,7 @@ const PostAd = () => {
         )}
       </form>
 
-      {/* Auth Modal – with updated classes */}
+      {/* ─── Auth Modal ────────────────────────────────────────────── */}
       {showAuthModal && (
         <div className="auth-overlay" onClick={closeAuthModal}>
           <div className="auth-modal" onClick={(e) => e.stopPropagation()}>

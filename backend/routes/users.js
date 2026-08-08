@@ -2,11 +2,11 @@ const express = require("express");
 const router = express.Router();
 const multer = require("multer");
 const path = require("path");
-const bcrypt = require("bcryptjs"); // ✅ added
+const bcrypt = require("bcryptjs");
 const User = require("../models/User");
 const { verifyToken, isAdmin } = require("../middleware/auth");
 
-// ===== Multer config for profile pictures =====
+// ─── Multer config for profile pictures ──────────────────────────
 const profileStorage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, path.join(__dirname, "../public/uploads/profiles"));
@@ -28,7 +28,45 @@ const profileUpload = multer({
   },
 });
 
-// ===== GET ALL USERS (Admin only) =====
+// ──────────────────────────────────────────────────────────────────
+// ✅ PUBLIC / SELF routes (must come BEFORE /:id routes)
+// ──────────────────────────────────────────────────────────────────
+
+// UPDATE PROFILE (logged‑in user) – no admin required
+router.put("/profile", verifyToken, profileUpload.single("photo"), async (req, res) => {
+  try {
+    const { name, email, phone, removePhoto } = req.body;
+    const user = await User.findById(req.userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    if (name) user.name = name;
+    if (email) user.email = email.toLowerCase();
+    if (phone !== undefined) user.phone = phone;
+
+    // Handle photo
+    if (removePhoto === "true") {
+      user.photoURL = null;
+    } else if (req.file) {
+      // Store full URL – works for both local and Cloudinary
+      const baseUrl = `${req.protocol}://${req.get("host")}`;
+      user.photoURL = `${baseUrl}/uploads/profiles/${req.file.filename}`;
+    }
+
+    await user.save();
+    res.json({ success: true, message: "Profile updated", user: user.toJSON() });
+  } catch (err) {
+    console.error("Update profile error:", err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// ──────────────────────────────────────────────────────────────────
+// ADMIN routes (require isAdmin)
+// ──────────────────────────────────────────────────────────────────
+
+// GET ALL USERS
 router.get("/", verifyToken, isAdmin, async (req, res) => {
   try {
     const { search, role, limit = 50, page = 1 } = req.query;
@@ -53,9 +91,7 @@ router.get("/", verifyToken, isAdmin, async (req, res) => {
   }
 });
 
-// ============================================================
-// ✅ STATS ROUTE – MUST come BEFORE the /:id route
-// ============================================================
+// GET STATS – must be before /:id
 router.get("/stats", verifyToken, isAdmin, async (req, res) => {
   try {
     const [totalUsers, totalAdmins, totalSellers, totalBuyers] = await Promise.all([
@@ -71,7 +107,7 @@ router.get("/stats", verifyToken, isAdmin, async (req, res) => {
   }
 });
 
-// ===== GET SINGLE USER =====
+// GET SINGLE USER (Admin only)
 router.get("/:id", verifyToken, isAdmin, async (req, res) => {
   try {
     const user = await User.findById(req.params.id).select("-password");
@@ -83,7 +119,7 @@ router.get("/:id", verifyToken, isAdmin, async (req, res) => {
   }
 });
 
-// ===== UPDATE USER (Admin) =====
+// UPDATE USER (Admin only)
 router.put("/:id", verifyToken, isAdmin, async (req, res) => {
   try {
     const { name, email, phone, role, password, isActive } = req.body;
@@ -115,7 +151,7 @@ router.put("/:id", verifyToken, isAdmin, async (req, res) => {
   }
 });
 
-// ===== DELETE USER (Admin) =====
+// DELETE USER (Admin only)
 router.delete("/:id", verifyToken, isAdmin, async (req, res) => {
   try {
     const user = await User.findById(req.params.id);
@@ -128,32 +164,6 @@ router.delete("/:id", verifyToken, isAdmin, async (req, res) => {
     res.json({ success: true, message: "User deleted" });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
-
-// ===== UPDATE PROFILE (Logged-in user) – stays above /:id because it's a different method =====
-router.put("/profile", verifyToken, profileUpload.single("photo"), async (req, res) => {
-  try {
-    const { name, email, phone } = req.body;
-    const user = await User.findById(req.userId);
-    if (!user) {
-      return res.status(404).json({ success: false, message: "User not found" });
-    }
-
-    if (name) user.name = name;
-    if (email) user.email = email.toLowerCase();
-    if (phone) user.phone = phone;
-
-    if (req.file) {
-      const baseUrl = `${req.protocol}://${req.get("host")}`;
-      user.photoURL = `${baseUrl}/uploads/profiles/${req.file.filename}`;
-    }
-
-    await user.save();
-    res.json({ success: true, message: "Profile updated", user: user.toJSON() });
-  } catch (err) {
-    console.error("Error updating profile:", err);
     res.status(500).json({ success: false, message: err.message });
   }
 });

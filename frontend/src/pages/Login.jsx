@@ -3,12 +3,17 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { FcGoogle } from 'react-icons/fc';
 import { FaFacebookF } from 'react-icons/fa';
+import { AiFillEye, AiFillEyeInvisible } from 'react-icons/ai';
+
+// 👇 Use your actual backend URL
+const API_URL = import.meta.env.VITE_API_URL || 'https://sell-platform2.onrender.com';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false); // 👁️
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -52,7 +57,7 @@ const Login = () => {
         <div style={{ marginBottom: '24px' }}>
           <button
             type="button"
-            onClick={() => window.location.href = 'http://localhost:5000/auth/google'}
+            onClick={() => window.location.href = `${API_URL}/auth/google`}
             style={{
               width: '100%',
               display: 'flex',
@@ -75,7 +80,7 @@ const Login = () => {
 
           <button
             type="button"
-            onClick={() => window.location.href = 'http://localhost:5000/auth/facebook'}
+            onClick={() => window.location.href = `${API_URL}/auth/facebook`}
             style={{
               width: '100%',
               display: 'flex',
@@ -124,25 +129,52 @@ const Login = () => {
               }}
             />
           </div>
+
+          {/* ─── PASSWORD FIELD WITH TOGGLE ─── */}
           <div className="form-group" style={{ marginBottom: '16px' }}>
             <label style={{ display: 'block', fontWeight: 600, fontSize: '13px', marginBottom: '4px' }}>Password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Enter your password"
-              required
-              style={{
-                width: '100%',
-                padding: '12px 16px',
-                border: '1.5px solid var(--gray-200)',
-                borderRadius: 'var(--radius-md)',
-                fontSize: '14px',
-                fontFamily: 'inherit',
-                transition: 'var(--transition)',
-                background: 'white',
-              }}
-            />
+            <div style={{ position: 'relative' }}>
+              <input
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Enter your password"
+                required
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  paddingRight: '44px',
+                  border: '1.5px solid var(--gray-200)',
+                  borderRadius: 'var(--radius-md)',
+                  fontSize: '14px',
+                  fontFamily: 'inherit',
+                  transition: 'var(--transition)',
+                  background: 'white',
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                style={{
+                  position: 'absolute',
+                  right: '12px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: '#64748b',
+                  fontSize: '20px',
+                  padding: '4px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+                tabIndex={-1}
+              >
+                {showPassword ? <AiFillEyeInvisible /> : <AiFillEye />}
+              </button>
+            </div>
           </div>
 
           <button
