@@ -1,47 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { getProducts, getNotifications } from '../api';
-
-// ===== API calls for messages =====
-const getMessages = async (userId, token) => {
-  const res = await fetch(`http://localhost:5000/api/messages/${userId}`, {
-    headers: { 'Authorization': `Bearer ${token}` },
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.message || 'Failed to fetch messages');
-  return data.messages;
-};
-
-const sendMessage = async (receiver, message, token, productId = null) => {
-  const res = await fetch(`http://localhost:5000/api/messages`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
-    },
-    body: JSON.stringify({ receiver, message, productId }),
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.message || 'Failed to send message');
-  return data.message;
-};
-
-const markMessageRead = async (messageId, token) => {
-  const res = await fetch(`http://localhost:5000/api/messages/${messageId}/read`, {
-    method: 'PUT',
-    headers: { 'Authorization': `Bearer ${token}` },
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.message || 'Failed to mark read');
-  return data.message;
-};
+import { getProducts, getNotifications, messages, API_URL, getImageUrl } from '../api';
 
 const Profile = () => {
   const { user, token } = useAuth();
   const [products, setProducts] = useState([]);
   const [notifications, setNotifications] = useState([]);
-  const [messages, setMessages] = useState([]);
+  const [messagesList, setMessagesList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     totalAds: 0,
@@ -66,47 +32,61 @@ const Profile = () => {
   const [replyMessage, setReplyMessage] = useState('');
   const [sendingReply, setSendingReply] = useState(false);
 
-  // ✅ Fetch data only when user and token exist
   useEffect(() => {
     const fetchData = async () => {
-      // 🛑 Guard: stop if no user or no _id or no token
-      if (!user || !user._id || !token) {
+      // ✅ Guard: ensure user and token exist, and get userId from multiple possible fields
+      if (!user || !token) {
+        setLoading(false);
+        return;
+      }
+      const userId = user._id || user.id || user.userId;
+      if (!userId) {
+        console.warn('⚠️ No user ID found in user object:', user);
         setLoading(false);
         return;
       }
 
       try {
+        console.log('👤 Fetching data for user:', userId);
+
         const [userProducts, userNotifs, userMessages] = await Promise.all([
-          getProducts({ sellerId: user._id }), // ✅ use _id
-          getNotifications(user._id, token),   // ✅ pass token
-          getMessages(user._id, token),        // ✅ pass token
+          getProducts({ sellerId: userId }),
+          getNotifications(userId, token),
+          messages.getForUser(userId, token),
         ]);
 
-        const productsList = userProducts.products || [];
-        const notifsList = userNotifs || [];
-        const messagesList = userMessages || [];
+        console.log('📦 Products response:', userProducts);
+        console.log('📦 Notifications response:', userNotifs);
+        console.log('📦 Messages response:', userMessages);
+
+        const productsList = userProducts?.products || [];
+        const notifsList = Array.isArray(userNotifs) ? userNotifs : [];
+        const messagesList = Array.isArray(userMessages) ? userMessages : [];
 
         setProducts(productsList);
         setNotifications(notifsList);
-        setMessages(messagesList);
+        setMessagesList(messagesList);
 
-        const unreadMsgs = messagesList.filter(m => m.receiver === user._id && !m.read).length; // ✅ use _id
+        const unreadMsgs = messagesList.filter(
+          (m) => m.receiver === userId && !m.read
+        ).length;
 
         setStats({
           totalAds: productsList.length,
           totalViews: productsList.reduce((sum, p) => sum + (p.views || 0), 0),
           totalNotifications: notifsList.length,
-          unreadNotifications: notifsList.filter(n => !n.read).length,
+          unreadNotifications: notifsList.filter((n) => !n.read).length,
           unreadMessages: unreadMsgs,
         });
       } catch (error) {
-        console.error('Error fetching profile data:', error);
+        console.error('❌ Error fetching profile data:', error);
       } finally {
         setLoading(false);
       }
     };
+
     fetchData();
-  }, [user, token]); // ✅ depend on both
+  }, [user, token]);
 
   if (!user) {
     return (
@@ -143,14 +123,16 @@ const Profile = () => {
     }
 
     try {
-      const res = await fetch('http://localhost:5000/api/users/profile', {
+      const res = await fetch(`${API_URL}/api/users/profile`, {
         method: 'PUT',
-        headers: { 'Authorization': `Bearer ${token}` },
+        credentials: 'include',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
         body: formData,
       });
       const data = await res.json();
       if (data.success) {
-        // For simplicity, reload the page to refresh user context
         window.location.reload();
       } else {
         setEditError(data.message || 'Update failed');
@@ -163,26 +145,28 @@ const Profile = () => {
   };
 
   // ----- Messaging Handlers -----
-  const openConversation = (otherUserId) => {
-    const msgs = messages.filter(m =>
-      (m.sender._id === otherUserId || m.receiver._id === otherUserId) &&
-      (m.sender._id === user._id || m.receiver._id === user._id) // ✅ use _id
+  const openConversation = async (otherUserId) => {
+    const msgs = messagesList.filter(
+      (m) =>
+        (m.sender?._id === otherUserId || m.receiver?._id === otherUserId) &&
+        (m.sender?._id === user._id || m.receiver?._id === user._id)
     );
     setSelectedConversation({ userId: otherUserId, messages: msgs });
-    // Mark unread messages in this conversation as read
-    const unread = msgs.filter(m => m.receiver === user._id && !m.read); // ✅ use _id
-    unread.forEach(async (m) => {
+
+    const unread = msgs.filter((m) => m.receiver === user._id && !m.read);
+    for (const m of unread) {
       try {
-        await markMessageRead(m._id, token);
-        // Update local messages state
-        setMessages(prev =>
-          prev.map(msg =>
+        await messages.markRead(m._id, token);
+        setMessagesList((prev) =>
+          prev.map((msg) =>
             msg._id === m._id ? { ...msg, read: true } : msg
           )
         );
-        setStats(prev => ({ ...prev, unreadMessages: prev.unreadMessages - 1 }));
-      } catch (err) { console.error(err); }
-    });
+        setStats((prev) => ({ ...prev, unreadMessages: prev.unreadMessages - 1 }));
+      } catch (err) {
+        console.error(err);
+      }
+    }
   };
 
   const handleSendReply = async (e) => {
@@ -190,9 +174,14 @@ const Profile = () => {
     if (!replyMessage.trim()) return;
     setSendingReply(true);
     try {
-      const newMsg = await sendMessage(selectedConversation.userId, replyMessage, token);
-      setMessages(prev => [newMsg, ...prev]);
-      setSelectedConversation(prev => ({
+      const newMsg = await messages.send(
+        selectedConversation.userId,
+        replyMessage,
+        null,
+        token
+      );
+      setMessagesList((prev) => [newMsg, ...prev]);
+      setSelectedConversation((prev) => ({
         ...prev,
         messages: [newMsg, ...prev.messages],
       }));
@@ -208,175 +197,342 @@ const Profile = () => {
   // ----- Get unique conversation partners -----
   const getConversations = () => {
     const partners = new Set();
-    messages.forEach(m => {
-      if (m.sender._id === user._id) partners.add(m.receiver._id);       // ✅ use _id
-      if (m.receiver._id === user._id) partners.add(m.sender._id);       // ✅ use _id
+    messagesList.forEach((m) => {
+      if (m.sender?._id === user._id) partners.add(m.receiver?._id);
+      if (m.receiver?._id === user._id) partners.add(m.sender?._id);
     });
-    return Array.from(partners).map(id => {
-      const msgs = messages.filter(m =>
-        (m.sender._id === id || m.receiver._id === id) &&
-        (m.sender._id === user._id || m.receiver._id === user._id)       // ✅ use _id
-      );
-      const last = msgs[0] || null;
-      const unread = msgs.filter(m => m.receiver._id === user._id && !m.read).length; // ✅ use _id
-      const partner = msgs[0]?.sender._id === id ? msgs[0]?.sender : msgs[0]?.receiver;
-      return { userId: id, partner, last, unread };
-    }).sort((a, b) => new Date(b.last?.createdAt) - new Date(a.last?.createdAt));
+    return Array.from(partners)
+      .map((id) => {
+        const msgs = messagesList.filter(
+          (m) =>
+            (m.sender?._id === id || m.receiver?._id === id) &&
+            (m.sender?._id === user._id || m.receiver?._id === user._id)
+        );
+        const last = msgs[0] || null;
+        const unread = msgs.filter(
+          (m) => m.receiver?._id === user._id && !m.read
+        ).length;
+        const partner =
+          msgs[0]?.sender?._id === id ? msgs[0]?.sender : msgs[0]?.receiver;
+        return { userId: id, partner, last, unread };
+      })
+      .sort((a, b) => new Date(b.last?.createdAt) - new Date(a.last?.createdAt));
   };
 
   // ----- Render -----
   return (
     <div className="container" style={{ padding: '30px 20px' }}>
-      {/* Profile Header – unchanged */}
-      <div className="profile-header" style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: '24px',
-        padding: '24px 28px',
-        background: 'white',
-        borderRadius: 'var(--radius-md)',
-        border: '1px solid var(--gray-200)',
-        marginBottom: '24px',
-        flexWrap: 'wrap',
-      }}>
-        <div className="profile-avatar" style={{
-          width: '80px',
-          height: '80px',
-          borderRadius: '50%',
-          background: 'var(--primary)',
-          color: 'white',
+      {/* Profile Header */}
+      <div
+        className="profile-header"
+        style={{
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'center',
-          fontSize: '32px',
-          fontWeight: 700,
-          flexShrink: 0,
-          overflow: 'hidden',
-        }}>
+          gap: '24px',
+          padding: '24px 28px',
+          background: 'white',
+          borderRadius: 'var(--radius-md)',
+          border: '1px solid var(--gray-200)',
+          marginBottom: '24px',
+          flexWrap: 'wrap',
+        }}
+      >
+        <div
+          className="profile-avatar"
+          style={{
+            width: '80px',
+            height: '80px',
+            borderRadius: '50%',
+            background: 'var(--primary)',
+            color: 'white',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '32px',
+            fontWeight: 700,
+            flexShrink: 0,
+            overflow: 'hidden',
+          }}
+        >
           {user.photoURL ? (
-            <img src={user.photoURL} alt={user.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            <img
+              src={user.photoURL}
+              alt={user.name}
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            />
           ) : (
             user.name?.charAt(0).toUpperCase()
           )}
         </div>
         <div style={{ flex: 1 }}>
-          <h1 style={{ fontSize: '24px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <h1
+            style={{
+              fontSize: '24px',
+              fontWeight: 700,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+            }}
+          >
             {user.name}
             {user.role === 'admin' && (
-              <span style={{ background: '#f59e0b', color: 'white', fontSize: '12px', padding: '2px 12px', borderRadius: 'var(--radius-full)', fontWeight: 600 }}>
+              <span
+                style={{
+                  background: '#f59e0b',
+                  color: 'white',
+                  fontSize: '12px',
+                  padding: '2px 12px',
+                  borderRadius: 'var(--radius-full)',
+                  fontWeight: 600,
+                }}
+              >
                 Admin
               </span>
             )}
           </h1>
           <p style={{ color: 'var(--gray-500)' }}>{user.email}</p>
           <p style={{ color: 'var(--gray-500)' }}>
-            <i className="fas fa-calendar-alt"></i> Member since {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}
+            <i className="fas fa-calendar-alt"></i> Member since{' '}
+            {user.createdAt
+              ? new Date(user.createdAt).toLocaleDateString()
+              : 'N/A'}
           </p>
         </div>
         <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-          <Link to="/post-ad" className="btn-secondary" style={{
-            padding: '10px 20px',
-            background: 'var(--secondary)',
-            color: 'white',
-            border: 'none',
-            borderRadius: 'var(--radius-full)',
-            fontWeight: 600,
-            textDecoration: 'none',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '8px',
-          }}>
+          <Link
+            to="/post-ad"
+            className="btn-secondary"
+            style={{
+              padding: '10px 20px',
+              background: 'var(--secondary)',
+              color: 'white',
+              border: 'none',
+              borderRadius: 'var(--radius-full)',
+              fontWeight: 600,
+              textDecoration: 'none',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+            }}
+          >
             <i className="fas fa-plus-circle"></i> Post Ad
           </Link>
-          <button className="btn-outline" onClick={() => setShowEditModal(true)} style={{
-            padding: '10px 20px',
-            border: '1.5px solid var(--gray-300)',
-            borderRadius: 'var(--radius-full)',
-            background: 'transparent',
-            fontWeight: 600,
-            cursor: 'pointer',
-          }}>
+          <button
+            className="btn-outline"
+            onClick={() => setShowEditModal(true)}
+            style={{
+              padding: '10px 20px',
+              border: '1.5px solid var(--gray-300)',
+              borderRadius: 'var(--radius-full)',
+              background: 'transparent',
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
             <i className="fas fa-pen"></i> Edit Profile
           </button>
         </div>
       </div>
 
-      {/* Stats Cards – unchanged */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-        gap: '16px',
-        marginBottom: '24px',
-      }}>
-        <div style={{ background: 'white', padding: '16px 20px', borderRadius: 'var(--radius-md)', border: '1px solid var(--gray-200)', textAlign: 'center' }}>
-          <div style={{ fontSize: '28px', fontWeight: 800, color: 'var(--primary)' }}>{stats.totalAds}</div>
+      {/* Stats Cards */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+          gap: '16px',
+          marginBottom: '24px',
+        }}
+      >
+        <div
+          style={{
+            background: 'white',
+            padding: '16px 20px',
+            borderRadius: 'var(--radius-md)',
+            border: '1px solid var(--gray-200)',
+            textAlign: 'center',
+          }}
+        >
+          <div style={{ fontSize: '28px', fontWeight: 800, color: 'var(--primary)' }}>
+            {stats.totalAds}
+          </div>
           <div style={{ fontSize: '13px', color: 'var(--gray-500)' }}>Total Ads</div>
         </div>
-        <div style={{ background: 'white', padding: '16px 20px', borderRadius: 'var(--radius-md)', border: '1px solid var(--gray-200)', textAlign: 'center' }}>
-          <div style={{ fontSize: '28px', fontWeight: 800, color: '#8b5cf6' }}>{stats.totalViews}</div>
+        <div
+          style={{
+            background: 'white',
+            padding: '16px 20px',
+            borderRadius: 'var(--radius-md)',
+            border: '1px solid var(--gray-200)',
+            textAlign: 'center',
+          }}
+        >
+          <div style={{ fontSize: '28px', fontWeight: 800, color: '#8b5cf6' }}>
+            {stats.totalViews}
+          </div>
           <div style={{ fontSize: '13px', color: 'var(--gray-500)' }}>Total Views</div>
         </div>
-        <div style={{ background: 'white', padding: '16px 20px', borderRadius: 'var(--radius-md)', border: '1px solid var(--gray-200)', textAlign: 'center' }}>
-          <div style={{ fontSize: '28px', fontWeight: 800, color: '#f59e0b' }}>{stats.totalNotifications}</div>
-          <div style={{ fontSize: '13px', color: 'var(--gray-500)' }}>Notifications</div>
+        <div
+          style={{
+            background: 'white',
+            padding: '16px 20px',
+            borderRadius: 'var(--radius-md)',
+            border: '1px solid var(--gray-200)',
+            textAlign: 'center',
+          }}
+        >
+          <div style={{ fontSize: '28px', fontWeight: 800, color: '#f59e0b' }}>
+            {stats.totalNotifications}
+          </div>
+          <div style={{ fontSize: '13px', color: 'var(--gray-500)' }}>
+            Notifications
+          </div>
           {stats.unreadNotifications > 0 && (
-            <span style={{ background: '#e74c3c', color: 'white', fontSize: '11px', padding: '1px 10px', borderRadius: 'var(--radius-full)', display: 'inline-block', marginTop: '4px' }}>
+            <span
+              style={{
+                background: '#e74c3c',
+                color: 'white',
+                fontSize: '11px',
+                padding: '1px 10px',
+                borderRadius: 'var(--radius-full)',
+                display: 'inline-block',
+                marginTop: '4px',
+              }}
+            >
               {stats.unreadNotifications} unread
             </span>
           )}
         </div>
-        <div style={{ background: 'white', padding: '16px 20px', borderRadius: 'var(--radius-md)', border: '1px solid var(--gray-200)', textAlign: 'center' }}>
-          <div style={{ fontSize: '28px', fontWeight: 800, color: '#0ea5e9' }}>{messages.length}</div>
+        <div
+          style={{
+            background: 'white',
+            padding: '16px 20px',
+            borderRadius: 'var(--radius-md)',
+            border: '1px solid var(--gray-200)',
+            textAlign: 'center',
+          }}
+        >
+          <div style={{ fontSize: '28px', fontWeight: 800, color: '#0ea5e9' }}>
+            {messagesList.length}
+          </div>
           <div style={{ fontSize: '13px', color: 'var(--gray-500)' }}>Messages</div>
           {stats.unreadMessages > 0 && (
-            <span style={{ background: '#e74c3c', color: 'white', fontSize: '11px', padding: '1px 10px', borderRadius: 'var(--radius-full)', display: 'inline-block', marginTop: '4px' }}>
+            <span
+              style={{
+                background: '#e74c3c',
+                color: 'white',
+                fontSize: '11px',
+                padding: '1px 10px',
+                borderRadius: 'var(--radius-full)',
+                display: 'inline-block',
+                marginTop: '4px',
+              }}
+            >
               {stats.unreadMessages} unread
             </span>
           )}
         </div>
       </div>
 
-      {/* Main content – My Ads + Messages (the rest is unchanged) */}
+      {/* Main content – My Ads + Messages */}
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px' }}>
         <div>
-          <h2 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <h2
+            style={{
+              fontSize: '18px',
+              fontWeight: 700,
+              marginBottom: '16px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+            }}
+          >
             <i className="fas fa-box" style={{ color: 'var(--primary)' }}></i> My Ads
-            <span style={{ fontSize: '13px', color: 'var(--gray-500)', fontWeight: 400 }}>({stats.totalAds})</span>
+            <span style={{ fontSize: '13px', color: 'var(--gray-500)', fontWeight: 400 }}>
+              ({stats.totalAds})
+            </span>
           </h2>
           {loading ? (
             <p>Loading...</p>
           ) : products.length === 0 ? (
-            <div style={{ background: 'white', padding: '40px', borderRadius: 'var(--radius-md)', border: '1px solid var(--gray-200)', textAlign: 'center' }}>
+            <div
+              style={{
+                background: 'white',
+                padding: '40px',
+                borderRadius: 'var(--radius-md)',
+                border: '1px solid var(--gray-200)',
+                textAlign: 'center',
+              }}
+            >
               <p style={{ color: 'var(--gray-500)' }}>You haven't posted any ads yet.</p>
-              <Link to="/post-ad" className="btn-primary" style={{ display: 'inline-block', marginTop: '12px' }}>
+              <Link
+                to="/post-ad"
+                className="btn-primary"
+                style={{ display: 'inline-block', marginTop: '12px' }}
+              >
                 Post Your First Ad
               </Link>
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {products.slice(0, 5).map(p => (
-                <Link to={`/product/${p._id}`} key={p._id} style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  padding: '12px 16px',
-                  background: 'white',
-                  borderRadius: 'var(--radius-md)',
-                  border: '1px solid var(--gray-200)',
-                  textDecoration: 'none',
-                  transition: 'var(--transition)',
-                }}>
-                  <div>
-                    <div style={{ fontWeight: 600, color: 'var(--gray-800)' }}>{p.title}</div>
-                    <div style={{ fontSize: '13px', color: 'var(--gray-500)' }}>
-                      {p.category} • {p.location} • <i className="fas fa-eye"></i> {p.views || 0}
+              {products.slice(0, 5).map((p) => {
+                const imageUrl = p.images && p.images.length > 0 ? getImageUrl(p.images[0]) : null;
+                return (
+                  <Link
+                    to={`/product/${p._id}`}
+                    key={p._id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '16px',
+                      padding: '12px 16px',
+                      background: 'white',
+                      borderRadius: 'var(--radius-md)',
+                      border: '1px solid var(--gray-200)',
+                      textDecoration: 'none',
+                      transition: 'var(--transition)',
+                    }}
+                  >
+                    {imageUrl && (
+                      <div
+                        style={{
+                          width: '60px',
+                          height: '60px',
+                          flexShrink: 0,
+                          borderRadius: 'var(--radius-sm)',
+                          overflow: 'hidden',
+                        }}
+                      >
+                        <img
+                          src={imageUrl}
+                          alt={p.title}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        />
+                      </div>
+                    )}
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 600, color: 'var(--gray-800)' }}>
+                        {p.title}
+                      </div>
+                      <div style={{ fontSize: '13px', color: 'var(--gray-500)' }}>
+                        {p.category} • {p.location} •{' '}
+                        <i className="fas fa-eye"></i> {p.views || 0}
+                      </div>
                     </div>
-                  </div>
-                  <div style={{ fontWeight: 700, color: 'var(--primary)' }}>₵{p.price?.toLocaleString()}</div>
-                </Link>
-              ))}
+                    <div style={{ fontWeight: 700, color: 'var(--primary)' }}>
+                      ₵{p.price?.toLocaleString()}
+                    </div>
+                  </Link>
+                );
+              })}
               {products.length > 5 && (
-                <Link to="/products?my-ads=true" style={{ color: 'var(--primary)', fontWeight: 600, textAlign: 'center' }}>
+                <Link
+                  to="/products?my-ads=true"
+                  style={{
+                    color: 'var(--primary)',
+                    fontWeight: 600,
+                    textAlign: 'center',
+                  }}
+                >
                   View all {products.length} ads →
                 </Link>
               )}
@@ -384,12 +540,30 @@ const Profile = () => {
           )}
         </div>
 
-        {/* Messages section – unchanged except the logic is already fixed */}
+        {/* Messages section */}
         <div>
-          <h2 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <h2
+            style={{
+              fontSize: '18px',
+              fontWeight: 700,
+              marginBottom: '16px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+            }}
+          >
             <i className="fas fa-envelope" style={{ color: 'var(--primary)' }}></i> Messages
             {stats.unreadMessages > 0 && (
-              <span style={{ background: '#e74c3c', color: 'white', fontSize: '11px', padding: '1px 10px', borderRadius: 'var(--radius-full)', fontWeight: 600 }}>
+              <span
+                style={{
+                  background: '#e74c3c',
+                  color: 'white',
+                  fontSize: '11px',
+                  padding: '1px 10px',
+                  borderRadius: 'var(--radius-full)',
+                  fontWeight: 600,
+                }}
+              >
                 {stats.unreadMessages} new
               </span>
             )}
@@ -397,69 +571,140 @@ const Profile = () => {
 
           {loading ? (
             <p>Loading...</p>
-          ) : messages.length === 0 ? (
-            <div style={{ background: 'white', padding: '30px', borderRadius: 'var(--radius-md)', border: '1px solid var(--gray-200)', textAlign: 'center' }}>
+          ) : messagesList.length === 0 ? (
+            <div
+              style={{
+                background: 'white',
+                padding: '30px',
+                borderRadius: 'var(--radius-md)',
+                border: '1px solid var(--gray-200)',
+                textAlign: 'center',
+              }}
+            >
               <p style={{ color: 'var(--gray-500)' }}>No messages yet.</p>
             </div>
           ) : (
             <div>
               {selectedConversation ? (
-                // ... conversation view (unchanged)
-                <div style={{ background: 'white', borderRadius: 'var(--radius-md)', border: '1px solid var(--gray-200)', overflow: 'hidden' }}>
-                  <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--gray-200)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div
+                  style={{
+                    background: 'white',
+                    borderRadius: 'var(--radius-md)',
+                    border: '1px solid var(--gray-200)',
+                    overflow: 'hidden',
+                  }}
+                >
+                  <div
+                    style={{
+                      padding: '12px 16px',
+                      borderBottom: '1px solid var(--gray-200)',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                    }}
+                  >
                     <strong>
-                      {selectedConversation.messages[0]?.sender._id === selectedConversation.userId
+                      {selectedConversation.messages[0]?.sender?._id ===
+                      selectedConversation.userId
                         ? selectedConversation.messages[0]?.sender?.name || 'User'
                         : selectedConversation.messages[0]?.receiver?.name || 'User'}
                     </strong>
-                    <button onClick={() => setSelectedConversation(null)} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer' }}>
+                    <button
+                      onClick={() => setSelectedConversation(null)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        fontSize: '20px',
+                        cursor: 'pointer',
+                      }}
+                    >
                       &times;
                     </button>
                   </div>
-                  <div style={{ maxHeight: '300px', overflowY: 'auto', padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div
+                    style={{
+                      maxHeight: '300px',
+                      overflowY: 'auto',
+                      padding: '12px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '8px',
+                    }}
+                  >
                     {selectedConversation.messages.map((m) => (
-                      <div key={m._id} style={{
-                        alignSelf: m.sender._id === user._id ? 'flex-end' : 'flex-start',
-                        maxWidth: '80%',
-                        background: m.sender._id === user._id ? 'var(--primary)' : 'var(--gray-100)',
-                        color: m.sender._id === user._id ? 'white' : 'var(--gray-800)',
-                        padding: '8px 14px',
-                        borderRadius: 'var(--radius-md)',
-                        fontSize: '14px',
-                      }}>
+                      <div
+                        key={m._id}
+                        style={{
+                          alignSelf:
+                            m.sender?._id === user._id ? 'flex-end' : 'flex-start',
+                          maxWidth: '80%',
+                          background:
+                            m.sender?._id === user._id
+                              ? 'var(--primary)'
+                              : 'var(--gray-100)',
+                          color:
+                            m.sender?._id === user._id ? 'white' : 'var(--gray-800)',
+                          padding: '8px 14px',
+                          borderRadius: 'var(--radius-md)',
+                          fontSize: '14px',
+                        }}
+                      >
                         {m.message}
-                        <div style={{ fontSize: '10px', opacity: 0.7, marginTop: '4px' }}>
+                        <div
+                          style={{
+                            fontSize: '10px',
+                            opacity: 0.7,
+                            marginTop: '4px',
+                          }}
+                        >
                           {new Date(m.createdAt).toLocaleTimeString()}
                         </div>
                       </div>
                     ))}
                   </div>
-                  <form onSubmit={handleSendReply} style={{ display: 'flex', gap: '8px', padding: '12px', borderTop: '1px solid var(--gray-200)' }}>
+                  <form
+                    onSubmit={handleSendReply}
+                    style={{
+                      display: 'flex',
+                      gap: '8px',
+                      padding: '12px',
+                      borderTop: '1px solid var(--gray-200)',
+                    }}
+                  >
                     <input
                       type="text"
                       value={replyMessage}
                       onChange={(e) => setReplyMessage(e.target.value)}
                       placeholder="Type a reply..."
-                      style={{ flex: 1, padding: '8px 14px', border: '1.5px solid var(--gray-200)', borderRadius: 'var(--radius-md)', fontSize: '14px' }}
+                      style={{
+                        flex: 1,
+                        padding: '8px 14px',
+                        border: '1.5px solid var(--gray-200)',
+                        borderRadius: 'var(--radius-md)',
+                        fontSize: '14px',
+                      }}
                     />
-                    <button type="submit" disabled={sendingReply} style={{
-                      padding: '8px 20px',
-                      background: 'var(--secondary)',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: 'var(--radius-full)',
-                      fontWeight: 600,
-                      cursor: sendingReply ? 'not-allowed' : 'pointer',
-                      opacity: sendingReply ? 0.7 : 1,
-                    }}>
+                    <button
+                      type="submit"
+                      disabled={sendingReply}
+                      style={{
+                        padding: '8px 20px',
+                        background: 'var(--secondary)',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: 'var(--radius-full)',
+                        fontWeight: 600,
+                        cursor: sendingReply ? 'not-allowed' : 'pointer',
+                        opacity: sendingReply ? 0.7 : 1,
+                      }}
+                    >
                       {sendingReply ? 'Sending...' : 'Reply'}
                     </button>
                   </form>
                 </div>
               ) : (
-                // List of conversations (unchanged)
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {getConversations().map(conv => (
+                  {getConversations().map((conv) => (
                     <div
                       key={conv.userId}
                       onClick={() => openConversation(conv.userId)}
@@ -479,22 +724,37 @@ const Profile = () => {
                         <div style={{ fontWeight: 600 }}>
                           {conv.partner?.name || 'User'}
                           {conv.unread > 0 && (
-                            <span style={{
-                              background: '#e74c3c',
-                              color: 'white',
-                              fontSize: '10px',
-                              padding: '1px 8px',
-                              borderRadius: 'var(--radius-full)',
-                              marginLeft: '8px',
-                            }}>{conv.unread}</span>
+                            <span
+                              style={{
+                                background: '#e74c3c',
+                                color: 'white',
+                                fontSize: '10px',
+                                padding: '1px 8px',
+                                borderRadius: 'var(--radius-full)',
+                                marginLeft: '8px',
+                              }}
+                            >
+                              {conv.unread}
+                            </span>
                           )}
                         </div>
-                        <div style={{ fontSize: '13px', color: 'var(--gray-500)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '150px' }}>
+                        <div
+                          style={{
+                            fontSize: '13px',
+                            color: 'var(--gray-500)',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            maxWidth: '150px',
+                          }}
+                        >
                           {conv.last?.message || 'No messages'}
                         </div>
                       </div>
                       <div style={{ fontSize: '11px', color: 'var(--gray-400)' }}>
-                        {conv.last ? new Date(conv.last.createdAt).toLocaleDateString() : ''}
+                        {conv.last
+                          ? new Date(conv.last.createdAt).toLocaleDateString()
+                          : ''}
                       </div>
                     </div>
                   ))}
@@ -505,93 +765,214 @@ const Profile = () => {
         </div>
       </div>
 
-      {/* Edit Profile Modal – unchanged */}
+      {/* Edit Profile Modal */}
       {showEditModal && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          backgroundColor: 'rgba(0,0,0,0.5)',
-          backdropFilter: 'blur(4px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 9999,
-          padding: '20px',
-        }} onClick={() => setShowEditModal(false)}>
-          <div style={{
-            background: 'white',
-            borderRadius: 'var(--radius-xl)',
-            maxWidth: '480px',
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
             width: '100%',
-            padding: '32px',
-            position: 'relative',
-            maxHeight: '90vh',
-            overflowY: 'auto',
-          }} onClick={(e) => e.stopPropagation()}>
-            <button onClick={() => setShowEditModal(false)} style={{
-              position: 'absolute',
-              top: '14px',
-              right: '18px',
-              fontSize: '28px',
-              cursor: 'pointer',
-              color: 'var(--gray-400)',
-              background: 'none',
-              border: 'none',
-            }}>&times;</button>
-            <h2 style={{ fontSize: '24px', fontWeight: 800, marginBottom: '20px', textAlign: 'center' }}>Edit Profile</h2>
+            height: '100%',
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            padding: '20px',
+          }}
+          onClick={() => setShowEditModal(false)}
+        >
+          <div
+            style={{
+              background: 'white',
+              borderRadius: 'var(--radius-xl)',
+              maxWidth: '480px',
+              width: '100%',
+              padding: '32px',
+              position: 'relative',
+              maxHeight: '90vh',
+              overflowY: 'auto',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setShowEditModal(false)}
+              style={{
+                position: 'absolute',
+                top: '14px',
+                right: '18px',
+                fontSize: '28px',
+                cursor: 'pointer',
+                color: 'var(--gray-400)',
+                background: 'none',
+                border: 'none',
+              }}
+            >
+              &times;
+            </button>
+            <h2
+              style={{
+                fontSize: '24px',
+                fontWeight: 800,
+                marginBottom: '20px',
+                textAlign: 'center',
+              }}
+            >
+              Edit Profile
+            </h2>
 
-            {editError && <div style={{ background: '#fee2e2', color: '#dc2626', padding: '10px 14px', borderRadius: 'var(--radius-sm)', marginBottom: '16px' }}>{editError}</div>}
+            {editError && (
+              <div
+                style={{
+                  background: '#fee2e2',
+                  color: '#dc2626',
+                  padding: '10px 14px',
+                  borderRadius: 'var(--radius-sm)',
+                  marginBottom: '16px',
+                }}
+              >
+                {editError}
+              </div>
+            )}
 
             <form onSubmit={handleUpdateProfile}>
               <div className="form-group" style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', fontWeight: 600, fontSize: '13px', marginBottom: '4px' }}>Profile Photo</label>
+                <label
+                  style={{
+                    display: 'block',
+                    fontWeight: 600,
+                    fontSize: '13px',
+                    marginBottom: '4px',
+                  }}
+                >
+                  Profile Photo
+                </label>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                  <div style={{
-                    width: '64px',
-                    height: '64px',
-                    borderRadius: '50%',
-                    background: 'var(--gray-200)',
-                    overflow: 'hidden',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}>
+                  <div
+                    style={{
+                      width: '64px',
+                      height: '64px',
+                      borderRadius: '50%',
+                      background: 'var(--gray-200)',
+                      overflow: 'hidden',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
                     {editPhotoPreview ? (
-                      <img src={editPhotoPreview} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <img
+                        src={editPhotoPreview}
+                        alt="Preview"
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      />
                     ) : (
-                      <i className="fas fa-user" style={{ fontSize: '32px', color: 'var(--gray-400)' }} />
+                      <i
+                        className="fas fa-user"
+                        style={{ fontSize: '32px', color: 'var(--gray-400)' }}
+                      />
                     )}
                   </div>
-                  <input type="file" accept="image/*" onChange={handleEditPhotoChange} style={{ flex: 1 }} />
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleEditPhotoChange}
+                    style={{ flex: 1 }}
+                  />
                 </div>
               </div>
               <div className="form-group" style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', fontWeight: 600, fontSize: '13px', marginBottom: '4px' }}>Full Name</label>
-                <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} required style={{ width: '100%', padding: '12px 16px', border: '1.5px solid var(--gray-200)', borderRadius: 'var(--radius-md)', fontSize: '14px' }} />
+                <label
+                  style={{
+                    display: 'block',
+                    fontWeight: 600,
+                    fontSize: '13px',
+                    marginBottom: '4px',
+                  }}
+                >
+                  Full Name
+                </label>
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  required
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    border: '1.5px solid var(--gray-200)',
+                    borderRadius: 'var(--radius-md)',
+                    fontSize: '14px',
+                  }}
+                />
               </div>
               <div className="form-group" style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', fontWeight: 600, fontSize: '13px', marginBottom: '4px' }}>Email</label>
-                <input type="email" value={editEmail} onChange={(e) => setEditEmail(e.target.value)} required style={{ width: '100%', padding: '12px 16px', border: '1.5px solid var(--gray-200)', borderRadius: 'var(--radius-md)', fontSize: '14px' }} />
+                <label
+                  style={{
+                    display: 'block',
+                    fontWeight: 600,
+                    fontSize: '13px',
+                    marginBottom: '4px',
+                  }}
+                >
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={editEmail}
+                  onChange={(e) => setEditEmail(e.target.value)}
+                  required
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    border: '1.5px solid var(--gray-200)',
+                    borderRadius: 'var(--radius-md)',
+                    fontSize: '14px',
+                  }}
+                />
               </div>
               <div className="form-group" style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', fontWeight: 600, fontSize: '13px', marginBottom: '4px' }}>Phone</label>
-                <input type="tel" value={editPhone} onChange={(e) => setEditPhone(e.target.value)} style={{ width: '100%', padding: '12px 16px', border: '1.5px solid var(--gray-200)', borderRadius: 'var(--radius-md)', fontSize: '14px' }} />
+                <label
+                  style={{
+                    display: 'block',
+                    fontWeight: 600,
+                    fontSize: '13px',
+                    marginBottom: '4px',
+                  }}
+                >
+                  Phone
+                </label>
+                <input
+                  type="tel"
+                  value={editPhone}
+                  onChange={(e) => setEditPhone(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    border: '1.5px solid var(--gray-200)',
+                    borderRadius: 'var(--radius-md)',
+                    fontSize: '14px',
+                  }}
+                />
               </div>
-              <button type="submit" disabled={editLoading} style={{
-                width: '100%',
-                padding: '14px',
-                background: 'var(--secondary)',
-                color: 'white',
-                border: 'none',
-                borderRadius: 'var(--radius-full)',
-                fontWeight: 700,
-                fontSize: '16px',
-                cursor: editLoading ? 'not-allowed' : 'pointer',
-                opacity: editLoading ? 0.7 : 1,
-              }}>
+              <button
+                type="submit"
+                disabled={editLoading}
+                style={{
+                  width: '100%',
+                  padding: '14px',
+                  background: 'var(--secondary)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: 'var(--radius-full)',
+                  fontWeight: 700,
+                  fontSize: '16px',
+                  cursor: editLoading ? 'not-allowed' : 'pointer',
+                  opacity: editLoading ? 0.7 : 1,
+                }}
+              >
                 {editLoading ? 'Saving...' : 'Save Changes'}
               </button>
             </form>
