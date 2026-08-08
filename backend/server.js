@@ -1,7 +1,6 @@
 const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
-const session = require("express-session");
 const passport = require("passport");
 const path = require("path");
 const helmet = require("helmet");
@@ -27,9 +26,6 @@ const missing = requiredEnv.filter(key => !process.env[key]);
 if (missing.length) {
   console.error(`❌ Missing environment variables: ${missing.join(", ")}`);
   process.exit(1);
-}
-if (!process.env.SESSION_SECRET) {
-  console.warn("⚠️ SESSION_SECRET missing. Using JWT_SECRET.");
 }
 
 // ===============================
@@ -57,7 +53,7 @@ app.use(compression());
 app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
 
 // ===============================
-// CORS – UPDATED with explicit main domain
+// CORS
 // ===============================
 const allowedOrigins = [
   "http://localhost:5173",
@@ -147,27 +143,10 @@ app.use((req, res, next) => {
 });
 
 // ===============================
-// SESSION
-// ===============================
-app.use(
-  session({
-    secret: process.env.SESSION_SECRET || process.env.JWT_SECRET,
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      secure: process.env.NODE_ENV === "production",
-      httpOnly: true,
-      sameSite: "lax",
-      maxAge: 1000 * 60 * 60 * 24 * 7,
-    },
-  })
-);
-
-// ===============================
-// PASSPORT
+// PASSPORT (initialize only – no session)
 // ===============================
 app.use(passport.initialize());
-app.use(passport.session());
+// ❌ No passport.session() – we use JWT, not sessions
 
 // ===============================
 // RATE LIMIT
@@ -219,7 +198,7 @@ const productRoutes = require("./routes/products");
 const notificationRoutes = require("./routes/notifications");
 const userRoutes = require("./routes/users");
 const messageRoutes = require("./routes/messages");
-const adminRoutes = require("./routes/admin");  // ✅ ADDED
+const adminRoutes = require("./routes/admin");
 
 console.log("✅ Routes loaded:");
 console.log(`  - Auth: ${typeof authRoutes === "function" ? "router" : typeof authRoutes}`);
@@ -227,14 +206,14 @@ console.log(`  - Products: ${typeof productRoutes === "function" ? "router" : ty
 console.log(`  - Notifications: ${typeof notificationRoutes === "function" ? "router" : typeof notificationRoutes}`);
 console.log(`  - Users: ${typeof userRoutes === "function" ? "router" : typeof userRoutes}`);
 console.log(`  - Messages: ${typeof messageRoutes === "function" ? "router" : typeof messageRoutes}`);
-console.log(`  - Admin: ${typeof adminRoutes === "function" ? "router" : typeof adminRoutes}`); // ✅ ADDED
+console.log(`  - Admin: ${typeof adminRoutes === "function" ? "router" : typeof adminRoutes}`);
 
 app.use("/auth", authRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/messages", messageRoutes);
-app.use("/api/admin", adminRoutes);  // ✅ ADDED
+app.use("/api/admin", adminRoutes);
 
 // ===============================
 // STATIC FILES – ONLY FOR UPLOADS
