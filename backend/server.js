@@ -62,7 +62,7 @@ app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
 const allowedOrigins = [
   "http://localhost:5173",
   "http://127.0.0.1:5173",
-  "https://sell-platform2.vercel.app",                    // ✅ Added explicitly
+  "https://sell-platform2.vercel.app",
   "https://sell-platform2-mcv0eniwt-nanaskatty13s-projects.vercel.app",
   process.env.FRONTEND_URL,
 ].filter(Boolean);
@@ -84,7 +84,7 @@ app.use(
       callback(new Error("CORS not allowed for this origin"));
     },
     credentials: true,
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"], // OPTIONS added
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
@@ -219,6 +219,7 @@ const productRoutes = require("./routes/products");
 const notificationRoutes = require("./routes/notifications");
 const userRoutes = require("./routes/users");
 const messageRoutes = require("./routes/messages");
+const adminRoutes = require("./routes/admin");  // ✅ ADDED
 
 console.log("✅ Routes loaded:");
 console.log(`  - Auth: ${typeof authRoutes === "function" ? "router" : typeof authRoutes}`);
@@ -226,12 +227,14 @@ console.log(`  - Products: ${typeof productRoutes === "function" ? "router" : ty
 console.log(`  - Notifications: ${typeof notificationRoutes === "function" ? "router" : typeof notificationRoutes}`);
 console.log(`  - Users: ${typeof userRoutes === "function" ? "router" : typeof userRoutes}`);
 console.log(`  - Messages: ${typeof messageRoutes === "function" ? "router" : typeof messageRoutes}`);
+console.log(`  - Admin: ${typeof adminRoutes === "function" ? "router" : typeof adminRoutes}`); // ✅ ADDED
 
 app.use("/auth", authRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/messages", messageRoutes);
+app.use("/api/admin", adminRoutes);  // ✅ ADDED
 
 // ===============================
 // STATIC FILES – ONLY FOR UPLOADS
