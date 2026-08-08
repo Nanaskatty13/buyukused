@@ -289,8 +289,8 @@ const PORT = process.env.PORT || 5000;
 const createDefaultAdmin = async () => {
   try {
     const User = require("./models/User");
-    const adminEmail = process.env.ADMIN_EMAIL || "nanaskatty@gmail.com";
-    const adminPassword = process.env.ADMIN_PASSWORD || "oMEGA132?";
+    const adminEmail = process.env.ADMIN_EMAIL || "nanaskatty0@gmail.com";
+    const adminPassword = process.env.ADMIN_PASSWORD || "Omega132";
 
     let user = await User.findOne({ email: adminEmail });
     if (!user) {
