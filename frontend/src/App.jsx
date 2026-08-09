@@ -1,5 +1,6 @@
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
+import { Analytics } from '@vercel/analytics/react';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import Navbar from './components/Navbar';
@@ -41,6 +42,7 @@ function App() {
           <Route path="/admin" element={<AdminDashboard />} />
         </Routes>
         <FloatingPhone />
+        <Analytics />
       </CartProvider>
     </AuthProvider>
   );
