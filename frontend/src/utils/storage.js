@@ -1,9 +1,11 @@
+// frontend/src/utils/storage.js
+
 const TOKEN_KEY = "authToken";
 const USER_KEY = "userData";
 
-// ================================================================
+// ============================================================
 // TOKEN
-// ================================================================
+// ============================================================
 
 export const getToken = () => {
   return localStorage.getItem(TOKEN_KEY);
@@ -22,9 +24,9 @@ export const removeToken = () => {
   localStorage.removeItem(TOKEN_KEY);
 };
 
-// ================================================================
+// ============================================================
 // USER
-// ================================================================
+// ============================================================
 
 export const getUser = () => {
   try {
@@ -38,13 +40,11 @@ export const getUser = () => {
     return JSON.parse(data);
   } catch (error) {
     console.error(
-      "Invalid saved user data:",
+      "❌ Failed to read saved user:",
       error
     );
 
-    localStorage.removeItem(
-      USER_KEY
-    );
+    localStorage.removeItem(USER_KEY);
 
     return null;
   }
@@ -63,19 +63,19 @@ export const removeUser = () => {
   localStorage.removeItem(USER_KEY);
 };
 
-// ================================================================
+// ============================================================
 // CLEAR AUTH
-// ================================================================
+// ============================================================
 
 export const clearAuthData = () => {
   removeToken();
   removeUser();
 };
 
-// ================================================================
-// AUTH CHECK
-// ================================================================
+// ============================================================
+// CHECK AUTH
+// ============================================================
 
 export const isAuthenticated = () => {
-  return !!getToken();
+  return Boolean(getToken());
 };

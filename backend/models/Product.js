@@ -1,10 +1,13 @@
-
 // backend/models/Product.js
 
 const mongoose = require("mongoose");
 
 const productSchema = new mongoose.Schema(
   {
+    // ==========================
+    // Basic Product Information
+    // ==========================
+
     title: {
       type: String,
       required: true,
@@ -218,7 +221,6 @@ const productSchema = new mongoose.Schema(
 
     slug: {
       type: String,
-      unique: true,
       sparse: true,
     },
   },
@@ -228,9 +230,9 @@ const productSchema = new mongoose.Schema(
   }
 );
 
-// ==========================
-// Auto Generate Slug
-// ==========================
+// ============================================================
+// AUTO-GENERATE SLUG
+// ============================================================
 
 productSchema.pre("save", function (next) {
   if (!this.slug && this.title) {
@@ -245,9 +247,9 @@ productSchema.pre("save", function (next) {
   next();
 });
 
-// ==========================
-// Indexes
-// ==========================
+// ============================================================
+// INDEXES
+// ============================================================
 
 productSchema.index({
   title: "text",
@@ -273,10 +275,18 @@ productSchema.index({
   createdAt: -1,
 });
 
+// ONLY ONE slug index definition
 productSchema.index(
   { slug: 1 },
-  { unique: true }
+  {
+    unique: true,
+    sparse: true,
+  }
 );
+
+// ============================================================
+// MODEL
+// ============================================================
 
 const Product =
   mongoose.models.Product ||

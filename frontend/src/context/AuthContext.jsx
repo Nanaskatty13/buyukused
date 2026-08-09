@@ -1,3 +1,5 @@
+// frontend/src/context/AuthContext.jsx
+
 import React, {
   createContext,
   useContext,
@@ -10,22 +12,20 @@ import api from "../services/api";
 import {
   getToken,
   setToken as setTokenStorage,
-  removeToken,
   getUser,
   setUser as setUserStorage,
-  removeUser,
   clearAuthData,
 } from "../utils/storage";
 
-// ================================================================
+// ============================================================
 // AUTH CONTEXT
-// ================================================================
+// ============================================================
 
 const AuthContext = createContext();
 
-// ================================================================
+// ============================================================
 // USE AUTH
-// ================================================================
+// ============================================================
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
@@ -39,30 +39,27 @@ export const useAuth = () => {
   return context;
 };
 
-// ================================================================
+// ============================================================
 // AUTH PROVIDER
-// ================================================================
+// ============================================================
 
 export const AuthProvider = ({ children }) => {
-  // Load saved authentication immediately
   const [user, setUser] = useState(() => getUser());
   const [token, setToken] = useState(() => getToken());
-
-  // Prevent protected pages from rendering
-  // before authentication has been checked.
   const [loading, setLoading] = useState(true);
 
-  // ==============================================================
-  // RESTORE LOGIN SESSION
-  // ==============================================================
+  // ==========================================================
+  // RESTORE LOGIN AFTER REFRESH
+  // ==========================================================
 
   useEffect(() => {
     let mounted = true;
 
-    const loadUser = async () => {
+    const restoreSession = async () => {
       const storedToken = getToken();
+      const storedUser = getUser();
 
-      // No saved token = not logged in
+      // No token = not logged in
       if (!storedToken) {
         if (mounted) {
           setUser(null);
@@ -73,9 +70,19 @@ export const AuthProvider = ({ children }) => {
         return;
       }
 
+      // Immediately restore saved state
+      // so refresh does not visually log the user out.
+      if (mounted) {
+        setToken(storedToken);
+
+        if (storedUser) {
+          setUser(storedUser);
+        }
+      }
+
       try {
         console.log(
-          "🔐 Restoring saved login session..."
+          "🔐 Checking saved login session..."
         );
 
         const data =
@@ -83,47 +90,42 @@ export const AuthProvider = ({ children }) => {
 
         if (!mounted) return;
 
-        if (data?.user) {
-          // Token is valid
+        if (data?.success && data?.user) {
+          // Backend confirmed token is valid
           setToken(storedToken);
           setUser(data.user);
 
-          // Refresh stored user information
+          // Update cached user
           setUserStorage(data.user);
 
           console.log(
             "✅ Login session restored"
           );
         } else {
-          // Unexpected response
+          // Do NOT automatically log out
+          // because of an unexpected response.
           console.warn(
-            "⚠️ /auth/me returned no user"
+            "⚠️ /auth/me returned an unexpected response."
           );
-
-          // Keep the token for now.
-          // Do not log the user out just because
-          // the response format was unexpected.
         }
-      } catch (err) {
+      } catch (error) {
         if (!mounted) return;
 
         console.error(
-          "❌ Auth restore error:",
-          err
+          "❌ Session restore error:",
+          error
         );
 
-        // ========================================================
-        // IMPORTANT
-        // Only remove authentication when the backend
-        // explicitly says the token is invalid/expired.
-        // ========================================================
+        // ======================================================
+        // ONLY CLEAR AUTH FOR REAL AUTHORIZATION FAILURES
+        // ======================================================
 
         if (
-          err.status === 401 ||
-          err.status === 403
+          error.status === 401 ||
+          error.status === 403
         ) {
           console.warn(
-            "🔒 Token is invalid or account is unauthorized."
+            "🔒 Saved session is no longer valid."
           );
 
           clearAuthData();
@@ -131,26 +133,20 @@ export const AuthProvider = ({ children }) => {
           setToken(null);
           setUser(null);
         } else {
-          // ======================================================
-          // Network error / server temporarily unavailable /
-          // CORS / 500 error etc.
-          //
-          // DO NOT DELETE THE SAVED TOKEN.
-          // ======================================================
+          // ====================================================
+          // NETWORK / SERVER / CORS / 500 ERROR
+          // ====================================================
 
           console.warn(
-            "🌐 Temporary authentication check failure. Keeping saved login."
+            "🌐 Could not verify session temporarily."
           );
 
-          // Keep existing localStorage authentication.
-          // If user data is already stored, keep it too.
-          const savedUser = getUser();
-
-          if (savedUser) {
-            setUser(savedUser);
-          }
-
+          // Keep existing token and user.
           setToken(storedToken);
+
+          if (storedUser) {
+            setUser(storedUser);
+          }
         }
       } finally {
         if (mounted) {
@@ -159,21 +155,18 @@ export const AuthProvider = ({ children }) => {
       }
     };
 
-    loadUser();
+    restoreSession();
 
     return () => {
       mounted = false;
     };
   }, []);
 
-  // ==============================================================
+  // ==========================================================
   // LOGIN
-  // ==============================================================
+  // ==========================================================
 
-  const login = async (
-    email,
-    password
-  ) => {
+  const login = async (email, password) => {
     try {
       const data =
         await api.auth.login(
@@ -182,18 +175,19 @@ export const AuthProvider = ({ children }) => {
         );
 
       if (
+        data?.success &&
         data?.token &&
         data?.user
       ) {
-        // Save token permanently in localStorage
+        // Save token
         setTokenStorage(data.token);
+
+        // Save user
+        setUserStorage(data.user);
 
         // Update React state
         setToken(data.token);
         setUser(data.user);
-
-        // Save user information
-        setUserStorage(data.user);
 
         console.log(
           "✅ Login successful"
@@ -211,28 +205,26 @@ export const AuthProvider = ({ children }) => {
           data?.message ||
           "Login failed",
       };
-    } catch (err) {
+    } catch (error) {
       console.error(
         "❌ Login error:",
-        err
+        error
       );
 
       return {
         success: false,
         error:
-          err.message ||
+          error.message ||
           "Network error",
       };
     }
   };
 
-  // ==============================================================
+  // ==========================================================
   // REGISTER
-  // ==============================================================
+  // ==========================================================
 
-  const register = async (
-    userData
-  ) => {
+  const register = async (userData) => {
     try {
       const data =
         await api.auth.register(
@@ -240,16 +232,17 @@ export const AuthProvider = ({ children }) => {
         );
 
       if (
+        data?.success &&
         data?.token &&
         data?.user
       ) {
         // Save authentication
         setTokenStorage(data.token);
-        setToken(data.token);
-
-        // Save user
-        setUser(data.user);
         setUserStorage(data.user);
+
+        // Update state
+        setToken(data.token);
+        setUser(data.user);
 
         console.log(
           "✅ Registration successful"
@@ -267,42 +260,37 @@ export const AuthProvider = ({ children }) => {
           data?.message ||
           "Registration failed",
       };
-    } catch (err) {
+    } catch (error) {
       console.error(
-        "❌ Register error:",
-        err
+        "❌ Registration error:",
+        error
       );
 
       return {
         success: false,
         error:
-          err.message ||
+          error.message ||
           "Network error",
       };
     }
   };
 
-  // ==============================================================
+  // ==========================================================
   // LOGOUT
-  // ==============================================================
+  // ==========================================================
 
   const logout = async () => {
     try {
-      // Tell backend about logout if possible
       if (token) {
         await api.auth.logout(token);
       }
-    } catch (err) {
+    } catch (error) {
       console.error(
         "Logout API error:",
-        err
+        error
       );
     } finally {
-      // ==========================================================
-      // User intentionally logged out.
-      // NOW we remove authentication.
-      // ==========================================================
-
+      // Only logout removes the saved session.
       clearAuthData();
 
       setToken(null);
@@ -314,9 +302,9 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // ==============================================================
+  // ==========================================================
   // CONTEXT VALUE
-  // ==============================================================
+  // ==========================================================
 
   const value = {
     user,
@@ -328,17 +316,15 @@ export const AuthProvider = ({ children }) => {
     logout,
 
     isAuthenticated:
-      !!token && !!user,
+      Boolean(token && user),
   };
 
-  // ==============================================================
+  // ==========================================================
   // PROVIDER
-  // ==============================================================
+  // ==========================================================
 
   return (
-    <AuthContext.Provider
-      value={value}
-    >
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

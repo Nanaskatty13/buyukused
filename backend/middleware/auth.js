@@ -1,24 +1,44 @@
-// middleware/auth.js
+// backend/middleware/auth.js
+
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 
-// Verify JWT token
+// ============================================================
+// VERIFY JWT TOKEN
+// ============================================================
+
 const verifyToken = async (req, res, next) => {
-  const authHeader = req.headers.authorization;
-
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return res.status(401).json({
-      success: false,
-      message: "No token provided",
-    });
-  }
-
-  const token = authHeader.split(" ")[1];
-
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    // Use decoded.id OR decoded._id (whichever exists)
-    const userId = decoded.id || decoded._id;
+    const authHeader = req.headers.authorization;
+
+    if (
+      !authHeader ||
+      !authHeader.startsWith("Bearer ")
+    ) {
+      return res.status(401).json({
+        success: false,
+        message: "No token provided",
+      });
+    }
+
+    const token = authHeader.substring(7).trim();
+
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        message: "No token provided",
+      });
+    }
+
+    // Verify JWT
+    const decoded = jwt.verify(
+      token,
+      process.env.JWT_SECRET
+    );
+
+    // Your controller signs the user ID as `id`
+    const userId = decoded.id;
+
     if (!userId) {
       return res.status(401).json({
         success: false,
@@ -26,7 +46,10 @@ const verifyToken = async (req, res, next) => {
       });
     }
 
-    const user = await User.findById(userId).select("-password");
+    // Find current user
+    const user = await User.findById(userId)
+      .select("-password");
+
     if (!user) {
       return res.status(401).json({
         success: false,
@@ -34,7 +57,7 @@ const verifyToken = async (req, res, next) => {
       });
     }
 
-    // Check if account is active – only if the field exists
+    // Check account status
     if (user.isActive === false) {
       return res.status(403).json({
         success: false,
@@ -42,41 +65,84 @@ const verifyToken = async (req, res, next) => {
       });
     }
 
-    // Attach both full user and userId for convenience
+    // Attach user to request
     req.user = user;
+
+    // Keep ID available for existing routes
     req.userId = user._id;
+
     next();
-  } catch (err) {
-    console.error("Auth error:", err.message);
+  } catch (error) {
+    console.error(
+      "❌ Authentication error:",
+      error.message
+    );
+
+    // Expired JWT
+    if (error.name === "TokenExpiredError") {
+      return res.status(401).json({
+        success: false,
+        message: "Token expired",
+      });
+    }
+
+    // Invalid JWT
+    if (error.name === "JsonWebTokenError") {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid token",
+      });
+    }
+
     return res.status(401).json({
       success: false,
-      message: "Invalid or expired token",
+      message: "Authentication failed",
     });
   }
 };
 
-// Admin only middleware
+// ============================================================
+// ADMIN ONLY
+// ============================================================
+
 const isAdmin = (req, res, next) => {
-  if (req.user && req.user.role === "admin") {
+  if (
+    req.user &&
+    req.user.role === "admin"
+  ) {
     return next();
   }
+
   return res.status(403).json({
     success: false,
     message: "Access denied. Admin only.",
   });
 };
 
-// Seller only middleware
+// ============================================================
+// SELLER ONLY
+// ============================================================
+
 const isSeller = (req, res, next) => {
-  // Allow sellers and admins
-  if (req.user && (req.user.role === "seller" || req.user.role === "admin")) {
+  if (
+    req.user &&
+    (
+      req.user.role === "seller" ||
+      req.user.role === "admin"
+    )
+  ) {
     return next();
   }
+
   return res.status(403).json({
     success: false,
     message: "Access denied. Seller only.",
   });
 };
+
+// ============================================================
+// EXPORT
+// ============================================================
 
 module.exports = {
   verifyToken,

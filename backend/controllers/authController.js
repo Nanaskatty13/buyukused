@@ -1,17 +1,16 @@
-
 // backend/controllers/authController.js
 
 const User = require("../models/User");
 const jwt = require("jsonwebtoken");
 
-// ==========================
+// ======================================================
 // Generate JWT Token
-// ==========================
+// ======================================================
 
 const generateToken = (user) => {
   return jwt.sign(
     {
-      id: user._id,
+      id: user._id.toString(),
       role: user.role,
     },
     process.env.JWT_SECRET,
@@ -21,14 +20,11 @@ const generateToken = (user) => {
   );
 };
 
-// ==========================
-// Register User
-// ==========================
+// ======================================================
+// REGISTER
+// ======================================================
 
-exports.register = async (
-  req,
-  res
-) => {
+exports.register = async (req, res) => {
   try {
     const {
       name,
@@ -37,6 +33,10 @@ exports.register = async (
       phone,
       role,
     } = req.body;
+
+    // ------------------------------
+    // Required fields
+    // ------------------------------
 
     if (
       !name ||
@@ -52,10 +52,25 @@ exports.register = async (
       });
     }
 
-    const selectedRole =
-      String(role)
-        .trim()
-        .toLowerCase();
+    // ------------------------------
+    // Normalize values
+    // ------------------------------
+
+    const trimmedName = String(name).trim();
+
+    const trimmedEmail = String(email)
+      .trim()
+      .toLowerCase();
+
+    const trimmedPhone = String(phone).trim();
+
+    const selectedRole = String(role)
+      .trim()
+      .toLowerCase();
+
+    // ------------------------------
+    // Validate role
+    // ------------------------------
 
     if (
       !["buyer", "seller"].includes(
@@ -69,16 +84,9 @@ exports.register = async (
       });
     }
 
-    const trimmedName =
-      String(name).trim();
-
-    const trimmedEmail =
-      String(email)
-        .trim()
-        .toLowerCase();
-
-    const trimmedPhone =
-      String(phone).trim();
+    // ------------------------------
+    // Validate name
+    // ------------------------------
 
     if (trimmedName.length < 2) {
       return res.status(400).json({
@@ -88,20 +96,24 @@ exports.register = async (
       });
     }
 
+    // ------------------------------
+    // Validate email
+    // ------------------------------
+
     const emailRegex =
       /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-    if (
-      !emailRegex.test(
-        trimmedEmail
-      )
-    ) {
+    if (!emailRegex.test(trimmedEmail)) {
       return res.status(400).json({
         success: false,
         message:
           "Please provide a valid email address",
       });
     }
+
+    // ------------------------------
+    // Validate password
+    // ------------------------------
 
     if (password.length < 6) {
       return res.status(400).json({
@@ -110,6 +122,10 @@ exports.register = async (
           "Password must be at least 6 characters long",
       });
     }
+
+    // ------------------------------
+    // Check existing user
+    // ------------------------------
 
     const existingUser =
       await User.findOne({
@@ -124,19 +140,33 @@ exports.register = async (
       });
     }
 
-    const user =
-      await User.create({
-        name: trimmedName,
-        email: trimmedEmail,
-        password,
-        phone: trimmedPhone,
-        role: selectedRole,
-      });
+    // ------------------------------
+    // Create user
+    // ------------------------------
+    //
+    // User.js should hash the password
+    // using its pre-save hook.
+    //
 
-    const token =
-      generateToken(user);
+    const user = await User.create({
+      name: trimmedName,
+      email: trimmedEmail,
+      password,
+      phone: trimmedPhone,
+      role: selectedRole,
+    });
 
-    res.status(201).json({
+    // ------------------------------
+    // Generate JWT
+    // ------------------------------
+
+    const token = generateToken(user);
+
+    // ------------------------------
+    // Response
+    // ------------------------------
+
+    return res.status(201).json({
       success: true,
       message:
         "Account created successfully",
@@ -159,9 +189,8 @@ exports.register = async (
       error
     );
 
-    if (
-      error.code === 11000
-    ) {
+    // Duplicate email
+    if (error.code === 11000) {
       return res.status(409).json({
         success: false,
         message:
@@ -169,9 +198,9 @@ exports.register = async (
       });
     }
 
+    // Mongoose validation
     if (
-      error.name ===
-      "ValidationError"
+      error.name === "ValidationError"
     ) {
       const errors =
         Object.values(
@@ -188,7 +217,7 @@ exports.register = async (
       });
     }
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message:
         "Server error. Please try again later.",
@@ -196,24 +225,22 @@ exports.register = async (
   }
 };
 
-// ==========================
-// Login User
-// ==========================
+// ======================================================
+// LOGIN
+// ======================================================
 
-exports.login = async (
-  req,
-  res
-) => {
+exports.login = async (req, res) => {
   try {
     const {
       email,
       password,
     } = req.body;
 
-    if (
-      !email ||
-      !password
-    ) {
+    // ------------------------------
+    // Validate
+    // ------------------------------
+
+    if (!email || !password) {
       return res.status(400).json({
         success: false,
         message:
@@ -221,17 +248,18 @@ exports.login = async (
       });
     }
 
-    const trimmedEmail =
-      String(email)
-        .trim()
-        .toLowerCase();
+    const trimmedEmail = String(email)
+      .trim()
+      .toLowerCase();
+
+    // ------------------------------
+    // Find user
+    // ------------------------------
 
     const user =
       await User.findOne({
         email: trimmedEmail,
-      }).select(
-        "+password"
-      );
+      }).select("+password");
 
     if (!user) {
       return res.status(401).json({
@@ -241,15 +269,21 @@ exports.login = async (
       });
     }
 
-    if (
-      user.isActive === false
-    ) {
+    // ------------------------------
+    // Check account status
+    // ------------------------------
+
+    if (user.isActive === false) {
       return res.status(403).json({
         success: false,
         message:
           "Your account has been deactivated",
       });
     }
+
+    // ------------------------------
+    // Compare password
+    // ------------------------------
 
     const isMatch =
       await user.comparePassword(
@@ -264,17 +298,27 @@ exports.login = async (
       });
     }
 
-    user.lastLogin =
-      new Date();
+    // ------------------------------
+    // Update last login
+    // ------------------------------
+
+    user.lastLogin = new Date();
 
     await user.save({
       validateBeforeSave: false,
     });
 
-    const token =
-      generateToken(user);
+    // ------------------------------
+    // Generate token
+    // ------------------------------
 
-    res.json({
+    const token = generateToken(user);
+
+    // ------------------------------
+    // Response
+    // ------------------------------
+
+    return res.json({
       success: true,
       message:
         "Login successful",
@@ -297,7 +341,7 @@ exports.login = async (
       error
     );
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message:
         "Server error. Please try again later.",
@@ -305,19 +349,17 @@ exports.login = async (
   }
 };
 
-// ==========================
-// Get Current User
-// ==========================
+// ======================================================
+// GET CURRENT USER
+// GET /auth/me
+// ======================================================
 
-exports.getMe = async (
-  req,
-  res
-) => {
+exports.getMe = async (req, res) => {
   try {
-    if (
-      !req.user ||
-      !req.user.id
-    ) {
+    // verifyToken should already have
+    // authenticated the user.
+
+    if (!req.user || !req.user._id) {
       return res.status(401).json({
         success: false,
         message:
@@ -327,7 +369,7 @@ exports.getMe = async (
 
     const user =
       await User.findById(
-        req.user.id
+        req.user._id
       ).select("-password");
 
     if (!user) {
@@ -338,7 +380,7 @@ exports.getMe = async (
       });
     }
 
-    res.json({
+    return res.json({
       success: true,
       user,
     });
@@ -348,7 +390,7 @@ exports.getMe = async (
       error
     );
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message:
         "Server error. Please try again later.",
@@ -356,19 +398,17 @@ exports.getMe = async (
   }
 };
 
-// ==========================
-// Update Profile
-// ==========================
+// ======================================================
+// UPDATE PROFILE
+// PUT /auth/profile
+// ======================================================
 
 exports.updateProfile = async (
   req,
   res
 ) => {
   try {
-    if (
-      !req.user ||
-      !req.user.id
-    ) {
+    if (!req.user || !req.user._id) {
       return res.status(401).json({
         success: false,
         message:
@@ -385,6 +425,10 @@ exports.updateProfile = async (
 
     const updateFields = {};
 
+    // ------------------------------
+    // Name
+    // ------------------------------
+
     if (
       name !== undefined &&
       name !== null
@@ -392,9 +436,7 @@ exports.updateProfile = async (
       const trimmedName =
         String(name).trim();
 
-      if (
-        trimmedName.length < 2
-      ) {
+      if (trimmedName.length < 2) {
         return res.status(400).json({
           success: false,
           message:
@@ -406,6 +448,10 @@ exports.updateProfile = async (
         trimmedName;
     }
 
+    // ------------------------------
+    // Phone
+    // ------------------------------
+
     if (
       phone !== undefined &&
       phone !== null
@@ -414,6 +460,10 @@ exports.updateProfile = async (
         String(phone).trim();
     }
 
+    // ------------------------------
+    // Location
+    // ------------------------------
+
     if (
       location !== undefined &&
       location !== null
@@ -421,6 +471,10 @@ exports.updateProfile = async (
       updateFields.location =
         String(location).trim();
     }
+
+    // ------------------------------
+    // Avatar
+    // ------------------------------
 
     if (
       avatar !== undefined &&
@@ -431,9 +485,8 @@ exports.updateProfile = async (
     }
 
     if (
-      Object.keys(
-        updateFields
-      ).length === 0
+      Object.keys(updateFields)
+        .length === 0
     ) {
       return res.status(400).json({
         success: false,
@@ -442,9 +495,13 @@ exports.updateProfile = async (
       });
     }
 
+    // ------------------------------
+    // Update user
+    // ------------------------------
+
     const user =
       await User.findByIdAndUpdate(
-        req.user.id,
+        req.user._id,
         {
           $set: updateFields,
         },
@@ -462,7 +519,7 @@ exports.updateProfile = async (
       });
     }
 
-    res.json({
+    return res.json({
       success: true,
       message:
         "Profile updated successfully",
@@ -493,7 +550,7 @@ exports.updateProfile = async (
       });
     }
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message:
         "Server error. Please try again later.",
@@ -501,15 +558,15 @@ exports.updateProfile = async (
   }
 };
 
-// ==========================
-// Logout
-// ==========================
+// ======================================================
+// LOGOUT
+// ======================================================
 
 exports.logout = async (
   req,
   res
 ) => {
-  res.json({
+  return res.json({
     success: true,
     message:
       "Logged out successfully",
