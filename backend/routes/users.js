@@ -4,41 +4,42 @@ const express = require("express");
 const router = express.Router();
 
 const multer = require("multer");
-const path = require("path");
-const fs = require("fs");
-const fsp = require("fs/promises");
 const bcrypt = require("bcryptjs");
 const mongoose = require("mongoose");
 
+const {
+  cloudinary,
+} = require("../config/cloudinary");
+
 const User = require("../models/User");
-const { verifyToken, isAdmin } = require("../middleware/auth");
+
+const {
+  verifyToken,
+  isAdmin,
+} = require("../middleware/auth");
 
 // ============================================================
-// PROFILE UPLOAD DIRECTORY
+// MULTER - MEMORY STORAGE
 // ============================================================
-
-const profileUploadDir = path.resolve(
-  __dirname,
-  "../public/uploads/profiles"
-);
-
-console.log("📁 Profile upload directory:", profileUploadDir);
-
-// ============================================================
-// MULTER MEMORY STORAGE
 //
 // IMPORTANT:
-// We do NOT use diskStorage here.
+// Do NOT save profile images to Render's filesystem.
 //
-// The uploaded image stays in memory temporarily.
-// We manually save it after validating the request.
-// This avoids Render ENOENT errors during multer upload.
+// The image is temporarily kept in memory and then uploaded
+// directly to Cloudinary.
+//
+// Browser
+//   ↓
+// Multer memory
+//   ↓
+// Cloudinary
+//   ↓
+// MongoDB stores photoURL + photoPublicId
+//
 // ============================================================
 
-const profileStorage = multer.memoryStorage();
-
 const profileUpload = multer({
-  storage: profileStorage,
+  storage: multer.memoryStorage(),
 
   limits: {
     fileSize: 5 * 1024 * 1024,
@@ -52,199 +53,206 @@ const profileUpload = multer({
       "image/gif",
     ];
 
-    if (!allowedTypes.includes(file.mimetype)) {
-      return cb(
-        new Error(
-          "Only JPG, JPEG, PNG, WEBP and GIF images are allowed."
-        ),
-        false
-      );
+    if (allowedTypes.includes(file.mimetype)) {
+      return cb(null, true);
     }
 
-    cb(null, true);
+    return cb(
+      new Error(
+        "Only JPG, JPEG, PNG, WEBP and GIF images are allowed."
+      ),
+      false
+    );
   },
 });
 
 // ============================================================
-// HELPER: MAKE SURE UPLOAD DIRECTORY EXISTS
+// CLOUDINARY CONFIGURATION CHECK
 // ============================================================
 
-const ensureProfileUploadDirectory = async () => {
-  await fsp.mkdir(profileUploadDir, {
-    recursive: true,
+const isCloudinaryConfigured = () => {
+  return (
+    !!process.env.CLOUDINARY_CLOUD_NAME &&
+    !!process.env.CLOUDINARY_API_KEY &&
+    !!process.env.CLOUDINARY_API_SECRET
+  );
+};
+
+// ============================================================
+// UPLOAD IMAGE TO CLOUDINARY
+// ============================================================
+
+const uploadToCloudinary = (buffer) => {
+  return new Promise((resolve, reject) => {
+    const uploadStream =
+      cloudinary.uploader.upload_stream(
+        {
+          folder: "sell-platform/profiles",
+
+          resource_type: "image",
+
+          transformation: [
+            {
+              width: 800,
+              height: 800,
+              crop: "limit",
+              quality: "auto",
+              fetch_format: "auto",
+            },
+          ],
+        },
+
+        (error, result) => {
+          if (error) {
+            return reject(error);
+          }
+
+          return resolve(result);
+        }
+      );
+
+    uploadStream.end(buffer);
   });
 };
 
 // ============================================================
-// HELPER: GENERATE SAFE FILE NAME
+// DELETE CLOUDINARY IMAGE
 // ============================================================
 
-const generateProfileFilename = (originalName, mimetype) => {
-  const extensionFromName = path
-    .extname(originalName || "")
-    .toLowerCase();
-
-  const allowedExtensions = [
-    ".jpg",
-    ".jpeg",
-    ".png",
-    ".webp",
-    ".gif",
-  ];
-
-  let extension = extensionFromName;
-
-  if (!allowedExtensions.includes(extension)) {
-    const mimeExtensions = {
-      "image/jpeg": ".jpg",
-      "image/png": ".png",
-      "image/webp": ".webp",
-      "image/gif": ".gif",
-    };
-
-    extension = mimeExtensions[mimetype] || ".jpg";
-  }
-
-  return `profile-${Date.now()}-${Math.round(
-    Math.random() * 1e9
-  )}${extension}`;
-};
-
-// ============================================================
-// HELPER: SAVE PROFILE IMAGE
-// ============================================================
-
-const saveProfileImage = async (file) => {
-  if (!file || !file.buffer) {
-    throw new Error("No image file received.");
-  }
-
-  await ensureProfileUploadDirectory();
-
-  const filename = generateProfileFilename(
-    file.originalname,
-    file.mimetype
-  );
-
-  const filePath = path.join(
-    profileUploadDir,
-    filename
-  );
-
-  await fsp.writeFile(filePath, file.buffer);
-
-  console.log("✅ Profile image saved:", filePath);
-
-  return {
-    filename,
-    filePath,
-  };
-};
-
-// ============================================================
-// HELPER: DELETE PROFILE IMAGE
-// ============================================================
-
-const deleteProfileImage = async (photoURL) => {
+const deleteCloudinaryImage = async (
+  photoURL,
+  publicId = null
+) => {
   try {
-    if (!photoURL) return;
-
-    let pathname;
-
-    try {
-      pathname = new URL(photoURL).pathname;
-    } catch {
-      pathname = photoURL;
+    if (!photoURL && !publicId) {
+      return;
     }
 
-    const filename = path.basename(pathname);
+    let cloudinaryPublicId =
+      publicId || null;
 
-    if (!filename) return;
+    // --------------------------------------------------------
+    // If public ID is not stored, attempt to extract it
+    // from the Cloudinary URL.
+    // --------------------------------------------------------
 
-    // Prevent directory traversal
-    const safeFilename = path.basename(filename);
+    if (!cloudinaryPublicId && photoURL) {
+      try {
+        const url = new URL(photoURL);
 
-    const filePath = path.join(
-      profileUploadDir,
-      safeFilename
-    );
+        let pathname = url.pathname;
 
-    const resolvedDirectory =
-      path.resolve(profileUploadDir);
+        const uploadIndex =
+          pathname.indexOf("/upload/");
 
-    const resolvedFile =
-      path.resolve(filePath);
+        if (uploadIndex !== -1) {
+          pathname =
+            pathname.substring(
+              uploadIndex +
+                "/upload/".length
+            );
 
-    if (
-      !resolvedFile.startsWith(
-        resolvedDirectory + path.sep
-      )
-    ) {
+          // Remove Cloudinary version.
+          //
+          // Example:
+          // v1234567890/folder/image.jpg
+          //
+          pathname =
+            pathname.replace(
+              /^v\d+\//,
+              ""
+            );
+
+          // Remove extension.
+          pathname =
+            pathname.replace(
+              /\.[^/.]+$/,
+              ""
+            );
+
+          cloudinaryPublicId =
+            pathname;
+        }
+      } catch (error) {
+        console.warn(
+          "⚠️ Could not extract Cloudinary public ID:",
+          error.message
+        );
+      }
+    }
+
+    if (!cloudinaryPublicId) {
       console.warn(
-        "⚠️ Blocked unsafe profile image deletion:",
-        filePath
+        "⚠️ No Cloudinary public ID available for deletion."
       );
 
       return;
     }
 
-    try {
-      await fsp.unlink(filePath);
-
-      console.log(
-        "🗑️ Old profile image deleted:",
-        filePath
-      );
-    } catch (error) {
-      if (error.code !== "ENOENT") {
-        console.error(
-          "⚠️ Could not delete old profile image:",
-          error.message
-        );
+    await cloudinary.uploader.destroy(
+      cloudinaryPublicId,
+      {
+        resource_type: "image",
       }
-    }
+    );
+
+    console.log(
+      "🗑️ Cloudinary image deleted:",
+      cloudinaryPublicId
+    );
   } catch (error) {
+    // Do not fail the user's profile update just because
+    // deleting an old image failed.
+
     console.error(
-      "⚠️ Profile image deletion error:",
+      "⚠️ Could not delete Cloudinary image:",
       error.message
     );
   }
 };
 
 // ============================================================
-// HELPER: DELETE FILE SAFELY
+// DELETE NEWLY UPLOADED IMAGE IF DATABASE SAVE FAILS
 // ============================================================
 
-const deleteUploadedFile = async (filePath) => {
-  if (!filePath) return;
+const cleanupCloudinaryUpload =
+  async (uploadResult) => {
+    if (!uploadResult?.public_id) {
+      return;
+    }
 
-  try {
-    await fsp.unlink(filePath);
+    try {
+      await cloudinary.uploader.destroy(
+        uploadResult.public_id,
+        {
+          resource_type: "image",
+        }
+      );
 
-    console.log(
-      "🧹 Uploaded file cleaned up:",
-      filePath
-    );
-  } catch (error) {
-    if (error.code !== "ENOENT") {
+      console.log(
+        "🧹 Removed unused Cloudinary upload:",
+        uploadResult.public_id
+      );
+    } catch (error) {
       console.error(
-        "⚠️ Upload cleanup failed:",
+        "⚠️ Cloudinary cleanup failed:",
         error.message
       );
     }
-  }
-};
+  };
 
 // ============================================================
-// HELPER: SAFE USER RESPONSE
+// SAFE USER RESPONSE
 // ============================================================
 
 const getSafeUser = (user) => {
-  const userObject = user?.toObject
-    ? user.toObject()
-    : { ...user };
+  const userObject =
+    user?.toObject
+      ? user.toObject()
+      : { ...user };
 
   delete userObject.password;
+  delete userObject.__v;
 
   return userObject;
 };
@@ -253,10 +261,20 @@ const getSafeUser = (user) => {
 // UPDATE OWN PROFILE
 //
 // PUT /api/users/profile
+//
+// FormData:
+//
+// name
+// email
+// phone
+// removePhoto
+// photo
+//
 // ============================================================
 
 router.put(
   "/profile",
+
   verifyToken,
 
   // ----------------------------------------------------------
@@ -275,7 +293,8 @@ router.put(
           );
 
           if (
-            error.code === "LIMIT_FILE_SIZE"
+            error.code ===
+            "LIMIT_FILE_SIZE"
           ) {
             return res.status(400).json({
               success: false,
@@ -316,7 +335,7 @@ router.put(
   // ----------------------------------------------------------
 
   async (req, res) => {
-    let newImagePath = null;
+    let cloudinaryUpload = null;
 
     try {
       const {
@@ -327,21 +346,22 @@ router.put(
       } = req.body;
 
       console.log(
-        "👤 Updating profile for:",
+        "👤 Updating profile:",
         req.userId
       );
 
       console.log(
-        "📷 Received profile image:",
+        "📷 New photo:",
         req.file
           ? {
               originalname:
                 req.file.originalname,
               mimetype:
                 req.file.mimetype,
-              size: req.file.size,
+              size:
+                req.file.size,
             }
-          : "No new image"
+          : "No new photo"
       );
 
       // ======================================================
@@ -364,9 +384,8 @@ router.put(
       // FIND USER
       // ======================================================
 
-      const user = await User.findById(
-        req.userId
-      );
+      const user =
+        await User.findById(req.userId);
 
       if (!user) {
         return res.status(404).json({
@@ -376,11 +395,23 @@ router.put(
       }
 
       // ======================================================
-      // SAVE OLD PHOTO URL
+      // SAVE OLD PHOTO INFORMATION
       // ======================================================
 
       const oldPhotoURL =
-        user.photoURL || null;
+        user.photoURL || "";
+
+      const oldPhotoPublicId =
+        user.photoPublicId || "";
+
+      // ======================================================
+      // REMOVE PHOTO FLAG
+      // ======================================================
+
+      const shouldRemovePhoto =
+        removePhoto === true ||
+        removePhoto === "true" ||
+        removePhoto === "1";
 
       // ======================================================
       // NAME
@@ -393,7 +424,16 @@ router.put(
         if (!cleanName) {
           return res.status(400).json({
             success: false,
-            message: "Name cannot be empty.",
+            message:
+              "Name cannot be empty.",
+          });
+        }
+
+        if (cleanName.length < 2) {
+          return res.status(400).json({
+            success: false,
+            message:
+              "Name must be at least 2 characters.",
           });
         }
 
@@ -418,9 +458,23 @@ router.put(
           });
         }
 
+        const validEmail =
+          /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
+            cleanEmail
+          );
+
+        if (!validEmail) {
+          return res.status(400).json({
+            success: false,
+            message:
+              "Please enter a valid email address.",
+          });
+        }
+
         const existingUser =
           await User.findOne({
             email: cleanEmail,
+
             _id: {
               $ne: user._id,
             },
@@ -447,91 +501,133 @@ router.put(
       }
 
       // ======================================================
-      // PROFILE PHOTO
+      // REMOVE CURRENT PHOTO
       // ======================================================
 
-      if (
-        removePhoto === "true"
-      ) {
-        user.photoURL = null;
-      } else if (req.file) {
-        // ----------------------------------------------------
-        // SAVE IMAGE MANUALLY
-        // ----------------------------------------------------
-
-        const savedImage =
-          await saveProfileImage(
-            req.file
-          );
-
-        newImagePath =
-          savedImage.filePath;
-
-        // ----------------------------------------------------
-        // PUBLIC IMAGE URL
-        // ----------------------------------------------------
-
-        const baseUrl =
-          `${req.protocol}://${req.get("host")}`;
-
-        user.photoURL =
-          `${baseUrl}/uploads/profiles/${encodeURIComponent(
-            savedImage.filename
-          )}`;
+      if (shouldRemovePhoto) {
+        user.photoURL = "";
+        user.photoPublicId = "";
       }
 
       // ======================================================
-      // SAVE USER
+      // NEW PHOTO
+      // ======================================================
+
+      if (req.file) {
+        // ----------------------------------------------------
+        // Cloudinary configuration
+        // ----------------------------------------------------
+
+        if (!isCloudinaryConfigured()) {
+          return res.status(500).json({
+            success: false,
+            message:
+              "Cloudinary is not configured on the server.",
+          });
+        }
+
+        console.log(
+          "☁️ Uploading profile image to Cloudinary..."
+        );
+
+        // ----------------------------------------------------
+        // Upload directly from memory
+        // ----------------------------------------------------
+
+        cloudinaryUpload =
+          await uploadToCloudinary(
+            req.file.buffer
+          );
+
+        if (
+          !cloudinaryUpload ||
+          !cloudinaryUpload.secure_url
+        ) {
+          throw new Error(
+            "Cloudinary did not return an image URL."
+          );
+        }
+
+        console.log(
+          "✅ Cloudinary upload successful:",
+          cloudinaryUpload.secure_url
+        );
+
+        // ----------------------------------------------------
+        // Save Cloudinary information
+        // ----------------------------------------------------
+
+        user.photoURL =
+          cloudinaryUpload.secure_url;
+
+        user.photoPublicId =
+          cloudinaryUpload.public_id;
+      }
+
+      // ======================================================
+      // SAVE USER TO MONGODB
       // ======================================================
 
       await user.save();
 
       // ======================================================
-      // DELETE OLD PHOTO ONLY AFTER DATABASE SAVE
+      // DELETE OLD PHOTO
+      // ======================================================
+      //
+      // Only after MongoDB successfully saved the new data.
+      //
+      // Do NOT delete the old photo if:
+      //
+      // - There was no photo change.
+      //
       // ======================================================
 
       if (
         oldPhotoURL &&
-        (
-          removePhoto === "true" ||
-          req.file
-        )
+        (shouldRemovePhoto ||
+          req.file)
       ) {
-        await deleteProfileImage(
-          oldPhotoURL
+        await deleteCloudinaryImage(
+          oldPhotoURL,
+          oldPhotoPublicId
         );
       }
 
       // ======================================================
-      // NEW IMAGE IS NOW SAFE
+      // SUCCESS
       // ======================================================
 
-      newImagePath = null;
-
       console.log(
-        "✅ Profile updated:",
+        "✅ Profile updated successfully:",
         user._id.toString()
       );
 
       return res.status(200).json({
         success: true,
+
         message:
           "Profile updated successfully.",
+
         user: getSafeUser(user),
       });
     } catch (error) {
       console.error(
-        "❌ UPDATE PROFILE ERROR:",
+        "❌ Update profile error:",
         error
       );
 
       // ======================================================
-      // DELETE NEW IMAGE IF DATABASE SAVE FAILED
+      // CLEAN UP NEW CLOUDINARY IMAGE
+      // ======================================================
+      //
+      // If Cloudinary succeeded but MongoDB failed,
+      // delete the newly uploaded image.
+      //
       // ======================================================
 
-      if (newImagePath) {
-        await deleteUploadedFile(
-          newImagePath
+      if (cloudinaryUpload?.public_id) {
+        await cleanupCloudinaryUpload(
+          cloudinaryUpload
         );
       }
 
@@ -539,7 +635,7 @@ router.put(
       // DUPLICATE EMAIL
       // ======================================================
 
-      if (error.code === 11000) {
+      if (error?.code === 11000) {
         return res.status(409).json({
           success: false,
           message:
@@ -547,10 +643,38 @@ router.put(
         });
       }
 
+      // ======================================================
+      // MONGOOSE VALIDATION
+      // ======================================================
+
+      if (
+        error?.name ===
+        "ValidationError"
+      ) {
+        const errors =
+          Object.values(
+            error.errors || {}
+          ).map(
+            (item) =>
+              item.message
+          );
+
+        return res.status(400).json({
+          success: false,
+          message:
+            "Profile validation failed.",
+          errors,
+        });
+      }
+
+      // ======================================================
+      // GENERIC ERROR
+      // ======================================================
+
       return res.status(500).json({
         success: false,
         message:
-          error.message ||
+          error?.message ||
           "Failed to update profile.",
       });
     }
@@ -558,10 +682,11 @@ router.put(
 );
 
 // ============================================================
-// ADMIN
 // GET ALL USERS
 //
 // GET /api/users
+//
+// ADMIN ONLY
 // ============================================================
 
 router.get(
@@ -598,26 +723,33 @@ router.get(
         const safeSearch =
           String(search).trim();
 
-        filter.$or = [
-          {
-            name: {
-              $regex: safeSearch,
-              $options: "i",
+        if (safeSearch) {
+          filter.$or = [
+            {
+              name: {
+                $regex:
+                  safeSearch,
+                $options: "i",
+              },
             },
-          },
-          {
-            email: {
-              $regex: safeSearch,
-              $options: "i",
+
+            {
+              email: {
+                $regex:
+                  safeSearch,
+                $options: "i",
+              },
             },
-          },
-          {
-            phone: {
-              $regex: safeSearch,
-              $options: "i",
+
+            {
+              phone: {
+                $regex:
+                  safeSearch,
+                $options: "i",
+              },
             },
-          },
-        ];
+          ];
+        }
       }
 
       // --------------------------------------------------------
@@ -627,7 +759,10 @@ router.get(
       const parsedLimit =
         Math.min(
           Math.max(
-            parseInt(limit, 10) || 50,
+            parseInt(
+              limit,
+              10
+            ) || 50,
             1
           ),
           100
@@ -635,13 +770,20 @@ router.get(
 
       const parsedPage =
         Math.max(
-          parseInt(page, 10) || 1,
+          parseInt(
+            page,
+            10
+          ) || 1,
           1
         );
 
       const skip =
         (parsedPage - 1) *
         parsedLimit;
+
+      // --------------------------------------------------------
+      // QUERY
+      // --------------------------------------------------------
 
       const [
         users,
@@ -653,20 +795,30 @@ router.get(
             createdAt: -1,
           })
           .skip(skip)
-          .limit(parsedLimit),
+          .limit(
+            parsedLimit
+          ),
 
-        User.countDocuments(filter),
+        User.countDocuments(
+          filter
+        ),
       ]);
 
       return res.json({
         success: true,
+
         users,
+
         total,
+
         page: parsedPage,
+
         limit: parsedLimit,
+
         totalPages:
           Math.ceil(
-            total / parsedLimit
+            total /
+              parsedLimit
           ),
       });
     } catch (error) {
@@ -685,10 +837,11 @@ router.get(
 );
 
 // ============================================================
-// ADMIN
 // GET USER STATS
 //
 // GET /api/users/stats
+//
+// ADMIN ONLY
 // ============================================================
 
 router.get(
@@ -744,10 +897,11 @@ router.get(
 );
 
 // ============================================================
-// ADMIN
 // GET SINGLE USER
 //
 // GET /api/users/:id
+//
+// ADMIN ONLY
 // ============================================================
 
 router.get(
@@ -801,10 +955,11 @@ router.get(
 );
 
 // ============================================================
-// ADMIN
 // UPDATE USER
 //
 // PUT /api/users/:id
+//
+// ADMIN ONLY
 // ============================================================
 
 router.put(
@@ -848,7 +1003,7 @@ router.put(
       }
 
       // ======================================================
-      // PREVENT REMOVING OWN ADMIN ROLE
+      // PREVENT ADMIN FROM REMOVING OWN ADMIN ROLE
       // ======================================================
 
       if (
@@ -881,6 +1036,14 @@ router.put(
           });
         }
 
+        if (cleanName.length < 2) {
+          return res.status(400).json({
+            success: false,
+            message:
+              "Name must be at least 2 characters.",
+          });
+        }
+
         user.name = cleanName;
       }
 
@@ -902,9 +1065,23 @@ router.put(
           });
         }
 
+        const validEmail =
+          /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
+            cleanEmail
+          );
+
+        if (!validEmail) {
+          return res.status(400).json({
+            success: false,
+            message:
+              "Please enter a valid email address.",
+          });
+        }
+
         const existingUser =
           await User.findOne({
             email: cleanEmail,
+
             _id: {
               $ne: user._id,
             },
@@ -918,8 +1095,7 @@ router.put(
           });
         }
 
-        user.email =
-          cleanEmail;
+        user.email = cleanEmail;
       }
 
       // ======================================================
@@ -943,7 +1119,9 @@ router.put(
         ];
 
         if (
-          !allowedRoles.includes(role)
+          !allowedRoles.includes(
+            role
+          )
         ) {
           return res.status(400).json({
             success: false,
@@ -962,9 +1140,19 @@ router.put(
       if (
         isActive !== undefined
       ) {
-        user.isActive =
-          isActive === true ||
-          isActive === "true";
+        if (
+          typeof isActive ===
+          "boolean"
+        ) {
+          user.isActive =
+            isActive;
+        } else {
+          user.isActive =
+            String(
+              isActive
+            ).toLowerCase() ===
+            "true";
+        }
       }
 
       // ======================================================
@@ -972,8 +1160,11 @@ router.put(
       // ======================================================
 
       if (password) {
+        const cleanPassword =
+          String(password);
+
         if (
-          String(password).length <
+          cleanPassword.length <
           6
         ) {
           return res.status(400).json({
@@ -983,19 +1174,23 @@ router.put(
           });
         }
 
+        // User schema pre-save hook will hash this.
         user.password =
-          await bcrypt.hash(
-            String(password),
-            10
-          );
+          cleanPassword;
       }
+
+      // ======================================================
+      // SAVE
+      // ======================================================
 
       await user.save();
 
       return res.json({
         success: true,
+
         message:
           "User updated successfully.",
+
         user:
           getSafeUser(user),
       });
@@ -1006,7 +1201,7 @@ router.put(
       );
 
       if (
-        error.code === 11000
+        error?.code === 11000
       ) {
         return res.status(409).json({
           success: false,
@@ -1018,17 +1213,19 @@ router.put(
       return res.status(500).json({
         success: false,
         message:
-          error.message,
+          error?.message ||
+          "Failed to update user.",
       });
     }
   }
 );
 
 // ============================================================
-// ADMIN
 // DELETE USER
 //
 // DELETE /api/users/:id
+//
+// ADMIN ONLY
 // ============================================================
 
 router.delete(
@@ -1082,7 +1279,7 @@ router.delete(
       }
 
       // ======================================================
-      // PREVENT LAST ADMIN DELETE
+      // PREVENT DELETING LAST ADMIN
       // ======================================================
 
       if (
@@ -1093,7 +1290,9 @@ router.delete(
             role: "admin",
           });
 
-        if (adminCount <= 1) {
+        if (
+          adminCount <= 1
+        ) {
           return res.status(400).json({
             success: false,
             message:
@@ -1102,8 +1301,15 @@ router.delete(
         }
       }
 
+      // ======================================================
+      // SAVE PHOTO INFORMATION
+      // ======================================================
+
       const oldPhotoURL =
-        user.photoURL;
+        user.photoURL || "";
+
+      const oldPhotoPublicId =
+        user.photoPublicId || "";
 
       // ======================================================
       // DELETE USER
@@ -1112,14 +1318,19 @@ router.delete(
       await user.deleteOne();
 
       // ======================================================
-      // DELETE PHOTO
+      // DELETE CLOUDINARY PHOTO
       // ======================================================
 
       if (oldPhotoURL) {
-        await deleteProfileImage(
-          oldPhotoURL
+        await deleteCloudinaryImage(
+          oldPhotoURL,
+          oldPhotoPublicId
         );
       }
+
+      // ======================================================
+      // SUCCESS
+      // ======================================================
 
       return res.json({
         success: true,
@@ -1135,7 +1346,8 @@ router.delete(
       return res.status(500).json({
         success: false,
         message:
-          error.message,
+          error?.message ||
+          "Failed to delete user.",
       });
     }
   }
