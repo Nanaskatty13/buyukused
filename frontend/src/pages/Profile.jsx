@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 import {
   getProducts,
-  getNotifications,
+  getUserNotifications,
   getImageUrl,
   API_URL,
   deleteProduct,
@@ -15,11 +15,13 @@ import { messages } from '../services/messages';
 const Profile = () => {
   const { user, token } = useAuth();
   const navigate = useNavigate();
+
   const [products, setProducts] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [messagesList, setMessagesList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [deletingProductId, setDeletingProductId] = useState(null);
+
   const [stats, setStats] = useState({
     totalAds: 0,
     totalViews: 0,
@@ -30,27 +32,47 @@ const Profile = () => {
 
   // Edit profile modal
   const [showEditModal, setShowEditModal] = useState(false);
-  const [editName, setEditName] = useState(user?.name || '');
-  const [editEmail, setEditEmail] = useState(user?.email || '');
-  const [editPhone, setEditPhone] = useState(user?.phone || '');
+  const [editName, setEditName] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editPhone, setEditPhone] = useState('');
   const [editPhoto, setEditPhoto] = useState(null);
-  const [editPhotoPreview, setEditPhotoPreview] = useState(user?.photoURL || '');
+  const [editPhotoPreview, setEditPhotoPreview] = useState('');
   const [editLoading, setEditLoading] = useState(false);
   const [editError, setEditError] = useState('');
   const [removePhoto, setRemovePhoto] = useState(false);
 
-  // Messaging state
+  // Messaging
   const [selectedConversation, setSelectedConversation] = useState(null);
   const [replyMessage, setReplyMessage] = useState('');
   const [sendingReply, setSendingReply] = useState(false);
 
-  // ─── Data fetching ─────────────────────────────────────────────────────
-  const loadUserData = async () => {
+  // ================================================================
+  // KEEP EDIT FIELDS IN SYNC WITH USER
+  // ================================================================
+
+  useEffect(() => {
+    if (!user) return;
+
+    setEditName(user.name || '');
+    setEditEmail(user.email || '');
+    setEditPhone(user.phone || '');
+    setEditPhotoPreview(user.photoURL || '');
+    setEditPhoto(null);
+    setRemovePhoto(false);
+  }, [user]);
+
+  // ================================================================
+  // LOAD PROFILE DATA
+  // ================================================================
+
+  const loadUserData = useCallback(async () => {
     if (!user || !token) {
       setLoading(false);
       return;
     }
+
     const userId = user._id || user.id || user.userId;
+
     if (!userId) {
       console.warn('⚠️ No user ID found in user object:', user);
       setLoading(false);
@@ -58,79 +80,183 @@ const Profile = () => {
     }
 
     try {
+      setLoading(true);
+
       console.log('👤 Fetching data for user:', userId);
 
-      const [userProducts, userNotifs, userMessages] = await Promise.all([
-        getProducts({ sellerId: userId }),
-        getNotifications(userId, token),
-        messages.getForUser(userId, token),
-      ]);
+      /*
+       * IMPORTANT:
+       *
+       * Use getUserNotifications here.
+       *
+       * DO NOT use getNotifications because getNotifications
+       * points to the ADMIN notification endpoint.
+       */
 
-      const productsList = userProducts?.products || [];
-      const notifsList = Array.isArray(userNotifs) ? userNotifs : [];
-      const messagesList = Array.isArray(userMessages) ? userMessages : [];
+      const [userProducts, userNotifs, userMessages] =
+        await Promise.all([
+          getProducts({ sellerId: userId }),
+
+          // FIXED:
+          getUserNotifications(userId, token),
+
+          messages.getForUser(userId, token),
+        ]);
+
+      // ============================================================
+      // PRODUCTS
+      // ============================================================
+
+      const productsList = Array.isArray(userProducts)
+        ? userProducts
+        : userProducts?.products || [];
+
+      // ============================================================
+      // NOTIFICATIONS
+      // Supports:
+      // []
+      // { notifications: [] }
+      // { data: [] }
+      // ============================================================
+
+      const notifsList = Array.isArray(userNotifs)
+        ? userNotifs
+        : Array.isArray(userNotifs?.notifications)
+          ? userNotifs.notifications
+          : Array.isArray(userNotifs?.data)
+            ? userNotifs.data
+            : [];
+
+      // ============================================================
+      // MESSAGES
+      // ============================================================
+
+      const loadedMessages = Array.isArray(userMessages)
+        ? userMessages
+        : Array.isArray(userMessages?.messages)
+          ? userMessages.messages
+          : Array.isArray(userMessages?.data)
+            ? userMessages.data
+            : [];
 
       setProducts(productsList);
       setNotifications(notifsList);
-      setMessagesList(messagesList);
+      setMessagesList(loadedMessages);
 
-      const unreadMsgs = messagesList.filter(
-        (m) => m.receiver === userId && !m.read
-      ).length;
+      // ============================================================
+      // UNREAD MESSAGES
+      // ============================================================
+
+      const unreadMsgs = loadedMessages.filter((message) => {
+        const receiverId =
+          typeof message.receiver === 'string'
+            ? message.receiver
+            : message.receiver?._id;
+
+        return receiverId === userId && !message.read;
+      }).length;
+
+      // ============================================================
+      // STATS
+      // ============================================================
 
       setStats({
         totalAds: productsList.length,
-        totalViews: productsList.reduce((sum, p) => sum + (p.views || 0), 0),
+
+        totalViews: productsList.reduce(
+          (sum, product) => sum + Number(product.views || 0),
+          0
+        ),
+
         totalNotifications: notifsList.length,
-        unreadNotifications: notifsList.filter((n) => !n.read).length,
+
+        unreadNotifications: notifsList.filter(
+          (notification) => !notification.read
+        ).length,
+
         unreadMessages: unreadMsgs,
       });
+
+      console.log('✅ Profile data loaded successfully');
     } catch (error) {
       console.error('❌ Error fetching profile data:', error);
+
+      /*
+       * Do not crash the entire Profile page if notifications
+       * fail. The rest of the profile can still display.
+       */
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, token]);
 
   useEffect(() => {
     loadUserData();
-  }, [user, token]);
+  }, [loadUserData]);
 
-  // ─── Delete product ──────────────────────────────────────────────────
+  // ================================================================
+  // DELETE PRODUCT
+  // ================================================================
+
   const handleDeleteProduct = async (productId) => {
-    if (!window.confirm('Are you sure you want to delete this product? This action cannot be undone.')) {
+    const confirmed = window.confirm(
+      'Are you sure you want to delete this product? This action cannot be undone.'
+    );
+
+    if (!confirmed) return;
+
+    if (!token) {
+      alert('Your session has expired. Please login again.');
       return;
     }
 
     setDeletingProductId(productId);
+
     try {
       const result = await deleteProduct(productId, token);
-      if (result.success || result.message === 'Product deleted') {
-        setProducts((prev) => prev.filter((p) => p._id !== productId));
+
+      if (
+        result?.success ||
+        result?.message === 'Product deleted' ||
+        result?.message === 'Product deleted successfully'
+      ) {
+        setProducts((prev) =>
+          prev.filter((product) => product._id !== productId)
+        );
+
         setStats((prev) => ({
           ...prev,
-          totalAds: prev.totalAds - 1,
+          totalAds: Math.max(0, prev.totalAds - 1),
         }));
+
         alert('Product deleted successfully.');
       } else {
-        alert(result.message || 'Failed to delete product.');
+        alert(result?.message || 'Failed to delete product.');
       }
     } catch (error) {
-      console.error('Delete error:', error);
-      alert('An error occurred while deleting the product.');
+      console.error('❌ Delete product error:', error);
+
+      alert(
+        error?.message ||
+          'An error occurred while deleting the product.'
+      );
     } finally {
       setDeletingProductId(null);
     }
   };
 
-  // ─── Edit Profile ──────────────────────────────────────────────────────
-  const handleEditPhotoChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setEditPhoto(file);
-      setEditPhotoPreview(URL.createObjectURL(file));
-      setRemovePhoto(false);
-    }
+  // ================================================================
+  // EDIT PROFILE PHOTO
+  // ================================================================
+
+  const handleEditPhotoChange = (event) => {
+    const file = event.target.files?.[0];
+
+    if (!file) return;
+
+    setEditPhoto(file);
+    setEditPhotoPreview(URL.createObjectURL(file));
+    setRemovePhoto(false);
   };
 
   const handleRemovePhoto = () => {
@@ -139,136 +265,378 @@ const Profile = () => {
     setRemovePhoto(true);
   };
 
-  const handleUpdateProfile = async (e) => {
-    e.preventDefault();
+  // ================================================================
+  // UPDATE PROFILE
+  // ================================================================
+
+  const handleUpdateProfile = async (event) => {
+    event.preventDefault();
+
+    if (!token) {
+      setEditError('Your session has expired. Please login again.');
+      return;
+    }
+
     setEditError('');
     setEditLoading(true);
 
-    const formData = new FormData();
-    formData.append('name', editName);
-    formData.append('email', editEmail);
-    formData.append('phone', editPhone);
-
-    if (removePhoto) {
-      formData.append('removePhoto', 'true');
-      formData.append('photo', '');
-    } else if (editPhoto) {
-      formData.append('photo', editPhoto);
-    }
-
     try {
-      const res = await fetch(`${API_URL}/api/users/profile`, {
-        method: 'PUT',
-        credentials: 'include',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-      });
-      const data = await res.json();
-      if (data.success) {
+      const formData = new FormData();
+
+      formData.append('name', editName.trim());
+      formData.append('email', editEmail.trim().toLowerCase());
+      formData.append('phone', editPhone.trim());
+
+      if (removePhoto) {
+        formData.append('removePhoto', 'true');
+      } else if (editPhoto) {
+        formData.append('photo', editPhoto);
+      }
+
+      const response = await fetch(
+        `${API_URL}/api/users/profile`,
+        {
+          method: 'PUT',
+          credentials: 'include',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          body: formData,
+        }
+      );
+
+      let data = {};
+
+      try {
+        data = await response.json();
+      } catch {
+        data = {};
+      }
+
+      if (!response.ok) {
+        throw new Error(
+          data?.message ||
+            data?.error ||
+            `Profile update failed (${response.status})`
+        );
+      }
+
+      if (data.success !== false) {
+        setShowEditModal(false);
+
+        /*
+         * Reloading ensures the AuthContext gets the latest
+         * profile information.
+         */
         window.location.reload();
       } else {
         setEditError(data.message || 'Update failed');
       }
-    } catch (err) {
-      setEditError(err.message || 'Something went wrong');
+    } catch (error) {
+      console.error('❌ Profile update error:', error);
+
+      setEditError(
+        error?.message || 'Something went wrong while updating your profile.'
+      );
     } finally {
       setEditLoading(false);
     }
   };
 
-  // ─── Messaging ────────────────────────────────────────────────────────
-  const openConversation = async (otherUserId) => {
-    const msgs = messagesList.filter(
-      (m) =>
-        (m.sender?._id === otherUserId || m.receiver?._id === otherUserId) &&
-        (m.sender?._id === user._id || m.receiver?._id === user._id)
-    );
-    setSelectedConversation({ userId: otherUserId, messages: msgs });
+  // ================================================================
+  // OPEN CONVERSATION
+  // ================================================================
 
-    const unread = msgs.filter((m) => m.receiver === user._id && !m.read);
-    for (const m of unread) {
+  const openConversation = async (otherUserId) => {
+    if (!user?._id) return;
+
+    const currentUserId = user._id;
+
+    const conversationMessages = messagesList.filter((message) => {
+      const senderId =
+        typeof message.sender === 'string'
+          ? message.sender
+          : message.sender?._id;
+
+      const receiverId =
+        typeof message.receiver === 'string'
+          ? message.receiver
+          : message.receiver?._id;
+
+      return (
+        (senderId === otherUserId || receiverId === otherUserId) &&
+        (senderId === currentUserId || receiverId === currentUserId)
+      );
+    });
+
+    setSelectedConversation({
+      userId: otherUserId,
+      messages: conversationMessages,
+    });
+
+    const unreadMessages = conversationMessages.filter((message) => {
+      const receiverId =
+        typeof message.receiver === 'string'
+          ? message.receiver
+          : message.receiver?._id;
+
+      return receiverId === currentUserId && !message.read;
+    });
+
+    for (const message of unreadMessages) {
       try {
-        await messages.markRead(m._id, token);
+        await messages.markRead(message._id, token);
+
         setMessagesList((prev) =>
           prev.map((msg) =>
-            msg._id === m._id ? { ...msg, read: true } : msg
+            msg._id === message._id
+              ? { ...msg, read: true }
+              : msg
           )
         );
-        setStats((prev) => ({ ...prev, unreadMessages: prev.unreadMessages - 1 }));
-      } catch (err) {
-        console.error(err);
+
+        setSelectedConversation((prev) => {
+          if (!prev) return prev;
+
+          return {
+            ...prev,
+            messages: prev.messages.map((msg) =>
+              msg._id === message._id
+                ? { ...msg, read: true }
+                : msg
+            ),
+          };
+        });
+
+        setStats((prev) => ({
+          ...prev,
+          unreadMessages: Math.max(
+            0,
+            prev.unreadMessages - 1
+          ),
+        }));
+      } catch (error) {
+        console.error(
+          '❌ Error marking message as read:',
+          error
+        );
       }
     }
   };
 
-  const handleSendReply = async (e) => {
-    e.preventDefault();
+  // ================================================================
+  // SEND MESSAGE
+  // ================================================================
+
+  const handleSendReply = async (event) => {
+    event.preventDefault();
+
     if (!replyMessage.trim()) return;
+    if (!selectedConversation?.userId) return;
+    if (!token) return;
+
     setSendingReply(true);
+
     try {
-      const newMsg = await messages.send(
+      const newMessage = await messages.send(
         selectedConversation.userId,
-        replyMessage,
+        replyMessage.trim(),
         null,
         token
       );
-      setMessagesList((prev) => [newMsg, ...prev]);
+
+      const normalizedMessage =
+        newMessage?.message || newMessage?.data
+          ? newMessage?.message || newMessage?.data
+          : newMessage;
+
+      setMessagesList((prev) => [
+        normalizedMessage,
+        ...prev,
+      ]);
+
       setSelectedConversation((prev) => ({
         ...prev,
-        messages: [newMsg, ...prev.messages],
+        messages: [
+          normalizedMessage,
+          ...prev.messages,
+        ],
       }));
+
       setReplyMessage('');
-    } catch (err) {
-      console.error(err);
-      alert('Failed to send reply');
+    } catch (error) {
+      console.error('❌ Failed to send reply:', error);
+      alert(error?.message || 'Failed to send reply.');
     } finally {
       setSendingReply(false);
     }
   };
 
+  // ================================================================
+  // GET CONVERSATIONS
+  // ================================================================
+
   const getConversations = () => {
+    if (!user?._id) return [];
+
+    const currentUserId = user._id;
     const partners = new Set();
-    messagesList.forEach((m) => {
-      if (m.sender?._id === user._id) partners.add(m.receiver?._id);
-      if (m.receiver?._id === user._id) partners.add(m.sender?._id);
+
+    messagesList.forEach((message) => {
+      const senderId =
+        typeof message.sender === 'string'
+          ? message.sender
+          : message.sender?._id;
+
+      const receiverId =
+        typeof message.receiver === 'string'
+          ? message.receiver
+          : message.receiver?._id;
+
+      if (senderId === currentUserId && receiverId) {
+        partners.add(receiverId);
+      }
+
+      if (receiverId === currentUserId && senderId) {
+        partners.add(senderId);
+      }
     });
+
     return Array.from(partners)
-      .map((id) => {
-        const msgs = messagesList.filter(
-          (m) =>
-            (m.sender?._id === id || m.receiver?._id === id) &&
-            (m.sender?._id === user._id || m.receiver?._id === user._id)
+      .map((partnerId) => {
+        const conversationMessages = messagesList.filter(
+          (message) => {
+            const senderId =
+              typeof message.sender === 'string'
+                ? message.sender
+                : message.sender?._id;
+
+            const receiverId =
+              typeof message.receiver === 'string'
+                ? message.receiver
+                : message.receiver?._id;
+
+            return (
+              (senderId === partnerId ||
+                receiverId === partnerId) &&
+              (senderId === currentUserId ||
+                receiverId === currentUserId)
+            );
+          }
         );
-        const last = msgs[0] || null;
-        const unread = msgs.filter(
-          (m) => m.receiver?._id === user._id && !m.read
+
+        const sortedMessages = [...conversationMessages].sort(
+          (a, b) =>
+            new Date(b.createdAt || 0) -
+            new Date(a.createdAt || 0)
+        );
+
+        const last = sortedMessages[0] || null;
+
+        const unread = conversationMessages.filter(
+          (message) => {
+            const receiverId =
+              typeof message.receiver === 'string'
+                ? message.receiver
+                : message.receiver?._id;
+
+            return (
+              receiverId === currentUserId &&
+              !message.read
+            );
+          }
         ).length;
-        const partner =
-          msgs[0]?.sender?._id === id ? msgs[0]?.sender : msgs[0]?.receiver;
-        return { userId: id, partner, last, unread };
+
+        let partner = null;
+
+        for (const message of sortedMessages) {
+          const senderId =
+            typeof message.sender === 'string'
+              ? message.sender
+              : message.sender?._id;
+
+          const receiverId =
+            typeof message.receiver === 'string'
+              ? message.receiver
+              : message.receiver?._id;
+
+          if (senderId === partnerId) {
+            partner = message.sender;
+            break;
+          }
+
+          if (receiverId === partnerId) {
+            partner = message.receiver;
+            break;
+          }
+        }
+
+        return {
+          userId: partnerId,
+          partner,
+          last,
+          unread,
+        };
       })
-      .sort((a, b) => new Date(b.last?.createdAt) - new Date(a.last?.createdAt));
+      .sort(
+        (a, b) =>
+          new Date(b.last?.createdAt || 0) -
+          new Date(a.last?.createdAt || 0)
+      );
   };
 
-  // ─── Render ──────────────────────────────────────────────────────────
+  // ================================================================
+  // NOT LOGGED IN
+  // ================================================================
 
   if (!user) {
     return (
-      <div className="container" style={{ padding: '60px 20px', textAlign: 'center' }}>
+      <div
+        className="container"
+        style={{
+          padding: '60px 20px',
+          textAlign: 'center',
+        }}
+      >
         <h2>Please Login</h2>
-        <p style={{ color: 'var(--gray-500)' }}>You need to be logged in to view your profile.</p>
-        <Link to="/login" className="btn-primary" style={{ display: 'inline-block', marginTop: '16px' }}>
+
+        <p
+          style={{
+            color: 'var(--gray-500)',
+          }}
+        >
+          You need to be logged in to view your profile.
+        </p>
+
+        <Link
+          to="/login"
+          className="btn-primary"
+          style={{
+            display: 'inline-block',
+            marginTop: '16px',
+          }}
+        >
           Login
         </Link>
       </div>
     );
   }
 
+  // ================================================================
+  // RENDER
+  // ================================================================
+
   return (
-    <div className="container" style={{ padding: '30px 20px' }}>
-      {/* ─── Profile Header ─────────────────────────────────────────── */}
+    <div
+      className="container"
+      style={{
+        padding: '30px 20px',
+      }}
+    >
+      {/* ============================================================
+          PROFILE HEADER
+      ============================================================ */}
+
       <div
         className="profile-header"
         style={{
@@ -303,13 +671,18 @@ const Profile = () => {
           {user.photoURL ? (
             <img
               src={user.photoURL}
-              alt={user.name}
-              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              alt={user.name || 'Profile'}
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+              }}
             />
           ) : (
-            user.name?.charAt(0).toUpperCase()
+            user.name?.charAt(0).toUpperCase() || 'U'
           )}
         </div>
+
         <div style={{ flex: 1 }}>
           <h1
             style={{
@@ -318,9 +691,11 @@ const Profile = () => {
               display: 'flex',
               alignItems: 'center',
               gap: '10px',
+              flexWrap: 'wrap',
             }}
           >
             {user.name}
+
             {user.role === 'admin' && (
               <span
                 style={{
@@ -336,15 +711,29 @@ const Profile = () => {
               </span>
             )}
           </h1>
-          <p style={{ color: 'var(--gray-500)' }}>{user.email}</p>
+
           <p style={{ color: 'var(--gray-500)' }}>
-            <i className="fas fa-calendar-alt"></i> Member since{' '}
+            {user.email}
+          </p>
+
+          <p style={{ color: 'var(--gray-500)' }}>
+            <i className="fas fa-calendar-alt"></i>{' '}
+            Member since{' '}
             {user.createdAt
-              ? new Date(user.createdAt).toLocaleDateString()
+              ? new Date(
+                  user.createdAt
+                ).toLocaleDateString()
               : 'N/A'}
           </p>
         </div>
-        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+
+        <div
+          style={{
+            display: 'flex',
+            gap: '10px',
+            flexWrap: 'wrap',
+          }}
+        >
           <Link
             to="/post-ad"
             className="btn-secondary"
@@ -361,13 +750,16 @@ const Profile = () => {
               gap: '8px',
             }}
           >
-            <i className="fas fa-plus-circle"></i> Post Ad
+            <i className="fas fa-plus-circle"></i>
+            Post Ad
           </Link>
+
           <button
             className="btn-outline"
             onClick={() => {
               setShowEditModal(true);
               setRemovePhoto(false);
+              setEditError('');
             }}
             style={{
               padding: '10px 20px',
@@ -378,16 +770,21 @@ const Profile = () => {
               cursor: 'pointer',
             }}
           >
-            <i className="fas fa-pen"></i> Edit Profile
+            <i className="fas fa-pen"></i>
+            Edit Profile
           </button>
         </div>
       </div>
 
-      {/* ─── Stats Cards ─────────────────────────────────────────────── */}
+      {/* ============================================================
+          STATS
+      ============================================================ */}
+
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+          gridTemplateColumns:
+            'repeat(auto-fit, minmax(150px, 1fr))',
           gap: '16px',
           marginBottom: '24px',
         }}
@@ -401,11 +798,26 @@ const Profile = () => {
             textAlign: 'center',
           }}
         >
-          <div style={{ fontSize: '28px', fontWeight: 800, color: 'var(--primary)' }}>
+          <div
+            style={{
+              fontSize: '28px',
+              fontWeight: 800,
+              color: 'var(--primary)',
+            }}
+          >
             {stats.totalAds}
           </div>
-          <div style={{ fontSize: '13px', color: 'var(--gray-500)' }}>Total Ads</div>
+
+          <div
+            style={{
+              fontSize: '13px',
+              color: 'var(--gray-500)',
+            }}
+          >
+            Total Ads
+          </div>
         </div>
+
         <div
           style={{
             background: 'white',
@@ -415,11 +827,26 @@ const Profile = () => {
             textAlign: 'center',
           }}
         >
-          <div style={{ fontSize: '28px', fontWeight: 800, color: '#8b5cf6' }}>
+          <div
+            style={{
+              fontSize: '28px',
+              fontWeight: 800,
+              color: '#8b5cf6',
+            }}
+          >
             {stats.totalViews}
           </div>
-          <div style={{ fontSize: '13px', color: 'var(--gray-500)' }}>Total Views</div>
+
+          <div
+            style={{
+              fontSize: '13px',
+              color: 'var(--gray-500)',
+            }}
+          >
+            Total Views
+          </div>
         </div>
+
         <div
           style={{
             background: 'white',
@@ -429,12 +856,25 @@ const Profile = () => {
             textAlign: 'center',
           }}
         >
-          <div style={{ fontSize: '28px', fontWeight: 800, color: '#f59e0b' }}>
+          <div
+            style={{
+              fontSize: '28px',
+              fontWeight: 800,
+              color: '#f59e0b',
+            }}
+          >
             {stats.totalNotifications}
           </div>
-          <div style={{ fontSize: '13px', color: 'var(--gray-500)' }}>
+
+          <div
+            style={{
+              fontSize: '13px',
+              color: 'var(--gray-500)',
+            }}
+          >
             Notifications
           </div>
+
           {stats.unreadNotifications > 0 && (
             <span
               style={{
@@ -451,6 +891,7 @@ const Profile = () => {
             </span>
           )}
         </div>
+
         <div
           style={{
             background: 'white',
@@ -460,10 +901,25 @@ const Profile = () => {
             textAlign: 'center',
           }}
         >
-          <div style={{ fontSize: '28px', fontWeight: 800, color: '#0ea5e9' }}>
+          <div
+            style={{
+              fontSize: '28px',
+              fontWeight: 800,
+              color: '#0ea5e9',
+            }}
+          >
             {messagesList.length}
           </div>
-          <div style={{ fontSize: '13px', color: 'var(--gray-500)' }}>Messages</div>
+
+          <div
+            style={{
+              fontSize: '13px',
+              color: 'var(--gray-500)',
+            }}
+          >
+            Messages
+          </div>
+
           {stats.unreadMessages > 0 && (
             <span
               style={{
@@ -482,8 +938,21 @@ const Profile = () => {
         </div>
       </div>
 
-      {/* ─── Main content: My Ads + Messages ────────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px' }}>
+      {/* ============================================================
+          MAIN CONTENT
+      ============================================================ */}
+
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'minmax(0, 2fr) minmax(300px, 1fr)',
+          gap: '24px',
+        }}
+      >
+        {/* ==========================================================
+            MY ADS
+        ========================================================== */}
+
         <div>
           <h2
             style={{
@@ -495,11 +964,26 @@ const Profile = () => {
               gap: '8px',
             }}
           >
-            <i className="fas fa-box" style={{ color: 'var(--primary)' }}></i> My Ads
-            <span style={{ fontSize: '13px', color: 'var(--gray-500)', fontWeight: 400 }}>
+            <i
+              className="fas fa-box"
+              style={{
+                color: 'var(--primary)',
+              }}
+            ></i>
+
+            My Ads
+
+            <span
+              style={{
+                fontSize: '13px',
+                color: 'var(--gray-500)',
+                fontWeight: 400,
+              }}
+            >
               ({stats.totalAds})
             </span>
           </h2>
+
           {loading ? (
             <p>Loading...</p>
           ) : products.length === 0 ? (
@@ -512,22 +996,42 @@ const Profile = () => {
                 textAlign: 'center',
               }}
             >
-              <p style={{ color: 'var(--gray-500)' }}>You haven't posted any ads yet.</p>
+              <p
+                style={{
+                  color: 'var(--gray-500)',
+                }}
+              >
+                You haven't posted any ads yet.
+              </p>
+
               <Link
                 to="/post-ad"
                 className="btn-primary"
-                style={{ display: 'inline-block', marginTop: '12px' }}
+                style={{
+                  display: 'inline-block',
+                  marginTop: '12px',
+                }}
               >
                 Post Your First Ad
               </Link>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {products.slice(0, 5).map((p) => {
-                const imageUrl = p.images && p.images.length > 0 ? getImageUrl(p.images[0]) : null;
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px',
+              }}
+            >
+              {products.slice(0, 5).map((product) => {
+                const imageUrl =
+                  product.images?.length > 0
+                    ? getImageUrl(product.images[0])
+                    : null;
+
                 return (
                   <div
-                    key={p._id}
+                    key={product._id}
                     style={{
                       display: 'flex',
                       alignItems: 'center',
@@ -538,6 +1042,7 @@ const Profile = () => {
                       border: '1px solid var(--gray-200)',
                       transition: 'var(--transition)',
                       position: 'relative',
+                      flexWrap: 'wrap',
                     }}
                   >
                     {imageUrl && (
@@ -552,32 +1057,77 @@ const Profile = () => {
                       >
                         <img
                           src={imageUrl}
-                          alt={p.title}
-                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          alt={product.title || 'Product'}
+                          style={{
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover',
+                          }}
                         />
                       </div>
                     )}
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 600, color: 'var(--gray-800)' }}>
-                        <Link to={`/product/${p._id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                          {p.title}
+
+                    <div
+                      style={{
+                        flex: 1,
+                        minWidth: '150px',
+                      }}
+                    >
+                      <div
+                        style={{
+                          fontWeight: 600,
+                          color: 'var(--gray-800)',
+                        }}
+                      >
+                        <Link
+                          to={`/product/${product._id}`}
+                          style={{
+                            textDecoration: 'none',
+                            color: 'inherit',
+                          }}
+                        >
+                          {product.title}
                         </Link>
                       </div>
-                      <div style={{ fontSize: '13px', color: 'var(--gray-500)' }}>
-                        {p.category} • {p.location} •{' '}
-                        <i className="fas fa-eye"></i> {p.views || 0}
+
+                      <div
+                        style={{
+                          fontSize: '13px',
+                          color: 'var(--gray-500)',
+                        }}
+                      >
+                        {product.category} •{' '}
+                        {product.location} •{' '}
+                        <i className="fas fa-eye"></i>{' '}
+                        {product.views || 0}
                       </div>
                     </div>
-                    <div style={{ fontWeight: 700, color: 'var(--primary)' }}>
-                      ₵{p.price?.toLocaleString()}
+
+                    <div
+                      style={{
+                        fontWeight: 700,
+                        color: 'var(--primary)',
+                      }}
+                    >
+                      ₵
+                      {Number(
+                        product.price || 0
+                      ).toLocaleString()}
                     </div>
 
-                    {/* Action buttons */}
-                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <div
+                      style={{
+                        display: 'flex',
+                        gap: '8px',
+                        alignItems: 'center',
+                      }}
+                    >
                       <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigate(`/edit-product/${p._id}`);
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          navigate(
+                            `/edit-product/${product._id}`
+                          );
                         }}
                         style={{
                           padding: '6px 12px',
@@ -588,41 +1138,58 @@ const Profile = () => {
                           cursor: 'pointer',
                           fontSize: '13px',
                           fontWeight: 600,
-                          transition: 'var(--transition)',
                         }}
                       >
-                        <i className="fas fa-pen"></i> Edit
+                        <i className="fas fa-pen"></i>{' '}
+                        Edit
                       </button>
+
                       <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteProduct(p._id);
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          handleDeleteProduct(
+                            product._id
+                          );
                         }}
-                        disabled={deletingProductId === p._id}
+                        disabled={
+                          deletingProductId ===
+                          product._id
+                        }
                         style={{
                           padding: '6px 12px',
                           background: '#dc2626',
                           color: 'white',
                           border: 'none',
                           borderRadius: 'var(--radius-sm)',
-                          cursor: deletingProductId === p._id ? 'not-allowed' : 'pointer',
+                          cursor:
+                            deletingProductId ===
+                            product._id
+                              ? 'not-allowed'
+                              : 'pointer',
                           fontSize: '13px',
                           fontWeight: 600,
-                          opacity: deletingProductId === p._id ? 0.6 : 1,
-                          transition: 'var(--transition)',
+                          opacity:
+                            deletingProductId ===
+                            product._id
+                              ? 0.6
+                              : 1,
                         }}
                       >
-                        {deletingProductId === p._id ? (
-                          <span className="spinner" style={{ display: 'inline-block', width: '16px', height: '16px', border: '2px solid white', borderTop: '2px solid transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }}></span>
+                        {deletingProductId ===
+                        product._id ? (
+                          'Deleting...'
                         ) : (
-                          <i className="fas fa-trash"></i>
-                        )}{' '}
-                        {deletingProductId === p._id ? '' : 'Delete'}
+                          <>
+                            <i className="fas fa-trash"></i>{' '}
+                            Delete
+                          </>
+                        )}
                       </button>
                     </div>
                   </div>
                 );
               })}
+
               {products.length > 5 && (
                 <Link
                   to="/products?my-ads=true"
@@ -639,7 +1206,10 @@ const Profile = () => {
           )}
         </div>
 
-        {/* Messages section – unchanged */}
+        {/* ==========================================================
+            MESSAGES
+        ========================================================== */}
+
         <div>
           <h2
             style={{
@@ -651,7 +1221,15 @@ const Profile = () => {
               gap: '8px',
             }}
           >
-            <i className="fas fa-envelope" style={{ color: 'var(--primary)' }}></i> Messages
+            <i
+              className="fas fa-envelope"
+              style={{
+                color: 'var(--primary)',
+              }}
+            ></i>
+
+            Messages
+
             {stats.unreadMessages > 0 && (
               <span
                 style={{
@@ -680,75 +1258,118 @@ const Profile = () => {
                 textAlign: 'center',
               }}
             >
-              <p style={{ color: 'var(--gray-500)' }}>No messages yet.</p>
+              <p
+                style={{
+                  color: 'var(--gray-500)',
+                }}
+              >
+                No messages yet.
+              </p>
             </div>
-          ) : (
-            <div>
-              {selectedConversation ? (
-                <div
+          ) : selectedConversation ? (
+            <div
+              style={{
+                background: 'white',
+                borderRadius: 'var(--radius-md)',
+                border: '1px solid var(--gray-200)',
+                overflow: 'hidden',
+              }}
+            >
+              <div
+                style={{
+                  padding: '12px 16px',
+                  borderBottom:
+                    '1px solid var(--gray-200)',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                }}
+              >
+                <strong>
+                  {(() => {
+                    const first =
+                      selectedConversation.messages[0];
+
+                    if (!first) return 'User';
+
+                    const senderId =
+                      typeof first.sender === 'string'
+                        ? first.sender
+                        : first.sender?._id;
+
+                    return senderId ===
+                      selectedConversation.userId
+                      ? first.sender?.name || 'User'
+                      : first.receiver?.name || 'User';
+                  })()}
+                </strong>
+
+                <button
+                  onClick={() =>
+                    setSelectedConversation(null)
+                  }
                   style={{
-                    background: 'white',
-                    borderRadius: 'var(--radius-md)',
-                    border: '1px solid var(--gray-200)',
-                    overflow: 'hidden',
+                    background: 'none',
+                    border: 'none',
+                    fontSize: '20px',
+                    cursor: 'pointer',
                   }}
                 >
-                  <div
-                    style={{
-                      padding: '12px 16px',
-                      borderBottom: '1px solid var(--gray-200)',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                    }}
-                  >
-                    <strong>
-                      {selectedConversation.messages[0]?.sender?._id ===
-                      selectedConversation.userId
-                        ? selectedConversation.messages[0]?.sender?.name || 'User'
-                        : selectedConversation.messages[0]?.receiver?.name || 'User'}
-                    </strong>
-                    <button
-                      onClick={() => setSelectedConversation(null)}
-                      style={{
-                        background: 'none',
-                        border: 'none',
-                        fontSize: '20px',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      &times;
-                    </button>
-                  </div>
-                  <div
-                    style={{
-                      maxHeight: '300px',
-                      overflowY: 'auto',
-                      padding: '12px',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '8px',
-                    }}
-                  >
-                    {selectedConversation.messages.map((m) => (
+                  &times;
+                </button>
+              </div>
+
+              <div
+                style={{
+                  maxHeight: '300px',
+                  overflowY: 'auto',
+                  padding: '12px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px',
+                }}
+              >
+                {[...selectedConversation.messages]
+                  .sort(
+                    (a, b) =>
+                      new Date(
+                        a.createdAt || 0
+                      ) -
+                      new Date(
+                        b.createdAt || 0
+                      )
+                  )
+                  .map((message) => {
+                    const senderId =
+                      typeof message.sender === 'string'
+                        ? message.sender
+                        : message.sender?._id;
+
+                    const isMine =
+                      senderId === user._id;
+
+                    return (
                       <div
-                        key={m._id}
+                        key={message._id}
                         style={{
-                          alignSelf:
-                            m.sender?._id === user._id ? 'flex-end' : 'flex-start',
+                          alignSelf: isMine
+                            ? 'flex-end'
+                            : 'flex-start',
                           maxWidth: '80%',
-                          background:
-                            m.sender?._id === user._id
-                              ? 'var(--primary)'
-                              : 'var(--gray-100)',
-                          color:
-                            m.sender?._id === user._id ? 'white' : 'var(--gray-800)',
+                          background: isMine
+                            ? 'var(--primary)'
+                            : 'var(--gray-100)',
+                          color: isMine
+                            ? 'white'
+                            : 'var(--gray-800)',
                           padding: '8px 14px',
-                          borderRadius: 'var(--radius-md)',
+                          borderRadius:
+                            'var(--radius-md)',
                           fontSize: '14px',
                         }}
                       >
-                        {m.message}
+                        {message.message}
+
                         <div
                           style={{
                             fontSize: '10px',
@@ -756,182 +1377,284 @@ const Profile = () => {
                             marginTop: '4px',
                           }}
                         >
-                          {new Date(m.createdAt).toLocaleTimeString()}
+                          {message.createdAt
+                            ? new Date(
+                                message.createdAt
+                              ).toLocaleTimeString()
+                            : ''}
                         </div>
                       </div>
-                    ))}
-                  </div>
-                  <form
-                    onSubmit={handleSendReply}
-                    style={{
-                      display: 'flex',
-                      gap: '8px',
-                      padding: '12px',
-                      borderTop: '1px solid var(--gray-200)',
-                    }}
-                  >
-                    <input
-                      type="text"
-                      value={replyMessage}
-                      onChange={(e) => setReplyMessage(e.target.value)}
-                      placeholder="Type a reply..."
-                      style={{
-                        flex: 1,
-                        padding: '8px 14px',
-                        border: '1.5px solid var(--gray-200)',
-                        borderRadius: 'var(--radius-md)',
-                        fontSize: '14px',
-                      }}
-                    />
-                    <button
-                      type="submit"
-                      disabled={sendingReply}
-                      style={{
-                        padding: '8px 20px',
-                        background: 'var(--secondary)',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: 'var(--radius-full)',
-                        fontWeight: 600,
-                        cursor: sendingReply ? 'not-allowed' : 'pointer',
-                        opacity: sendingReply ? 0.7 : 1,
-                      }}
-                    >
-                      {sendingReply ? 'Sending...' : 'Reply'}
-                    </button>
-                  </form>
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {getConversations().map((conv) => (
+                    );
+                  })}
+              </div>
+
+              <form
+                onSubmit={handleSendReply}
+                style={{
+                  display: 'flex',
+                  gap: '8px',
+                  padding: '12px',
+                  borderTop:
+                    '1px solid var(--gray-200)',
+                }}
+              >
+                <input
+                  type="text"
+                  value={replyMessage}
+                  onChange={(event) =>
+                    setReplyMessage(event.target.value)
+                  }
+                  placeholder="Type a reply..."
+                  style={{
+                    flex: 1,
+                    padding: '8px 14px',
+                    border:
+                      '1.5px solid var(--gray-200)',
+                    borderRadius:
+                      'var(--radius-md)',
+                    fontSize: '14px',
+                  }}
+                />
+
+                <button
+                  type="submit"
+                  disabled={sendingReply}
+                  style={{
+                    padding: '8px 20px',
+                    background: 'var(--secondary)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius:
+                      'var(--radius-full)',
+                    fontWeight: 600,
+                    cursor: sendingReply
+                      ? 'not-allowed'
+                      : 'pointer',
+                    opacity: sendingReply ? 0.7 : 1,
+                  }}
+                >
+                  {sendingReply
+                    ? 'Sending...'
+                    : 'Reply'}
+                </button>
+              </form>
+            </div>
+          ) : (
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
+              }}
+            >
+              {getConversations().map((conversation) => (
+                <div
+                  key={conversation.userId}
+                  onClick={() =>
+                    openConversation(
+                      conversation.userId
+                    )
+                  }
+                  style={{
+                    background: 'white',
+                    padding: '12px 16px',
+                    borderRadius:
+                      'var(--radius-md)',
+                    border:
+                      '1px solid var(--gray-200)',
+                    cursor: 'pointer',
+                    transition:
+                      'var(--transition)',
+                    display: 'flex',
+                    justifyContent:
+                      'space-between',
+                    alignItems: 'center',
+                  }}
+                >
+                  <div>
                     <div
-                      key={conv.userId}
-                      onClick={() => openConversation(conv.userId)}
                       style={{
-                        background: 'white',
-                        padding: '12px 16px',
-                        borderRadius: 'var(--radius-md)',
-                        border: '1px solid var(--gray-200)',
-                        cursor: 'pointer',
-                        transition: 'var(--transition)',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
+                        fontWeight: 600,
                       }}
                     >
-                      <div>
-                        <div style={{ fontWeight: 600 }}>
-                          {conv.partner?.name || 'User'}
-                          {conv.unread > 0 && (
-                            <span
-                              style={{
-                                background: '#e74c3c',
-                                color: 'white',
-                                fontSize: '10px',
-                                padding: '1px 8px',
-                                borderRadius: 'var(--radius-full)',
-                                marginLeft: '8px',
-                              }}
-                            >
-                              {conv.unread}
-                            </span>
-                          )}
-                        </div>
-                        <div
+                      {conversation.partner?.name ||
+                        'User'}
+
+                      {conversation.unread > 0 && (
+                        <span
                           style={{
-                            fontSize: '13px',
-                            color: 'var(--gray-500)',
-                            whiteSpace: 'nowrap',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            maxWidth: '150px',
+                            background: '#e74c3c',
+                            color: 'white',
+                            fontSize: '10px',
+                            padding: '1px 8px',
+                            borderRadius:
+                              'var(--radius-full)',
+                            marginLeft: '8px',
                           }}
                         >
-                          {conv.last?.message || 'No messages'}
-                        </div>
-                      </div>
-                      <div style={{ fontSize: '11px', color: 'var(--gray-400)' }}>
-                        {conv.last
-                          ? new Date(conv.last.createdAt).toLocaleDateString()
-                          : ''}
-                      </div>
+                          {conversation.unread}
+                        </span>
+                      )}
                     </div>
-                  ))}
+
+                    <div
+                      style={{
+                        fontSize: '13px',
+                        color: 'var(--gray-500)',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        maxWidth: '150px',
+                      }}
+                    >
+                      {conversation.last?.message ||
+                        'No messages'}
+                    </div>
+                  </div>
+
+                  <div
+                    style={{
+                      fontSize: '11px',
+                      color: 'var(--gray-400)',
+                    }}
+                  >
+                    {conversation.last?.createdAt
+                      ? new Date(
+                          conversation.last.createdAt
+                        ).toLocaleDateString()
+                      : ''}
+                  </div>
                 </div>
-              )}
+              ))}
             </div>
           )}
         </div>
       </div>
 
-      {/* ─── Edit Profile Modal (using CSS classes) ──────────────────────── */}
+      {/* ============================================================
+          EDIT PROFILE MODAL
+      ============================================================ */}
+
       {showEditModal && (
-        <div className="edit-profile-overlay" onClick={() => setShowEditModal(false)}>
-          <div className="edit-profile-modal" onClick={(e) => e.stopPropagation()}>
-            <button className="close-btn" onClick={() => setShowEditModal(false)}>
+        <div
+          className="edit-profile-overlay"
+          onClick={() =>
+            setShowEditModal(false)
+          }
+        >
+          <div
+            className="edit-profile-modal"
+            onClick={(event) =>
+              event.stopPropagation()
+            }
+          >
+            <button
+              className="close-btn"
+              onClick={() =>
+                setShowEditModal(false)
+              }
+            >
               &times;
             </button>
+
             <h2>Edit Profile</h2>
 
-            {editError && <div className="error-banner">{editError}</div>}
+            {editError && (
+              <div className="error-banner">
+                {editError}
+              </div>
+            )}
 
             <form onSubmit={handleUpdateProfile}>
+              {/* PHOTO */}
+
               <div className="form-group">
                 <label>Profile Photo</label>
+
                 <div className="photo-upload-row">
                   <div className="photo-preview">
                     {editPhotoPreview ? (
-                      <img src={editPhotoPreview} alt="Preview" />
+                      <img
+                        src={editPhotoPreview}
+                        alt="Preview"
+                      />
                     ) : (
                       <i className="fas fa-user"></i>
                     )}
                   </div>
+
                   <input
                     type="file"
                     accept="image/*"
-                    onChange={handleEditPhotoChange}
+                    onChange={
+                      handleEditPhotoChange
+                    }
                   />
+
                   <button
                     type="button"
                     className="remove-photo-btn"
-                    onClick={handleRemovePhoto}
+                    onClick={
+                      handleRemovePhoto
+                    }
                   >
                     Remove Photo
                   </button>
                 </div>
+
                 {removePhoto && (
                   <small className="remove-photo-hint">
-                    Photo will be removed when you save.
+                    Photo will be removed when
+                    you save.
                   </small>
                 )}
               </div>
 
+              {/* NAME */}
+
               <div className="form-group">
                 <label>Full Name</label>
+
                 <input
                   type="text"
                   value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
+                  onChange={(event) =>
+                    setEditName(event.target.value)
+                  }
                   required
                 />
               </div>
+
+              {/* EMAIL */}
 
               <div className="form-group">
                 <label>Email</label>
+
                 <input
                   type="email"
                   value={editEmail}
-                  onChange={(e) => setEditEmail(e.target.value)}
+                  onChange={(event) =>
+                    setEditEmail(
+                      event.target.value
+                    )
+                  }
                   required
                 />
               </div>
 
+              {/* PHONE */}
+
               <div className="form-group">
                 <label>Phone</label>
+
                 <input
                   type="tel"
                   value={editPhone}
-                  onChange={(e) => setEditPhone(e.target.value)}
+                  onChange={(event) =>
+                    setEditPhone(
+                      event.target.value
+                    )
+                  }
                 />
               </div>
 
@@ -940,7 +1663,9 @@ const Profile = () => {
                 className="save-btn"
                 disabled={editLoading}
               >
-                {editLoading ? 'Saving...' : 'Save Changes'}
+                {editLoading
+                  ? 'Saving...'
+                  : 'Save Changes'}
               </button>
             </form>
           </div>

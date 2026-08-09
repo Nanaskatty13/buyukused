@@ -22,102 +22,71 @@ const AdminHeader = ({
   onSearch,
   searchTerm,
 }) => {
-  // ============================================================
-  // AUTH
-  // ============================================================
-
   const {
     user,
     token,
-    loading: authLoading,
     logout,
   } = useAuth();
 
+  const [
+    notifications,
+    setNotifications,
+  ] = useState([]);
+
+  const [
+    showNotifications,
+    setShowNotifications,
+  ] = useState(false);
+
+  const [
+    showUserMenu,
+    setShowUserMenu,
+  ] = useState(false);
+
+  const [
+    loading,
+    setLoading,
+  ] = useState(false);
+
+  const notificationRef =
+    useRef(null);
+
+  const userMenuRef =
+    useRef(null);
+
   // ============================================================
-  // STATE
+  // FETCH ADMIN NOTIFICATIONS
   // ============================================================
 
-  const [notifications, setNotifications] = useState([]);
-  const [showNotifications, setShowNotifications] =
-    useState(false);
-
-  const [showUserMenu, setShowUserMenu] =
-    useState(false);
-
-  const [loading, setLoading] =
-    useState(false);
-
-  // ============================================================
-  // REFS
-  // ============================================================
-
-  const notificationRef = useRef(null);
-  const userMenuRef = useRef(null);
-
-  // Prevent overlapping requests
-  const fetchingNotificationsRef =
-    useRef(false);
-
-  // ============================================================
-  // FETCH NOTIFICATIONS
-  // ============================================================
-
-  const fetchNotifications = useCallback(
-    async () => {
-      // --------------------------------------------------------
-      // Authentication is still being restored
-      // --------------------------------------------------------
-
-      if (authLoading) {
-        return;
-      }
-
-      // --------------------------------------------------------
-      // No authenticated user
-      // --------------------------------------------------------
-
-      if (!user || !token) {
-        setNotifications([]);
-        return;
-      }
-
-      // --------------------------------------------------------
-      // Prevent duplicate requests
-      // --------------------------------------------------------
-
-      if (fetchingNotificationsRef.current) {
+  const fetchNotifications =
+    useCallback(async () => {
+      if (!token) {
         return;
       }
 
       try {
-        fetchingNotificationsRef.current = true;
-
         setLoading(true);
 
         console.log(
           "🔔 Fetching admin notifications..."
         );
 
+        // IMPORTANT:
+        // getForAdmin() expects ONLY the token.
         const data =
-          await getNotifications(
-            user._id,
-            token
-          );
-
-        // ------------------------------------------------------
-        // Successful response
-        // ------------------------------------------------------
-
-        if (data?.notifications) {
-          setNotifications(
-            data.notifications
-          );
-        } else {
-          setNotifications([]);
-        }
+          await getNotifications(token);
 
         console.log(
-          "✅ Notifications loaded"
+          "✅ Admin notifications:",
+          data
+        );
+
+        setNotifications(
+          Array.isArray(
+            data?.notifications
+          )
+            ? data.notifications
+            : []
         );
       } catch (err) {
         console.error(
@@ -125,56 +94,35 @@ const AdminHeader = ({
           err
         );
 
-        // ------------------------------------------------------
-        // Unauthorized
-        // ------------------------------------------------------
+        // Do not log the user out here.
+        // A notification failure should not destroy
+        // an otherwise valid login session.
 
         if (
           err?.status === 401 ||
-          err?.status === 403 ||
-          err?.message === "Invalid token"
+          err?.status === 403
         ) {
           console.warn(
-            "🔒 Notification request was rejected because the token is invalid."
+            "⚠️ Notification endpoint rejected the current token."
           );
-
-          // Do NOT automatically logout here.
-          //
-          // AuthContext is responsible for deciding whether
-          // the entire authentication session is invalid.
         }
       } finally {
-        fetchingNotificationsRef.current =
-          false;
-
         setLoading(false);
       }
-    },
-    [
-      authLoading,
-      user,
-      token,
-    ]
-  );
+    }, [token]);
 
   // ============================================================
-  // INITIAL NOTIFICATION FETCH
+  // INITIAL NOTIFICATION LOAD
   // ============================================================
 
   useEffect(() => {
-    if (authLoading) {
-      return;
-    }
-
-    if (!user || !token) {
+    if (!token) {
       setNotifications([]);
       return;
     }
 
     fetchNotifications();
   }, [
-    authLoading,
-    user,
     token,
     fetchNotifications,
   ]);
@@ -184,11 +132,7 @@ const AdminHeader = ({
   // ============================================================
 
   useEffect(() => {
-    if (authLoading) {
-      return;
-    }
-
-    if (!user || !token) {
+    if (!token) {
       return;
     }
 
@@ -201,50 +145,47 @@ const AdminHeader = ({
       clearInterval(interval);
     };
   }, [
-    authLoading,
-    user,
     token,
     fetchNotifications,
   ]);
 
   // ============================================================
-  // MARK ONE NOTIFICATION AS READ
+  // MARK ONE AS READ
   // ============================================================
 
-  const handleMarkAsRead = async (
-    id
-  ) => {
-    if (!token || !id) {
-      return;
-    }
+  const handleMarkAsRead =
+    async (id) => {
+      if (!token || !id) {
+        return;
+      }
 
-    try {
-      await markNotificationRead(
-        id,
-        token
-      );
+      try {
+        await markNotificationRead(
+          id,
+          token
+        );
 
-      setNotifications(
-        (previous) =>
-          previous.map((notification) =>
-            notification._id === id
-              ? {
-                  ...notification,
-                  read: true,
-                }
-              : notification
-          )
-      );
-    } catch (err) {
-      console.error(
-        "❌ Error marking notification as read:",
-        err
-      );
-    }
-  };
+        setNotifications(
+          (prev) =>
+            prev.map((notification) =>
+              notification._id === id
+                ? {
+                    ...notification,
+                    read: true,
+                  }
+                : notification
+            )
+        );
+      } catch (err) {
+        console.error(
+          "❌ Error marking notification as read:",
+          err
+        );
+      }
+    };
 
   // ============================================================
-  // MARK ALL NOTIFICATIONS AS READ
+  // MARK ALL AS READ
   // ============================================================
 
   const handleMarkAllRead =
@@ -264,16 +205,19 @@ const AdminHeader = ({
       }
 
       try {
-        for (const notification of unread) {
-          await markNotificationRead(
-            notification._id,
-            token
-          );
-        }
+        await Promise.all(
+          unread.map(
+            (notification) =>
+              markNotificationRead(
+                notification._id,
+                token
+              )
+          )
+        );
 
         setNotifications(
-          (previous) =>
-            previous.map(
+          (prev) =>
+            prev.map(
               (notification) => ({
                 ...notification,
                 read: true,
@@ -289,31 +233,48 @@ const AdminHeader = ({
     };
 
   // ============================================================
-  // CLICK OUTSIDE HANDLER
+  // LOGOUT
+  // ============================================================
+
+  const handleLogout =
+    async () => {
+      setShowUserMenu(false);
+
+      try {
+        await logout();
+      } catch (err) {
+        console.error(
+          "Logout error:",
+          err
+        );
+      }
+    };
+
+  // ============================================================
+  // CLICK OUTSIDE
   // ============================================================
 
   useEffect(() => {
-    const handleClickOutside = (
-      event
-    ) => {
-      if (
-        notificationRef.current &&
-        !notificationRef.current.contains(
-          event.target
-        )
-      ) {
-        setShowNotifications(false);
-      }
+    const handleClickOutside =
+      (event) => {
+        if (
+          notificationRef.current &&
+          !notificationRef.current.contains(
+            event.target
+          )
+        ) {
+          setShowNotifications(false);
+        }
 
-      if (
-        userMenuRef.current &&
-        !userMenuRef.current.contains(
-          event.target
-        )
-      ) {
-        setShowUserMenu(false);
-      }
-    };
+        if (
+          userMenuRef.current &&
+          !userMenuRef.current.contains(
+            event.target
+          )
+        ) {
+          setShowUserMenu(false);
+        }
+      };
 
     document.addEventListener(
       "mousedown",
@@ -351,24 +312,6 @@ const AdminHeader = ({
       : "Dashboard";
 
   // ============================================================
-  // LOGOUT
-  // ============================================================
-
-  const handleLogout = async () => {
-    setShowUserMenu(false);
-    setShowNotifications(false);
-
-    try {
-      await logout();
-    } catch (err) {
-      console.error(
-        "❌ Logout error:",
-        err
-      );
-    }
-  };
-
-  // ============================================================
   // RENDER
   // ============================================================
 
@@ -378,7 +321,8 @@ const AdminHeader = ({
       style={{
         display: "flex",
         alignItems: "center",
-        justifyContent: "space-between",
+        justifyContent:
+          "space-between",
         padding: "12px 24px",
         background: "white",
         borderBottom:
@@ -392,7 +336,7 @@ const AdminHeader = ({
     >
       {/* ======================================================
           LEFT SIDE
-          ====================================================== */}
+      ====================================================== */}
 
       <div
         className="header-left"
@@ -403,9 +347,9 @@ const AdminHeader = ({
           flexWrap: "wrap",
         }}
       >
-        {/* Sidebar button */}
-
+        {/* Sidebar */}
         <button
+          type="button"
           onClick={() =>
             setSidebarOpen(
               !sidebarOpen
@@ -425,7 +369,6 @@ const AdminHeader = ({
         </button>
 
         {/* Page title */}
-
         <span
           style={{
             fontWeight: 600,
@@ -438,7 +381,6 @@ const AdminHeader = ({
         </span>
 
         {/* Search */}
-
         {onSearch && (
           <input
             type="text"
@@ -466,9 +408,9 @@ const AdminHeader = ({
         )}
 
         {/* Refresh */}
-
         {onRefresh && (
           <button
+            type="button"
             onClick={onRefresh}
             style={{
               padding:
@@ -491,7 +433,7 @@ const AdminHeader = ({
 
       {/* ======================================================
           RIGHT SIDE
-          ====================================================== */}
+      ====================================================== */}
 
       <div
         className="header-right"
@@ -503,7 +445,7 @@ const AdminHeader = ({
       >
         {/* ====================================================
             NOTIFICATIONS
-            ==================================================== */}
+        ==================================================== */}
 
         <div
           ref={notificationRef}
@@ -512,14 +454,15 @@ const AdminHeader = ({
           }}
         >
           <button
+            type="button"
             onClick={() =>
               setShowNotifications(
-                (previous) =>
-                  !previous
+                (prev) => !prev
               )
             }
             style={{
-              position: "relative",
+              position:
+                "relative",
               background: "none",
               border: "none",
               fontSize: "24px",
@@ -542,8 +485,7 @@ const AdminHeader = ({
                   color: "white",
                   borderRadius:
                     "50%",
-                  fontSize:
-                    "10px",
+                  fontSize: "10px",
                   fontWeight: 700,
                   padding:
                     "2px 6px",
@@ -558,8 +500,7 @@ const AdminHeader = ({
                     "0 2px 4px rgba(220,38,38,0.3)",
                 }}
               >
-                {unreadCount >
-                9
+                {unreadCount > 9
                   ? "9+"
                   : unreadCount}
               </span>
@@ -576,10 +517,8 @@ const AdminHeader = ({
                   "calc(100% + 8px)",
                 right: 0,
                 width: "360px",
-                maxHeight:
-                  "400px",
-                background:
-                  "white",
+                maxHeight: "400px",
+                background: "white",
                 borderRadius:
                   "var(--radius-md)",
                 boxShadow:
@@ -592,7 +531,6 @@ const AdminHeader = ({
               }}
             >
               {/* Header */}
-
               <div
                 style={{
                   display:
@@ -610,8 +548,7 @@ const AdminHeader = ({
                 <span
                   style={{
                     fontWeight: 700,
-                    fontSize:
-                      "14px",
+                    fontSize: "14px",
                   }}
                 >
                   Notifications
@@ -620,14 +557,14 @@ const AdminHeader = ({
                 {unreadCount >
                   0 && (
                   <button
+                    type="button"
                     onClick={
                       handleMarkAllRead
                     }
                     style={{
                       background:
                         "none",
-                      border:
-                        "none",
+                      border: "none",
                       color:
                         "var(--primary)",
                       fontSize:
@@ -642,7 +579,6 @@ const AdminHeader = ({
               </div>
 
               {/* Notification list */}
-
               <div
                 style={{
                   overflowY:
@@ -680,14 +616,14 @@ const AdminHeader = ({
                   </div>
                 ) : (
                   notifications.map(
-                    (notification) => (
+                    (notif) => (
                       <div
                         key={
-                          notification._id
+                          notif._id
                         }
                         onClick={() =>
                           handleMarkAsRead(
-                            notification._id
+                            notif._id
                           )
                         }
                         style={{
@@ -698,7 +634,7 @@ const AdminHeader = ({
                           cursor:
                             "pointer",
                           background:
-                            notification.read
+                            notif.read
                               ? "white"
                               : "#f0f7ff",
                           transition:
@@ -708,7 +644,7 @@ const AdminHeader = ({
                           event
                         ) => {
                           event.currentTarget.style.background =
-                            notification.read
+                            notif.read
                               ? "var(--gray-50)"
                               : "#e8f0fe";
                         }}
@@ -716,7 +652,7 @@ const AdminHeader = ({
                           event
                         ) => {
                           event.currentTarget.style.background =
-                            notification.read
+                            notif.read
                               ? "white"
                               : "#f0f7ff";
                         }}
@@ -730,7 +666,7 @@ const AdminHeader = ({
                           }}
                         >
                           {
-                            notification.message
+                            notif.message
                           }
                         </div>
 
@@ -744,9 +680,9 @@ const AdminHeader = ({
                               "4px",
                           }}
                         >
-                          {notification.createdAt
+                          {notif.createdAt
                             ? new Date(
-                                notification.createdAt
+                                notif.createdAt
                               ).toLocaleDateString()
                             : ""}
                         </div>
@@ -761,33 +697,34 @@ const AdminHeader = ({
 
         {/* ====================================================
             USER MENU
-            ==================================================== */}
+        ==================================================== */}
 
         <div
           ref={userMenuRef}
           style={{
-            position: "relative",
+            position:
+              "relative",
           }}
         >
           <button
+            type="button"
             onClick={() =>
               setShowUserMenu(
-                (previous) =>
-                  !previous
+                (prev) => !prev
               )
             }
             style={{
               display: "flex",
-              alignItems: "center",
+              alignItems:
+                "center",
               gap: "8px",
               background: "none",
               border: "none",
               cursor: "pointer",
-              padding: "4px 8px",
+              padding:
+                "4px 8px",
             }}
           >
-            {/* Avatar */}
-
             <div
               style={{
                 width: "32px",
@@ -803,8 +740,7 @@ const AdminHeader = ({
                 justifyContent:
                   "center",
                 fontWeight: 600,
-                fontSize:
-                  "14px",
+                fontSize: "14px",
               }}
             >
               {user?.name
@@ -813,12 +749,9 @@ const AdminHeader = ({
                 "A"}
             </div>
 
-            {/* Name */}
-
             <span
               style={{
-                fontSize:
-                  "14px",
+                fontSize: "14px",
                 fontWeight: 500,
                 color:
                   "var(--gray-700)",
@@ -828,8 +761,6 @@ const AdminHeader = ({
                 "Admin"}
             </span>
           </button>
-
-          {/* User dropdown */}
 
           {showUserMenu && (
             <div
@@ -859,13 +790,9 @@ const AdminHeader = ({
                 }}
               >
                 {/* Profile */}
-
                 <button
-                  onClick={() => {
-                    setShowUserMenu(
-                      false
-                    );
-                  }}
+                  type="button"
+                  onClick={() => {}}
                   style={{
                     width: "100%",
                     padding:
@@ -888,33 +815,15 @@ const AdminHeader = ({
                       "var(--radius-sm)",
                     color:
                       "var(--gray-700)",
-                    transition:
-                      "background 0.2s",
                   }}
-                  onMouseEnter={(
-                    event
-                  ) =>
-                    (event.currentTarget.style.background =
-                      "var(--gray-50)")
-                  }
-                  onMouseLeave={(
-                    event
-                  ) =>
-                    (event.currentTarget.style.background =
-                      "transparent")
-                  }
                 >
                   👤 Profile
                 </button>
 
                 {/* Settings */}
-
                 <button
-                  onClick={() => {
-                    setShowUserMenu(
-                      false
-                    );
-                  }}
+                  type="button"
+                  onClick={() => {}}
                   style={{
                     width: "100%",
                     padding:
@@ -937,21 +846,7 @@ const AdminHeader = ({
                       "var(--radius-sm)",
                     color:
                       "var(--gray-700)",
-                    transition:
-                      "background 0.2s",
                   }}
-                  onMouseEnter={(
-                    event
-                  ) =>
-                    (event.currentTarget.style.background =
-                      "var(--gray-50)")
-                  }
-                  onMouseLeave={(
-                    event
-                  ) =>
-                    (event.currentTarget.style.background =
-                      "transparent")
-                  }
                 >
                   ⚙️ Settings
                 </button>
@@ -966,8 +861,8 @@ const AdminHeader = ({
                 />
 
                 {/* Logout */}
-
                 <button
+                  type="button"
                   onClick={
                     handleLogout
                   }
@@ -993,21 +888,7 @@ const AdminHeader = ({
                       "var(--radius-sm)",
                     color:
                       "#dc2626",
-                    transition:
-                      "background 0.2s",
                   }}
-                  onMouseEnter={(
-                    event
-                  ) =>
-                    (event.currentTarget.style.background =
-                      "#fef2f2")
-                  }
-                  onMouseLeave={(
-                    event
-                  ) =>
-                    (event.currentTarget.style.background =
-                      "transparent")
-                  }
                 >
                   🚪 Logout
                 </button>

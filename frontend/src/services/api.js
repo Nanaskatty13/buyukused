@@ -39,14 +39,6 @@ const handleResponse = async (response) => {
   }
 
   if (!response.ok) {
-    // Only clear authentication for genuine authentication failures.
-    if (
-      (response.status === 401 || response.status === 403) &&
-      !response.url.includes("/auth/login")
-    ) {
-      clearAuthData();
-    }
-
     const error = new Error(
       data?.message ||
         data?.error ||
@@ -54,6 +46,8 @@ const handleResponse = async (response) => {
     );
 
     error.status = response.status;
+    error.data = data;
+    error.url = response.url;
 
     throw error;
   }
@@ -74,7 +68,12 @@ const request = async (url, options = {}) => {
 
     return await handleResponse(response);
   } catch (error) {
-    console.error("❌ API request failed:", url, error);
+    console.error(
+      "❌ API request failed:",
+      url,
+      error
+    );
+
     throw error;
   }
 };
@@ -109,12 +108,18 @@ export const getImageUrl = (path) => {
 // ================================================================
 
 export const auth = {
+  // --------------------------------------------------------------
+  // LOGIN
+  // --------------------------------------------------------------
+
   login: async (email, password) => {
     return request(`${API_URL}/auth/login`, {
       method: "POST",
+
       headers: {
         "Content-Type": "application/json",
       },
+
       body: JSON.stringify({
         email: email.trim().toLowerCase(),
         password,
@@ -122,20 +127,32 @@ export const auth = {
     });
   },
 
+  // --------------------------------------------------------------
+  // REGISTER
+  // --------------------------------------------------------------
+
   register: async (userData) => {
     return request(`${API_URL}/auth/register`, {
       method: "POST",
+
       headers: {
         "Content-Type": "application/json",
       },
+
       body: JSON.stringify({
         name: userData.name,
-        email: userData.email.trim().toLowerCase(),
+        email: userData.email
+          .trim()
+          .toLowerCase(),
         password: userData.password,
         phone: userData.phone || "",
       }),
     });
   },
+
+  // --------------------------------------------------------------
+  // CURRENT USER
+  // --------------------------------------------------------------
 
   getMe: async (token = getToken()) => {
     return request(`${API_URL}/auth/me`, {
@@ -143,6 +160,10 @@ export const auth = {
       headers: getHeaders(token),
     });
   },
+
+  // --------------------------------------------------------------
+  // LOGOUT
+  // --------------------------------------------------------------
 
   logout: async (token = getToken()) => {
     return request(`${API_URL}/auth/logout`, {
@@ -158,7 +179,8 @@ export const auth = {
 
 export const products = {
   getAll: async (params = {}) => {
-    const query = new URLSearchParams(params).toString();
+    const query =
+      new URLSearchParams(params).toString();
 
     return request(
       `${API_URL}/api/products${
@@ -173,7 +195,10 @@ export const products = {
     );
   },
 
-  create: async (productData, token = getToken()) => {
+  create: async (
+    productData,
+    token = getToken()
+  ) => {
     return request(`${API_URL}/api/products`, {
       method: "POST",
       headers: getHeaders(token),
@@ -187,6 +212,7 @@ export const products = {
   ) => {
     return request(`${API_URL}/api/products`, {
       method: "POST",
+
       headers: {
         ...(token
           ? {
@@ -194,6 +220,7 @@ export const products = {
             }
           : {}),
       },
+
       body: formData,
     });
   },
@@ -222,6 +249,7 @@ export const products = {
       `${API_URL}/api/products/${id}`,
       {
         method: "PUT",
+
         headers: {
           ...(token
             ? {
@@ -229,12 +257,16 @@ export const products = {
               }
             : {}),
         },
+
         body: formData,
       }
     );
   },
 
-  delete: async (id, token = getToken()) => {
+  delete: async (
+    id,
+    token = getToken()
+  ) => {
     return request(
       `${API_URL}/api/products/${id}`,
       {
@@ -254,7 +286,8 @@ export const users = {
     params = {},
     token = getToken()
   ) => {
-    const query = new URLSearchParams(params).toString();
+    const query =
+      new URLSearchParams(params).toString();
 
     return request(
       `${API_URL}/api/users${
@@ -306,7 +339,9 @@ export const users = {
     );
   },
 
-  getStats: async (token = getToken()) => {
+  getStats: async (
+    token = getToken()
+  ) => {
     return request(
       `${API_URL}/api/users/stats`,
       {
@@ -321,7 +356,10 @@ export const users = {
 // ================================================================
 
 export const notifications = {
-  // Notifications for a specific user
+  // --------------------------------------------------------------
+  // USER NOTIFICATIONS
+  // --------------------------------------------------------------
+
   getForUser: async (
     userId,
     token = getToken()
@@ -334,17 +372,31 @@ export const notifications = {
     );
   },
 
-  // Admin notifications
+  // --------------------------------------------------------------
+  // ADMIN NOTIFICATIONS
+  // --------------------------------------------------------------
+
   getForAdmin: async (
     token = getToken()
   ) => {
+    if (!token) {
+      throw new Error(
+        "Authentication token is missing"
+      );
+    }
+
     return request(
       `${API_URL}/api/notifications/admin`,
       {
+        method: "GET",
         headers: getHeaders(token),
       }
     );
   },
+
+  // --------------------------------------------------------------
+  // CREATE
+  // --------------------------------------------------------------
 
   create: async (
     data,
@@ -360,6 +412,10 @@ export const notifications = {
     );
   },
 
+  // --------------------------------------------------------------
+  // MARK READ
+  // --------------------------------------------------------------
+
   markRead: async (
     id,
     token = getToken()
@@ -372,6 +428,10 @@ export const notifications = {
       }
     );
   },
+
+  // --------------------------------------------------------------
+  // DELETE
+  // --------------------------------------------------------------
 
   delete: async (
     id,
@@ -396,7 +456,8 @@ export const orders = {
     params = {},
     token = getToken()
   ) => {
-    const query = new URLSearchParams(params).toString();
+    const query =
+      new URLSearchParams(params).toString();
 
     return request(
       `${API_URL}/api/orders${
@@ -514,6 +575,7 @@ export const messages = {
       {
         method: "POST",
         headers: getHeaders(token),
+
         body: JSON.stringify({
           receiver,
           message,
@@ -555,7 +617,9 @@ export const messages = {
 // ================================================================
 
 export const favorites = {
-  getAll: async (token = getToken()) => {
+  getAll: async (
+    token = getToken()
+  ) => {
     return request(
       `${API_URL}/api/favorites`,
       {
@@ -573,6 +637,7 @@ export const favorites = {
       {
         method: "POST",
         headers: getHeaders(token),
+
         body: JSON.stringify({
           productId,
         }),
@@ -603,33 +668,56 @@ export const register = auth.register;
 export const getMe = auth.getMe;
 export const logout = auth.logout;
 
-export const getProducts = products.getAll;
-export const getProduct = products.getById;
-export const createProduct = products.create;
+export const getProducts =
+  products.getAll;
+
+export const getProduct =
+  products.getById;
+
+export const createProduct =
+  products.create;
+
 export const createProductWithFiles =
   products.createWithFiles;
-export const updateProduct = products.update;
+
+export const updateProduct =
+  products.update;
+
 export const updateProductWithFiles =
   products.updateWithFiles;
-export const deleteProduct = products.delete;
 
-export const getUsers = users.getAll;
-export const getUser = users.getById;
-export const updateUser = users.update;
-export const deleteUser = users.delete;
-export const getUserStats = users.getStats;
+export const deleteProduct =
+  products.delete;
 
-// IMPORTANT:
-// This is now the admin notification function.
+export const getUsers =
+  users.getAll;
+
+export const getUser =
+  users.getById;
+
+export const updateUser =
+  users.update;
+
+export const deleteUser =
+  users.delete;
+
+export const getUserStats =
+  users.getStats;
+
+// ================================================================
+// NOTIFICATION EXPORTS
+// ================================================================
+
+// Admin notifications
 export const getNotifications =
   notifications.getForAdmin;
 
-// Explicit user notification function.
-export const getUserNotifications =
-  notifications.getForUser;
-
 export const getAdminNotifications =
   notifications.getForAdmin;
+
+// User notifications
+export const getUserNotifications =
+  notifications.getForUser;
 
 export const createNotification =
   notifications.create;
@@ -640,11 +728,28 @@ export const markNotificationRead =
 export const deleteNotification =
   notifications.delete;
 
-export const getOrders = orders.getAll;
-export const getOrder = orders.getById;
-export const createOrder = orders.create;
-export const updateOrder = orders.update;
-export const deleteOrder = orders.delete;
+// ================================================================
+// ORDER EXPORTS
+// ================================================================
+
+export const getOrders =
+  orders.getAll;
+
+export const getOrder =
+  orders.getById;
+
+export const createOrder =
+  orders.create;
+
+export const updateOrder =
+  orders.update;
+
+export const deleteOrder =
+  orders.delete;
+
+// ================================================================
+// MESSAGE EXPORTS
+// ================================================================
 
 export const getMessages =
   messages.getForUser;
@@ -664,6 +769,10 @@ export const markMessageRead =
 export const deleteMessage =
   messages.delete;
 
+// ================================================================
+// FAVORITE EXPORTS
+// ================================================================
+
 export const getFavorites =
   favorites.getAll;
 
@@ -678,6 +787,8 @@ export const removeFavorite =
 // ================================================================
 
 const api = {
+  API_URL,
+
   auth,
   products,
   users,
@@ -730,6 +841,10 @@ const api = {
   removeFavorite,
 
   getImageUrl,
+
+  // Expose these if needed elsewhere
+  getToken,
+  clearAuthData,
 };
 
 export default api;
