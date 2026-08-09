@@ -9,7 +9,7 @@ const mongoose = require("mongoose");
 const productSchema = new mongoose.Schema(
   {
     // ========================================================
-    // Basic Product Information
+    // BASIC INFORMATION
     // ========================================================
 
     title: {
@@ -58,7 +58,7 @@ const productSchema = new mongoose.Schema(
     },
 
     // ========================================================
-    // Seller
+    // SELLER
     // ========================================================
 
     sellerId: {
@@ -81,7 +81,7 @@ const productSchema = new mongoose.Schema(
     },
 
     // ========================================================
-    // Images / Videos
+    // MEDIA
     // ========================================================
 
     image: {
@@ -100,7 +100,7 @@ const productSchema = new mongoose.Schema(
     },
 
     // ========================================================
-    // Product Details
+    // PRODUCT DETAILS
     // ========================================================
 
     brand: {
@@ -144,7 +144,7 @@ const productSchema = new mongoose.Schema(
     },
 
     // ========================================================
-    // Statistics
+    // STATISTICS
     // ========================================================
 
     views: {
@@ -153,7 +153,7 @@ const productSchema = new mongoose.Schema(
     },
 
     // ========================================================
-    // Status
+    // STATUS
     // ========================================================
 
     status: {
@@ -193,7 +193,7 @@ const productSchema = new mongoose.Schema(
     },
 
     // ========================================================
-    // Phone-specific Details
+    // PHONE DETAILS
     // ========================================================
 
     batteryHealth: {
@@ -229,6 +229,7 @@ const productSchema = new mongoose.Schema(
       sparse: true,
     },
   },
+
   {
     timestamps: true,
     versionKey: false,
@@ -236,35 +237,21 @@ const productSchema = new mongoose.Schema(
 );
 
 // ============================================================
-// AUTO-GENERATE SLUG
+// AUTO SLUG
 // ============================================================
 
-productSchema.pre(
-  "save",
-  function (next) {
-    if (
-      !this.slug &&
-      this.title
-    ) {
-      const baseSlug =
-        this.title
-          .toLowerCase()
-          .replace(
-            /[^a-z0-9]+/g,
-            "-"
-          )
-          .replace(
-            /^-+|-+$/g,
-            ""
-          );
+productSchema.pre("save", function (next) {
+  if (!this.slug && this.title) {
+    const baseSlug = this.title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
 
-      this.slug =
-        `${baseSlug}-${Date.now()}`;
-    }
-
-    next();
+    this.slug = `${baseSlug}-${Date.now()}`;
   }
-);
+
+  next();
+});
 
 // ============================================================
 // INDEXES
@@ -294,21 +281,12 @@ productSchema.index({
   createdAt: -1,
 });
 
-// IMPORTANT:
-// Do NOT add another slug index here.
-// The slug field already has:
-// unique: true
-// sparse: true
-
 // ============================================================
 // MODEL
 // ============================================================
 
 const Product =
   mongoose.models.Product ||
-  mongoose.model(
-    "Product",
-    productSchema
-  );
+  mongoose.model("Product", productSchema);
 
 module.exports = Product;

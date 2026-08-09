@@ -1,20 +1,75 @@
-const multer = require('multer');
-const { storage } = require('./cloudinary');   // ← Cloudinary storage
+// backend/config/multer.js
+
+const multer = require("multer");
+
+// ============================================================
+// ALLOWED FILE TYPES
+// ============================================================
+
+const allowedImageTypes = [
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+];
+
+const allowedVideoTypes = [
+  "video/mp4",
+  "video/quicktime",
+  "video/x-msvideo",
+  "video/webm",
+];
+
+const allowedTypes = [
+  ...allowedImageTypes,
+  ...allowedVideoTypes,
+];
+
+// ============================================================
+// FILE FILTER
+// ============================================================
 
 const fileFilter = (req, file, cb) => {
-  const allowed = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp',
-                   'video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/webm'];
-  if (allowed.includes(file.mimetype)) {
+  console.log(
+    `📁 Incoming file: ${file.originalname} | ${file.mimetype}`
+  );
+
+  if (allowedTypes.includes(file.mimetype)) {
     cb(null, true);
   } else {
-    cb(new Error('Only images and videos are allowed'), false);
+    cb(
+      new Error(
+        `Unsupported file type: ${file.mimetype}`
+      ),
+      false
+    );
   }
 };
 
+// ============================================================
+// MEMORY STORAGE
+// ============================================================
+
+const storage = multer.memoryStorage();
+
+// ============================================================
+// MULTER
+// ============================================================
+
 const upload = multer({
-  storage,  // ← this is the Cloudinary storage
-  limits: { fileSize: 50 * 1024 * 1024 },
+  storage,
+
+  limits: {
+    fileSize: 50 * 1024 * 1024,
+    files: 6,
+  },
+
   fileFilter,
 });
+
+// ============================================================
+// EXPORT
+// ============================================================
 
 module.exports = upload;

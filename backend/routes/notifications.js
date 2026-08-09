@@ -1,157 +1,76 @@
+// backend/routes/notifications.js
+
 const express = require("express");
-const Notification = require("../models/Notification");
-const { verifyToken, isAdmin } = require("../middleware/auth");
+
+const {
+  verifyToken,
+  isAdmin,
+} = require("../middleware/auth");
+
+const {
+  getUserNotifications,
+  getAdminNotifications,
+  createNotification,
+  markNotificationRead,
+  deleteNotification,
+} = require("../controllers/notificationController");
 
 const router = express.Router();
 
-// ===== GET USER NOTIFICATIONS =====
-router.get("/:userId", verifyToken, async (req, res) => {
-  try {
-    // Check if user is requesting their own notifications or is admin
-    if (req.params.userId !== req.userId.toString() && req.user.role !== "admin") {
-      return res.status(403).json({
-        success: false,
-        message: "Access denied",
-      });
-    }
+// ============================================================
+// ADMIN NOTIFICATIONS
+// IMPORTANT: Must come BEFORE /:userId
+// ============================================================
 
-    const notifications = await Notification.find({ userId: req.params.userId })
-      .sort({ createdAt: -1 })
-      .limit(50);
+router.get(
+  "/admin",
+  verifyToken,
+  isAdmin,
+  getAdminNotifications
+);
 
-    res.json(notifications);
-  } catch (err) {
-    console.error("Error fetching notifications:", err);
-    res.status(500).json({
-      success: false,
-      message: err.message,
-    });
-  }
-});
+// ============================================================
+// USER NOTIFICATIONS
+// GET /api/notifications/:userId
+// ============================================================
 
-// ===== GET ADMIN NOTIFICATIONS =====
-router.get("/admin", verifyToken, isAdmin, async (req, res) => {
-  try {
-    const notifications = await Notification.find({
-      $or: [{ userId: "admin" }, { userId: req.userId }],
-    })
-      .sort({ createdAt: -1 })
-      .limit(100);
+router.get(
+  "/:userId",
+  verifyToken,
+  getUserNotifications
+);
 
-    res.json(notifications);
-  } catch (err) {
-    console.error("Error fetching admin notifications:", err);
-    res.status(500).json({
-      success: false,
-      message: err.message,
-    });
-  }
-});
+// ============================================================
+// CREATE NOTIFICATION
+// POST /api/notifications
+// ============================================================
 
-// ===== CREATE NOTIFICATION =====
-router.post("/", verifyToken, async (req, res) => {
-  try {
-    const { userId, title, message, type, link } = req.body;
+router.post(
+  "/",
+  verifyToken,
+  createNotification
+);
 
-    if (!userId || !title || !message) {
-      return res.status(400).json({
-        success: false,
-        message: "userId, title and message are required",
-      });
-    }
+// ============================================================
+// MARK AS READ
+// PUT /api/notifications/:id/read
+// ============================================================
 
-    const notification = new Notification({
-      userId,
-      title,
-      message,
-      type: type || "info",
-      link: link || "",
-    });
+router.put(
+  "/:id/read",
+  verifyToken,
+  markNotificationRead
+);
 
-    await notification.save();
+// ============================================================
+// DELETE
+// DELETE /api/notifications/:id
+// ============================================================
 
-    res.status(201).json({
-      success: true,
-      notification,
-    });
-  } catch (err) {
-    console.error("Error creating notification:", err);
-    res.status(500).json({
-      success: false,
-      message: err.message,
-    });
-  }
-});
-
-// ===== MARK NOTIFICATION AS READ =====
-router.put("/:id/read", verifyToken, async (req, res) => {
-  try {
-    const notification = await Notification.findById(req.params.id);
-
-    if (!notification) {
-      return res.status(404).json({
-        success: false,
-        message: "Notification not found",
-      });
-    }
-
-    // Check ownership or admin
-    if (notification.userId.toString() !== req.userId.toString() && req.user.role !== "admin") {
-      return res.status(403).json({
-        success: false,
-        message: "Access denied",
-      });
-    }
-
-    notification.read = true;
-    await notification.save();
-
-    res.json({
-      success: true,
-      notification,
-    });
-  } catch (err) {
-    console.error("Error marking notification as read:", err);
-    res.status(500).json({
-      success: false,
-      message: err.message,
-    });
-  }
-});
-
-// ===== DELETE NOTIFICATION =====
-router.delete("/:id", verifyToken, async (req, res) => {
-  try {
-    const notification = await Notification.findById(req.params.id);
-
-    if (!notification) {
-      return res.status(404).json({
-        success: false,
-        message: "Notification not found",
-      });
-    }
-
-    // Check ownership or admin
-    if (notification.userId.toString() !== req.userId.toString() && req.user.role !== "admin") {
-      return res.status(403).json({
-        success: false,
-        message: "Access denied",
-      });
-    }
-
-    await notification.deleteOne();
-
-    res.json({
-      success: true,
-      message: "Notification deleted",
-    });
-  } catch (err) {
-    console.error("Error deleting notification:", err);
-    res.status(500).json({
-      success: false,
-      message: err.message,
-    });
-  }
-});
+router.delete(
+  "/:id",
+  verifyToken,
+  deleteNotification
+);
 
 module.exports = router;

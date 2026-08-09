@@ -1,12 +1,31 @@
-
 // backend/config/cloudinary.js
 
-const { v2: cloudinary } = require("cloudinary");
-require("dotenv").config();
+const cloudinary = require("cloudinary").v2;
 
-// ==========================
-// Cloudinary Configuration
-// ==========================
+// ============================================================
+// REQUIRED ENVIRONMENT VARIABLES
+// ============================================================
+
+const requiredEnv = [
+  "CLOUDINARY_CLOUD_NAME",
+  "CLOUDINARY_API_KEY",
+  "CLOUDINARY_API_SECRET",
+];
+
+const missing = requiredEnv.filter(
+  (key) => !process.env[key]
+);
+
+if (missing.length > 0) {
+  console.error(
+    "❌ Missing Cloudinary environment variables:",
+    missing.join(", ")
+  );
+}
+
+// ============================================================
+// CLOUDINARY CONFIG
+// ============================================================
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -14,18 +33,10 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-// ==========================
-// Validate Configuration
-// ==========================
+// ============================================================
+// EXPORT
+// ============================================================
 
-if (
-  !process.env.CLOUDINARY_CLOUD_NAME ||
-  !process.env.CLOUDINARY_API_KEY ||
-  !process.env.CLOUDINARY_API_SECRET
-) {
-  console.warn(
-    "⚠️ Cloudinary environment variables are not fully configured."
-  );
-}
-
-module.exports = cloudinary;
+module.exports = {
+  cloudinary,
+};
