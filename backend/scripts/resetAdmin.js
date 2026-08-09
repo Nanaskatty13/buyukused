@@ -7,8 +7,8 @@ require('dotenv').config();
 const resetAdmin = async () => {
   try {
     await mongoose.connect(process.env.MONGO_URI);
-    const email = 'admin@kn.com';
-    const password = 'admin123';
+    const email = 'nanaskatty0@gmail.com';
+    const password = 'Omega132';
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const result = await User.updateOne(

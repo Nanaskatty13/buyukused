@@ -16,7 +16,7 @@ const createAdmin = async () => {
       else console.warn('⚠️ Could not drop index:', err.message);
     }
 
-    const existing = await User.findOne({ email: 'admin@kn.com' });
+    const existing = await User.findOne({ email: 'nanaskatty0@gmail.com' });
     if (existing) {
       console.log('Admin already exists');
       process.exit(0);
@@ -25,13 +25,13 @@ const createAdmin = async () => {
     // ✅ Pass plain password – the model's pre‑save hook will hash it
     const admin = new User({
       name: 'KN Admin',
-      email: 'admin@kn.com',
-      password: 'admin123',   // plain text, not hashed
+      email: 'nanaskatty0@gmail.com',
+      password: 'Omega132',   // plain text, not hashed
       phone: '0542928081',
       role: 'admin',
     });
     await admin.save();
-    console.log('✅ Admin created: admin@kn.com / admin123');
+    console.log('✅ Admin created: nanaskatty0@gmail.com / Omega132');
     process.exit(0);
   } catch (err) {
     console.error('❌ Error:', err);

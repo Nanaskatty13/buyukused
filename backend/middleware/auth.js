@@ -3,13 +3,18 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 
-// ============================================================
+// ================================================================
 // VERIFY JWT TOKEN
-// ============================================================
+// ================================================================
 
 const verifyToken = async (req, res, next) => {
   try {
-    const authHeader = req.headers.authorization;
+    const authHeader =
+      req.headers.authorization;
+
+    // ------------------------------------------------------------
+    // Authorization header missing
+    // ------------------------------------------------------------
 
     if (
       !authHeader ||
@@ -21,7 +26,8 @@ const verifyToken = async (req, res, next) => {
       });
     }
 
-    const token = authHeader.substring(7).trim();
+    const token =
+      authHeader.substring(7).trim();
 
     if (!token) {
       return res.status(401).json({
@@ -30,14 +36,19 @@ const verifyToken = async (req, res, next) => {
       });
     }
 
+    // ------------------------------------------------------------
     // Verify JWT
+    // ------------------------------------------------------------
+
     const decoded = jwt.verify(
       token,
       process.env.JWT_SECRET
     );
 
-    // Your controller signs the user ID as `id`
-    const userId = decoded.id;
+    const userId =
+      decoded.id ||
+      decoded._id ||
+      decoded.userId;
 
     if (!userId) {
       return res.status(401).json({
@@ -46,9 +57,13 @@ const verifyToken = async (req, res, next) => {
       });
     }
 
-    // Find current user
-    const user = await User.findById(userId)
-      .select("-password");
+    // ------------------------------------------------------------
+    // Find user
+    // ------------------------------------------------------------
+
+    const user =
+      await User.findById(userId)
+        .select("-password");
 
     if (!user) {
       return res.status(401).json({
@@ -57,7 +72,10 @@ const verifyToken = async (req, res, next) => {
       });
     }
 
+    // ------------------------------------------------------------
     // Check account status
+    // ------------------------------------------------------------
+
     if (user.isActive === false) {
       return res.status(403).json({
         success: false,
@@ -65,20 +83,21 @@ const verifyToken = async (req, res, next) => {
       });
     }
 
-    // Attach user to request
-    req.user = user;
+    // ------------------------------------------------------------
+    // Attach authenticated user
+    // ------------------------------------------------------------
 
-    // Keep ID available for existing routes
-    req.userId = user._id;
+    req.user = user;
+    req.userId = user._id.toString();
 
     next();
   } catch (error) {
     console.error(
-      "❌ Authentication error:",
+      "❌ Auth middleware error:",
       error.message
     );
 
-    // Expired JWT
+    // JWT expired
     if (error.name === "TokenExpiredError") {
       return res.status(401).json({
         success: false,
@@ -101,9 +120,9 @@ const verifyToken = async (req, res, next) => {
   }
 };
 
-// ============================================================
+// ================================================================
 // ADMIN ONLY
-// ============================================================
+// ================================================================
 
 const isAdmin = (req, res, next) => {
   if (
@@ -119,9 +138,9 @@ const isAdmin = (req, res, next) => {
   });
 };
 
-// ============================================================
+// ================================================================
 // SELLER ONLY
-// ============================================================
+// ================================================================
 
 const isSeller = (req, res, next) => {
   if (
@@ -139,10 +158,6 @@ const isSeller = (req, res, next) => {
     message: "Access denied. Seller only.",
   });
 };
-
-// ============================================================
-// EXPORT
-// ============================================================
 
 module.exports = {
   verifyToken,

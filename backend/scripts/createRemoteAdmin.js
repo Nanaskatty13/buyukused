@@ -21,8 +21,8 @@ const createAdmin = async () => {
     console.log('✅ Connected to MongoDB');
 
     // Your admin credentials – change these as needed
-    const adminEmail = process.env.ADMIN_EMAIL || 'nanaskatty@gmail.com';
-    const adminPassword = process.env.ADMIN_PASSWORD || 'oMEGA132?';
+    const adminEmail = process.env.ADMIN_EMAIL || 'nanaskatty0@gmail.com';
+    const adminPassword = process.env.ADMIN_PASSWORD || 'Omega132';
 
     // Check if user exists
     let user = await User.findOne({ email: adminEmail });

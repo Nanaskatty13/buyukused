@@ -1,4 +1,3 @@
-
 // backend/routes/auth.js
 
 const express = require("express");
@@ -43,17 +42,21 @@ router.get("/me", verifyToken, getMe);
 // PUT /auth/profile
 // ============================================================
 
-router.put("/profile", verifyToken, updateProfile);
+router.put(
+  "/profile",
+  verifyToken,
+  updateProfile
+);
 
 // ============================================================
 // LOGOUT
 // POST /auth/logout
 // ============================================================
 
-router.post("/logout", verifyToken, logout);
-
-// ============================================================
-// EXPORT
-// ============================================================
+router.post(
+  "/logout",
+  verifyToken,
+  logout
+);
 
 module.exports = router;

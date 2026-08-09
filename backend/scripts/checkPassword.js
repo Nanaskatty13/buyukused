@@ -17,7 +17,7 @@ const checkPassword = async () => {
     await mongoose.connect(MONGO_URI);
     console.log('✅ Connected to MongoDB');
 
-    const adminEmail = 'nanaskatty@gmail.com';
+    const adminEmail = 'nanaskatty0@gmail.com';
 
     const user = await User.findOne({ email: adminEmail });
     if (!user) {
@@ -29,7 +29,7 @@ const checkPassword = async () => {
     console.log('🔐 Stored password hash:', user.password);
 
     // Test if 'Admin123!' matches the stored hash
-    const testPassword = 'Admin123!';
+    const testPassword = 'Omega132!';
     const isMatch = await bcrypt.compare(testPassword, user.password);
     console.log(`❓ Does '${testPassword}' match?`, isMatch);
 

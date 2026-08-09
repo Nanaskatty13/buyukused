@@ -17,8 +17,8 @@ const setPassword = async () => {
     await mongoose.connect(MONGO_URI);
     console.log('✅ Connected');
 
-    const email = 'nanaskatty@gmail.com';
-    const plain = 'Admin123!';
+    const email = 'nanaskatty0@gmail.com';
+    const plain = 'Omega132!';
 
     const user = await User.findOne({ email });
     if (!user) {

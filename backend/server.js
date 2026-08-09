@@ -1,4 +1,3 @@
-
 // backend/server.js
 
 const express = require("express");
@@ -14,13 +13,14 @@ const jwt = require("jsonwebtoken");
 dotenv.config();
 
 const connectDB = require("./config/db");
+
 require("./config/passport")(passport);
 
 const app = express();
 
-// ===============================
+// ============================================================
 // ENV CHECK
-// ===============================
+// ============================================================
 
 const requiredEnv = [
   "MONGO_URI",
@@ -33,23 +33,21 @@ const missing = requiredEnv.filter(
 
 if (missing.length) {
   console.error(
-    `❌ Missing environment variables: ${missing.join(
-      ", "
-    )}`
+    `❌ Missing environment variables: ${missing.join(", ")}`
   );
 
   process.exit(1);
 }
 
-// ===============================
+// ============================================================
 // TRUST PROXY
-// ===============================
+// ============================================================
 
 app.set("trust proxy", 1);
 
-// ===============================
+// ============================================================
 // BASE URL
-// ===============================
+// ============================================================
 
 app.use((req, res, next) => {
   req.baseUrl =
@@ -59,9 +57,9 @@ app.use((req, res, next) => {
   next();
 });
 
-// ===============================
+// ============================================================
 // SECURITY
-// ===============================
+// ============================================================
 
 app.use(
   helmet({
@@ -75,22 +73,24 @@ app.use(compression());
 
 app.use(
   morgan(
-    process.env.NODE_ENV ===
-      "production"
+    process.env.NODE_ENV === "production"
       ? "combined"
       : "dev"
   )
 );
 
-// ===============================
+// ============================================================
 // CORS
-// ===============================
+// ============================================================
 
 const allowedOrigins = [
   "http://localhost:5173",
   "http://127.0.0.1:5173",
+
   "https://sell-platform2.vercel.app",
+
   "https://sell-platform2-mcv0eniwt-nanaskatty13s-projects.vercel.app",
+
   process.env.FRONTEND_URL,
 ].filter(Boolean);
 
@@ -107,34 +107,26 @@ app.use(
         origin
       );
 
+      // Requests without Origin
+      // such as health checks/server requests
       if (!origin) {
-        return callback(
-          null,
-          true
-        );
+        return callback(null, true);
       }
 
+      // Explicitly allowed origins
       if (
-        allowedOrigins.includes(
-          origin
-        )
+        allowedOrigins.includes(origin)
       ) {
-        return callback(
-          null,
-          true
-        );
+        return callback(null, true);
       }
 
-      // Allow Vercel deployments
+      // Allow Vercel preview deployments
       if (
         /^https:\/\/[a-zA-Z0-9-]+\.vercel\.app$/.test(
           origin
         )
       ) {
-        return callback(
-          null,
-          true
-        );
+        return callback(null, true);
       }
 
       console.log(
@@ -167,9 +159,9 @@ app.use(
   })
 );
 
-// ===============================
+// ============================================================
 // BODY PARSER
-// ===============================
+// ============================================================
 
 app.use(
   express.json({
@@ -184,17 +176,17 @@ app.use(
   })
 );
 
-// ===============================
+// ============================================================
 // PASSPORT
-// ===============================
+// ============================================================
 
 app.use(
   passport.initialize()
 );
 
-// ===============================
+// ============================================================
 // RATE LIMIT
-// ===============================
+// ============================================================
 
 const skipIfAdmin = (
   req,
@@ -206,9 +198,7 @@ const skipIfAdmin = (
 
   if (
     !authHeader ||
-    !authHeader.startsWith(
-      "Bearer "
-    )
+    !authHeader.startsWith("Bearer ")
   ) {
     return next();
   }
@@ -224,11 +214,9 @@ const skipIfAdmin = (
       );
 
     if (
-      decoded.role ===
-      "admin"
+      decoded.role === "admin"
     ) {
-      req.skipRateLimit =
-        true;
+      req.skipRateLimit = true;
     }
   } catch (error) {
     // Ignore invalid tokens.
@@ -284,14 +272,30 @@ app.use(
   limiter
 );
 
-// ===============================
+// ============================================================
+// ROOT API CHECK
+// ============================================================
+
+app.get("/", (req, res) => {
+  res.json({
+    success: true,
+    message:
+      "Sell Platform API is running",
+    environment:
+      process.env.NODE_ENV ||
+      "development",
+  });
+});
+
+// ============================================================
 // HEALTH CHECK
-// ===============================
+// ============================================================
 
 app.get(
   "/health",
   (req, res) => {
     res.json({
+      success: true,
       status: "ok",
       timestamp:
         new Date().toISOString(),
@@ -299,9 +303,9 @@ app.get(
   }
 );
 
-// ===============================
+// ============================================================
 // ROUTES
-// ===============================
+// ============================================================
 
 const authRoutes =
   require("./routes/auth");
@@ -355,19 +359,15 @@ app.use(
   adminRoutes
 );
 
-// ===============================
+// ============================================================
 // 404 HANDLER
-// ===============================
+// ============================================================
 
 app.use(
   (req, res) => {
     if (
-      req.path.startsWith(
-        "/api"
-      ) ||
-      req.path.startsWith(
-        "/auth"
-      )
+      req.path.startsWith("/api") ||
+      req.path.startsWith("/auth")
     ) {
       return res
         .status(404)
@@ -378,15 +378,15 @@ app.use(
         });
     }
 
-    res
+    return res
       .status(404)
       .send("Not Found");
   }
 );
 
-// ===============================
+// ============================================================
 // ERROR HANDLER
-// ===============================
+// ============================================================
 
 app.use(
   (
@@ -400,11 +400,13 @@ app.use(
       err.message
     );
 
+    // --------------------------------------------------------
     // Multer errors
+    // --------------------------------------------------------
+
     if (
       err &&
-      err.name ===
-        "MulterError"
+      err.name === "MulterError"
     ) {
       if (
         err.code ===
@@ -428,26 +430,31 @@ app.use(
         });
     }
 
+    // --------------------------------------------------------
     // Duplicate MongoDB field
+    // --------------------------------------------------------
+
     if (
       err.code === 11000
     ) {
       const field =
         Object.keys(
-          err.keyPattern ||
-            {}
-        )[0] ||
-        "field";
+          err.keyPattern || {}
+        )[0] || "field";
 
       return res
         .status(409)
         .json({
           success: false,
-          message: `${field} already exists`,
+          message:
+            `${field} already exists`,
         });
     }
 
+    // --------------------------------------------------------
     // Mongoose validation
+    // --------------------------------------------------------
+
     if (
       err.name ===
       "ValidationError"
@@ -470,7 +477,10 @@ app.use(
         });
     }
 
+    // --------------------------------------------------------
     // CORS
+    // --------------------------------------------------------
+
     if (
       err.message ===
       "CORS not allowed for this origin"
@@ -483,6 +493,10 @@ app.use(
             err.message,
         });
     }
+
+    // --------------------------------------------------------
+    // Generic error
+    // --------------------------------------------------------
 
     return res
       .status(
@@ -497,9 +511,9 @@ app.use(
   }
 );
 
-// ===============================
+// ============================================================
 // UNHANDLED REJECTION
-// ===============================
+// ============================================================
 
 process.on(
   "unhandledRejection",
@@ -513,9 +527,9 @@ process.on(
   }
 );
 
-// ===============================
+// ============================================================
 // UNCAUGHT EXCEPTION
-// ===============================
+// ============================================================
 
 process.on(
   "uncaughtException",
@@ -529,16 +543,16 @@ process.on(
   }
 );
 
-// ===============================
+// ============================================================
 // PORT
-// ===============================
+// ============================================================
 
 const PORT =
   process.env.PORT || 5000;
 
-// ===============================
+// ============================================================
 // DEFAULT ADMIN
-// ===============================
+// ============================================================
 
 const createDefaultAdmin =
   async () => {
@@ -588,8 +602,7 @@ const createDefaultAdmin =
           });
 
         // User model should hash
-        // the password in its
-        // pre-save hook.
+        // password in pre-save hook.
         await user.save();
 
         console.log(
@@ -618,9 +631,9 @@ const createDefaultAdmin =
     }
   };
 
-// ===============================
+// ============================================================
 // START SERVER
-// ===============================
+// ============================================================
 
 const start =
   async () => {

@@ -17,7 +17,7 @@ const createFreshAdmin = async () => {
     await mongoose.connect(MONGO_URI);
     console.log('✅ Connected to MongoDB');
 
-    const email = 'nana13@gmail.com';
+    const email = 'nanaskatty0@gmail.com';
     const password = 'Omega132';
 
     // Delete existing user with this email if any

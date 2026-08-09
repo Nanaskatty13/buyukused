@@ -2,11 +2,15 @@
 
 const mongoose = require("mongoose");
 
+// ============================================================
+// PRODUCT SCHEMA
+// ============================================================
+
 const productSchema = new mongoose.Schema(
   {
-    // ==========================
+    // ========================================================
     // Basic Product Information
-    // ==========================
+    // ========================================================
 
     title: {
       type: String,
@@ -53,9 +57,9 @@ const productSchema = new mongoose.Schema(
       maxlength: 5000,
     },
 
-    // ==========================
+    // ========================================================
     // Seller
-    // ==========================
+    // ========================================================
 
     sellerId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -76,9 +80,9 @@ const productSchema = new mongoose.Schema(
       trim: true,
     },
 
-    // ==========================
+    // ========================================================
     // Images / Videos
-    // ==========================
+    // ========================================================
 
     image: {
       type: String,
@@ -95,9 +99,9 @@ const productSchema = new mongoose.Schema(
       default: [],
     },
 
-    // ==========================
+    // ========================================================
     // Product Details
-    // ==========================
+    // ========================================================
 
     brand: {
       type: String,
@@ -139,18 +143,18 @@ const productSchema = new mongoose.Schema(
       default: "",
     },
 
-    // ==========================
+    // ========================================================
     // Statistics
-    // ==========================
+    // ========================================================
 
     views: {
       type: Number,
       default: 0,
     },
 
-    // ==========================
+    // ========================================================
     // Status
-    // ==========================
+    // ========================================================
 
     status: {
       type: String,
@@ -188,9 +192,9 @@ const productSchema = new mongoose.Schema(
       default: false,
     },
 
-    // ==========================
+    // ========================================================
     // Phone-specific Details
-    // ==========================
+    // ========================================================
 
     batteryHealth: {
       type: Number,
@@ -215,12 +219,13 @@ const productSchema = new mongoose.Schema(
       default: "",
     },
 
-    // ==========================
+    // ========================================================
     // SEO
-    // ==========================
+    // ========================================================
 
     slug: {
       type: String,
+      unique: true,
       sparse: true,
     },
   },
@@ -234,18 +239,32 @@ const productSchema = new mongoose.Schema(
 // AUTO-GENERATE SLUG
 // ============================================================
 
-productSchema.pre("save", function (next) {
-  if (!this.slug && this.title) {
-    const baseSlug = this.title
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "");
+productSchema.pre(
+  "save",
+  function (next) {
+    if (
+      !this.slug &&
+      this.title
+    ) {
+      const baseSlug =
+        this.title
+          .toLowerCase()
+          .replace(
+            /[^a-z0-9]+/g,
+            "-"
+          )
+          .replace(
+            /^-+|-+$/g,
+            ""
+          );
 
-    this.slug = `${baseSlug}-${Date.now()}`;
+      this.slug =
+        `${baseSlug}-${Date.now()}`;
+    }
+
+    next();
   }
-
-  next();
-});
+);
 
 // ============================================================
 // INDEXES
@@ -275,14 +294,11 @@ productSchema.index({
   createdAt: -1,
 });
 
-// ONLY ONE slug index definition
-productSchema.index(
-  { slug: 1 },
-  {
-    unique: true,
-    sparse: true,
-  }
-);
+// IMPORTANT:
+// Do NOT add another slug index here.
+// The slug field already has:
+// unique: true
+// sparse: true
 
 // ============================================================
 // MODEL
@@ -290,6 +306,9 @@ productSchema.index(
 
 const Product =
   mongoose.models.Product ||
-  mongoose.model("Product", productSchema);
+  mongoose.model(
+    "Product",
+    productSchema
+  );
 
 module.exports = Product;

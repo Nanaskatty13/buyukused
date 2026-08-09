@@ -1,26 +1,31 @@
 // frontend/src/services/api.js
 
-import { getToken } from "../utils/storage";
-
 // ================================================================
 // API CONFIG
 // ================================================================
 
-const API_URL =
+const API_URL = (
   import.meta.env.VITE_API_URL ||
-  "http://localhost:5000";
+  "http://localhost:5000"
+).replace(/\/$/, "");
 
-console.log("🔗 API_URL:", API_URL);
+console.log(
+  "🔗 API_URL:",
+  API_URL
+);
 
 // ================================================================
 // HEADERS
 // ================================================================
 
 const getHeaders = (token) => ({
-  "Content-Type": "application/json",
+  "Content-Type":
+    "application/json",
+
   ...(token
     ? {
-        Authorization: `Bearer ${token}`,
+        Authorization:
+          `Bearer ${token}`,
       }
     : {}),
 });
@@ -29,32 +34,36 @@ const getHeaders = (token) => ({
 // RESPONSE HANDLER
 // ================================================================
 
-const handleResponse = async (response) => {
-  let data = {};
+const handleResponse =
+  async (response) => {
+    let data = {};
 
-  try {
-    data = await response.json();
-  } catch {
-    data = {};
-  }
+    try {
+      data =
+        await response.json();
+    } catch {
+      data = {};
+    }
 
-  if (!response.ok) {
-    const error = new Error(
-      data?.message ||
-        data?.error ||
-        `HTTP ${response.status}`
-    );
+    if (!response.ok) {
+      const error =
+        new Error(
+          data?.message ||
+            data?.error ||
+            `HTTP ${response.status}`
+        );
 
-    // VERY IMPORTANT
-    // AuthContext uses this to determine whether
-    // the token is actually invalid.
-    error.status = response.status;
+      // Preserve HTTP status.
+      // AuthContext uses this to distinguish
+      // invalid authentication from network errors.
+      error.status =
+        response.status;
 
-    throw error;
-  }
+      throw error;
+    }
 
-  return data;
-};
+    return data;
+  };
 
 // ================================================================
 // FETCH HELPER
@@ -65,15 +74,16 @@ const request = async (
   options = {}
 ) => {
   try {
-    const response = await fetch(
-      url,
-      options
-    );
+    const response =
+      await fetch(
+        url,
+        options
+      );
 
-    return await handleResponse(response);
+    return await handleResponse(
+      response
+    );
   } catch (error) {
-    // Preserve the HTTP status if one exists.
-    // Network errors normally have no status.
     console.error(
       `❌ API request failed: ${url}`,
       error
@@ -87,7 +97,9 @@ const request = async (
 // IMAGE URL HELPER
 // ================================================================
 
-export const getImageUrl = (path) => {
+export const getImageUrl = (
+  path
+) => {
   if (!path) {
     return "/placeholder.png";
   }
@@ -99,7 +111,9 @@ export const getImageUrl = (path) => {
     return path;
   }
 
-  if (path.startsWith("data:")) {
+  if (
+    path.startsWith("data:")
+  ) {
     return path;
   }
 
@@ -115,9 +129,9 @@ export const getImageUrl = (path) => {
 // ================================================================
 
 export const auth = {
-  // --------------------------------------------------------------
+  // ============================================================
   // LOGIN
-  // --------------------------------------------------------------
+  // ============================================================
 
   login: async (
     email,
@@ -127,10 +141,12 @@ export const auth = {
       `${API_URL}/auth/login`,
       {
         method: "POST",
+
         headers: {
           "Content-Type":
             "application/json",
         },
+
         body: JSON.stringify({
           email,
           password,
@@ -139,9 +155,9 @@ export const auth = {
     );
   },
 
-  // --------------------------------------------------------------
+  // ============================================================
   // REGISTER
-  // --------------------------------------------------------------
+  // ============================================================
 
   register: async (
     userData
@@ -150,10 +166,12 @@ export const auth = {
       `${API_URL}/auth/register`,
       {
         method: "POST",
+
         headers: {
           "Content-Type":
             "application/json",
         },
+
         body: JSON.stringify(
           userData
         ),
@@ -161,34 +179,38 @@ export const auth = {
     );
   },
 
-  // --------------------------------------------------------------
+  // ============================================================
   // CURRENT USER
-  // --------------------------------------------------------------
+  // ============================================================
 
-  getMe: async (token) => {
+  getMe: async (
+    token
+  ) => {
     return request(
       `${API_URL}/auth/me`,
       {
         method: "GET",
-        headers: getHeaders(
-          token
-        ),
+
+        headers:
+          getHeaders(token),
       }
     );
   },
 
-  // --------------------------------------------------------------
+  // ============================================================
   // LOGOUT
-  // --------------------------------------------------------------
+  // ============================================================
 
-  logout: async (token) => {
+  logout: async (
+    token
+  ) => {
     return request(
       `${API_URL}/auth/logout`,
       {
         method: "POST",
-        headers: getHeaders(
-          token
-        ),
+
+        headers:
+          getHeaders(token),
       }
     );
   },
@@ -216,7 +238,9 @@ export const products = {
     return request(url);
   },
 
-  getById: async (id) => {
+  getById: async (
+    id
+  ) => {
     return request(
       `${API_URL}/api/products/${id}`
     );
@@ -230,8 +254,10 @@ export const products = {
       `${API_URL}/api/products`,
       {
         method: "POST",
+
         headers:
           getHeaders(token),
+
         body: JSON.stringify(
           productData
         ),
@@ -247,10 +273,12 @@ export const products = {
       `${API_URL}/api/products`,
       {
         method: "POST",
+
         headers: {
           Authorization:
             `Bearer ${token}`,
         },
+
         body: formData,
       }
     );
@@ -265,10 +293,12 @@ export const products = {
       `${API_URL}/api/products/${id}`,
       {
         method: "PUT",
+
         headers: {
           Authorization:
             `Bearer ${token}`,
         },
+
         body: formData,
       }
     );
@@ -283,8 +313,10 @@ export const products = {
       `${API_URL}/api/products/${id}`,
       {
         method: "PUT",
+
         headers:
           getHeaders(token),
+
         body: JSON.stringify(
           productData
         ),
@@ -300,6 +332,7 @@ export const products = {
       `${API_URL}/api/products/${id}`,
       {
         method: "DELETE",
+
         headers:
           getHeaders(token),
       }
@@ -327,10 +360,13 @@ export const users = {
         ? `?${query}`
         : "");
 
-    return request(url, {
-      headers:
-        getHeaders(token),
-    });
+    return request(
+      url,
+      {
+        headers:
+          getHeaders(token),
+      }
+    );
   },
 
   getById: async (
@@ -355,8 +391,10 @@ export const users = {
       `${API_URL}/api/users/${id}`,
       {
         method: "PUT",
+
         headers:
           getHeaders(token),
+
         body: JSON.stringify(
           userData
         ),
@@ -372,6 +410,7 @@ export const users = {
       `${API_URL}/api/users/${id}`,
       {
         method: "DELETE",
+
         headers:
           getHeaders(token),
       }
@@ -429,8 +468,10 @@ export const notifications = {
       `${API_URL}/api/notifications`,
       {
         method: "POST",
+
         headers:
           getHeaders(token),
+
         body: JSON.stringify(
           data
         ),
@@ -446,6 +487,7 @@ export const notifications = {
       `${API_URL}/api/notifications/${id}/read`,
       {
         method: "PUT",
+
         headers:
           getHeaders(token),
       }
@@ -460,6 +502,7 @@ export const notifications = {
       `${API_URL}/api/notifications/${id}`,
       {
         method: "DELETE",
+
         headers:
           getHeaders(token),
       }
@@ -576,4 +619,6 @@ export default {
 // EXPORT API URL
 // ================================================================
 
-export { API_URL };
+export {
+  API_URL,
+};

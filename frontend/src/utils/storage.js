@@ -3,35 +3,47 @@
 const TOKEN_KEY = "authToken";
 const USER_KEY = "userData";
 
-// ============================================================
+// ================================================================
 // TOKEN
-// ============================================================
+// ================================================================
 
 export const getToken = () => {
-  return localStorage.getItem(TOKEN_KEY);
+  try {
+    return localStorage.getItem(TOKEN_KEY);
+  } catch (error) {
+    console.error("❌ Could not read auth token:", error);
+    return null;
+  }
 };
 
 export const setToken = (token) => {
-  if (token) {
-    localStorage.setItem(
-      TOKEN_KEY,
-      token
-    );
+  try {
+    if (!token) {
+      localStorage.removeItem(TOKEN_KEY);
+      return;
+    }
+
+    localStorage.setItem(TOKEN_KEY, token);
+  } catch (error) {
+    console.error("❌ Could not save auth token:", error);
   }
 };
 
 export const removeToken = () => {
-  localStorage.removeItem(TOKEN_KEY);
+  try {
+    localStorage.removeItem(TOKEN_KEY);
+  } catch (error) {
+    console.error("❌ Could not remove auth token:", error);
+  }
 };
 
-// ============================================================
+// ================================================================
 // USER
-// ============================================================
+// ================================================================
 
 export const getUser = () => {
   try {
-    const data =
-      localStorage.getItem(USER_KEY);
+    const data = localStorage.getItem(USER_KEY);
 
     if (!data) {
       return null;
@@ -39,11 +51,9 @@ export const getUser = () => {
 
     return JSON.parse(data);
   } catch (error) {
-    console.error(
-      "❌ Failed to read saved user:",
-      error
-    );
+    console.error("❌ Invalid stored user data:", error);
 
+    // Remove corrupted data only.
     localStorage.removeItem(USER_KEY);
 
     return null;
@@ -51,30 +61,38 @@ export const getUser = () => {
 };
 
 export const setUser = (user) => {
-  if (user) {
-    localStorage.setItem(
-      USER_KEY,
-      JSON.stringify(user)
-    );
+  try {
+    if (!user) {
+      localStorage.removeItem(USER_KEY);
+      return;
+    }
+
+    localStorage.setItem(USER_KEY, JSON.stringify(user));
+  } catch (error) {
+    console.error("❌ Could not save user:", error);
   }
 };
 
 export const removeUser = () => {
-  localStorage.removeItem(USER_KEY);
+  try {
+    localStorage.removeItem(USER_KEY);
+  } catch (error) {
+    console.error("❌ Could not remove user:", error);
+  }
 };
 
-// ============================================================
+// ================================================================
 // CLEAR AUTH
-// ============================================================
+// ================================================================
 
 export const clearAuthData = () => {
   removeToken();
   removeUser();
 };
 
-// ============================================================
-// CHECK AUTH
-// ============================================================
+// ================================================================
+// AUTH CHECK
+// ================================================================
 
 export const isAuthenticated = () => {
   return Boolean(getToken());
