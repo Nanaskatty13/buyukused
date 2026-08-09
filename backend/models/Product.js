@@ -1,91 +1,285 @@
+
 // backend/models/Product.js
+
 const mongoose = require("mongoose");
 
 const productSchema = new mongoose.Schema(
   {
-    title: { type: String, required: true, trim: true },
-    price: { type: Number, required: true, min: 0 },
-    oldPrice: { type: Number, default: null },
+    title: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+
+    price: {
+      type: Number,
+      required: true,
+      min: 0,
+    },
+
+    oldPrice: {
+      type: Number,
+      default: null,
+    },
+
     category: {
       type: String,
-      enum: ["Cars", "Phones", "Real Estate", "Jobs", "Electronics", "Fashion", "Home", "Other"],
+      enum: [
+        "Cars",
+        "Phones",
+        "Real Estate",
+        "Jobs",
+        "Electronics",
+        "Fashion",
+        "Home",
+        "Other",
+      ],
       default: "Other",
     },
-    location: { type: String, default: "Ghana", trim: true },
-    description: { type: String, default: "", trim: true, maxlength: 5000 },
-    sellerId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
-    sellerName: { type: String, default: "", trim: true },
-    sellerPhone: { type: String, default: "", trim: true },
-    image: { type: String, default: "" },               // legacy single image
-    images: { type: [String], default: [] },             // main image array
-    videos: { type: [String], default: [] },
-    brand: { type: String, default: "", trim: true },
-    model: { type: String, default: "", trim: true },
+
+    location: {
+      type: String,
+      default: "Ghana",
+      trim: true,
+    },
+
+    description: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 5000,
+    },
+
+    // ==========================
+    // Seller
+    // ==========================
+
+    sellerId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
+    },
+
+    sellerName: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    sellerPhone: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    // ==========================
+    // Images / Videos
+    // ==========================
+
+    image: {
+      type: String,
+      default: "",
+    },
+
+    images: {
+      type: [String],
+      default: [],
+    },
+
+    videos: {
+      type: [String],
+      default: [],
+    },
+
+    // ==========================
+    // Product Details
+    // ==========================
+
+    brand: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    model: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
     condition: {
       type: String,
-      enum: ["Brand New", "Like New", "Excellent", "Good", "Fair", "Poor"],
+      enum: [
+        "Brand New",
+        "Like New",
+        "Excellent",
+        "Good",
+        "Fair",
+        "Poor",
+      ],
       default: "Good",
     },
-    storage: { type: String, default: "" },
-    ram: { type: String, default: "" },
-    color: { type: String, default: "" },
-    views: { type: Number, default: 0 },
+
+    storage: {
+      type: String,
+      default: "",
+    },
+
+    ram: {
+      type: String,
+      default: "",
+    },
+
+    color: {
+      type: String,
+      default: "",
+    },
+
+    // ==========================
+    // Statistics
+    // ==========================
+
+    views: {
+      type: Number,
+      default: 0,
+    },
+
+    // ==========================
+    // Status
+    // ==========================
+
     status: {
       type: String,
-      enum: ["active", "pending", "inactive", "sold"],
+      enum: [
+        "active",
+        "pending",
+        "inactive",
+        "sold",
+      ],
       default: "active",
     },
-    promo: { type: Boolean, default: false },
-    verified: { type: Boolean, default: false },
-    yearsOnPlatform: { type: Number, default: 0 },
-    negotiation: { type: Boolean, default: false },
-    swapAccepted: { type: Boolean, default: false },
 
-    // Phone-specific details (from PostAd)
+    promo: {
+      type: Boolean,
+      default: false,
+    },
+
+    verified: {
+      type: Boolean,
+      default: false,
+    },
+
+    yearsOnPlatform: {
+      type: Number,
+      default: 0,
+    },
+
+    negotiation: {
+      type: Boolean,
+      default: false,
+    },
+
+    swapAccepted: {
+      type: Boolean,
+      default: false,
+    },
+
+    // ==========================
+    // Phone-specific Details
+    // ==========================
+
     batteryHealth: {
       type: Number,
       min: 0,
       max: 100,
       default: null,
     },
+
     faceId: {
       type: String,
-      enum: ["Working", "Not Working", "Not Available"],
+      enum: [
+        "Working",
+        "Not Working",
+        "Not Available",
+        "",
+      ],
       default: "",
     },
+
     simStatus: {
       type: String,
       default: "",
     },
 
-    // SEO slug
+    // ==========================
+    // SEO
+    // ==========================
+
     slug: {
       type: String,
       unique: true,
       sparse: true,
     },
   },
-  { timestamps: true, versionKey: false }
+  {
+    timestamps: true,
+    versionKey: false,
+  }
 );
 
-// ─── Pre‑save hook to auto‑generate a unique slug ──────────────
-productSchema.pre("save", async function (next) {
+// ==========================
+// Auto Generate Slug
+// ==========================
+
+productSchema.pre("save", function (next) {
   if (!this.slug && this.title) {
-    let baseSlug = this.title
+    const baseSlug = this.title
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-+|-+$/g, "");
-    this.slug = baseSlug + "-" + Date.now();
+
+    this.slug = `${baseSlug}-${Date.now()}`;
   }
+
   next();
 });
 
-// ─── Indexes for fast queries ──────────────────────────────────
-productSchema.index({ title: "text", description: "text" });
-productSchema.index({ category: 1, location: 1, status: 1 });
-productSchema.index({ createdAt: -1 });
-productSchema.index({ price: 1 });
-productSchema.index({ slug: 1 }, { unique: true });
+// ==========================
+// Indexes
+// ==========================
 
-const Product = mongoose.models.Product || mongoose.model("Product", productSchema);
+productSchema.index({
+  title: "text",
+  description: "text",
+});
+
+productSchema.index({
+  category: 1,
+  location: 1,
+  status: 1,
+});
+
+productSchema.index({
+  createdAt: -1,
+});
+
+productSchema.index({
+  price: 1,
+});
+
+productSchema.index({
+  sellerId: 1,
+  createdAt: -1,
+});
+
+productSchema.index(
+  { slug: 1 },
+  { unique: true }
+);
+
+const Product =
+  mongoose.models.Product ||
+  mongoose.model("Product", productSchema);
+
 module.exports = Product;

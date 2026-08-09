@@ -1,16 +1,15 @@
+
+// backend/server.js
+
 const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
 const passport = require("passport");
-const path = require("path");
 const helmet = require("helmet");
 const compression = require("compression");
 const rateLimit = require("express-rate-limit");
 const morgan = require("morgan");
-const multer = require("multer");
-const fs = require("fs");
 const jwt = require("jsonwebtoken");
-const bcrypt = require("bcryptjs"); // ✅ added for password hashing
 
 dotenv.config();
 
@@ -22,40 +21,71 @@ const app = express();
 // ===============================
 // ENV CHECK
 // ===============================
-const requiredEnv = ["MONGO_URI", "JWT_SECRET"];
-const missing = requiredEnv.filter(key => !process.env[key]);
+
+const requiredEnv = [
+  "MONGO_URI",
+  "JWT_SECRET",
+];
+
+const missing = requiredEnv.filter(
+  (key) => !process.env[key]
+);
+
 if (missing.length) {
-  console.error(`❌ Missing environment variables: ${missing.join(", ")}`);
+  console.error(
+    `❌ Missing environment variables: ${missing.join(
+      ", "
+    )}`
+  );
+
   process.exit(1);
 }
 
 // ===============================
 // TRUST PROXY
 // ===============================
+
 app.set("trust proxy", 1);
 
 // ===============================
-// BASE URL (for building absolute URLs)
+// BASE URL
 // ===============================
+
 app.use((req, res, next) => {
-  req.baseUrl = process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
+  req.baseUrl =
+    process.env.BASE_URL ||
+    `${req.protocol}://${req.get("host")}`;
+
   next();
 });
 
 // ===============================
-// MIDDLEWARE
+// SECURITY
 // ===============================
+
 app.use(
   helmet({
-    crossOriginResourcePolicy: { policy: "cross-origin" },
+    crossOriginResourcePolicy: {
+      policy: "cross-origin",
+    },
   })
 );
+
 app.use(compression());
-app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
+
+app.use(
+  morgan(
+    process.env.NODE_ENV ===
+      "production"
+      ? "combined"
+      : "dev"
+  )
+);
 
 // ===============================
 // CORS
 // ===============================
+
 const allowedOrigins = [
   "http://localhost:5173",
   "http://127.0.0.1:5173",
@@ -64,281 +94,580 @@ const allowedOrigins = [
   process.env.FRONTEND_URL,
 ].filter(Boolean);
 
-console.log("🟢 Allowed Origins (exact matches):", allowedOrigins);
+console.log(
+  "🟢 Allowed Origins:",
+  allowedOrigins
+);
 
 app.use(
   cors({
     origin: (origin, callback) => {
-      console.log("🔍 Incoming origin:", origin);
-      if (!origin) return callback(null, true);
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
+      console.log(
+        "🔍 Incoming origin:",
+        origin
+      );
+
+      if (!origin) {
+        return callback(
+          null,
+          true
+        );
       }
-      if (/^https?:\/\/[a-zA-Z0-9-]+\.vercel\.app$/.test(origin)) {
-        return callback(null, true);
+
+      if (
+        allowedOrigins.includes(
+          origin
+        )
+      ) {
+        return callback(
+          null,
+          true
+        );
       }
-      console.log("🚫 Blocked CORS:", origin);
-      callback(new Error("CORS not allowed for this origin"));
+
+      // Allow Vercel deployments
+      if (
+        /^https:\/\/[a-zA-Z0-9-]+\.vercel\.app$/.test(
+          origin
+        )
+      ) {
+        return callback(
+          null,
+          true
+        );
+      }
+
+      console.log(
+        "🚫 Blocked CORS:",
+        origin
+      );
+
+      return callback(
+        new Error(
+          "CORS not allowed for this origin"
+        )
+      );
     },
+
     credentials: true,
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+
+    methods: [
+      "GET",
+      "POST",
+      "PUT",
+      "PATCH",
+      "DELETE",
+      "OPTIONS",
+    ],
+
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+    ],
   })
 );
 
 // ===============================
 // BODY PARSER
 // ===============================
-app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
-// ===============================
-// MULTER CONFIGURATION
-// ===============================
-const uploadDir = path.join(__dirname, "public/uploads");
-try {
-  if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
-    console.log(`📁 Created uploads directory: ${uploadDir}`);
-  } else {
-    console.log(`📁 Upload directory exists: ${uploadDir}`);
-  }
-} catch (err) {
-  console.error(`❌ Failed to create upload directory: ${err.message}`);
-}
+app.use(
+  express.json({
+    limit: "10mb",
+  })
+);
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    const ext = path.extname(file.originalname);
-    const base = path.basename(file.originalname, ext).replace(/[^a-zA-Z0-9]/g, "-");
-    cb(null, base + "-" + uniqueSuffix + ext);
-  },
-});
-
-const fileFilter = (req, file, cb) => {
-  const allowedTypes = /jpeg|jpg|png|gif|mp4|mov|avi|webm/;
-  const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-  const mimetype = allowedTypes.test(file.mimetype);
-  if (extname && mimetype) {
-    return cb(null, true);
-  }
-  cb(new Error("Only images (jpg, png, gif) and videos (mp4, mov, avi, webm) are allowed"));
-};
-
-const upload = multer({
-  storage,
-  limits: { fileSize: 50 * 1024 * 1024 },
-  fileFilter,
-});
-
-app.use((req, res, next) => {
-  req.upload = upload;
-  next();
-});
+app.use(
+  express.urlencoded({
+    extended: true,
+    limit: "10mb",
+  })
+);
 
 // ===============================
 // PASSPORT
 // ===============================
-app.use(passport.initialize());
+
+app.use(
+  passport.initialize()
+);
 
 // ===============================
 // RATE LIMIT
 // ===============================
-const skipIfAdmin = (req, res, next) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+
+const skipIfAdmin = (
+  req,
+  res,
+  next
+) => {
+  const authHeader =
+    req.headers.authorization;
+
+  if (
+    !authHeader ||
+    !authHeader.startsWith(
+      "Bearer "
+    )
+  ) {
     return next();
   }
-  const token = authHeader.split(" ")[1];
+
+  const token =
+    authHeader.split(" ")[1];
+
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    if (decoded.role === "admin") {
-      req.skipRateLimit = true;
+    const decoded =
+      jwt.verify(
+        token,
+        process.env.JWT_SECRET
+      );
+
+    if (
+      decoded.role ===
+      "admin"
+    ) {
+      req.skipRateLimit =
+        true;
     }
-  } catch (e) {
-    // ignore
+  } catch (error) {
+    // Ignore invalid tokens.
   }
+
   next();
 };
 
 app.use(skipIfAdmin);
 
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: process.env.NODE_ENV === "production" ? 100 : 500,
-  skip: (req) => {
-    if (req.skipRateLimit) return true;
-    if (process.env.NODE_ENV === "development") return true;
-    return false;
-  },
-  message: { success: false, message: "Too many requests, please try again later." },
-});
-app.use("/api", limiter);
-app.use("/auth", limiter);
+const limiter =
+  rateLimit({
+    windowMs:
+      15 * 60 * 1000,
+
+    max:
+      process.env.NODE_ENV ===
+      "production"
+        ? 100
+        : 500,
+
+    skip: (req) => {
+      if (
+        req.skipRateLimit
+      ) {
+        return true;
+      }
+
+      if (
+        process.env.NODE_ENV ===
+        "development"
+      ) {
+        return true;
+      }
+
+      return false;
+    },
+
+    message: {
+      success: false,
+      message:
+        "Too many requests, please try again later.",
+    },
+  });
+
+app.use(
+  "/api",
+  limiter
+);
+
+app.use(
+  "/auth",
+  limiter
+);
 
 // ===============================
 // HEALTH CHECK
 // ===============================
-app.get("/health", (req, res) => {
-  res.json({ status: "ok", timestamp: new Date().toISOString() });
-});
+
+app.get(
+  "/health",
+  (req, res) => {
+    res.json({
+      status: "ok",
+      timestamp:
+        new Date().toISOString(),
+    });
+  }
+);
 
 // ===============================
 // ROUTES
 // ===============================
-const authRoutes = require("./routes/auth");
-const productRoutes = require("./routes/products");
-const notificationRoutes = require("./routes/notifications");
-const userRoutes = require("./routes/users");
-const messageRoutes = require("./routes/messages");
-const adminRoutes = require("./routes/admin");
 
-console.log("✅ Routes loaded:");
-console.log(`  - Auth: ${typeof authRoutes === "function" ? "router" : typeof authRoutes}`);
-console.log(`  - Products: ${typeof productRoutes === "function" ? "router" : typeof productRoutes}`);
-console.log(`  - Notifications: ${typeof notificationRoutes === "function" ? "router" : typeof notificationRoutes}`);
-console.log(`  - Users: ${typeof userRoutes === "function" ? "router" : typeof userRoutes}`);
-console.log(`  - Messages: ${typeof messageRoutes === "function" ? "router" : typeof messageRoutes}`);
-console.log(`  - Admin: ${typeof adminRoutes === "function" ? "router" : typeof adminRoutes}`);
+const authRoutes =
+  require("./routes/auth");
 
-app.use("/auth", authRoutes);
-app.use("/api/products", productRoutes);
-app.use("/api/notifications", notificationRoutes);
-app.use("/api/users", userRoutes);
-app.use("/api/messages", messageRoutes);
-app.use("/api/admin", adminRoutes);
+const productRoutes =
+  require("./routes/products");
 
-// ===============================
-// STATIC FILES
-// ===============================
-app.use("/uploads", express.static(uploadDir));
+const notificationRoutes =
+  require("./routes/notifications");
+
+const userRoutes =
+  require("./routes/users");
+
+const messageRoutes =
+  require("./routes/messages");
+
+const adminRoutes =
+  require("./routes/admin");
+
+console.log(
+  "✅ Routes loaded"
+);
+
+app.use(
+  "/auth",
+  authRoutes
+);
+
+app.use(
+  "/api/products",
+  productRoutes
+);
+
+app.use(
+  "/api/notifications",
+  notificationRoutes
+);
+
+app.use(
+  "/api/users",
+  userRoutes
+);
+
+app.use(
+  "/api/messages",
+  messageRoutes
+);
+
+app.use(
+  "/api/admin",
+  adminRoutes
+);
 
 // ===============================
 // 404 HANDLER
 // ===============================
-app.use((req, res) => {
-  if (req.path.startsWith("/api") || req.path.startsWith("/auth")) {
-    return res.status(404).json({ success: false, message: "API endpoint not found" });
+
+app.use(
+  (req, res) => {
+    if (
+      req.path.startsWith(
+        "/api"
+      ) ||
+      req.path.startsWith(
+        "/auth"
+      )
+    ) {
+      return res
+        .status(404)
+        .json({
+          success: false,
+          message:
+            "API endpoint not found",
+        });
+    }
+
+    res
+      .status(404)
+      .send("Not Found");
   }
-  res.status(404).send("Not Found");
-});
+);
 
 // ===============================
 // ERROR HANDLER
 // ===============================
-app.use((err, req, res, next) => {
-  console.error("❌ Error:", err.message);
 
-  if (err instanceof multer.MulterError) {
-    if (err.code === "FILE_TOO_LARGE") {
-      return res.status(413).json({
-        success: false,
-        message: "File too large. Max size is 50MB.",
-      });
+app.use(
+  (
+    err,
+    req,
+    res,
+    next
+  ) => {
+    console.error(
+      "❌ Error:",
+      err.message
+    );
+
+    // Multer errors
+    if (
+      err &&
+      err.name ===
+        "MulterError"
+    ) {
+      if (
+        err.code ===
+        "LIMIT_FILE_SIZE"
+      ) {
+        return res
+          .status(413)
+          .json({
+            success: false,
+            message:
+              "File too large. Max size is 50MB.",
+          });
+      }
+
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message:
+            err.message,
+        });
     }
-    return res.status(400).json({
-      success: false,
-      message: err.message,
-    });
-  }
 
-  if (err.code === 11000) {
-    const field = Object.keys(err.keyPattern)[0];
-    return res.status(409).json({
-      success: false,
-      message: `${field} already exists`,
-    });
-  }
+    // Duplicate MongoDB field
+    if (
+      err.code === 11000
+    ) {
+      const field =
+        Object.keys(
+          err.keyPattern ||
+            {}
+        )[0] ||
+        "field";
 
-  if (err.name === "ValidationError") {
-    const messages = Object.values(err.errors).map(e => e.message);
-    return res.status(400).json({
-      success: false,
-      message: "Validation error",
-      errors: messages,
-    });
-  }
+      return res
+        .status(409)
+        .json({
+          success: false,
+          message: `${field} already exists`,
+        });
+    }
 
-  res.status(err.status || 500).json({
-    success: false,
-    message: err.message || "Internal Server Error",
-  });
-});
+    // Mongoose validation
+    if (
+      err.name ===
+      "ValidationError"
+    ) {
+      const messages =
+        Object.values(
+          err.errors
+        ).map(
+          (error) =>
+            error.message
+        );
+
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message:
+            "Validation error",
+          errors: messages,
+        });
+    }
+
+    // CORS
+    if (
+      err.message ===
+      "CORS not allowed for this origin"
+    ) {
+      return res
+        .status(403)
+        .json({
+          success: false,
+          message:
+            err.message,
+        });
+    }
+
+    return res
+      .status(
+        err.status || 500
+      )
+      .json({
+        success: false,
+        message:
+          err.message ||
+          "Internal Server Error",
+      });
+  }
+);
 
 // ===============================
-// UNHANDLED REJECTIONS
+// UNHANDLED REJECTION
 // ===============================
-process.on("unhandledRejection", (err) => {
-  console.error("❌ Unhandled Rejection:", err);
-  process.exit(1);
-});
+
+process.on(
+  "unhandledRejection",
+  (err) => {
+    console.error(
+      "❌ Unhandled Rejection:",
+      err
+    );
+
+    process.exit(1);
+  }
+);
+
+// ===============================
+// UNCAUGHT EXCEPTION
+// ===============================
+
+process.on(
+  "uncaughtException",
+  (err) => {
+    console.error(
+      "❌ Uncaught Exception:",
+      err
+    );
+
+    process.exit(1);
+  }
+);
+
+// ===============================
+// PORT
+// ===============================
+
+const PORT =
+  process.env.PORT || 5000;
+
+// ===============================
+// DEFAULT ADMIN
+// ===============================
+
+const createDefaultAdmin =
+  async () => {
+    try {
+      const User =
+        require("./models/User");
+
+      const adminEmail =
+        process.env.ADMIN_EMAIL;
+
+      const adminPassword =
+        process.env.ADMIN_PASSWORD;
+
+      if (
+        !adminEmail ||
+        !adminPassword
+      ) {
+        console.log(
+          "ℹ️ ADMIN_EMAIL or ADMIN_PASSWORD not configured. Skipping default admin creation."
+        );
+
+        return;
+      }
+
+      const normalizedEmail =
+        adminEmail
+          .trim()
+          .toLowerCase();
+
+      let user =
+        await User.findOne({
+          email:
+            normalizedEmail,
+        });
+
+      if (!user) {
+        user =
+          new User({
+            name: "Admin",
+            email:
+              normalizedEmail,
+            password:
+              adminPassword,
+            phone: "",
+            role: "admin",
+            isActive: true,
+          });
+
+        // User model should hash
+        // the password in its
+        // pre-save hook.
+        await user.save();
+
+        console.log(
+          `✅ Default admin created: ${normalizedEmail}`
+        );
+      } else if (
+        user.role !== "admin"
+      ) {
+        user.role = "admin";
+
+        await user.save();
+
+        console.log(
+          `✅ User ${normalizedEmail} promoted to admin`
+        );
+      } else {
+        console.log(
+          `ℹ️ Admin user already exists: ${normalizedEmail}`
+        );
+      }
+    } catch (err) {
+      console.warn(
+        "⚠️ Could not create admin:",
+        err.message
+      );
+    }
+  };
 
 // ===============================
 // START SERVER
 // ===============================
-const PORT = process.env.PORT || 5000;
 
-// ─── Helper to create default admin ────────────────────────────
-const createDefaultAdmin = async () => {
-  try {
-    const User = require("./models/User");
-    const adminEmail = process.env.ADMIN_EMAIL || "nanaskatty0@gmail.com";
-    const adminPassword = process.env.ADMIN_PASSWORD || "Omega132";
+const start =
+  async () => {
+    try {
+      const connection =
+        await connectDB();
 
-    let user = await User.findOne({ email: adminEmail });
-    if (!user) {
-      const salt = await bcrypt.genSalt(10);
-      const hashed = await bcrypt.hash(adminPassword, salt);
-      user = new User({
-        name: "Admin",
-        email: adminEmail,
-        password: hashed,
-        phone: "0000000000",
-        role: "admin",
-        isActive: true,
-      });
-      await user.save();
-      console.log(`✅ Default admin created: ${adminEmail} / ${adminPassword}`);
-    } else if (user.role !== "admin") {
-      user.role = "admin";
-      await user.save();
-      console.log(`✅ User ${adminEmail} promoted to admin`);
-    } else {
-      console.log(`ℹ️ Admin user already exists: ${adminEmail}`);
+      console.log(
+        `✅ MongoDB connected to: ${connection.name}`
+      );
+
+      await createDefaultAdmin();
+
+      const server =
+        app.listen(
+          PORT,
+          () => {
+            console.log(
+              `🚀 Server running on port ${PORT}`
+            );
+
+            console.log(
+              `🌍 Environment: ${
+                process.env.NODE_ENV ||
+                "development"
+              }`
+            );
+
+            console.log(
+              `🔗 Base URL: ${
+                process.env.BASE_URL ||
+                "(auto-detected)"
+              }`
+            );
+          }
+        );
+
+      server.timeout =
+        120000;
+    } catch (error) {
+      console.error(
+        "❌ Server failed:",
+        error.message
+      );
+
+      process.exit(1);
     }
-  } catch (err) {
-    console.warn("⚠️ Could not create admin:", err.message);
-  }
-};
-
-const start = async () => {
-  try {
-    const connection = await connectDB();
-    console.log(`✅ MongoDB connected to: ${connection.name}`);
-
-    // ✅ Create admin user (if not exists)
-    await createDefaultAdmin();
-
-    const server = app.listen(PORT, () => {
-      console.log(`🚀 Server running on port ${PORT}`);
-      console.log(`🌍 Environment: ${process.env.NODE_ENV || "development"}`);
-      console.log(`📌 Allowed Origins: ${allowedOrigins.join(", ") || "(wildcard for vercel.app)"}`);
-      console.log(`🔗 Base URL: ${process.env.BASE_URL || "(auto-detected)"}`);
-    });
-
-    server.timeout = 120000;
-
-  } catch (error) {
-    console.error("❌ Server failed:", error.message);
-    process.exit(1);
-  }
-};
+  };
 
 start();

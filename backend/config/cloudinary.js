@@ -1,20 +1,31 @@
-const multer = require('multer');
-const { storage } = require('./cloudinary');   // Cloudinary storage
 
-const fileFilter = (req, file, cb) => {
-  const allowed = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp',
-                   'video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/webm'];
-  if (allowed.includes(file.mimetype)) {
-    cb(null, true);
-  } else {
-    cb(new Error('Only images and videos are allowed'), false);
-  }
-};
+// backend/config/cloudinary.js
 
-const upload = multer({
-  storage,  // ← Cloudinary storage
-  limits: { fileSize: 50 * 1024 * 1024 },
-  fileFilter,
+const { v2: cloudinary } = require("cloudinary");
+require("dotenv").config();
+
+// ==========================
+// Cloudinary Configuration
+// ==========================
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-module.exports = upload;
+// ==========================
+// Validate Configuration
+// ==========================
+
+if (
+  !process.env.CLOUDINARY_CLOUD_NAME ||
+  !process.env.CLOUDINARY_API_KEY ||
+  !process.env.CLOUDINARY_API_SECRET
+) {
+  console.warn(
+    "⚠️ Cloudinary environment variables are not fully configured."
+  );
+}
+
+module.exports = cloudinary;
