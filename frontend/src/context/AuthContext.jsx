@@ -1,8 +1,8 @@
 import React, {
   createContext,
   useContext,
-  useState,
   useEffect,
+  useState,
 } from "react";
 
 import api from "../services/api";
@@ -21,18 +21,14 @@ import {
 // AUTH CONTEXT
 // ================================================================
 
-const AuthContext =
-  createContext();
+const AuthContext = createContext(null);
 
 // ================================================================
 // USE AUTH
 // ================================================================
 
 export const useAuth = () => {
-  const context =
-    useContext(
-      AuthContext
-    );
+  const context = useContext(AuthContext);
 
   if (!context) {
     throw new Error(
@@ -47,171 +43,138 @@ export const useAuth = () => {
 // AUTH PROVIDER
 // ================================================================
 
-export const AuthProvider = ({
-  children,
-}) => {
-  // ------------------------------------------------------------
-  // Restore saved authentication immediately
-  // ------------------------------------------------------------
+export const AuthProvider = ({ children }) => {
+  const [user, setUser] = useState(() => getUser());
+  const [token, setToken] = useState(() => getToken());
 
-  const [user, setUser] =
-    useState(() =>
-      getUser()
-    );
-
-  const [token, setToken] =
-    useState(() =>
-      getToken()
-    );
-
-  // Prevent protected pages from rendering
-  // before authentication has been checked.
-  const [loading, setLoading] =
-    useState(true);
+  // Important:
+  // Protected components should wait until the saved session
+  // has been checked.
+  const [loading, setLoading] = useState(true);
 
   // ============================================================
-  // RESTORE LOGIN SESSION
+  // RESTORE SESSION
   // ============================================================
 
   useEffect(() => {
     let mounted = true;
 
-    const loadUser =
-      async () => {
-        const storedToken =
-          getToken();
+    const loadUser = async () => {
+      const storedToken = getToken();
+      const storedUser = getUser();
 
-        // ------------------------------------------------------
-        // No saved token
-        // ------------------------------------------------------
+      console.log("🔐 Restoring saved login session...");
 
-        if (!storedToken) {
-          if (mounted) {
-            setUser(null);
-            setToken(null);
-            setLoading(false);
-          }
+      // --------------------------------------------------------
+      // No token
+      // --------------------------------------------------------
 
-          return;
+      if (!storedToken) {
+        if (mounted) {
+          setToken(null);
+          setUser(null);
+          setLoading(false);
         }
 
-        try {
-          console.log(
-            "🔐 Restoring saved login session..."
-          );
+        console.log("ℹ️ No saved authentication token");
+        return;
+      }
 
-          const data =
-            await api.auth.getMe(
-              storedToken
-            );
+      // --------------------------------------------------------
+      // Temporarily use saved credentials while checking API
+      // --------------------------------------------------------
 
-          if (!mounted) {
-            return;
-          }
+      if (mounted) {
+        setToken(storedToken);
 
-          // ----------------------------------------------------
-          // Valid token
-          // ----------------------------------------------------
-
-          if (
-            data?.success &&
-            data?.user
-          ) {
-            setToken(
-              storedToken
-            );
-
-            setUser(
-              data.user
-            );
-
-            // Refresh stored user
-            setUserStorage(
-              data.user
-            );
-
-            console.log(
-              "✅ Login session restored"
-            );
-          } else {
-            // --------------------------------------------------
-            // Unexpected response
-            // --------------------------------------------------
-
-            console.warn(
-              "⚠️ /auth/me returned no user"
-            );
-
-            // Do not destroy the token
-            // just because the response is unexpected.
-
-            setToken(
-              storedToken
-            );
-
-            const savedUser =
-              getUser();
-
-            if (savedUser) {
-              setUser(
-                savedUser
-              );
-            }
-          }
-        } catch (err) {
-          if (!mounted) {
-            return;
-          }
-
-          console.error(
-            "❌ Auth restore error:",
-            err
-          );
-
-          // ----------------------------------------------------
-          // Invalid or expired token
-          // ----------------------------------------------------
-
-          if (
-            err.status === 401 ||
-            err.status === 403
-          ) {
-            console.warn(
-              "🔒 Token is invalid or account is unauthorized."
-            );
-
-            clearAuthData();
-
-            setToken(null);
-            setUser(null);
-          } else {
-            // --------------------------------------------------
-            // Network/server/CORS error
-            // --------------------------------------------------
-            // Do NOT destroy authentication.
-            // The token may still be valid.
-
-            console.warn(
-              "🌐 Temporary authentication check failure. Keeping saved login."
-            );
-
-            const savedUser =
-              getUser();
-
-            setToken(
-              storedToken
-            );
-
-            setUser(
-              savedUser || null
-            );
-          }
-        } finally {
-          if (mounted) {
-            setLoading(false);
-          }
+        if (storedUser) {
+          setUser(storedUser);
         }
-      };
+      }
+
+      try {
+        // ------------------------------------------------------
+        // Verify token with backend
+        // ------------------------------------------------------
+
+        if (
+          !api ||
+          !api.auth ||
+          typeof api.auth.getMe !== "function"
+        ) {
+          throw new Error(
+            "api.auth.getMe is not available in api.js"
+          );
+        }
+
+        const data = await api.auth.getMe(storedToken);
+
+        if (!mounted) return;
+
+        // ------------------------------------------------------
+        // Valid session
+        // ------------------------------------------------------
+
+        if (data?.success && data?.user) {
+          setToken(storedToken);
+          setUser(data.user);
+
+          setTokenStorage(storedToken);
+          setUserStorage(data.user);
+
+          console.log("✅ Login session restored");
+        } else {
+          console.warn(
+            "⚠️ Authentication check returned no user"
+          );
+
+          // Keep saved session if backend response is unexpected.
+          setToken(storedToken);
+          setUser(storedUser || null);
+        }
+      } catch (err) {
+        if (!mounted) return;
+
+        console.error(
+          "❌ Auth restore error:",
+          err
+        );
+
+        const status = err?.status;
+
+        // ------------------------------------------------------
+        // Definitely invalid token
+        // ------------------------------------------------------
+
+        if (status === 401 || status === 403) {
+          console.warn(
+            "🔒 Saved token is invalid or expired."
+          );
+
+          clearAuthData();
+
+          setToken(null);
+          setUser(null);
+        } else {
+          // ----------------------------------------------------
+          // Server/network/CORS problem
+          // ----------------------------------------------------
+          // Don't log the user out just because the server
+          // temporarily failed.
+
+          console.warn(
+            "🌐 Temporary authentication check failure. Keeping saved login."
+          );
+
+          setToken(storedToken);
+          setUser(storedUser || null);
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    };
 
     loadUser();
 
@@ -224,48 +187,30 @@ export const AuthProvider = ({
   // LOGIN
   // ============================================================
 
-  const login = async (
-    email,
-    password
-  ) => {
+  const login = async (email, password) => {
     try {
-      const data =
-        await api.auth.login(
-          email,
-          password
-        );
+      const data = await api.auth.login(
+        email,
+        password
+      );
 
       if (
         data?.success &&
         data?.token &&
         data?.user
       ) {
-        // Save token
-        setTokenStorage(
-          data.token
-        );
+        setTokenStorage(data.token);
+        setUserStorage(data.user);
 
-        // Update React state
-        setToken(
-          data.token
-        );
+        setToken(data.token);
+        setUser(data.user);
 
-        setUser(
-          data.user
-        );
-
-        // Save user
-        setUserStorage(
-          data.user
-        );
-
-        console.log(
-          "✅ Login successful"
-        );
+        console.log("✅ Login successful");
 
         return {
           success: true,
           user: data.user,
+          token: data.token,
         };
       }
 
@@ -284,7 +229,7 @@ export const AuthProvider = ({
       return {
         success: false,
         error:
-          err.message ||
+          err?.message ||
           "Network error",
       };
     }
@@ -294,97 +239,97 @@ export const AuthProvider = ({
   // REGISTER
   // ============================================================
 
-  const register =
-    async (userData) => {
-      try {
-        const data =
-          await api.auth.register(
-            userData
-          );
+  const register = async (userData) => {
+    try {
+      const data =
+        await api.auth.register(userData);
 
-        if (
-          data?.success &&
-          data?.token &&
-          data?.user
-        ) {
-          // Save token
-          setTokenStorage(
-            data.token
-          );
+      if (
+        data?.success &&
+        data?.token &&
+        data?.user
+      ) {
+        setTokenStorage(data.token);
+        setUserStorage(data.user);
 
-          setToken(
-            data.token
-          );
+        setToken(data.token);
+        setUser(data.user);
 
-          // Save user
-          setUser(
-            data.user
-          );
-
-          setUserStorage(
-            data.user
-          );
-
-          console.log(
-            "✅ Registration successful"
-          );
-
-          return {
-            success: true,
-            user: data.user,
-          };
-        }
-
-        return {
-          success: false,
-          error:
-            data?.message ||
-            "Registration failed",
-        };
-      } catch (err) {
-        console.error(
-          "❌ Register error:",
-          err
+        console.log(
+          "✅ Registration successful"
         );
 
         return {
-          success: false,
-          error:
-            err.message ||
-            "Network error",
+          success: true,
+          user: data.user,
+          token: data.token,
         };
       }
-    };
+
+      return {
+        success: false,
+        error:
+          data?.message ||
+          "Registration failed",
+      };
+    } catch (err) {
+      console.error(
+        "❌ Register error:",
+        err
+      );
+
+      return {
+        success: false,
+        error:
+          err?.message ||
+          "Network error",
+      };
+    }
+  };
 
   // ============================================================
   // LOGOUT
   // ============================================================
 
-  const logout =
-    async () => {
-      try {
-        if (token) {
-          await api.auth.logout(
-            token
-          );
-        }
-      } catch (err) {
-        console.error(
-          "Logout API error:",
-          err
-        );
-      } finally {
-        // User intentionally logged out.
-        clearAuthData();
+  const logout = async () => {
+    const currentToken = token;
 
-        setToken(null);
-        setUser(null);
-
-        console.log(
-          "👋 Logged out"
+    try {
+      if (
+        currentToken &&
+        api?.auth &&
+        typeof api.auth.logout === "function"
+      ) {
+        await api.auth.logout(
+          currentToken
         );
       }
-    };
+    } catch (err) {
+      console.error(
+        "Logout API error:",
+        err
+      );
+    } finally {
+      clearAuthData();
+
+      // Also explicitly remove these in case the
+      // storage implementation changes later.
+      try {
+        removeToken();
+        removeUser();
+      } catch (storageError) {
+        console.warn(
+          "Storage cleanup warning:",
+          storageError
+        );
+      }
+
+      setToken(null);
+      setUser(null);
+
+      console.log("👋 Logged out");
+    }
+  };
 
   // ============================================================
   // CONTEXT VALUE
@@ -400,7 +345,8 @@ export const AuthProvider = ({
     logout,
 
     isAuthenticated:
-      !!token && !!user,
+      Boolean(token) &&
+      Boolean(user),
   };
 
   // ============================================================
@@ -408,9 +354,7 @@ export const AuthProvider = ({
   // ============================================================
 
   return (
-    <AuthContext.Provider
-      value={value}
-    >
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );
