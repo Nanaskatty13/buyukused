@@ -29,28 +29,20 @@ const generateToken = (user) => {
 // ============================================================
 
 const getSafeUser = (user) => {
-  const userObject = user.toObject
-    ? user.toObject()
-    : { ...user };
-
-  delete userObject.password;
-  delete userObject.__v;
-
   return {
-    id: userObject._id,
-    name: userObject.name || "",
-    email: userObject.email || "",
-    phone: userObject.phone || "",
-    location: userObject.location || "Ghana",
-    avatar: userObject.avatar || "",
-    photoURL: userObject.photoURL || "",
-    provider: userObject.provider || "local",
-    role: userObject.role || "buyer",
-    isActive:
-      userObject.isActive !== false,
-    lastLogin: userObject.lastLogin || null,
-    createdAt: userObject.createdAt,
-    updatedAt: userObject.updatedAt,
+    id: user._id,
+    name: user.name,
+    email: user.email,
+    phone: user.phone || "",
+    role: user.role,
+    location: user.location || "Ghana",
+    avatar: user.avatar || user.photoURL || "",
+    photoURL: user.photoURL || "",
+    provider: user.provider || "local",
+    isActive: user.isActive !== false,
+    lastLogin: user.lastLogin || null,
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt,
   };
 };
 
@@ -69,18 +61,9 @@ exports.register = async (req, res) => {
       role,
     } = req.body || {};
 
-    // --------------------------------------------------------
+    // ----------------------------------------------------------
     // REQUIRED FIELDS
-    // --------------------------------------------------------
-    //
-    // Phone is OPTIONAL because the User model defines:
-    //
-    // phone: {
-    //   type: String,
-    //   default: "",
-    // }
-    //
-    // --------------------------------------------------------
+    // ----------------------------------------------------------
 
     if (!name || !email || !password || !role) {
       return res.status(400).json({
@@ -90,32 +73,42 @@ exports.register = async (req, res) => {
       });
     }
 
-    // --------------------------------------------------------
+    // ----------------------------------------------------------
     // CLEAN INPUT
-    // --------------------------------------------------------
+    // ----------------------------------------------------------
 
-    const trimmedName =
-      String(name).trim();
+    const trimmedName = String(name).trim();
 
-    const trimmedEmail =
-      String(email)
-        .trim()
-        .toLowerCase();
+    const trimmedEmail = String(email)
+      .trim()
+      .toLowerCase();
 
+    // Phone is OPTIONAL.
     const trimmedPhone =
       phone !== undefined &&
       phone !== null
         ? String(phone).trim()
         : "";
 
-    const selectedRole =
-      String(role)
-        .trim()
-        .toLowerCase();
+    const selectedRole = String(role)
+      .trim()
+      .toLowerCase();
 
-    // --------------------------------------------------------
-    // NAME VALIDATION
-    // --------------------------------------------------------
+    // ----------------------------------------------------------
+    // VALIDATE ROLE
+    // ----------------------------------------------------------
+
+    if (!["buyer", "seller"].includes(selectedRole)) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Role must be either buyer or seller",
+      });
+    }
+
+    // ----------------------------------------------------------
+    // VALIDATE NAME
+    // ----------------------------------------------------------
 
     if (trimmedName.length < 2) {
       return res.status(400).json({
@@ -125,9 +118,9 @@ exports.register = async (req, res) => {
       });
     }
 
-    // --------------------------------------------------------
-    // EMAIL VALIDATION
-    // --------------------------------------------------------
+    // ----------------------------------------------------------
+    // VALIDATE EMAIL
+    // ----------------------------------------------------------
 
     const emailRegex =
       /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -140,9 +133,9 @@ exports.register = async (req, res) => {
       });
     }
 
-    // --------------------------------------------------------
-    // PASSWORD VALIDATION
-    // --------------------------------------------------------
+    // ----------------------------------------------------------
+    // VALIDATE PASSWORD
+    // ----------------------------------------------------------
 
     if (String(password).length < 6) {
       return res.status(400).json({
@@ -152,115 +145,56 @@ exports.register = async (req, res) => {
       });
     }
 
-    // --------------------------------------------------------
-    // ROLE VALIDATION
-    // --------------------------------------------------------
-    //
-    // Public registration can only create:
-    //
-    // buyer
-    // seller
-    //
-    // ADMIN MUST NEVER be selectable from the frontend.
-    // --------------------------------------------------------
-
-    if (
-      !["buyer", "seller"].includes(
-        selectedRole
-      )
-    ) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Role must be either buyer or seller",
-      });
-    }
-
-    // --------------------------------------------------------
+    // ----------------------------------------------------------
     // CHECK EXISTING USER
-    // --------------------------------------------------------
+    // ----------------------------------------------------------
 
-    const existingUser =
-      await User.findOne({
-        email: trimmedEmail,
-      });
+    const existingUser = await User.findOne({
+      email: trimmedEmail,
+    });
 
     if (existingUser) {
       return res.status(409).json({
         success: false,
         message:
-          "An account with this email already exists",
+          "User with this email already exists",
       });
     }
 
-    // --------------------------------------------------------
+    // ----------------------------------------------------------
     // CREATE USER
-    // --------------------------------------------------------
-    //
-    // User.js has a pre-save hook that hashes the password.
-    //
-    // DO NOT bcrypt.hash() here as well.
-    // Otherwise the password could be double-hashed.
-    // --------------------------------------------------------
+    // ----------------------------------------------------------
 
-    const user =
-      await User.create({
-        name: trimmedName,
+    const user = await User.create({
+      name: trimmedName,
+      email: trimmedEmail,
+      password: String(password),
+      phone: trimmedPhone,
+      role: selectedRole,
+      provider: "local",
+      isActive: true,
+    });
 
-        email: trimmedEmail,
-
-        password: String(password),
-
-        phone: trimmedPhone,
-
-        role: selectedRole,
-
-        location: "Ghana",
-
-        provider: "local",
-
-        isActive: true,
-
-        lastLogin: null,
-      });
-
-    // --------------------------------------------------------
+    // ----------------------------------------------------------
     // GENERATE TOKEN
-    // --------------------------------------------------------
+    // ----------------------------------------------------------
 
-    const token =
-      generateToken(user);
+    const token = generateToken(user);
 
-    // --------------------------------------------------------
-    // SUCCESS
-    // --------------------------------------------------------
-
-    console.log(
-      "✅ New user registered:",
-      user.email,
-      `(${user.role})`
-    );
+    // ----------------------------------------------------------
+    // RESPONSE
+    // ----------------------------------------------------------
 
     return res.status(201).json({
       success: true,
-
-      message:
-        "Account created successfully",
-
+      message: "Account created successfully",
       token,
-
       user: getSafeUser(user),
     });
   } catch (error) {
-    console.error(
-      "❌ Registration error:",
-      error
-    );
+    console.error("❌ Registration error:", error);
 
-    // --------------------------------------------------------
-    // DUPLICATE EMAIL
-    // --------------------------------------------------------
-
+    // Duplicate email
     if (error.code === 11000) {
       return res.status(409).json({
         success: false,
@@ -269,25 +203,15 @@ exports.register = async (req, res) => {
       });
     }
 
-    // --------------------------------------------------------
-    // MONGOOSE VALIDATION
-    // --------------------------------------------------------
-
-    if (
-      error.name ===
-      "ValidationError"
-    ) {
-      const errors =
-        Object.values(
-          error.errors || {}
-        ).map(
-          (err) => err.message
-        );
+    // Mongoose validation
+    if (error.name === "ValidationError") {
+      const errors = Object.values(
+        error.errors
+      ).map((err) => err.message);
 
       return res.status(400).json({
         success: false,
-        message:
-          "Validation error",
+        message: "Validation error",
         errors,
       });
     }
@@ -312,9 +236,9 @@ exports.login = async (req, res) => {
       password,
     } = req.body || {};
 
-    // --------------------------------------------------------
+    // ----------------------------------------------------------
     // REQUIRED FIELDS
-    // --------------------------------------------------------
+    // ----------------------------------------------------------
 
     if (!email || !password) {
       return res.status(400).json({
@@ -324,23 +248,21 @@ exports.login = async (req, res) => {
       });
     }
 
-    // --------------------------------------------------------
+    // ----------------------------------------------------------
     // CLEAN EMAIL
-    // --------------------------------------------------------
+    // ----------------------------------------------------------
 
-    const trimmedEmail =
-      String(email)
-        .trim()
-        .toLowerCase();
+    const trimmedEmail = String(email)
+      .trim()
+      .toLowerCase();
 
-    // --------------------------------------------------------
+    // ----------------------------------------------------------
     // FIND USER
-    // --------------------------------------------------------
+    // ----------------------------------------------------------
 
-    const user =
-      await User.findOne({
-        email: trimmedEmail,
-      }).select("+password");
+    const user = await User.findOne({
+      email: trimmedEmail,
+    }).select("+password");
 
     if (!user) {
       return res.status(401).json({
@@ -350,9 +272,9 @@ exports.login = async (req, res) => {
       });
     }
 
-    // --------------------------------------------------------
-    // ACTIVE STATUS
-    // --------------------------------------------------------
+    // ----------------------------------------------------------
+    // CHECK ACCOUNT STATUS
+    // ----------------------------------------------------------
 
     if (user.isActive === false) {
       return res.status(403).json({
@@ -362,14 +284,12 @@ exports.login = async (req, res) => {
       });
     }
 
-    // --------------------------------------------------------
+    // ----------------------------------------------------------
     // CHECK PASSWORD
-    // --------------------------------------------------------
+    // ----------------------------------------------------------
 
     const isMatch =
-      await user.comparePassword(
-        password
-      );
+      await user.comparePassword(password);
 
     if (!isMatch) {
       return res.status(401).json({
@@ -379,48 +299,34 @@ exports.login = async (req, res) => {
       });
     }
 
-    // --------------------------------------------------------
+    // ----------------------------------------------------------
     // UPDATE LAST LOGIN
-    // --------------------------------------------------------
+    // ----------------------------------------------------------
 
-    user.lastLogin =
-      new Date();
+    user.lastLogin = new Date();
 
     await user.save({
       validateBeforeSave: false,
     });
 
-    // --------------------------------------------------------
+    // ----------------------------------------------------------
     // GENERATE TOKEN
-    // --------------------------------------------------------
+    // ----------------------------------------------------------
 
-    const token =
-      generateToken(user);
+    const token = generateToken(user);
 
-    // --------------------------------------------------------
-    // SUCCESS
-    // --------------------------------------------------------
-
-    console.log(
-      "✅ User logged in:",
-      user.email
-    );
+    // ----------------------------------------------------------
+    // RESPONSE
+    // ----------------------------------------------------------
 
     return res.json({
       success: true,
-
-      message:
-        "Login successful",
-
+      message: "Login successful",
       token,
-
       user: getSafeUser(user),
     });
   } catch (error) {
-    console.error(
-      "❌ Login error:",
-      error
-    );
+    console.error("❌ Login error:", error);
 
     return res.status(500).json({
       success: false,
@@ -435,46 +341,25 @@ exports.login = async (req, res) => {
 // GET /auth/me
 // ============================================================
 
-exports.getMe = async (
-  req,
-  res
-) => {
+exports.getMe = async (req, res) => {
   try {
-    // --------------------------------------------------------
-    // AUTHENTICATION CHECK
-    // --------------------------------------------------------
-
-    if (
-      !req.user ||
-      !req.user._id
-    ) {
+    if (!req.user || !req.user._id) {
       return res.status(401).json({
         success: false,
-        message:
-          "Authentication required",
+        message: "Authentication required",
       });
     }
 
-    // --------------------------------------------------------
-    // FIND USER
-    // --------------------------------------------------------
-
-    const user =
-      await User.findById(
-        req.user._id
-      ).select("-password");
+    const user = await User.findById(
+      req.user._id
+    ).select("-password");
 
     if (!user) {
       return res.status(404).json({
         success: false,
-        message:
-          "User not found",
+        message: "User not found",
       });
     }
-
-    // --------------------------------------------------------
-    // ACTIVE STATUS
-    // --------------------------------------------------------
 
     if (user.isActive === false) {
       return res.status(403).json({
@@ -484,19 +369,12 @@ exports.getMe = async (
       });
     }
 
-    // --------------------------------------------------------
-    // SUCCESS
-    // --------------------------------------------------------
-
     return res.json({
       success: true,
-      user: getSafeUser(user),
+      user,
     });
   } catch (error) {
-    console.error(
-      "❌ GetMe error:",
-      error
-    );
+    console.error("❌ GetMe error:", error);
 
     return res.status(500).json({
       success: false,
@@ -511,192 +389,176 @@ exports.getMe = async (
 // PUT /auth/profile
 // ============================================================
 
-exports.updateProfile =
-  async (req, res) => {
-    try {
-      // ------------------------------------------------------
-      // AUTHENTICATION
-      // ------------------------------------------------------
-
-      if (
-        !req.user ||
-        !req.user._id
-      ) {
-        return res.status(401).json({
-          success: false,
-          message:
-            "Authentication required",
-        });
-      }
-
-      const {
-        name,
-        phone,
-        location,
-        avatar,
-      } = req.body || {};
-
-      const updateFields = {};
-
-      // ------------------------------------------------------
-      // NAME
-      // ------------------------------------------------------
-
-      if (
-        name !== undefined &&
-        name !== null
-      ) {
-        const trimmedName =
-          String(name).trim();
-
-        if (
-          trimmedName.length < 2
-        ) {
-          return res.status(400).json({
-            success: false,
-            message:
-              "Name must be at least 2 characters long",
-          });
-        }
-
-        updateFields.name =
-          trimmedName;
-      }
-
-      // ------------------------------------------------------
-      // PHONE
-      // ------------------------------------------------------
-
-      if (
-        phone !== undefined &&
-        phone !== null
-      ) {
-        updateFields.phone =
-          String(phone).trim();
-      }
-
-      // ------------------------------------------------------
-      // LOCATION
-      // ------------------------------------------------------
-
-      if (
-        location !== undefined &&
-        location !== null
-      ) {
-        updateFields.location =
-          String(location).trim();
-      }
-
-      // ------------------------------------------------------
-      // AVATAR
-      // ------------------------------------------------------
-
-      if (
-        avatar !== undefined &&
-        avatar !== null
-      ) {
-        updateFields.avatar =
-          String(avatar).trim();
-      }
-
-      // ------------------------------------------------------
-      // NOTHING TO UPDATE
-      // ------------------------------------------------------
-
-      if (
-        Object.keys(
-          updateFields
-        ).length === 0
-      ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "No fields to update",
-        });
-      }
-
-      // ------------------------------------------------------
-      // UPDATE
-      // ------------------------------------------------------
-
-      const user =
-        await User.findByIdAndUpdate(
-          req.user._id,
-          {
-            $set: updateFields,
-          },
-          {
-            new: true,
-            runValidators: true,
-          }
-        ).select("-password");
-
-      if (!user) {
-        return res.status(404).json({
-          success: false,
-          message:
-            "User not found",
-        });
-      }
-
-      // ------------------------------------------------------
-      // SUCCESS
-      // ------------------------------------------------------
-
-      return res.json({
-        success: true,
-
-        message:
-          "Profile updated successfully",
-
-        user: getSafeUser(user),
-      });
-    } catch (error) {
-      console.error(
-        "❌ UpdateProfile error:",
-        error
-      );
-
-      if (
-        error.name ===
-        "ValidationError"
-      ) {
-        const errors =
-          Object.values(
-            error.errors || {}
-          ).map(
-            (err) =>
-              err.message
-          );
-
-        return res.status(400).json({
-          success: false,
-          message:
-            "Validation error",
-          errors,
-        });
-      }
-
-      return res.status(500).json({
+exports.updateProfile = async (
+  req,
+  res
+) => {
+  try {
+    if (!req.user || !req.user._id) {
+      return res.status(401).json({
         success: false,
-        message:
-          "Server error. Please try again later.",
+        message: "Authentication required",
       });
     }
-  };
+
+    const {
+      name,
+      phone,
+      location,
+      avatar,
+      photoURL,
+    } = req.body || {};
+
+    const updateFields = {};
+
+    // ----------------------------------------------------------
+    // NAME
+    // ----------------------------------------------------------
+
+    if (
+      name !== undefined &&
+      name !== null
+    ) {
+      const trimmedName =
+        String(name).trim();
+
+      if (trimmedName.length < 2) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Name must be at least 2 characters long",
+        });
+      }
+
+      updateFields.name = trimmedName;
+    }
+
+    // ----------------------------------------------------------
+    // PHONE
+    // ----------------------------------------------------------
+
+    if (
+      phone !== undefined &&
+      phone !== null
+    ) {
+      updateFields.phone =
+        String(phone).trim();
+    }
+
+    // ----------------------------------------------------------
+    // LOCATION
+    // ----------------------------------------------------------
+
+    if (
+      location !== undefined &&
+      location !== null
+    ) {
+      updateFields.location =
+        String(location).trim();
+    }
+
+    // ----------------------------------------------------------
+    // AVATAR
+    // ----------------------------------------------------------
+
+    if (
+      avatar !== undefined &&
+      avatar !== null
+    ) {
+      updateFields.avatar =
+        String(avatar).trim();
+    }
+
+    // ----------------------------------------------------------
+    // PHOTO URL
+    // ----------------------------------------------------------
+
+    if (
+      photoURL !== undefined &&
+      photoURL !== null
+    ) {
+      updateFields.photoURL =
+        String(photoURL).trim();
+    }
+
+    // ----------------------------------------------------------
+    // NOTHING TO UPDATE
+    // ----------------------------------------------------------
+
+    if (
+      Object.keys(updateFields).length === 0
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "No fields to update",
+      });
+    }
+
+    // ----------------------------------------------------------
+    // UPDATE USER
+    // ----------------------------------------------------------
+
+    const user =
+      await User.findByIdAndUpdate(
+        req.user._id,
+        {
+          $set: updateFields,
+        },
+        {
+          new: true,
+          runValidators: true,
+        }
+      ).select("-password");
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    return res.json({
+      success: true,
+      message:
+        "Profile updated successfully",
+      user,
+    });
+  } catch (error) {
+    console.error(
+      "❌ UpdateProfile error:",
+      error
+    );
+
+    if (
+      error.name === "ValidationError"
+    ) {
+      const errors = Object.values(
+        error.errors
+      ).map((err) => err.message);
+
+      return res.status(400).json({
+        success: false,
+        message: "Validation error",
+        errors,
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      message:
+        "Server error. Please try again later.",
+    });
+  }
+};
 
 // ============================================================
 // LOGOUT
 // POST /auth/logout
 // ============================================================
 
-exports.logout = async (
-  req,
-  res
-) => {
+exports.logout = async (req, res) => {
   return res.json({
     success: true,
-    message:
-      "Logged out successfully",
+    message: "Logged out successfully",
   });
 };

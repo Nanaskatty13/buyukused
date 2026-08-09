@@ -1,6 +1,9 @@
-// src/services/api.js
+// frontend/src/services/api.js
 
-import { getToken, clearAuthData } from "../utils/storage";
+import {
+  getToken,
+  clearAuthData,
+} from "../utils/storage";
 
 // ================================================================
 // API CONFIG
@@ -18,6 +21,7 @@ console.log("🔗 API_URL:", API_URL);
 
 const getHeaders = (token = getToken()) => ({
   "Content-Type": "application/json",
+
   ...(token
     ? {
         Authorization: `Bearer ${token}`,
@@ -59,7 +63,10 @@ const handleResponse = async (response) => {
 // REQUEST HELPER
 // ================================================================
 
-const request = async (url, options = {}) => {
+const request = async (
+  url,
+  options = {}
+) => {
   try {
     const response = await fetch(url, {
       credentials: "include",
@@ -99,7 +106,9 @@ export const getImageUrl = (path) => {
   }
 
   return `${API_URL}${
-    path.startsWith("/") ? path : `/${path}`
+    path.startsWith("/")
+      ? path
+      : `/${path}`
   }`;
 };
 
@@ -112,64 +121,140 @@ export const auth = {
   // LOGIN
   // --------------------------------------------------------------
 
-  login: async (email, password) => {
-    return request(`${API_URL}/auth/login`, {
-      method: "POST",
+  login: async (
+    email,
+    password
+  ) => {
+    return request(
+      `${API_URL}/auth/login`,
+      {
+        method: "POST",
 
-      headers: {
-        "Content-Type": "application/json",
-      },
+        headers: {
+          "Content-Type":
+            "application/json",
+        },
 
-      body: JSON.stringify({
-        email: email.trim().toLowerCase(),
-        password,
-      }),
-    });
+        body: JSON.stringify({
+          email: String(email || "")
+            .trim()
+            .toLowerCase(),
+
+          password: String(
+            password || ""
+          ),
+        }),
+      }
+    );
   },
 
   // --------------------------------------------------------------
   // REGISTER
   // --------------------------------------------------------------
 
-  register: async (userData) => {
-    return request(`${API_URL}/auth/register`, {
-      method: "POST",
+  register: async (
+    userData = {}
+  ) => {
+    const registrationData = {
+      name: String(
+        userData.name || ""
+      ).trim(),
 
-      headers: {
-        "Content-Type": "application/json",
-      },
+      email: String(
+        userData.email || ""
+      )
+        .trim()
+        .toLowerCase(),
 
-      body: JSON.stringify({
-        name: userData.name,
-        email: userData.email
-          .trim()
-          .toLowerCase(),
-        password: userData.password,
-        phone: userData.phone || "",
-      }),
-    });
+      password: String(
+        userData.password || ""
+      ),
+
+      // Phone is optional
+      phone: String(
+        userData.phone || ""
+      ).trim(),
+
+      // IMPORTANT:
+      // This was missing from your previous api.js.
+      role: String(
+        userData.role || "buyer"
+      )
+        .trim()
+        .toLowerCase(),
+    };
+
+    console.log(
+      "📝 Registration data:",
+      {
+        name:
+          registrationData.name,
+
+        email:
+          registrationData.email,
+
+        phone:
+          registrationData.phone,
+
+        role:
+          registrationData.role,
+
+        passwordProvided:
+          Boolean(
+            registrationData.password
+          ),
+      }
+    );
+
+    return request(
+      `${API_URL}/auth/register`,
+      {
+        method: "POST",
+
+        headers: {
+          "Content-Type":
+            "application/json",
+        },
+
+        body: JSON.stringify(
+          registrationData
+        ),
+      }
+    );
   },
 
   // --------------------------------------------------------------
   // CURRENT USER
   // --------------------------------------------------------------
 
-  getMe: async (token = getToken()) => {
-    return request(`${API_URL}/auth/me`, {
-      method: "GET",
-      headers: getHeaders(token),
-    });
+  getMe: async (
+    token = getToken()
+  ) => {
+    return request(
+      `${API_URL}/auth/me`,
+      {
+        method: "GET",
+        headers:
+          getHeaders(token),
+      }
+    );
   },
 
   // --------------------------------------------------------------
   // LOGOUT
   // --------------------------------------------------------------
 
-  logout: async (token = getToken()) => {
-    return request(`${API_URL}/auth/logout`, {
-      method: "POST",
-      headers: getHeaders(token),
-    });
+  logout: async (
+    token = getToken()
+  ) => {
+    return request(
+      `${API_URL}/auth/logout`,
+      {
+        method: "POST",
+        headers:
+          getHeaders(token),
+      }
+    );
   },
 };
 
@@ -178,52 +263,90 @@ export const auth = {
 // ================================================================
 
 export const products = {
-  getAll: async (params = {}) => {
+  // --------------------------------------------------------------
+  // GET ALL PRODUCTS
+  // --------------------------------------------------------------
+
+  getAll: async (
+    params = {}
+  ) => {
     const query =
-      new URLSearchParams(params).toString();
+      new URLSearchParams(
+        params
+      ).toString();
 
     return request(
       `${API_URL}/api/products${
-        query ? `?${query}` : ""
+        query
+          ? `?${query}`
+          : ""
       }`
     );
   },
 
-  getById: async (id) => {
+  // --------------------------------------------------------------
+  // GET PRODUCT BY ID
+  // --------------------------------------------------------------
+
+  getById: async (
+    id
+  ) => {
     return request(
       `${API_URL}/api/products/${id}`
     );
   },
 
+  // --------------------------------------------------------------
+  // CREATE PRODUCT
+  // --------------------------------------------------------------
+
   create: async (
     productData,
     token = getToken()
   ) => {
-    return request(`${API_URL}/api/products`, {
-      method: "POST",
-      headers: getHeaders(token),
-      body: JSON.stringify(productData),
-    });
+    return request(
+      `${API_URL}/api/products`,
+      {
+        method: "POST",
+        headers:
+          getHeaders(token),
+
+        body: JSON.stringify(
+          productData
+        ),
+      }
+    );
   },
+
+  // --------------------------------------------------------------
+  // CREATE PRODUCT WITH FILES
+  // --------------------------------------------------------------
 
   createWithFiles: async (
     formData,
     token = getToken()
   ) => {
-    return request(`${API_URL}/api/products`, {
-      method: "POST",
+    return request(
+      `${API_URL}/api/products`,
+      {
+        method: "POST",
 
-      headers: {
-        ...(token
-          ? {
-              Authorization: `Bearer ${token}`,
-            }
-          : {}),
-      },
+        headers: {
+          ...(token
+            ? {
+                Authorization: `Bearer ${token}`,
+              }
+            : {}),
+        },
 
-      body: formData,
-    });
+        body: formData,
+      }
+    );
   },
+
+  // --------------------------------------------------------------
+  // UPDATE PRODUCT
+  // --------------------------------------------------------------
 
   update: async (
     id,
@@ -234,11 +357,20 @@ export const products = {
       `${API_URL}/api/products/${id}`,
       {
         method: "PUT",
-        headers: getHeaders(token),
-        body: JSON.stringify(productData),
+
+        headers:
+          getHeaders(token),
+
+        body: JSON.stringify(
+          productData
+        ),
       }
     );
   },
+
+  // --------------------------------------------------------------
+  // UPDATE PRODUCT WITH FILES
+  // --------------------------------------------------------------
 
   updateWithFiles: async (
     id,
@@ -263,6 +395,10 @@ export const products = {
     );
   },
 
+  // --------------------------------------------------------------
+  // DELETE PRODUCT
+  // --------------------------------------------------------------
+
   delete: async (
     id,
     token = getToken()
@@ -271,7 +407,9 @@ export const products = {
       `${API_URL}/api/products/${id}`,
       {
         method: "DELETE",
-        headers: getHeaders(token),
+
+        headers:
+          getHeaders(token),
       }
     );
   },
@@ -282,22 +420,36 @@ export const products = {
 // ================================================================
 
 export const users = {
+  // --------------------------------------------------------------
+  // GET ALL USERS
+  // --------------------------------------------------------------
+
   getAll: async (
     params = {},
     token = getToken()
   ) => {
     const query =
-      new URLSearchParams(params).toString();
+      new URLSearchParams(
+        params
+      ).toString();
 
     return request(
       `${API_URL}/api/users${
-        query ? `?${query}` : ""
+        query
+          ? `?${query}`
+          : ""
       }`,
       {
-        headers: getHeaders(token),
+        method: "GET",
+        headers:
+          getHeaders(token),
       }
     );
   },
+
+  // --------------------------------------------------------------
+  // GET USER BY ID
+  // --------------------------------------------------------------
 
   getById: async (
     id,
@@ -306,10 +458,16 @@ export const users = {
     return request(
       `${API_URL}/api/users/${id}`,
       {
-        headers: getHeaders(token),
+        method: "GET",
+        headers:
+          getHeaders(token),
       }
     );
   },
+
+  // --------------------------------------------------------------
+  // UPDATE USER
+  // --------------------------------------------------------------
 
   update: async (
     id,
@@ -320,11 +478,20 @@ export const users = {
       `${API_URL}/api/users/${id}`,
       {
         method: "PUT",
-        headers: getHeaders(token),
-        body: JSON.stringify(userData),
+
+        headers:
+          getHeaders(token),
+
+        body: JSON.stringify(
+          userData
+        ),
       }
     );
   },
+
+  // --------------------------------------------------------------
+  // DELETE USER
+  // --------------------------------------------------------------
 
   delete: async (
     id,
@@ -334,10 +501,16 @@ export const users = {
       `${API_URL}/api/users/${id}`,
       {
         method: "DELETE",
-        headers: getHeaders(token),
+
+        headers:
+          getHeaders(token),
       }
     );
   },
+
+  // --------------------------------------------------------------
+  // USER STATS
+  // --------------------------------------------------------------
 
   getStats: async (
     token = getToken()
@@ -345,7 +518,9 @@ export const users = {
     return request(
       `${API_URL}/api/users/stats`,
       {
-        headers: getHeaders(token),
+        method: "GET",
+        headers:
+          getHeaders(token),
       }
     );
   },
@@ -367,7 +542,9 @@ export const notifications = {
     return request(
       `${API_URL}/api/notifications/${userId}`,
       {
-        headers: getHeaders(token),
+        method: "GET",
+        headers:
+          getHeaders(token),
       }
     );
   },
@@ -389,13 +566,14 @@ export const notifications = {
       `${API_URL}/api/notifications/admin`,
       {
         method: "GET",
-        headers: getHeaders(token),
+        headers:
+          getHeaders(token),
       }
     );
   },
 
   // --------------------------------------------------------------
-  // CREATE
+  // CREATE NOTIFICATION
   // --------------------------------------------------------------
 
   create: async (
@@ -406,14 +584,19 @@ export const notifications = {
       `${API_URL}/api/notifications`,
       {
         method: "POST",
-        headers: getHeaders(token),
-        body: JSON.stringify(data),
+
+        headers:
+          getHeaders(token),
+
+        body: JSON.stringify(
+          data
+        ),
       }
     );
   },
 
   // --------------------------------------------------------------
-  // MARK READ
+  // MARK NOTIFICATION READ
   // --------------------------------------------------------------
 
   markRead: async (
@@ -424,13 +607,14 @@ export const notifications = {
       `${API_URL}/api/notifications/${id}/read`,
       {
         method: "PUT",
-        headers: getHeaders(token),
+        headers:
+          getHeaders(token),
       }
     );
   },
 
   // --------------------------------------------------------------
-  // DELETE
+  // DELETE NOTIFICATION
   // --------------------------------------------------------------
 
   delete: async (
@@ -441,7 +625,9 @@ export const notifications = {
       `${API_URL}/api/notifications/${id}`,
       {
         method: "DELETE",
-        headers: getHeaders(token),
+
+        headers:
+          getHeaders(token),
       }
     );
   },
@@ -452,22 +638,36 @@ export const notifications = {
 // ================================================================
 
 export const orders = {
+  // --------------------------------------------------------------
+  // GET ALL ORDERS
+  // --------------------------------------------------------------
+
   getAll: async (
     params = {},
     token = getToken()
   ) => {
     const query =
-      new URLSearchParams(params).toString();
+      new URLSearchParams(
+        params
+      ).toString();
 
     return request(
       `${API_URL}/api/orders${
-        query ? `?${query}` : ""
+        query
+          ? `?${query}`
+          : ""
       }`,
       {
-        headers: getHeaders(token),
+        method: "GET",
+        headers:
+          getHeaders(token),
       }
     );
   },
+
+  // --------------------------------------------------------------
+  // GET ORDER BY ID
+  // --------------------------------------------------------------
 
   getById: async (
     id,
@@ -476,10 +676,16 @@ export const orders = {
     return request(
       `${API_URL}/api/orders/${id}`,
       {
-        headers: getHeaders(token),
+        method: "GET",
+        headers:
+          getHeaders(token),
       }
     );
   },
+
+  // --------------------------------------------------------------
+  // CREATE ORDER
+  // --------------------------------------------------------------
 
   create: async (
     orderData,
@@ -489,11 +695,20 @@ export const orders = {
       `${API_URL}/api/orders`,
       {
         method: "POST",
-        headers: getHeaders(token),
-        body: JSON.stringify(orderData),
+
+        headers:
+          getHeaders(token),
+
+        body: JSON.stringify(
+          orderData
+        ),
       }
     );
   },
+
+  // --------------------------------------------------------------
+  // UPDATE ORDER
+  // --------------------------------------------------------------
 
   update: async (
     id,
@@ -504,11 +719,20 @@ export const orders = {
       `${API_URL}/api/orders/${id}`,
       {
         method: "PUT",
-        headers: getHeaders(token),
-        body: JSON.stringify(updates),
+
+        headers:
+          getHeaders(token),
+
+        body: JSON.stringify(
+          updates
+        ),
       }
     );
   },
+
+  // --------------------------------------------------------------
+  // DELETE ORDER
+  // --------------------------------------------------------------
 
   delete: async (
     id,
@@ -518,7 +742,9 @@ export const orders = {
       `${API_URL}/api/orders/${id}`,
       {
         method: "DELETE",
-        headers: getHeaders(token),
+
+        headers:
+          getHeaders(token),
       }
     );
   },
@@ -529,6 +755,10 @@ export const orders = {
 // ================================================================
 
 export const messages = {
+  // --------------------------------------------------------------
+  // GET USER MESSAGES
+  // --------------------------------------------------------------
+
   getForUser: async (
     userId,
     token = getToken()
@@ -536,10 +766,16 @@ export const messages = {
     return request(
       `${API_URL}/api/messages/${userId}`,
       {
-        headers: getHeaders(token),
+        method: "GET",
+        headers:
+          getHeaders(token),
       }
     );
   },
+
+  // --------------------------------------------------------------
+  // GET CONVERSATIONS
+  // --------------------------------------------------------------
 
   getConversations: async (
     token = getToken()
@@ -547,10 +783,16 @@ export const messages = {
     return request(
       `${API_URL}/api/messages/conversations`,
       {
-        headers: getHeaders(token),
+        method: "GET",
+        headers:
+          getHeaders(token),
       }
     );
   },
+
+  // --------------------------------------------------------------
+  // GET CONVERSATION
+  // --------------------------------------------------------------
 
   getConversation: async (
     otherUserId,
@@ -559,10 +801,16 @@ export const messages = {
     return request(
       `${API_URL}/api/messages/conversation/${otherUserId}`,
       {
-        headers: getHeaders(token),
+        method: "GET",
+        headers:
+          getHeaders(token),
       }
     );
   },
+
+  // --------------------------------------------------------------
+  // SEND MESSAGE
+  // --------------------------------------------------------------
 
   send: async (
     receiver,
@@ -574,7 +822,9 @@ export const messages = {
       `${API_URL}/api/messages`,
       {
         method: "POST",
-        headers: getHeaders(token),
+
+        headers:
+          getHeaders(token),
 
         body: JSON.stringify({
           receiver,
@@ -585,6 +835,10 @@ export const messages = {
     );
   },
 
+  // --------------------------------------------------------------
+  // MARK MESSAGE READ
+  // --------------------------------------------------------------
+
   markRead: async (
     messageId,
     token = getToken()
@@ -593,10 +847,15 @@ export const messages = {
       `${API_URL}/api/messages/${messageId}/read`,
       {
         method: "PUT",
-        headers: getHeaders(token),
+        headers:
+          getHeaders(token),
       }
     );
   },
+
+  // --------------------------------------------------------------
+  // DELETE MESSAGE
+  // --------------------------------------------------------------
 
   delete: async (
     messageId,
@@ -606,7 +865,9 @@ export const messages = {
       `${API_URL}/api/messages/${messageId}`,
       {
         method: "DELETE",
-        headers: getHeaders(token),
+
+        headers:
+          getHeaders(token),
       }
     );
   },
@@ -617,16 +878,26 @@ export const messages = {
 // ================================================================
 
 export const favorites = {
+  // --------------------------------------------------------------
+  // GET FAVORITES
+  // --------------------------------------------------------------
+
   getAll: async (
     token = getToken()
   ) => {
     return request(
       `${API_URL}/api/favorites`,
       {
-        headers: getHeaders(token),
+        method: "GET",
+        headers:
+          getHeaders(token),
       }
     );
   },
+
+  // --------------------------------------------------------------
+  // ADD FAVORITE
+  // --------------------------------------------------------------
 
   add: async (
     productId,
@@ -636,7 +907,9 @@ export const favorites = {
       `${API_URL}/api/favorites`,
       {
         method: "POST",
-        headers: getHeaders(token),
+
+        headers:
+          getHeaders(token),
 
         body: JSON.stringify({
           productId,
@@ -644,6 +917,10 @@ export const favorites = {
       }
     );
   },
+
+  // --------------------------------------------------------------
+  // REMOVE FAVORITE
+  // --------------------------------------------------------------
 
   remove: async (
     productId,
@@ -653,20 +930,33 @@ export const favorites = {
       `${API_URL}/api/favorites/${productId}`,
       {
         method: "DELETE",
-        headers: getHeaders(token),
+
+        headers:
+          getHeaders(token),
       }
     );
   },
 };
 
 // ================================================================
-// NAMED EXPORTS
+// NAMED AUTH EXPORTS
 // ================================================================
 
-export const login = auth.login;
-export const register = auth.register;
-export const getMe = auth.getMe;
-export const logout = auth.logout;
+export const login =
+  auth.login;
+
+export const register =
+  auth.register;
+
+export const getMe =
+  auth.getMe;
+
+export const logout =
+  auth.logout;
+
+// ================================================================
+// PRODUCT EXPORTS
+// ================================================================
 
 export const getProducts =
   products.getAll;
@@ -689,6 +979,10 @@ export const updateProductWithFiles =
 export const deleteProduct =
   products.delete;
 
+// ================================================================
+// USER EXPORTS
+// ================================================================
+
 export const getUsers =
   users.getAll;
 
@@ -708,14 +1002,12 @@ export const getUserStats =
 // NOTIFICATION EXPORTS
 // ================================================================
 
-// Admin notifications
 export const getNotifications =
   notifications.getForAdmin;
 
 export const getAdminNotifications =
   notifications.getForAdmin;
 
-// User notifications
 export const getUserNotifications =
   notifications.getForUser;
 
@@ -789,6 +1081,7 @@ export const removeFavorite =
 const api = {
   API_URL,
 
+  // Services
   auth,
   products,
   users,
@@ -797,11 +1090,13 @@ const api = {
   messages,
   favorites,
 
+  // Auth
   login,
   register,
   getMe,
   logout,
 
+  // Products
   getProducts,
   getProduct,
   createProduct,
@@ -810,12 +1105,14 @@ const api = {
   updateProductWithFiles,
   deleteProduct,
 
+  // Users
   getUsers,
   getUser,
   updateUser,
   deleteUser,
   getUserStats,
 
+  // Notifications
   getNotifications,
   getUserNotifications,
   getAdminNotifications,
@@ -823,12 +1120,14 @@ const api = {
   markNotificationRead,
   deleteNotification,
 
+  // Orders
   getOrders,
   getOrder,
   createOrder,
   updateOrder,
   deleteOrder,
 
+  // Messages
   getMessages,
   getConversations,
   getConversation,
@@ -836,13 +1135,13 @@ const api = {
   markMessageRead,
   deleteMessage,
 
+  // Favorites
   getFavorites,
   addFavorite,
   removeFavorite,
 
+  // Utilities
   getImageUrl,
-
-  // Expose these if needed elsewhere
   getToken,
   clearAuthData,
 };
