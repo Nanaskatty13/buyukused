@@ -50,7 +50,7 @@ const Navbar = () => {
         {/* Logo */}
         <Link to="/" className="logo">
           <i className="fas fa-tag"></i>
-          BuyUK <span>Used</span>
+          BuyUk <span>Used</span>
         </Link>
 
         {/* Navigation Links */}
