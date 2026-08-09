@@ -28,8 +28,8 @@ const FloatingPhone = () => {
         width: '80px',
         height: '160px',
         transformOrigin: 'bottom center',
-        animation: 'phoneDance 3s ease-in-out infinite',
-        transition: 'transform 0.3s ease-out',
+        animation: 'phoneDance 1s ease-in-out infinite',
+        transition: 'transform 0.1s ease-in-out',
         cursor: 'pointer',
         filter: 'drop-shadow(0 12px 24px rgba(0, 0, 0, 0.3))',
       }}
@@ -74,7 +74,7 @@ const FloatingPhone = () => {
               height: '100%',
               background:
                 'radial-gradient(circle at 30% 40%, rgba(46, 204, 113, 0.12), transparent 60%), radial-gradient(circle at 70% 60%, rgba(0, 85, 165, 0.12), transparent 60%)',
-              animation: 'screenGlow 4s ease-in-out infinite',
+              animation: 'screenGlow 1s ease-in-out infinite',
             }}
           />
 
@@ -93,7 +93,7 @@ const FloatingPhone = () => {
               color: 'white',
               boxShadow: '0 3px 10px rgba(46, 204, 113, 0.4)',
               zIndex: 1,
-              animation: 'iconPulse 2s ease-in-out infinite',
+              animation: 'iconPulse 1s ease-in-out infinite',
             }}
           >
             K
@@ -124,7 +124,7 @@ const FloatingPhone = () => {
               height: '6px',
               background: '#e74c3c',
               borderRadius: '50%',
-              animation: 'notifPulse 1.5s ease-in-out infinite',
+              animation: 'notifPulse 0.1s ease-in-out infinite',
               zIndex: 2,
             }}
           />
@@ -153,7 +153,7 @@ const FloatingPhone = () => {
               height: '4px',
               background: 'rgba(46, 204, 113, 0.5)',
               borderRadius: '50%',
-              animation: 'bubbleFloat 3s ease-in-out infinite',
+              animation: 'bubbleFloat 1s ease-in-out infinite',
             }}
           />
           <div
@@ -165,7 +165,7 @@ const FloatingPhone = () => {
               height: '3px',
               background: 'rgba(0, 85, 165, 0.5)',
               borderRadius: '50%',
-              animation: 'bubbleFloat 4s ease-in-out infinite 1s',
+              animation: 'bubbleFloat 1s ease-in-out infinite 1s',
             }}
           />
         </div>
@@ -182,7 +182,7 @@ const FloatingPhone = () => {
           height: '14px',
           background: 'radial-gradient(ellipse, rgba(46, 204, 113, 0.25), transparent 70%)',
           borderRadius: '50%',
-          animation: 'glowPulse 2s ease-in-out infinite',
+          animation: 'glowPulse 1s ease-in-out infinite',
         }}
       />
     </div>
