@@ -1,5 +1,3 @@
-// backend/server.js
-
 const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
@@ -9,8 +7,13 @@ const compression = require("compression");
 const rateLimit = require("express-rate-limit");
 const morgan = require("morgan");
 const jwt = require("jsonwebtoken");
+const path = require("path");
 
 dotenv.config();
+
+// ============================================================
+// CONFIGURATION
+// ============================================================
 
 const connectDB = require("./config/db");
 
@@ -19,7 +22,7 @@ require("./config/passport")(passport);
 const app = express();
 
 // ============================================================
-// ENV CHECK
+// ENVIRONMENT CHECK
 // ============================================================
 
 const requiredEnv = [
@@ -31,7 +34,7 @@ const missing = requiredEnv.filter(
   (key) => !process.env[key]
 );
 
-if (missing.length) {
+if (missing.length > 0) {
   console.error(
     `❌ Missing environment variables: ${missing.join(", ")}`
   );
@@ -108,19 +111,18 @@ app.use(
       );
 
       // Requests without Origin
-      // such as health checks/server requests
       if (!origin) {
         return callback(null, true);
       }
 
-      // Explicitly allowed origins
+      // Explicit origins
       if (
         allowedOrigins.includes(origin)
       ) {
         return callback(null, true);
       }
 
-      // Allow Vercel preview deployments
+      // Vercel deployments
       if (
         /^https:\/\/[a-zA-Z0-9-]+\.vercel\.app$/.test(
           origin
@@ -160,7 +162,7 @@ app.use(
 );
 
 // ============================================================
-// BODY PARSER
+// BODY PARSERS
 // ============================================================
 
 app.use(
@@ -177,6 +179,36 @@ app.use(
 );
 
 // ============================================================
+// STATIC UPLOADS
+// ============================================================
+//
+// Profile images can be accessed through:
+//
+// https://your-api.onrender.com/uploads/profiles/file.jpg
+//
+// NOTE:
+// Render's local filesystem is not persistent across
+// deployments/restarts. For permanent production storage,
+// Cloudinary/S3/etc. should eventually be used.
+// ============================================================
+
+const uploadsDirectory = path.join(
+  __dirname,
+  "public",
+  "uploads"
+);
+
+app.use(
+  "/uploads",
+  express.static(uploadsDirectory)
+);
+
+console.log(
+  "📁 Static uploads directory:",
+  uploadsDirectory
+);
+
+// ============================================================
 // PASSPORT
 // ============================================================
 
@@ -185,7 +217,7 @@ app.use(
 );
 
 // ============================================================
-// RATE LIMIT
+// RATE LIMITING
 // ============================================================
 
 const skipIfAdmin = (
@@ -219,7 +251,8 @@ const skipIfAdmin = (
       req.skipRateLimit = true;
     }
   } catch (error) {
-    // Ignore invalid tokens.
+    // Invalid token.
+    // Continue normally.
   }
 
   next();
@@ -254,6 +287,9 @@ const limiter =
 
       return false;
     },
+
+    standardHeaders: true,
+    legacyHeaders: false,
 
     message: {
       success: false,
@@ -329,31 +365,37 @@ console.log(
   "✅ Routes loaded"
 );
 
+// Authentication
 app.use(
   "/auth",
   authRoutes
 );
 
+// Products
 app.use(
   "/api/products",
   productRoutes
 );
 
+// Notifications
 app.use(
   "/api/notifications",
   notificationRoutes
 );
 
+// Users
 app.use(
   "/api/users",
   userRoutes
 );
 
+// Messages
 app.use(
   "/api/messages",
   messageRoutes
 );
 
+// Admin
 app.use(
   "/api/admin",
   adminRoutes
@@ -385,7 +427,7 @@ app.use(
 );
 
 // ============================================================
-// ERROR HANDLER
+// GLOBAL ERROR HANDLER
 // ============================================================
 
 app.use(
@@ -397,11 +439,11 @@ app.use(
   ) => {
     console.error(
       "❌ Error:",
-      err.message
+      err
     );
 
     // --------------------------------------------------------
-    // Multer errors
+    // Multer
     // --------------------------------------------------------
 
     if (
@@ -417,7 +459,7 @@ app.use(
           .json({
             success: false,
             message:
-              "File too large. Max size is 50MB.",
+              "File too large. Maximum size is 5MB.",
           });
       }
 
@@ -426,7 +468,8 @@ app.use(
         .json({
           success: false,
           message:
-            err.message,
+            err.message ||
+            "File upload error.",
         });
     }
 
@@ -435,6 +478,7 @@ app.use(
     // --------------------------------------------------------
 
     if (
+      err &&
       err.code === 11000
     ) {
       const field =
@@ -456,12 +500,13 @@ app.use(
     // --------------------------------------------------------
 
     if (
+      err &&
       err.name ===
-      "ValidationError"
+        "ValidationError"
     ) {
       const messages =
         Object.values(
-          err.errors
+          err.errors || {}
         ).map(
           (error) =>
             error.message
@@ -482,8 +527,9 @@ app.use(
     // --------------------------------------------------------
 
     if (
+      err &&
       err.message ===
-      "CORS not allowed for this origin"
+        "CORS not allowed for this origin"
     ) {
       return res
         .status(403)
@@ -495,17 +541,17 @@ app.use(
     }
 
     // --------------------------------------------------------
-    // Generic error
+    // Generic
     // --------------------------------------------------------
 
     return res
       .status(
-        err.status || 500
+        err?.status || 500
       )
       .json({
         success: false,
         message:
-          err.message ||
+          err?.message ||
           "Internal Server Error",
       });
   }
@@ -517,10 +563,10 @@ app.use(
 
 process.on(
   "unhandledRejection",
-  (err) => {
+  (error) => {
     console.error(
       "❌ Unhandled Rejection:",
-      err
+      error
     );
 
     process.exit(1);
@@ -533,10 +579,10 @@ process.on(
 
 process.on(
   "uncaughtException",
-  (err) => {
+  (error) => {
     console.error(
       "❌ Uncaught Exception:",
-      err
+      error
     );
 
     process.exit(1);
@@ -601,8 +647,6 @@ const createDefaultAdmin =
             isActive: true,
           });
 
-        // User model should hash
-        // password in pre-save hook.
         await user.save();
 
         console.log(
@@ -623,10 +667,10 @@ const createDefaultAdmin =
           `ℹ️ Admin user already exists: ${normalizedEmail}`
         );
       }
-    } catch (err) {
+    } catch (error) {
       console.warn(
         "⚠️ Could not create admin:",
-        err.message
+        error.message
       );
     }
   };
@@ -668,6 +712,10 @@ const start =
                 "(auto-detected)"
               }`
             );
+
+            console.log(
+              `📁 Uploads: ${uploadsDirectory}`
+            );
           }
         );
 
@@ -676,7 +724,7 @@ const start =
     } catch (error) {
       console.error(
         "❌ Server failed:",
-        error.message
+        error
       );
 
       process.exit(1);
