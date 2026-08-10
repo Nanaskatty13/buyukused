@@ -1,6 +1,9 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom'; // ✅ import navigation
 
 const RecentProducts = ({ products }) => {
+  const navigate = useNavigate(); // ✅ hook for navigation
+
   const recent = products.slice(0, 5);
 
   const getStatusBadge = (status) => {
@@ -22,18 +25,41 @@ const RecentProducts = ({ products }) => {
     };
   };
 
+  // ─── Handlers ──────────────────────────────────────────────
+  const handleViewAll = () => {
+    navigate('/products'); // or '/admin/products' if you have an admin route
+  };
+
+  const handleViewProduct = (id) => {
+    navigate(`/product/${id}`);
+  };
+
+  const handleEditProduct = (id) => {
+    navigate(`/edit-product/${id}`);
+  };
+
+  // ─── Filter select (optional) ─────────────────────────────
+  // This is just a placeholder – you can implement filtering
+  // by passing a callback via props if needed.
+  const handleFilterChange = (e) => {
+    console.log('Filter selected:', e.target.value);
+    // You could call a parent function here: props.onFilter(e.target.value)
+  };
+
   return (
     <div className="table-card">
       <div className="table-header">
         <h3>Recent Products</h3>
         <div className="table-actions">
-          <select className="filter-select">
+          <select className="filter-select" onChange={handleFilterChange}>
             <option value="all">All Categories</option>
             <option value="Cars">Cars</option>
             <option value="Phones">Phones</option>
             <option value="Real Estate">Real Estate</option>
           </select>
-          <button className="btn-primary">View All</button>
+          <button className="btn-primary" onClick={handleViewAll}>
+            View All
+          </button>
         </div>
       </div>
       <div className="table-responsive">
@@ -74,8 +100,20 @@ const RecentProducts = ({ products }) => {
                     </td>
                     <td>
                       <div className="actions-cell">
-                        <button className="btn-view"><i className="fas fa-eye"></i></button>
-                        <button className="btn-edit"><i className="fas fa-pen"></i></button>
+                        <button
+                          className="btn-view"
+                          onClick={() => handleViewProduct(p._id)}
+                          aria-label="View product"
+                        >
+                          <i className="fas fa-eye"></i>
+                        </button>
+                        <button
+                          className="btn-edit"
+                          onClick={() => handleEditProduct(p._id)}
+                          aria-label="Edit product"
+                        >
+                          <i className="fas fa-pen"></i>
+                        </button>
                       </div>
                     </td>
                   </tr>
