@@ -35,7 +35,7 @@ const ProductDetails = () => {
     simStatus: '',
     negotiation: false,
     swapAccepted: false,
-    warranty: '', // NEW: warranty field
+    warranty: '', // warranty field
   });
   const [imagesToKeep, setImagesToKeep] = useState([]);
   const [newFiles, setNewFiles] = useState([]);
@@ -68,7 +68,7 @@ const ProductDetails = () => {
             simStatus: p.simStatus || '',
             negotiation: p.negotiation || false,
             swapAccepted: p.swapAccepted || false,
-            warranty: p.warranty || '', // NEW: pre-fill warranty
+            warranty: p.warranty || '',
           });
           const existingImages = p.images || (p.image ? [p.image] : []);
           setImagesToKeep(existingImages);
@@ -187,13 +187,33 @@ const ProductDetails = () => {
     return getImageUrl(product?.image) || 'https://placehold.co/600x600?text=No+Image';
   };
 
+  // ─── WhatsApp Contact ──────────────────────────────────────────────
   const handleContact = () => {
     if (!user) {
       navigate('/login');
       return;
     }
+
     const phone = product?.sellerPhone || '0542928081';
-    window.open(`https://wa.me/${phone.replace(/\D/g, '')}?text=Hello%2C%20I%27m%20interested%20in%20${encodeURIComponent(product.title)}`, '_blank');
+
+    // Format price
+    const price = Number(product?.price || 0);
+    const formattedPrice = new Intl.NumberFormat('en-GH', {
+      style: 'currency',
+      currency: 'GHS',
+      minimumFractionDigits: 0,
+    }).format(price);
+
+    // Build title with storage (if available)
+    let titleWithSpecs = `"${product.title}"`;
+    if (product.storage) {
+      titleWithSpecs = `"${product.title}" (${product.storage})`;
+    }
+
+    const message = `Hello, I'm interested in ${titleWithSpecs} priced at ${formattedPrice} listed on BuyUkUsed.com. Is it still available?`;
+
+    const url = `https://wa.me/${phone.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
+    window.open(url, '_blank');
   };
 
   if (loading) return <div className="container" style={{ padding: '60px 20px', textAlign: 'center' }}>Loading...</div>;
@@ -348,7 +368,6 @@ const ProductDetails = () => {
                   {product.simStatus && <div><strong>SIM Status:</strong> {product.simStatus}</div>}
                   {product.negotiation && <div><strong>Negotiable:</strong> Yes</div>}
                   {product.swapAccepted && <div><strong>Swap Accepted:</strong> Yes</div>}
-                  {/* NEW: Warranty */}
                   {product.warranty && <div><strong>Warranty:</strong> {product.warranty}</div>}
                 </div>
               </div>
@@ -519,7 +538,7 @@ const ProductDetails = () => {
                   </select>
                 </div>
 
-                {/* Warranty Period - NEW */}
+                {/* Warranty Period */}
                 <div className="form-group" style={{ marginBottom: '12px' }}>
                   <label style={{ display: 'block', fontWeight: 600, fontSize: '13px', marginBottom: '4px' }}>Warranty Period</label>
                   <select name="warranty" value={editForm.warranty} onChange={handleEditChange} style={{ width: '100%', padding: '10px 14px', border: '1.5px solid var(--gray-200)', borderRadius: 'var(--radius-md)', fontSize: '14px' }}>
@@ -528,7 +547,6 @@ const ProductDetails = () => {
                     <option value="2 weeks">2 weeks</option>
                     <option value="3 weeks">3 weeks</option>
                     <option value="4 weeks">4 weeks</option>
-                    {/* 1–12 months */}
                     {[...Array(12)].map((_, i) => {
                       const months = i + 1;
                       return (
