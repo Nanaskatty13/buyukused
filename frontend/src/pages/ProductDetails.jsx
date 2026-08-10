@@ -35,6 +35,7 @@ const ProductDetails = () => {
     simStatus: '',
     negotiation: false,
     swapAccepted: false,
+    warranty: '', // NEW: warranty field
   });
   const [imagesToKeep, setImagesToKeep] = useState([]);
   const [newFiles, setNewFiles] = useState([]);
@@ -67,6 +68,7 @@ const ProductDetails = () => {
             simStatus: p.simStatus || '',
             negotiation: p.negotiation || false,
             swapAccepted: p.swapAccepted || false,
+            warranty: p.warranty || '', // NEW: pre-fill warranty
           });
           const existingImages = p.images || (p.image ? [p.image] : []);
           setImagesToKeep(existingImages);
@@ -323,7 +325,7 @@ const ProductDetails = () => {
             </div>
 
             {/* ----- Specifications ----- */}
-            {(product.storage || product.color || product.condition || product.batteryHealth !== null || product.faceId || product.simStatus || product.negotiation || product.swapAccepted) && (
+            {(product.storage || product.color || product.condition || product.batteryHealth !== null || product.faceId || product.simStatus || product.negotiation || product.swapAccepted || product.warranty) && (
               <div className="specs" style={{
                 marginBottom: '20px',
                 padding: '16px',
@@ -346,6 +348,8 @@ const ProductDetails = () => {
                   {product.simStatus && <div><strong>SIM Status:</strong> {product.simStatus}</div>}
                   {product.negotiation && <div><strong>Negotiable:</strong> Yes</div>}
                   {product.swapAccepted && <div><strong>Swap Accepted:</strong> Yes</div>}
+                  {/* NEW: Warranty */}
+                  {product.warranty && <div><strong>Warranty:</strong> {product.warranty}</div>}
                 </div>
               </div>
             )}
@@ -512,6 +516,28 @@ const ProductDetails = () => {
                     <option value="SIM Unlocked">SIM Unlocked</option>
                     <option value="Locked">Locked</option>
                     <option value="Bypass">Bypass</option>
+                  </select>
+                </div>
+
+                {/* Warranty Period - NEW */}
+                <div className="form-group" style={{ marginBottom: '12px' }}>
+                  <label style={{ display: 'block', fontWeight: 600, fontSize: '13px', marginBottom: '4px' }}>Warranty Period</label>
+                  <select name="warranty" value={editForm.warranty} onChange={handleEditChange} style={{ width: '100%', padding: '10px 14px', border: '1.5px solid var(--gray-200)', borderRadius: 'var(--radius-md)', fontSize: '14px' }}>
+                    <option value="">No warranty</option>
+                    <option value="1 week">1 week</option>
+                    <option value="2 weeks">2 weeks</option>
+                    <option value="3 weeks">3 weeks</option>
+                    <option value="4 weeks">4 weeks</option>
+                    {/* 1–12 months */}
+                    {[...Array(12)].map((_, i) => {
+                      const months = i + 1;
+                      return (
+                        <option key={months} value={`${months} month${months > 1 ? 's' : ''}`}>
+                          {months} month{months > 1 ? 's' : ''}
+                        </option>
+                      );
+                    })}
+                    <option value="1 year">1 year</option>
                   </select>
                 </div>
 

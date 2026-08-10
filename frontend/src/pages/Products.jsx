@@ -30,6 +30,7 @@ const ProductCard = ({ product }) => {
     swapAccepted,
     condition,
     category,
+    warranty, // NEW: destructure warranty
   } = product;
 
   const imageUrl = images?.[0] || image || '/placeholder.png';
@@ -128,6 +129,12 @@ const ProductCard = ({ product }) => {
           {category && (
             <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
               <i className="fas fa-tag"></i> {category}
+            </span>
+          )}
+          {/* ─── NEW: Warranty ─── */}
+          {warranty && (
+            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <i className="fas fa-shield-alt"></i> {warranty}
             </span>
           )}
         </div>

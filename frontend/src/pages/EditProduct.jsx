@@ -31,6 +31,7 @@ const EditProduct = () => {
     negotiation: false,
     swapAccepted: false,
     status: 'active',
+    warranty: '', // NEW: warranty field
   });
   const [imagesToKeep, setImagesToKeep] = useState([]);
   const [newFiles, setNewFiles] = useState([]);
@@ -65,6 +66,7 @@ const EditProduct = () => {
           negotiation: p.negotiation || false,
           swapAccepted: p.swapAccepted || false,
           status: p.status || 'active',
+          warranty: p.warranty || '', // NEW: pre-fill warranty
         });
         setImagesToKeep(p.images || (p.image ? [p.image] : []));
       } catch (err) {
@@ -276,6 +278,28 @@ const EditProduct = () => {
             <option value="SIM Unlocked">SIM Unlocked</option>
             <option value="Locked">Locked</option>
             <option value="Bypass">Bypass</option>
+          </select>
+        </div>
+
+        {/* ─── NEW: Warranty Period ─── */}
+        <div className="form-group">
+          <label>Warranty Period</label>
+          <select name="warranty" value={formData.warranty} onChange={handleChange}>
+            <option value="">No warranty</option>
+            <option value="1 week">1 week</option>
+            <option value="2 weeks">2 weeks</option>
+            <option value="3 weeks">3 weeks</option>
+            <option value="4 weeks">4 weeks</option>
+            {/* 1–12 months */}
+            {[...Array(12)].map((_, i) => {
+              const months = i + 1;
+              return (
+                <option key={months} value={`${months} month${months > 1 ? 's' : ''}`}>
+                  {months} month{months > 1 ? 's' : ''}
+                </option>
+              );
+            })}
+            <option value="1 year">1 year</option>
           </select>
         </div>
 
