@@ -34,6 +34,9 @@ const productSchema = new mongoose.Schema(
       enum: [
         "Cars",
         "Phones",
+        "Laptops",
+        "Tablets",
+        "Accessories",
         "Real Estate",
         "Jobs",
         "Electronics",
@@ -110,6 +113,43 @@ const productSchema = new mongoose.Schema(
     },
 
     model: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    processor: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    screenSize: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    graphics: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    // ✅ NEW: Tablet-specific fields
+    year: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    connectivity: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    warranty: {
       type: String,
       default: "",
       trim: true,

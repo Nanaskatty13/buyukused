@@ -5,6 +5,32 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { createProductWithFiles } from '../services/api';
 
+// Import LaptopForm and its constants
+import LaptopForm, {
+  LAPTOP_BRANDS,
+  getModelsByBrand,
+  PROCESSOR_OPTIONS,
+  RAM_OPTIONS,
+  STORAGE_OPTIONS,
+  SCREEN_SIZE_OPTIONS,
+  GRAPHICS_OPTIONS,
+  CONDITION_OPTIONS,
+  WARRANTY_OPTIONS,
+} from '../components/LaptopForm';
+
+// ✅ NEW: Import TabletForm
+import TabletForm, {
+  TABLET_BRANDS,
+  getTabletModelsByBrand,
+  TABLET_COLORS,
+  TABLET_SCREEN_SIZES,
+  TABLET_STORAGE_OPTIONS,
+  CONNECTIVITY_OPTIONS,
+  YEAR_OPTIONS,
+  TABLET_CONDITION_OPTIONS,
+  TABLET_WARRANTY_OPTIONS,
+} from '../components/TabletForm';
+
 // ===============================
 // LOCATION DATA
 // ===============================
@@ -305,7 +331,19 @@ const PostAd = () => {
     simStatus: 'SIM Unlocked',
     batteryHealth: '',
     faceId: 'Working',
-    warranty: '', // NEW: warranty period
+    warranty: '',
+
+    // Laptop-specific fields
+    brand: '',
+    model: '',
+    processor: '',
+    ram: '',
+    screenSize: '',
+    graphics: '',
+
+    // ✅ NEW: Tablet-specific fields
+    year: '',
+    connectivity: '',
   });
 
   const [mediaItems, setMediaItems] = useState([]);
@@ -339,20 +377,18 @@ const PostAd = () => {
   // ─── GENERAL FORM HANDLER ────────────────────────────────────────
 
   const handleChange = (e) => {
-    const {
-      name,
-      value,
-      type,
-      checked,
-    } = e.target;
+    const { name, value, type, checked } = e.target;
 
     setFormData((prev) => ({
       ...prev,
-      [name]:
-        type === 'checkbox'
-          ? checked
-          : value,
+      [name]: type === 'checkbox' ? checked : value,
     }));
+  };
+
+  // Specific handler for checkbox changes (used by LaptopForm & TabletForm)
+  const handleCheckboxChange = (e) => {
+    const { name, checked } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: checked }));
   };
 
   // ─── LOCATION HANDLERS ──────────────────────────────────────────
@@ -411,10 +447,7 @@ const PostAd = () => {
       setError('');
     }
 
-    setMediaItems((prev) => [
-      ...prev,
-      ...newItems,
-    ]);
+    setMediaItems((prev) => [...prev, ...newItems]);
 
     e.target.value = '';
   };
@@ -480,6 +513,7 @@ const PostAd = () => {
   // ─── STEP NAVIGATION ────────────────────────────────────────────
 
   const goToNextStep = () => {
+    // ✅ Check required fields for Step 1
     if (
       !formData.title.trim() ||
       !formData.price ||
@@ -493,6 +527,18 @@ const PostAd = () => {
 
     if (Number(formData.price) < 0) {
       setError('Price cannot be negative.');
+      return;
+    }
+
+    // ✅ Laptop-specific: brand must be selected (shown in Step 1)
+    if (formData.category === 'Laptops' && !formData.brand) {
+      setError('Please select a laptop brand.');
+      return;
+    }
+
+    // ✅ Tablet-specific: brand must be selected (shown in Step 1)
+    if (formData.category === 'Tablets' && !formData.brand) {
+      setError('Please select a tablet brand.');
       return;
     }
 
@@ -531,6 +577,18 @@ const PostAd = () => {
       return;
     }
 
+    // ✅ Validate laptop model (only if category is Laptops)
+    if (formData.category === 'Laptops' && !formData.model) {
+      setError('Please select a laptop model.');
+      return;
+    }
+
+    // ✅ Validate tablet model (only if category is Tablets)
+    if (formData.category === 'Tablets' && !formData.model) {
+      setError('Please select a tablet model.');
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -558,10 +616,7 @@ const PostAd = () => {
         }))
       );
 
-      const data = await createProductWithFiles(
-        form,
-        token
-      );
+      const data = await createProductWithFiles(form, token);
 
       console.log(
         '✅ Product upload response:',
@@ -659,6 +714,11 @@ const PostAd = () => {
     setAuthError('');
   };
 
+  // ─── CHECK CATEGORIES ──────────────────────────────────────────
+
+  const isLaptop = formData.category === 'Laptops';
+  const isTablet = formData.category === 'Tablets';
+
   // ─── RENDER ─────────────────────────────────────────────────────
 
   return (
@@ -687,6 +747,91 @@ const PostAd = () => {
         {step === 1 && (
           <>
 
+            {/* ─── CATEGORY ──────────────────────────────────────── */}
+
+            <div className="form-group">
+              <label>Category *</label>
+
+              <select
+                name="category"
+                value={formData.category}
+                onChange={handleChange}
+                required
+              >
+                <option value="Cars">🚗 Cars</option>
+                <option value="Phones">📱 Phones</option>
+                <option value="Laptops">💻 Laptops</option>
+                <option value="Tablets">📲 Tablets</option>
+                <option value="Accessories">🎧 Accessories</option>
+                <option value="Electronics">📺 Electronics</option>
+                <option value="Fashion">👗 Fashion</option>
+                <option value="Home">🏠 Home</option>
+                <option value="Real Estate">🏠 Real Estate</option>
+                <option value="Jobs">💼 Jobs</option>
+                <option value="Other">📦 Other</option>
+              </select>
+            </div>
+
+            {/* ─── LAPTOP BRAND (conditional) ──────────────────── */}
+
+            {isLaptop && (
+              <div className="form-group">
+                <label>Laptop Brand *</label>
+                <select
+                  name="brand"
+                  value={formData.brand}
+                  onChange={handleChange}
+                  required
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    border: '1.5px solid var(--gray-200)',
+                    borderRadius: 'var(--radius-md)',
+                    fontSize: '14px',
+                    background: 'white',
+                  }}
+                >
+                  <option value="">Select brand</option>
+                  {LAPTOP_BRANDS.map((brand) => (
+                    <option key={brand} value={brand}>
+                      {brand}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* ─── TABLET BRAND (conditional) ──────────────────── */}
+
+            {isTablet && (
+              <div className="form-group">
+                <label>Tablet Brand *</label>
+                <select
+                  name="brand"
+                  value={formData.brand}
+                  onChange={handleChange}
+                  required
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    border: '1.5px solid var(--gray-200)',
+                    borderRadius: 'var(--radius-md)',
+                    fontSize: '14px',
+                    background: 'white',
+                  }}
+                >
+                  <option value="">Select brand</option>
+                  {TABLET_BRANDS.map((brand) => (
+                    <option key={brand} value={brand}>
+                      {brand}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* ─── TITLE ──────────────────────────────────────────── */}
+
             <div className="form-group">
               <label>Ad Title *</label>
 
@@ -695,10 +840,12 @@ const PostAd = () => {
                 name="title"
                 value={formData.title}
                 onChange={handleChange}
-                placeholder="e.g. Toyota Corolla 2020"
+                placeholder='e.g. MacBook Pro 14" M1 Pro 2021'
                 required
               />
             </div>
+
+            {/* ─── PRICE ──────────────────────────────────────────── */}
 
             <div className="form-group">
               <label>Price (GH₵) *</label>
@@ -715,32 +862,7 @@ const PostAd = () => {
               />
             </div>
 
-            <div className="form-group">
-              <label>Category</label>
-
-              <select
-                name="category"
-                value={formData.category}
-                onChange={handleChange}
-              >
-                <option value="Cars">Cars</option>
-                <option value="Phones">Phones</option>
-                <option value="Real Estate">
-                  Real Estate
-                </option>
-                <option value="Jobs">Jobs</option>
-                <option value="Electronics">
-                  Electronics
-                </option>
-                <option value="Fashion">
-                  Fashion
-                </option>
-                <option value="Home">Home</option>
-                <option value="Other">Other</option>
-              </select>
-            </div>
-
-            {/* LOCATION */}
+            {/* ─── LOCATION ──────────────────────────────────────── */}
 
             <div className="form-group">
 
@@ -809,7 +931,7 @@ const PostAd = () => {
 
             </div>
 
-            {/* SELLER NAME */}
+            {/* ─── SELLER NAME ───────────────────────────────────── */}
 
             <div className="form-group">
 
@@ -825,7 +947,7 @@ const PostAd = () => {
 
             </div>
 
-            {/* PHONE */}
+            {/* ─── PHONE ──────────────────────────────────────────── */}
 
             <div className="form-group">
 
@@ -842,7 +964,7 @@ const PostAd = () => {
 
             </div>
 
-            {/* DESCRIPTION */}
+            {/* ─── DESCRIPTION ───────────────────────────────────── */}
 
             <div className="form-group">
 
@@ -858,7 +980,7 @@ const PostAd = () => {
 
             </div>
 
-            {/* IMAGES */}
+            {/* ─── IMAGES ────────────────────────────────────────── */}
 
             <div className="form-group">
 
@@ -879,7 +1001,7 @@ const PostAd = () => {
 
             </div>
 
-            {/* VIDEO */}
+            {/* ─── VIDEO ─────────────────────────────────────────── */}
 
             <div className="form-group">
 
@@ -899,7 +1021,7 @@ const PostAd = () => {
 
             </div>
 
-            {/* MEDIA PREVIEW */}
+            {/* ─── MEDIA PREVIEW ────────────────────────────────── */}
 
             {mediaItems.length > 0 && (
 
@@ -958,6 +1080,8 @@ const PostAd = () => {
 
             )}
 
+            {/* ─── NEXT BUTTON ───────────────────────────────────── */}
+
             <button
               type="button"
               className="btn-primary"
@@ -976,146 +1100,176 @@ const PostAd = () => {
         {step === 2 && (
           <>
 
-            {/* STORAGE */}
+            {/* ─── LAPTOP FORM (conditional) ────────────────────── */}
 
-            <div className="form-group">
-
-              <label>Storage</label>
-
-              <select
-                name="storage"
-                value={formData.storage}
-                onChange={handleChange}
-              >
-                <option value="">
-                  Select storage
-                </option>
-
-                <option value="16GB">16GB</option>
-                <option value="32GB">32GB</option>
-                <option value="64GB">64GB</option>
-                <option value="128GB">128GB</option>
-                <option value="256GB">256GB</option>
-                <option value="512GB">512GB</option>
-                <option value="1TB">1TB</option>
-                <option value="2TB">2TB</option>
-                <option value="Other">Other</option>
-              </select>
-
-            </div>
-
-            {/* COLOR */}
-
-            <div className="form-group">
-
-              <label>Color</label>
-
-              <select
-                name="color"
-                value={formData.color}
-                onChange={handleChange}
-              >
-                <option value="">
-                  Select color
-                </option>
-
-                {iphoneColors.map(
-                  (color) => (
-                    <option
-                      key={color}
-                      value={color}
-                    >
-                      {color}
-                    </option>
-                  )
-                )}
-
-              </select>
-
-            </div>
-
-            {/* BATTERY */}
-
-            <div className="form-group">
-
-              <label>
-                Battery Health (%)
-              </label>
-
-              <input
-                type="number"
-                name="batteryHealth"
-                value={formData.batteryHealth}
-                onChange={handleChange}
-                placeholder="e.g. 85"
-                min="0"
-                max="100"
-                step="1"
+            {isLaptop && (
+              <LaptopForm
+                formData={formData}
+                handleChange={handleChange}
+                handleCheckboxChange={handleCheckboxChange}
+                errors={{}}
               />
+            )}
 
-              <span className="hint">
-                Enter battery health percentage (0–100).
-              </span>
+            {/* ─── TABLET FORM (conditional) ────────────────────── */}
 
-            </div>
+            {isTablet && (
+              <TabletForm
+                formData={formData}
+                handleChange={handleChange}
+                handleCheckboxChange={handleCheckboxChange}
+                errors={{}}
+              />
+            )}
 
-            {/* SIM */}
+            {/* ─── GENERAL FIELDS (shown for all categories except Laptops & Tablets) ── */}
 
-            <div className="form-group">
+            {!isLaptop && !isTablet && (
+              <>
 
-              <label>SIM Status</label>
+                {/* STORAGE */}
 
-              <select
-                name="simStatus"
-                value={formData.simStatus}
-                onChange={handleChange}
-              >
-                <option value="eSIM Unlocked">
-                  eSIM Unlocked
-                </option>
+                <div className="form-group">
 
-                <option value="SIM Unlocked">
-                  SIM Unlocked
-                </option>
+                  <label>Storage</label>
 
-                <option value="Locked">
-                  Locked
-                </option>
+                  <select
+                    name="storage"
+                    value={formData.storage}
+                    onChange={handleChange}
+                  >
+                    <option value="">
+                      Select storage
+                    </option>
 
-                <option value="Bypass">
-                  Bypass
-                </option>
-              </select>
+                    <option value="16GB">16GB</option>
+                    <option value="32GB">32GB</option>
+                    <option value="64GB">64GB</option>
+                    <option value="128GB">128GB</option>
+                    <option value="256GB">256GB</option>
+                    <option value="512GB">512GB</option>
+                    <option value="1TB">1TB</option>
+                    <option value="2TB">2TB</option>
+                    <option value="Other">Other</option>
+                  </select>
 
-            </div>
+                </div>
 
-            {/* FACE ID */}
+                {/* COLOR */}
 
-            <div className="form-group">
+                <div className="form-group">
 
-              <label>Face ID</label>
+                  <label>Color</label>
 
-              <select
-                name="faceId"
-                value={formData.faceId}
-                onChange={handleChange}
-              >
-                <option value="Working">
-                  Working
-                </option>
+                  <select
+                    name="color"
+                    value={formData.color}
+                    onChange={handleChange}
+                  >
+                    <option value="">
+                      Select color
+                    </option>
 
-                <option value="Not Working">
-                  Not Working
-                </option>
+                    {iphoneColors.map(
+                      (color) => (
+                        <option
+                          key={color}
+                          value={color}
+                        >
+                          {color}
+                        </option>
+                      )
+                    )}
 
-                <option value="Not Available">
-                  Not Available
-                </option>
-              </select>
+                  </select>
 
-            </div>
+                </div>
 
-            {/* CONDITION */}
+                {/* BATTERY */}
+
+                <div className="form-group">
+
+                  <label>
+                    Battery Health (%)
+                  </label>
+
+                  <input
+                    type="number"
+                    name="batteryHealth"
+                    value={formData.batteryHealth}
+                    onChange={handleChange}
+                    placeholder="e.g. 85"
+                    min="0"
+                    max="100"
+                    step="1"
+                  />
+
+                  <span className="hint">
+                    Enter battery health percentage (0–100).
+                  </span>
+
+                </div>
+
+                {/* SIM */}
+
+                <div className="form-group">
+
+                  <label>SIM Status</label>
+
+                  <select
+                    name="simStatus"
+                    value={formData.simStatus}
+                    onChange={handleChange}
+                  >
+                    <option value="eSIM Unlocked">
+                      eSIM Unlocked
+                    </option>
+
+                    <option value="SIM Unlocked">
+                      SIM Unlocked
+                    </option>
+
+                    <option value="Locked">
+                      Locked
+                    </option>
+
+                    <option value="Bypass">
+                      Bypass
+                    </option>
+                  </select>
+
+                </div>
+
+                {/* FACE ID */}
+
+                <div className="form-group">
+
+                  <label>Face ID</label>
+
+                  <select
+                    name="faceId"
+                    value={formData.faceId}
+                    onChange={handleChange}
+                  >
+                    <option value="Working">
+                      Working
+                    </option>
+
+                    <option value="Not Working">
+                      Not Working
+                    </option>
+
+                    <option value="Not Available">
+                      Not Available
+                    </option>
+                  </select>
+
+                </div>
+
+              </>
+            )}
+
+            {/* ─── CONDITION (shown for all categories) ────────── */}
 
             <div className="form-group">
 
@@ -1153,7 +1307,7 @@ const PostAd = () => {
 
             </div>
 
-            {/* ─── NEW WARRANTY PERIOD ──────────────────────────── */}
+            {/* ─── WARRANTY PERIOD ──────────────────────────────── */}
 
             <div className="form-group">
 

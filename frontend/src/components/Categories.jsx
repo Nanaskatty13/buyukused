@@ -2,14 +2,19 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 
 const categories = [
-  { name: 'Cars', icon: 'fa-car' },
+  // { name: 'Cars', icon: 'fa-car' },
   { name: 'Phones', icon: 'fa-mobile-alt' },
-  { name: 'Real Estate', icon: 'fa-home' },
-  { name: 'Jobs', icon: 'fa-briefcase' },
+  { name: 'Laptops', icon: 'fa-laptop' },
+  { name: 'Apple', icon: 'fa-apple-alt' },
+  { name: 'TV & Game Consoles', icon: 'fa-tv' },
+  // { name: 'Real Estate', icon: 'fa-home' },
+  // { name: 'Jobs', icon: 'fa-briefcase' },
   { name: 'Electronics', icon: 'fa-laptop' },
-  { name: 'Fashion', icon: 'fa-tshirt' },
-  { name: 'Home', icon: 'fa-couch' },
-  { name: 'Other', icon: 'fa-tag' },
+  // { name: 'Fashion', icon: 'fa-tshirt' },
+  // { name: 'Home', icon: 'fa-couch' },
+  // { name: 'Other', icon: 'fa-tag' },
+  { name: 'Accessories', icon: 'fa-headphones' },
+
 ];
 
 const Categories = ({ products = [] }) => {

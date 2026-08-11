@@ -14,7 +14,7 @@ const Hero = ({ onSearch }) => {
           Buy, sell, and discover amazing deals
         </h1>
         <p style={{ opacity: 0.85, fontSize: '16px', marginBottom: '24px' }}>
-          Find cars, phones, properties, jobs, and more near you in Ghana.
+          Find Phones, Laptops, Apple Gadgets, TV & Game Consoles, and more near you in Ghana.
         </p>
 
         <SearchBar onSearch={onSearch} />
@@ -28,8 +28,8 @@ const Hero = ({ onSearch }) => {
           fontSize: '14px',
           opacity: 0.9,
         }}>
-          <span><i className="fas fa-users"></i> 10,000+ Users</span>
-          <span><i className="fas fa-tag"></i> 5,000+ Ads</span>
+          <span><i className="fas fa-users"></i> 200+ Users</span>
+          <span><i className="fas fa-tag"></i> 100+ Ads</span>
           <span><i className="fas fa-check-circle"></i> Verified Sellers</span>
         </div>
       </div>
