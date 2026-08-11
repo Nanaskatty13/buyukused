@@ -213,7 +213,15 @@ const ProductDetails = () => {
     const message = `Hello, I'm interested in ${titleWithSpecs} priced at ${formattedPrice} listed on BuyUkUsed.com. Is it still available?`;
 
     const url = `https://wa.me/${phone.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
-    window.open(url, '_blank');
+
+    // ✅ FIX: Create a hidden <a> and click it – works reliably on mobile
+    const link = document.createElement('a');
+    link.href = url;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   if (loading) return <div className="container" style={{ padding: '60px 20px', textAlign: 'center' }}>Loading...</div>;

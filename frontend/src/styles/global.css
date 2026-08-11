@@ -37,6 +37,15 @@
   box-sizing: border-box;
 }
 
+/* ----- FIX: Prevent mobile zoom on input focus ----- */
+/* iOS Safari will NOT zoom if font-size >= 16px */
+input,
+select,
+textarea {
+  font-size: 16px !important; /* force 16px on all form elements */
+}
+
+/* Ensure text doesn't auto-adjust on mobile */
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   background: var(--gray-50);
@@ -44,6 +53,14 @@ body {
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  -webkit-text-size-adjust: 100%; /* prevent font-size inflation */
+}
+
+/* Improve tap behaviour on buttons */
+button,
+input[type="button"],
+input[type="submit"] {
+  touch-action: manipulation;
 }
 
 a {
