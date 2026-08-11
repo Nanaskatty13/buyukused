@@ -413,6 +413,33 @@ export const products = {
       }
     );
   },
+
+  // ✅ NEW: UPDATE PRODUCT STATUS (Quick Mark as Sold / Available)
+  // --------------------------------------------------------------
+
+  updateStatus: async (
+    productId,
+    status,
+    token = getToken()
+  ) => {
+    return request(
+      `${API_URL}/api/products/${productId}/status`,
+      {
+        method: "PATCH",
+
+        headers: {
+          "Content-Type": "application/json",
+          ...(token
+            ? {
+                Authorization: `Bearer ${token}`,
+              }
+            : {}),
+        },
+
+        body: JSON.stringify({ status }),
+      }
+    );
+  },
 };
 
 // ================================================================
@@ -979,6 +1006,10 @@ export const updateProductWithFiles =
 export const deleteProduct =
   products.delete;
 
+// ✅ NEW: Product Status Export
+export const updateProductStatus =
+  products.updateStatus;
+
 // ================================================================
 // USER EXPORTS
 // ================================================================
@@ -1104,6 +1135,7 @@ const api = {
   updateProduct,
   updateProductWithFiles,
   deleteProduct,
+  updateProductStatus, // ✅ NEW
 
   // Users
   getUsers,

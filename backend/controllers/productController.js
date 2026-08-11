@@ -1,4 +1,3 @@
-
 // backend/controllers/productController.js
 
 const Product = require("../models/Product");
@@ -910,6 +909,63 @@ exports.getSellerProducts = async (
     res.status(500).json({
       success: false,
       message: error.message,
+    });
+  }
+};
+
+// ======================================================
+// ✅ NEW: Update Product Status (quick mark as sold)
+// ======================================================
+
+exports.updateProductStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    // Validate status
+    const validStatuses = ['active', 'pending', 'inactive', 'sold'];
+    if (!status || !validStatuses.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid status. Allowed: active, pending, inactive, sold',
+      });
+    }
+
+    // Find product
+    const product = await Product.findById(id);
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: 'Product not found',
+      });
+    }
+
+    // Check ownership (allow admin or product owner)
+    const userId = req.user.id;
+    if (
+      req.user.role !== 'admin' &&
+      product.sellerId.toString() !== userId
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: 'You are not authorized to update this product',
+      });
+    }
+
+    // Update only the status
+    product.status = status;
+    await product.save();
+
+    res.status(200).json({
+      success: true,
+      message: `Product status updated to ${status}`,
+      product,
+    });
+  } catch (error) {
+    console.error('❌ Update product status error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Server error updating product status',
     });
   }
 };

@@ -2,10 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 
 // ✅ Import API functions + image helper
-import { getProduct, updateProductWithFiles, getImageUrl } from '../services/api';
+import { getProduct, updateProductWithFiles, getImageUrl, updateProductStatus } from '../services/api';
 
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
+
+// ✅ NEW: Import the SoldBadge component
+import SoldBadge from '../components/SoldBadge';
 
 const ProductDetails = () => {
   const { id } = useParams();
@@ -42,6 +45,9 @@ const ProductDetails = () => {
   const [newFilePreviews, setNewFilePreviews] = useState([]);
   const [editLoading, setEditLoading] = useState(false);
   const [editError, setEditError] = useState('');
+
+  // ✅ NEW: Quick status update state
+  const [isUpdating, setIsUpdating] = useState(false);
 
   // Fetch product
   useEffect(() => {
@@ -189,6 +195,12 @@ const ProductDetails = () => {
 
   // ─── WhatsApp Contact ──────────────────────────────────────────────
   const handleContact = () => {
+    // ✅ NEW: Block contact if product is sold
+    if (product?.status === 'sold') {
+      alert('Sorry, this item has already been sold.');
+      return;
+    }
+
     if (!user) {
       navigate('/login');
       return;
@@ -224,11 +236,46 @@ const ProductDetails = () => {
     document.body.removeChild(link);
   };
 
+  // ✅ NEW: Quick "Mark as Sold / Available"
+  const handleMarkAsSold = async () => {
+    if (!user) {
+      alert('Please login to manage your products.');
+      return;
+    }
+
+    const newStatus = isSold ? 'active' : 'sold';
+    const confirmMessage = isSold
+      ? `Mark "${product.title}" as available again?`
+      : `Mark "${product.title}" as sold? This will hide the Contact button.`;
+
+    if (!window.confirm(confirmMessage)) return;
+
+    setIsUpdating(true);
+    try {
+      const result = await updateProductStatus(product._id, newStatus, token);
+      if (result.success) {
+        alert(`✅ Product marked as ${newStatus === 'sold' ? 'sold' : 'available'}!`);
+        // Refresh product data
+        const updated = await getProduct(id);
+        if (updated.product) {
+          setProduct(updated.product);
+        }
+      } else {
+        alert('❌ Failed to update status: ' + (result.message || 'Unknown error'));
+      }
+    } catch (error) {
+      alert('❌ Error: ' + (error.message || 'Something went wrong'));
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   if (loading) return <div className="container" style={{ padding: '60px 20px', textAlign: 'center' }}>Loading...</div>;
   if (error) return <div className="container" style={{ padding: '60px 20px', textAlign: 'center', color: '#e74c3c' }}>{error}</div>;
   if (!product) return <div className="container" style={{ padding: '60px 20px', textAlign: 'center' }}>Product not found</div>;
 
   const liked = isFavorite(product._id);
+  const isSold = product.status === 'sold';
 
   return (
     <>
@@ -303,6 +350,10 @@ const ProductDetails = () => {
               aspectRatio: '1/1',
             }}>
               <img src={getCurrentImage()} alt={product.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              
+              {/* ✅ NEW: SOLD RIBBON OVERLAY (if product is sold) */}
+              {isSold && <SoldBadge variant="ribbon" />}
+
               {totalImages > 1 && (
                 <>
                   <button onClick={handlePrev} style={{ position: 'absolute', top: '50%', left: '12px', transform: 'translateY(-50%)', background: 'rgba(0,0,0,0.5)', color: 'white', border: 'none', borderRadius: '50%', width: '40px', height: '40px', fontSize: '24px', cursor: 'pointer', zIndex: 10 }}>‹</button>
@@ -340,8 +391,26 @@ const ProductDetails = () => {
 
           {/* ----- Details ----- */}
           <div className="details">
-            <h1 style={{ fontSize: '28px', fontWeight: 800, marginBottom: '8px' }}>{product.title}</h1>
-            <div className="price" style={{ fontSize: '32px', fontWeight: 800, color: 'var(--primary)', marginBottom: '8px' }}>
+            <h1 style={{ fontSize: '28px', fontWeight: 800, marginBottom: '8px' }}>
+              {product.title}
+              {/* ✅ NEW: Small "SOLD" tag next to title if sold */}
+              {isSold && (
+                <span style={{
+                  fontSize: '16px',
+                  fontWeight: 700,
+                  color: '#dc2626',
+                  background: '#fee2e2',
+                  padding: '2px 14px',
+                  borderRadius: '4px',
+                  marginLeft: '12px',
+                  display: 'inline-block',
+                  verticalAlign: 'middle',
+                }}>
+                  SOLD
+                </span>
+              )}
+            </h1>
+            <div className="price" style={{ fontSize: '32px', fontWeight: 800, color: isSold ? '#9ca3af' : 'var(--primary)', marginBottom: '8px' }}>
               GH₵ {Number(product.price).toLocaleString()}
               {product.oldPrice && <span style={{ fontSize: '18px', fontWeight: 400, color: 'var(--gray-400)', textDecoration: 'line-through', marginLeft: '12px' }}>GH₵ {Number(product.oldPrice).toLocaleString()}</span>}
             </div>
@@ -391,14 +460,88 @@ const ProductDetails = () => {
             </div>
 
             <div className="actions" style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-              <button onClick={handleContact} className="btn-secondary" style={{ padding: '12px 32px', background: 'var(--secondary)', color: 'white', border: 'none', borderRadius: 'var(--radius-full)', fontWeight: 700, fontSize: '16px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <i className="fab fa-whatsapp"></i> Contact Seller
-              </button>
+              {/* ✅ Conditional button – show "Sold Out" if sold, otherwise "Contact Seller" */}
+              {isSold ? (
+                <button
+                  disabled
+                  style={{
+                    padding: '12px 32px',
+                    background: '#9ca3af',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: 'var(--radius-full)',
+                    fontWeight: 700,
+                    fontSize: '16px',
+                    cursor: 'not-allowed',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    opacity: 0.7,
+                  }}
+                >
+                  <i className="fas fa-ban"></i> Sold Out
+                </button>
+              ) : (
+                <button
+                  onClick={handleContact}
+                  className="btn-secondary"
+                  style={{
+                    padding: '12px 32px',
+                    background: 'var(--secondary)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: 'var(--radius-full)',
+                    fontWeight: 700,
+                    fontSize: '16px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                  }}
+                >
+                  <i className="fab fa-whatsapp"></i> Contact Seller
+                </button>
+              )}
+
+              {/* ✅ NEW: Quick "Mark as Sold/Available" button (only for owners) */}
+              {canEdit && (
+                <button
+                  onClick={handleMarkAsSold}
+                  disabled={isUpdating}
+                  style={{
+                    padding: '12px 24px',
+                    background: isSold ? '#22c55e' : '#dc2626',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: 'var(--radius-full)',
+                    fontWeight: 600,
+                    fontSize: '16px',
+                    cursor: isUpdating ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    opacity: isUpdating ? 0.7 : 1,
+                  }}
+                >
+                  {isUpdating ? (
+                    '⏳ Updating...'
+                  ) : (
+                    <>
+                      <i className={isSold ? 'fas fa-undo' : 'fas fa-check-circle'}></i>
+                      {isSold ? 'Mark Available' : 'Mark as Sold'}
+                    </>
+                  )}
+                </button>
+              )}
+
+              {/* Edit button (existing) */}
               {canEdit && (
                 <button onClick={() => setShowEditModal(true)} style={{ padding: '12px 24px', border: '1.5px solid var(--primary)', borderRadius: 'var(--radius-full)', background: 'white', color: 'var(--primary)', fontWeight: 600, fontSize: '16px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <i className="fas fa-pen"></i> Edit
                 </button>
               )}
+
+              {/* Save to Favorites */}
               <button onClick={() => toggleFavorite(product._id)} className="btn-outline" style={{ padding: '12px 24px', border: '1.5px solid var(--gray-300)', borderRadius: 'var(--radius-full)', background: 'transparent', fontWeight: 600, fontSize: '16px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: liked ? '#e74c3c' : 'var(--gray-700)' }}>
                 <i className={liked ? 'fas fa-heart' : 'far fa-heart'}></i> {liked ? 'Saved' : 'Save'}
               </button>

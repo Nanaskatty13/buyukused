@@ -1,30 +1,71 @@
 // frontend/src/components/ProductCard.jsx
-
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
-import { getImageUrl } from '../services/api';
+import { useAuth } from '../context/AuthContext';
+import { getImageUrl, updateProductStatus } from '../services/api';
+import SoldBadge from './SoldBadge';
 
-const ProductCard = ({ product }) => {
+const ProductCard = ({ product, onStatusToggle }) => {
   const { toggleFavorite, isFavorite } = useCart();
+  const { user, token } = useAuth();
+  const [isUpdating, setIsUpdating] = useState(false);
 
   if (!product) return null;
 
   const liked = isFavorite(product._id);
 
-  const imagePath =
-    product.images?.[0] ||
-    product.image ||
-    null;
-
+  const imagePath = product.images?.[0] || product.image || null;
   const imageUrl = imagePath
     ? getImageUrl(imagePath)
     : 'https://placehold.co/400x300?text=No+Image';
 
-  // Swap status display
-  const swapLabel = product.swapAccepted
-    ? '🔄 Swap OK'
-    : '🚫 No swap';
+  const swapLabel = product.swapAccepted ? '🔄 Swap OK' : '🚫 No swap';
+  const isSold = product.status === 'sold';
+
+  // Check if current user is the owner
+  const isOwner = user && (
+    user.role === 'admin' ||
+    (product.sellerId?._id && product.sellerId._id === user._id) ||
+    product.sellerId === user._id
+  );
+
+  // Handle "Mark as Sold" / "Mark Available"
+  const handleMarkAsSold = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!user) {
+      alert('Please login to manage your products.');
+      return;
+    }
+
+    const newStatus = isSold ? 'active' : 'sold';
+    const confirmMessage = isSold
+      ? `Mark "${product.title}" as available again?`
+      : `Mark "${product.title}" as sold? This will hide the Contact button.`;
+
+    if (!window.confirm(confirmMessage)) return;
+
+    setIsUpdating(true);
+    try {
+      const result = await updateProductStatus(product._id, newStatus, token);
+      if (result.success) {
+        alert(`✅ Product marked as ${newStatus === 'sold' ? 'sold' : 'available'}!`);
+        if (onStatusToggle) {
+          onStatusToggle(product._id);
+        } else {
+          window.location.reload();
+        }
+      } else {
+        alert('❌ Failed to update status: ' + (result.message || 'Unknown error'));
+      }
+    } catch (error) {
+      alert('❌ Error: ' + (error.message || 'Something went wrong'));
+    } finally {
+      setIsUpdating(false);
+    }
+  };
 
   return (
     <div
@@ -39,13 +80,11 @@ const ProductCard = ({ product }) => {
         cursor: 'pointer',
         display: 'flex',
         flexDirection: 'column',
-
-        // Reduce overall card size
         maxWidth: '280px',
         margin: '0 auto',
       }}
     >
-      {/* ─── Image – full picture, no cropping ─── */}
+      {/* ─── Image ─── */}
       <Link
         to={`/product/${product._id}`}
         className="image-wrapper"
@@ -71,12 +110,12 @@ const ProductCard = ({ product }) => {
           }}
           loading="lazy"
           onError={(e) => {
-            e.currentTarget.src =
-              'https://placehold.co/400x300?text=No+Image';
+            e.currentTarget.src = 'https://placehold.co/400x300?text=No+Image';
           }}
         />
 
-        {/* Promo badge */}
+        {isSold && <SoldBadge variant="card" />}
+
         {product.promo && (
           <span
             className="promo-badge"
@@ -97,7 +136,6 @@ const ProductCard = ({ product }) => {
           </span>
         )}
 
-        {/* Favourite button */}
         <button
           type="button"
           className="fav-btn"
@@ -119,29 +157,17 @@ const ProductCard = ({ product }) => {
             alignItems: 'center',
             justifyContent: 'center',
             fontSize: '12px',
-            color: liked
-              ? '#e74c3c'
-              : 'var(--gray-600)',
+            color: liked ? '#e74c3c' : 'var(--gray-600)',
             transition: 'var(--transition)',
             cursor: 'pointer',
           }}
-          aria-label={
-            liked
-              ? 'Remove from favorites'
-              : 'Add to favorites'
-          }
+          aria-label={liked ? 'Remove from favorites' : 'Add to favorites'}
         >
-          <i
-            className={
-              liked
-                ? 'fas fa-heart'
-                : 'far fa-heart'
-            }
-          ></i>
+          <i className={liked ? 'fas fa-heart' : 'far fa-heart'}></i>
         </button>
       </Link>
 
-      {/* ─── Product Info – smaller padding & fonts ─── */}
+      {/* ─── Product Info ─── */}
       <div
         className="info"
         style={{
@@ -180,17 +206,30 @@ const ProductCard = ({ product }) => {
           style={{
             fontSize: '16px',
             fontWeight: 700,
-            color: 'var(--primary)',
+            color: isSold ? '#9ca3af' : 'var(--primary)',
             marginBottom: '4px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
           }}
         >
-          GH₵{' '}
-          {Number(
-            product.price || 0
-          ).toLocaleString()}
+          GH₵ {Number(product.price || 0).toLocaleString()}
+          {isSold && (
+            <span
+              style={{
+                fontSize: '12px',
+                fontWeight: 700,
+                color: '#dc2626',
+                background: '#fee2e2',
+                padding: '2px 10px',
+                borderRadius: '4px',
+              }}
+            >
+              SOLD
+            </span>
+          )}
         </div>
 
-        {/* ─── Details – smaller text ─── */}
         <div
           style={{
             display: 'flex',
@@ -202,43 +241,20 @@ const ProductCard = ({ product }) => {
           }}
         >
           {product.storage && (
-            <span
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '3px',
-              }}
-            >
-              <i className="fas fa-hdd"></i>
-              {product.storage}
+            <span style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+              <i className="fas fa-hdd"></i> {product.storage}
             </span>
           )}
-
           {product.simStatus && (
-            <span
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '3px',
-              }}
-            >
-              <i className="fas fa-sim-card"></i>
-              {product.simStatus}
+            <span style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+              <i className="fas fa-sim-card"></i> {product.simStatus}
             </span>
           )}
-
-          <span
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '3px',
-            }}
-          >
+          <span style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
             {swapLabel}
           </span>
         </div>
 
-        {/* ─── Location & Date ─── */}
         <div
           className="meta"
           style={{
@@ -253,47 +269,91 @@ const ProductCard = ({ product }) => {
           }}
         >
           <span className="location">
-            <i className="fas fa-map-marker-alt"></i>{' '}
-            {product.location || 'Ghana'}
+            <i className="fas fa-map-marker-alt"></i> {product.location || 'Ghana'}
           </span>
-
           <span className="date">
-            {product.createdAt
-              ? new Date(
-                  product.createdAt
-                ).toLocaleDateString()
-              : ''}
+            {product.createdAt ? new Date(product.createdAt).toLocaleDateString() : ''}
           </span>
         </div>
 
-        {/* ─── View Product Button – smaller ─── */}
-        <Link
-          to={`/product/${product._id}`}
+        <div
           style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '6px',
             marginTop: 'auto',
-            padding: '6px 14px',
-            background: 'var(--primary)',
-            color: 'white',
-            border: 'none',
-            borderRadius: 'var(--radius-full)',
-            fontWeight: 600,
-            fontSize: '12px',
-            textAlign: 'center',
-            textDecoration: 'none',
-            transition: 'var(--transition)',
-            display: 'block',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background =
-              'var(--primary-dark)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background =
-              'var(--primary)';
           }}
         >
-          View Product →
-        </Link>
+          <Link
+            to={`/product/${product._id}`}
+            style={{
+              padding: '6px 14px',
+              background: isSold ? '#9ca3af' : 'var(--primary)',
+              color: 'white',
+              border: 'none',
+              borderRadius: 'var(--radius-full)',
+              fontWeight: 600,
+              fontSize: '12px',
+              textAlign: 'center',
+              textDecoration: 'none',
+              transition: 'var(--transition)',
+              display: 'block',
+              cursor: isSold ? 'default' : 'pointer',
+            }}
+            onMouseEnter={(e) => {
+              if (!isSold) e.currentTarget.style.background = 'var(--primary-dark)';
+            }}
+            onMouseLeave={(e) => {
+              if (!isSold) e.currentTarget.style.background = 'var(--primary)';
+            }}
+          >
+            {isSold ? 'Sold Out' : 'View Product →'}
+          </Link>
+
+          {isOwner && !isUpdating && (
+            <button
+              onClick={handleMarkAsSold}
+              style={{
+                padding: '4px 12px',
+                background: isSold ? '#22c55e' : '#dc2626',
+                color: 'white',
+                border: 'none',
+                borderRadius: 'var(--radius-full)',
+                fontWeight: 600,
+                fontSize: '11px',
+                textAlign: 'center',
+                cursor: 'pointer',
+                transition: 'var(--transition)',
+                display: 'block',
+                width: '100%',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = isSold ? '#16a34a' : '#b91c1c';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = isSold ? '#22c55e' : '#dc2626';
+              }}
+            >
+              {isSold ? '🔁 Mark Available' : '⚡ Mark as Sold'}
+            </button>
+          )}
+
+          {isOwner && isUpdating && (
+            <div
+              style={{
+                padding: '4px 12px',
+                background: '#9ca3af',
+                color: 'white',
+                borderRadius: 'var(--radius-full)',
+                fontSize: '11px',
+                textAlign: 'center',
+                opacity: 0.7,
+              }}
+            >
+              ⏳ Updating...
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

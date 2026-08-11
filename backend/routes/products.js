@@ -894,4 +894,74 @@ router.delete(
   }
 );
 
+// ============================================================
+// ✅ NEW: QUICK UPDATE PRODUCT STATUS (Mark as Sold / Active)
+// ============================================================
+
+router.patch(
+  "/:id/status",
+  verifyToken,
+
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { status } = req.body;
+
+      // Validate status
+      const validStatuses = ['active', 'pending', 'inactive', 'sold'];
+      if (!status || !validStatuses.includes(status)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid status. Allowed: active, pending, inactive, sold',
+        });
+      }
+
+      // Validate product ID
+      if (!mongoose.Types.ObjectId.isValid(id)) {
+        return res.status(404).json({
+          success: false,
+          message: 'Product not found',
+        });
+      }
+
+      // Find product
+      const product = await Product.findById(id);
+      if (!product) {
+        return res.status(404).json({
+          success: false,
+          message: 'Product not found',
+        });
+      }
+
+      // Check ownership (allow admin or product owner)
+      const isOwner = product.sellerId.toString() === req.userId.toString();
+      const isAdmin = req.user?.role === 'admin';
+      if (!isOwner && !isAdmin) {
+        return res.status(403).json({
+          success: false,
+          message: 'Not authorized to update this product',
+        });
+      }
+
+      // Update status
+      product.status = status;
+      await product.save();
+
+      console.log(`✅ Product ${id} status updated to ${status}`);
+
+      res.json({
+        success: true,
+        message: `Product status updated to ${status}`,
+        product,
+      });
+    } catch (err) {
+      console.error('❌ Error updating product status:', err);
+      res.status(500).json({
+        success: false,
+        message: err.message || 'Failed to update product status',
+      });
+    }
+  }
+);
+
 module.exports = router;
