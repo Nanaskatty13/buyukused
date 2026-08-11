@@ -5,7 +5,7 @@ const categories = [
   // { name: 'Cars', icon: 'fa-car' },
   { name: 'Phones', icon: 'fa-mobile-alt' },
   { name: 'Laptops', icon: 'fa-laptop' },
-  { name: 'Apple', icon: 'fa-apple-alt' },
+  { name: 'Tablets', icon: 'fa-tablet-alt' },
   { name: 'TV & Game Consoles', icon: 'fa-tv' },
   // { name: 'Real Estate', icon: 'fa-home' },
   // { name: 'Jobs', icon: 'fa-briefcase' },

@@ -14,7 +14,7 @@ const Hero = ({ onSearch }) => {
           Buy, sell, and discover amazing deals
         </h1>
         <p style={{ opacity: 0.85, fontSize: '16px', marginBottom: '24px' }}>
-          Find Phones, Laptops, Apple Gadgets, TV & Game Consoles, and more near you in Ghana.
+          Find Phones, Laptops, Tablets, TV & Game Consoles, and more near you in Ghana.
         </p>
 
         <SearchBar onSearch={onSearch} />
