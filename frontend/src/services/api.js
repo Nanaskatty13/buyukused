@@ -90,21 +90,39 @@ const request = async (
 // ================================================================
 
 export const getImageUrl = (path) => {
+  // No image
   if (!path) {
     return "/placeholder.png";
   }
 
+  // Already a full URL
   if (
-    path.startsWith("http://") ||
-    path.startsWith("https://")
+    typeof path === "string" &&
+    (
+      path.startsWith("http://") ||
+      path.startsWith("https://")
+    )
   ) {
     return path;
   }
 
-  if (path.startsWith("data:")) {
+  // Base64 image
+  if (
+    typeof path === "string" &&
+    path.startsWith("data:")
+  ) {
     return path;
   }
 
+  // Blob URL
+  if (
+    typeof path === "string" &&
+    path.startsWith("blob:")
+  ) {
+    return path;
+  }
+
+  // Convert relative path to backend URL
   return `${API_URL}${
     path.startsWith("/")
       ? path
@@ -231,6 +249,7 @@ export const auth = {
       `${API_URL}/auth/me`,
       {
         method: "GET",
+
         headers:
           getHeaders(token),
       }
@@ -248,6 +267,7 @@ export const auth = {
       `${API_URL}/auth/logout`,
       {
         method: "POST",
+
         headers:
           getHeaders(token),
       }
@@ -471,6 +491,7 @@ export const users = {
       }`,
       {
         method: "GET",
+
         headers:
           getHeaders(token),
       }
@@ -489,6 +510,7 @@ export const users = {
       `${API_URL}/api/users/${id}`,
       {
         method: "GET",
+
         headers:
           getHeaders(token),
       }
@@ -515,6 +537,33 @@ export const users = {
         body: JSON.stringify(
           userData
         ),
+      }
+    );
+  },
+
+  // --------------------------------------------------------------
+  // UPDATE USER WITH FILES
+  // --------------------------------------------------------------
+
+  updateWithFiles: async (
+    id,
+    formData,
+    token = getToken()
+  ) => {
+    return request(
+      `${API_URL}/api/users/${id}`,
+      {
+        method: "PUT",
+
+        headers: {
+          ...(token
+            ? {
+                Authorization: `Bearer ${token}`,
+              }
+            : {}),
+        },
+
+        body: formData,
       }
     );
   },
@@ -549,6 +598,7 @@ export const users = {
       `${API_URL}/api/users/stats`,
       {
         method: "GET",
+
         headers:
           getHeaders(token),
       }
@@ -573,6 +623,7 @@ export const notifications = {
       `${API_URL}/api/notifications/${userId}`,
       {
         method: "GET",
+
         headers:
           getHeaders(token),
       }
@@ -596,6 +647,7 @@ export const notifications = {
       `${API_URL}/api/notifications/admin`,
       {
         method: "GET",
+
         headers:
           getHeaders(token),
       }
@@ -690,6 +742,7 @@ export const orders = {
       }`,
       {
         method: "GET",
+
         headers:
           getHeaders(token),
       }
@@ -708,6 +761,7 @@ export const orders = {
       `${API_URL}/api/orders/${id}`,
       {
         method: "GET",
+
         headers:
           getHeaders(token),
       }
@@ -798,6 +852,7 @@ export const messages = {
       `${API_URL}/api/messages/${userId}`,
       {
         method: "GET",
+
         headers:
           getHeaders(token),
       }
@@ -815,6 +870,7 @@ export const messages = {
       `${API_URL}/api/messages/conversations`,
       {
         method: "GET",
+
         headers:
           getHeaders(token),
       }
@@ -833,6 +889,7 @@ export const messages = {
       `${API_URL}/api/messages/conversation/${otherUserId}`,
       {
         method: "GET",
+
         headers:
           getHeaders(token),
       }
@@ -1028,6 +1085,9 @@ export const getUser =
 export const updateUser =
   users.update;
 
+export const updateUserWithFiles =
+  users.updateWithFiles;
+
 export const deleteUser =
   users.delete;
 
@@ -1146,6 +1206,7 @@ const api = {
   getUsers,
   getUser,
   updateUser,
+  updateUserWithFiles,
   deleteUser,
   getUserStats,
 

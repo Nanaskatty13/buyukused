@@ -4,19 +4,21 @@ import Categories from '../components/Categories';
 import FeaturedProducts from '../components/FeaturedProducts';
 import FeaturedSellers from '../components/FeaturedSellers';
 import Footer from '../components/Footer';
-
-// ✅ Fixed: correct path to your API module
 import { getProducts } from '../services/api';
 
 const Home = () => {
-  const [products, setProducts] = useState([]);
+  const [allProducts, setAllProducts] = useState([]);     // full list
+  const [filteredProducts, setFilteredProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [activeCategory, setActiveCategory] = useState(null);
 
+  // ─── Load products ───
   useEffect(() => {
     const fetchProducts = async () => {
       try {
         const data = await getProducts();
-        setProducts(data.products || []);
+        setAllProducts(data.products || []);
+        setFilteredProducts(data.products || []);
       } catch (error) {
         console.error('Error fetching products:', error);
       } finally {
@@ -26,11 +28,25 @@ const Home = () => {
     fetchProducts();
   }, []);
 
+  // ─── Handle category selection ───
+  const handleCategorySelect = (category) => {
+    setActiveCategory(category);
+    if (category === 'all' || !category) {
+      setFilteredProducts(allProducts);
+    } else {
+      const filtered = allProducts.filter(p => p.category === category);
+      setFilteredProducts(filtered);
+    }
+  };
+
+  // ─── Handle search (from Hero) ───
   const handleSearch = async (params) => {
     setLoading(true);
     try {
       const data = await getProducts(params);
-      setProducts(data.products || []);
+      setAllProducts(data.products || []);
+      setFilteredProducts(data.products || []);
+      setActiveCategory(null); // reset category when search is performed
     } catch (error) {
       console.error('Search error:', error);
     } finally {
@@ -49,8 +65,15 @@ const Home = () => {
   return (
     <>
       <Hero onSearch={handleSearch} />
-      <Categories products={products} />
-      <FeaturedProducts products={products} />
+      <Categories
+        products={allProducts}
+        onCategorySelect={handleCategorySelect}
+      />
+      <FeaturedProducts
+        products={filteredProducts}
+        loading={loading}
+        title={activeCategory ? `Products in ${activeCategory}` : 'Featured Products'}
+      />
       <FeaturedSellers sellers={sellers} />
       <Footer />
     </>

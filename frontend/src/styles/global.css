@@ -79,7 +79,8 @@ img {
 .container {
   max-width: 1280px;
   margin: 0 auto;
-  padding: 0 20px;
+  padding: 0 25px;
+  height: 100%;
 }
 
 /* ----- BUTTONS ----- */
@@ -89,7 +90,7 @@ img {
   border: none;
   padding: 10px 24px;
   border-radius: var(--radius-full);
-  font-weight: 600;
+  font-weight: 1000;
   transition: var(--transition);
 }
 .btn-primary:hover {
@@ -179,12 +180,12 @@ img {
    NAVBAR
    ================================================================ */
 .header {
-  background: white;
-  border-bottom: 1px solid var(--gray-200);
+  background: rgb(151, 244, 254);
+  border-bottom: 0px solid var(--gray-200);
   position: sticky;
   top: 0;
   z-index: 1000;
-  padding: 10px 0;
+  padding: 1px 1;
 }
 
 .header .container {
@@ -456,16 +457,16 @@ img {
 /* ----- DROPDOWN MENU ----- */
 .dropdown-menu {
   position: absolute;
-  top: calc(100% + 8px);
+  top: calc(90% + 8px);
   right: 0;
-  min-width: 220px;
-  background: white;
+  min-width: 200px;
+  background: rgb(168, 245, 249);
   border: 1px solid var(--gray-200);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-lg);
-  padding: 8px 0;
+  padding: 5px 0;
   z-index: 1000;
-  animation: dropdownFade 0.2s ease;
+  animation: dropdownFade 0.5s ease;
 }
 
 @keyframes dropdownFade {
@@ -1286,5 +1287,758 @@ img {
   .edit-profile-modal .form-group input {
     padding: 6px 8px;
     font-size: 12px;
+  }
+}
+
+/* ================================================================
+   PRODUCT GRID – FORCE 2 COLUMNS ON MOBILE
+   ================================================================ */
+
+.products-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+}
+
+@media (max-width: 1024px) {
+  .products-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+  }
+}
+
+@media (max-width: 640px) {
+  .products-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 12px !important;
+  }
+}
+
+@media (max-width: 400px) {
+  .products-grid {
+    gap: 8px !important;
+  }
+}
+
+/* ================================================================
+   NAVBAR – FIX RIGHT ALIGNMENT (Mobile)
+   ================================================================ */
+
+/* Ensure the nav-actions always align to the right */
+.header .nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;  /* pushes everything to the right */
+}
+
+/* Fix mobile toggle button alignment */
+.header .mobile-toggle {
+  display: none;
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: var(--gray-700);
+  padding: 4px 8px;
+  cursor: pointer;
+  line-height: 1;
+}
+
+/* On mobile, show the toggle button and adjust layout */
+@media (max-width: 768px) {
+  .header .mobile-toggle {
+    display: block;
+    order: 2; /* ensures it appears after the user menu */
+  }
+
+  .header .nav-actions {
+    gap: 8px;
+  }
+
+  /* Ensure the profile/avatar stays visible and aligned */
+  .header .user-menu {
+    order: 1;
+  }
+
+  /* Hide username on mobile to save space */
+  .header .user-menu .username {
+    display: none;
+  }
+
+  /* Make the avatar slightly smaller on mobile */
+  .profile-trigger .avatar {
+    width: 32px;
+    height: 32px;
+    font-size: 12px;
+  }
+
+  /* Heart icon stays visible */
+  .header .icon-btn {
+    font-size: 18px;
+  }
+}
+
+/* Extra small phones */
+@media (max-width: 480px) {
+  .header .nav-actions {
+    gap: 6px;
+  }
+
+  .profile-trigger .avatar {
+    width: 28px;
+    height: 28px;
+    font-size: 11px;
+  }
+
+  .header .icon-btn {
+    font-size: 16px;
+  }
+
+  .header .mobile-toggle {
+    font-size: 20px;
+    padding: 2px 6px;
+  }
+}
+
+/* ================================================================
+   NAV CENTER – Post Ad Button (Glow & Center)
+   ================================================================ */
+
+/* Center the Post Ad button */
+.header .nav-center {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Glow button – animated gradient border + pulse */
+.glow-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 28px;
+  font-weight: 700;
+  font-size: 16px;
+  color: white;
+  background: linear-gradient(135deg, #2ecc71, #27ae60);
+  border: none;
+  border-radius: var(--radius-full);
+  text-decoration: none;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  position: relative;
+  z-index: 1;
+  box-shadow: 0 0 15px rgba(46, 204, 113, 0.4);
+  animation: glowBtnPulse 2.5s ease-in-out infinite;
+}
+
+/* Glow animation with rainbow-like color shifts */
+@keyframes glowBtnPulse {
+  0% {
+    box-shadow: 0 0 15px rgba(46, 204, 113, 0.4), 0 0 30px rgba(46, 204, 113, 0.2);
+    background: linear-gradient(135deg, #2ecc71, #27ae60);
+  }
+  25% {
+    box-shadow: 0 0 25px rgba(52, 152, 219, 0.6), 0 0 50px rgba(52, 152, 219, 0.3);
+    background: linear-gradient(135deg, #3498db, #2980b9);
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(155, 89, 182, 0.6), 0 0 50px rgba(155, 89, 182, 0.3);
+    background: linear-gradient(135deg, #9b59b6, #8e44ad);
+  }
+  75% {
+    box-shadow: 0 0 25px rgba(231, 76, 60, 0.6), 0 0 50px rgba(231, 76, 60, 0.3);
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+  }
+  100% {
+    box-shadow: 0 0 15px rgba(46, 204, 113, 0.4), 0 0 30px rgba(46, 204, 113, 0.2);
+    background: linear-gradient(135deg, #2ecc71, #27ae60);
+  }
+}
+
+.glow-btn:hover {
+  transform: scale(1.05);
+  animation-play-state: paused;
+  box-shadow: 0 0 40px rgba(46, 204, 113, 0.8), 0 0 80px rgba(46, 204, 113, 0.4) !important;
+}
+
+.glow-btn i {
+  font-size: 18px;
+}
+
+/* Mobile: Hide center button, show in mobile nav instead */
+@media (max-width: 768px) {
+  .header .nav-center {
+    display: none;
+  }
+
+  /* Mobile nav link should also glow */
+  .header .nav-links .post-ad-btn {
+    background: linear-gradient(135deg, #2ecc71, #27ae60);
+    animation: glowBtnPulse 2.5s ease-in-out infinite;
+    box-shadow: 0 0 15px rgba(46, 204, 113, 0.4);
+    color: white;
+    font-weight: 700;
+  }
+
+  .header .nav-links .post-ad-btn:hover {
+    animation-play-state: paused;
+    box-shadow: 0 0 30px rgba(46, 204, 113, 0.8);
+  }
+}
+/* ================================================================
+   MODERN SEARCH BAR – Responsive, Clear, Flexible
+   ================================================================ */
+
+.search-wrapper {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+.search-box-modern {
+  background: white;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+  transition: box-shadow 0.3s ease;
+}
+
+.search-box-modern:hover {
+  box-shadow: var(--shadow-lg);
+}
+
+/* ─── Primary row: input + button ─── */
+.search-primary {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  padding: 4px;
+  background: white;
+}
+
+.search-input-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  background: var(--gray-50);
+  border-radius: var(--radius-full) 0 0 var(--radius-full);
+  transition: background 0.2s;
+}
+
+.search-input-wrap:focus-within {
+  background: white;
+  box-shadow: inset 0 0 0 2px var(--primary);
+}
+
+.search-icon {
+  color: var(--gray-400);
+  font-size: 18px;
+  margin-right: 12px;
+  transition: color 0.2s;
+}
+
+.search-input-wrap:focus-within .search-icon {
+  color: var(--primary);
+}
+
+.search-input {
+  border: none;
+  outline: none;
+  padding: 16px 0;
+  font-size: 16px;
+  font-family: inherit;
+  width: 100%;
+  background: transparent;
+  color: var(--gray-800);
+}
+
+.search-input::placeholder {
+  color: var(--gray-400);
+  font-weight: 400;
+}
+
+/* ─── Search button ─── */
+.search-submit {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 32px;
+  background: linear-gradient(135deg, var(--secondary), var(--secondary-dark));
+  color: white;
+  border: none;
+  border-radius: var(--radius-full);
+  font-weight: 700;
+  font-size: 16px;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  white-space: nowrap;
+  margin: 4px;
+  box-shadow: 0 4px 12px rgba(46, 204, 113, 0.3);
+}
+
+.search-submit:hover {
+  transform: scale(1.02);
+  box-shadow: 0 6px 20px rgba(46, 204, 113, 0.4);
+}
+
+.search-submit i {
+  font-size: 18px;
+}
+
+/* ─── Filters row ─── */
+.search-filters {
+  display: flex;
+  gap: 0;
+  background: var(--gray-50);
+  border-top: 1px solid var(--gray-200);
+  padding: 4px;
+}
+
+.filter-group {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: white;
+  border-radius: var(--radius-full);
+  margin: 4px;
+  transition: box-shadow 0.2s;
+}
+
+.filter-group:focus-within {
+  box-shadow: 0 0 0 2px var(--primary);
+}
+
+.filter-icon {
+  color: var(--gray-400);
+  font-size: 15px;
+  min-width: 18px;
+}
+
+.filter-select {
+  border: none;
+  outline: none;
+  padding: 10px 0;
+  font-size: 15px;
+  font-family: inherit;
+  width: 100%;
+  background: transparent;
+  color: var(--gray-700);
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0 center;
+  padding-right: 20px;
+}
+
+.filter-select:hover {
+  color: var(--gray-900);
+}
+
+/* ─── RESPONSIVE ─── */
+
+/* Tablets and smaller */
+@media (max-width: 768px) {
+  .search-wrapper {
+    padding: 0 12px;
+  }
+
+  .search-primary {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 8px;
+  }
+
+  .search-input-wrap {
+    flex: 1 1 100%;
+    border-radius: var(--radius-full);
+    padding: 0 14px;
+  }
+
+  .search-submit {
+    flex: 1 1 100%;
+    justify-content: center;
+    padding: 14px;
+    border-radius: var(--radius-full);
+    margin: 0;
+  }
+
+  .search-filters {
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px;
+  }
+
+  .filter-group {
+    flex: 1 1 auto;
+    padding: 6px 14px;
+    margin: 0;
+  }
+
+  .filter-select {
+    padding: 8px 0;
+    font-size: 14px;
+  }
+}
+
+/* Mobile phones */
+@media (max-width: 480px) {
+  .search-input {
+    font-size: 15px;
+    padding: 12px 0;
+  }
+
+  .search-submit {
+    font-size: 14px;
+    padding: 12px;
+  }
+
+  .filter-select {
+    font-size: 13px;
+  }
+
+  .search-box-modern {
+    border-radius: var(--radius-md);
+  }
+
+  .search-input-wrap:focus-within {
+    box-shadow: inset 0 0 0 1.5px var(--primary);
+  }
+
+  .filter-group:focus-within {
+    box-shadow: 0 0 0 1.5px var(--primary);
+  }
+}
+.hero-compact {
+  background: linear-gradient(135deg, var(--primary-light), white);
+  padding: 40px 20px;
+  text-align: center;
+}
+
+.hero-compact .hero-content {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.hero-compact h1 {
+  font-size: 28px;
+  margin-bottom: 8px;
+}
+
+.hero-compact p {
+  color: var(--gray-500);
+  margin-bottom: 20px;
+}
+
+@media (max-width: 768px) {
+  .hero-compact {
+    padding: 30px 16px;
+  }
+  .hero-compact h1 {
+    font-size: 22px;
+  }
+}
+/* Reduce hero height */
+.hero-section {
+  padding-top: 40px;   /* reduce from maybe 80-100px */
+  padding-bottom: 40px;
+  min-height: auto;     /* remove fixed height if any */
+  /* or set a specific max-height */
+  max-height: 400px;    /* adjust as needed */
+}
+
+/* On mobile, make it even smaller */
+@media (max-width: 768px) {
+  .hero-section {
+    padding-top: 24px;
+    padding-bottom: 24px;
+    max-height: 300px;
+  }
+}
+/* ================================================================
+   COMPACT HERO – reduced height
+   ================================================================ */
+
+.hero-compact {
+  background: linear-gradient(135deg, var(--primary-light), var(--white));
+  padding: 40px 20px 30px;
+  text-align: center;
+  border-bottom: 1px solid var(--gray-200);
+}
+
+.hero-compact-content {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.hero-compact h1 {
+  font-size: 32px;
+  font-weight: 800;
+  color: var(--gray-900);
+  margin-bottom: 4px;
+}
+
+.hero-compact p {
+  font-size: 16px;
+  color: var(--gray-500);
+  margin-bottom: 20px;
+}
+
+/* ─── Responsive ─── */
+@media (max-width: 768px) {
+  .hero-compact {
+    padding: 30px 16px 20px;
+  }
+  .hero-compact h1 {
+    font-size: 24px;
+  }
+  .hero-compact p {
+    font-size: 14px;
+    margin-bottom: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .hero-compact {
+    padding: 20px 12px 16px;
+  }
+  .hero-compact h1 {
+    font-size: 20px;
+  }
+  .hero-compact p {
+    font-size: 13px;
+    margin-bottom: 12px;
+  }
+}
+
+/* ================================================================
+   MODERN SEARCH BAR – Responsive, Clear, Flexible
+   ================================================================ */
+
+.search-wrapper {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+.search-box-modern {
+  background: white;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+  transition: box-shadow 0.3s ease;
+}
+
+.search-box-modern:hover {
+  box-shadow: var(--shadow-lg);
+}
+
+/* ─── Primary row: input + button ─── */
+.search-primary {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  padding: 4px;
+  background: white;
+}
+
+.search-input-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  background: var(--gray-50);
+  border-radius: var(--radius-full) 0 0 var(--radius-full);
+  transition: background 0.2s;
+}
+
+.search-input-wrap:focus-within {
+  background: white;
+  box-shadow: inset 0 0 0 2px var(--primary);
+}
+
+.search-icon {
+  color: var(--gray-400);
+  font-size: 18px;
+  margin-right: 12px;
+  transition: color 0.2s;
+}
+
+.search-input-wrap:focus-within .search-icon {
+  color: var(--primary);
+}
+
+.search-input {
+  border: none;
+  outline: none;
+  padding: 16px 0;
+  font-size: 16px;
+  font-family: inherit;
+  width: 100%;
+  background: transparent;
+  color: var(--gray-800);
+}
+
+.search-input::placeholder {
+  color: var(--gray-400);
+  font-weight: 400;
+}
+
+/* ─── Search button ─── */
+.search-submit {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 32px;
+  background: linear-gradient(135deg, var(--secondary), var(--secondary-dark));
+  color: white;
+  border: none;
+  border-radius: var(--radius-full);
+  font-weight: 700;
+  font-size: 16px;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  white-space: nowrap;
+  margin: 4px;
+  box-shadow: 0 4px 12px rgba(46, 204, 113, 0.3);
+}
+
+.search-submit:hover {
+  transform: scale(1.02);
+  box-shadow: 0 6px 20px rgba(46, 204, 113, 0.4);
+}
+
+.search-submit i {
+  font-size: 18px;
+}
+
+/* ─── Filters row ─── */
+.search-filters {
+  display: flex;
+  gap: 0;
+  background: var(--gray-50);
+  border-top: 1px solid var(--gray-200);
+  padding: 4px;
+}
+
+.filter-group {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: white;
+  border-radius: var(--radius-full);
+  margin: 4px;
+  transition: box-shadow 0.2s;
+}
+
+.filter-group:focus-within {
+  box-shadow: 0 0 0 2px var(--primary);
+}
+
+.filter-icon {
+  color: var(--gray-400);
+  font-size: 15px;
+  min-width: 18px;
+}
+
+.filter-select {
+  border: none;
+  outline: none;
+  padding: 10px 0;
+  font-size: 15px;
+  font-family: inherit;
+  width: 100%;
+  background: transparent;
+  color: var(--gray-700);
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0 center;
+  padding-right: 20px;
+}
+
+.filter-select:hover {
+  color: var(--gray-900);
+}
+
+/* ─── RESPONSIVE ─── */
+
+/* Tablets and smaller */
+@media (max-width: 768px) {
+  .search-wrapper {
+    padding: 0 12px;
+  }
+
+  .search-primary {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 8px;
+  }
+
+  .search-input-wrap {
+    flex: 1 1 100%;
+    border-radius: var(--radius-full);
+    padding: 0 14px;
+  }
+
+  .search-submit {
+    flex: 1 1 100%;
+    justify-content: center;
+    padding: 14px;
+    border-radius: var(--radius-full);
+    margin: 0;
+  }
+
+  .search-filters {
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px;
+  }
+
+  .filter-group {
+    flex: 1 1 auto;
+    padding: 6px 14px;
+    margin: 0;
+  }
+
+  .filter-select {
+    padding: 8px 0;
+    font-size: 14px;
+  }
+}
+
+/* Mobile phones */
+@media (max-width: 480px) {
+  .search-input {
+    font-size: 15px;
+    padding: 12px 0;
+  }
+
+  .search-submit {
+    font-size: 14px;
+    padding: 12px;
+  }
+
+  .filter-select {
+    font-size: 13px;
+  }
+
+  .search-box-modern {
+    border-radius: var(--radius-md);
+  }
+
+  .search-input-wrap:focus-within {
+    box-shadow: inset 0 0 0 1.5px var(--primary);
+  }
+
+  .filter-group:focus-within {
+    box-shadow: 0 0 0 1.5px var(--primary);
   }
 }

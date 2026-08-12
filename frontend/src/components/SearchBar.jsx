@@ -11,132 +11,64 @@ const SearchBar = ({ onSearch, initialQuery = {} }) => {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="search-box" style={{
-      maxWidth: '800px',
-      margin: '0 auto',
-      background: 'white',
-      borderRadius: 'var(--radius-full)',
-      display: 'flex',
-      overflow: 'hidden',
-      boxShadow: 'var(--shadow-lg)',
-      flexWrap: 'wrap',
-    }}>
-      <div className="field" style={{
-        flex: 1,
-        minWidth: '140px',
-        display: 'flex',
-        alignItems: 'center',
-        padding: '0 16px',
-        borderRight: '1px solid var(--gray-200)',
-        background: 'white',
-      }}>
-        <i className="fas fa-search" style={{ color: 'var(--gray-400)', marginRight: '10px' }}></i>
-        <input
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="What are you looking for?"
-          style={{
-            border: 'none',
-            outline: 'none',
-            padding: '14px 0',
-            fontSize: '15px',
-            fontFamily: 'inherit',
-            width: '100%',
-            background: 'transparent',
-            color: 'var(--gray-800)',
-          }}
-        />
-      </div>
-      <div className="field" style={{
-        flex: 1,
-        minWidth: '120px',
-        display: 'flex',
-        alignItems: 'center',
-        padding: '0 16px',
-        borderRight: '1px solid var(--gray-200)',
-        background: 'white',
-      }}>
-        <i className="fas fa-map-marker-alt" style={{ color: 'var(--gray-400)', marginRight: '10px' }}></i>
-        <select
-          value={location}
-          onChange={(e) => setLocation(e.target.value)}
-          style={{
-            border: 'none',
-            outline: 'none',
-            padding: '14px 0',
-            fontSize: '15px',
-            fontFamily: 'inherit',
-            width: '100%',
-            background: 'transparent',
-            color: 'var(--gray-800)',
-          }}
-        >
-          <option value="all">All Locations</option>
-          <option value="Accra">Accra</option>
-          <option value="Kumasi">Kumasi</option>
-          <option value="Tema">Tema</option>
-          <option value="Takoradi">Takoradi</option>
-          <option value="Tamale">Tamale</option>
-        </select>
-      </div>
-      <div className="field" style={{
-        flex: 1,
-        minWidth: '120px',
-        display: 'flex',
-        alignItems: 'center',
-        padding: '0 16px',
-        borderRight: '1px solid var(--gray-200)',
-        background: 'white',
-      }}>
-        <i className="fas fa-list-ul" style={{ color: 'var(--gray-400)', marginRight: '10px' }}></i>
-        <select
-          value={category}
-          onChange={(e) => setCategory(e.target.value)}
-          style={{
-            border: 'none',
-            outline: 'none',
-            padding: '14px 0',
-            fontSize: '15px',
-            fontFamily: 'inherit',
-            width: '100%',
-            background: 'transparent',
-            color: 'var(--gray-800)',
-          }}
-        >
-          <option value="all">All Categories</option>
-          {/* <option value="Cars">Cars</option> */}
-          <option value="Phones">Phones</option>
-          {/* <option value="Real Estate">Real Estate</option> */}
-          {/* <option value="Jobs">Jobs</option> */}
-          {/* <option value="Electronics">Electronics</option> */}
-          {/* <option value="Fashion">Fashion</option> */}
-          {/* <option value="Home">Home</option> */}
-          <option value="Other">Laptops</option>
-          <option value="Other">Tablets</option>
-          <option value="Other">Accessories</option>
-          <option value="Other">TV & Game Consoles</option>
-          <option value="Electronics">Electronics</option>
-        </select>
-      </div>
-      <button type="submit" className="search-btn" style={{
-        background: 'var(--secondary)',
-        border: 'none',
-        padding: '14px 36px',
-        fontWeight: 700,
-        fontSize: '16px',
-        color: 'white',
-        cursor: 'pointer',
-        transition: 'var(--transition)',
-        fontFamily: 'inherit',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '8px',
-        whiteSpace: 'nowrap',
-      }}>
-        <i className="fas fa-search"></i> Search
-      </button>
-    </form>
+    <div className="search-wrapper">
+      <form onSubmit={handleSubmit} className="search-box-modern">
+        {/* Primary row: search input + search button */}
+        <div className="search-primary">
+          <div className="search-input-wrap">
+            <i className="fas fa-search search-icon"></i>
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search for products..."
+              className="search-input"
+              aria-label="Search"
+            />
+          </div>
+          <button type="submit" className="search-submit">
+            <i className="fas fa-arrow-right"></i>
+            <span>Search</span>
+          </button>
+        </div>
+
+        {/* Secondary row: filters */}
+        <div className="search-filters">
+          <div className="filter-group">
+            <i className="fas fa-map-marker-alt filter-icon"></i>
+            <select
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              className="filter-select"
+            >
+              <option value="all">All Locations</option>
+              <option value="Accra">Accra</option>
+              <option value="Kumasi">Kumasi</option>
+              <option value="Tema">Tema</option>
+              <option value="Takoradi">Takoradi</option>
+              <option value="Tamale">Tamale</option>
+            </select>
+          </div>
+
+          <div className="filter-group">
+            <i className="fas fa-list-ul filter-icon"></i>
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className="filter-select"
+            >
+              <option value="all">All Categories</option>
+              <option value="Phones">Phones</option>
+              <option value="Laptops">Laptops</option>
+              <option value="Tablets">Tablets</option>
+              <option value="Accessories">Accessories</option>
+              <option value="TV & Game Consoles">TV & Game Consoles</option>
+              <option value="Electronics">Electronics</option>
+            </select>
+          </div>
+        </div>
+      </form>
+    </div>
   );
 };
 

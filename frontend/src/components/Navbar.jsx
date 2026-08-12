@@ -6,12 +6,10 @@ import { useCart } from '../context/CartContext';
 const Navbar = () => {
   const { user, logout } = useAuth();
   const { favorites } = useCart();
-  const [mobileOpen, setMobileOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
 
-  // Close dropdown on outside click
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -22,51 +20,41 @@ const Navbar = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Close mobile menu on window resize
-  useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth > 768 && mobileOpen) {
-        setMobileOpen(false);
-      }
-    };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [mobileOpen]);
-
   const handleLogout = async () => {
     await logout();
     setDropdownOpen(false);
     navigate('/');
   };
 
-  const toggleMobile = () => setMobileOpen(!mobileOpen);
   const toggleDropdown = () => setDropdownOpen(!dropdownOpen);
 
   const userInitial = user?.name?.charAt(0)?.toUpperCase() || 'U';
 
+  const getProfileImage = () => {
+    if (!user) return null;
+    const image = user.profileImage || user.photo || user.avatar || user.picture;
+    if (!image) return null;
+    const base = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+    return image.startsWith('http') ? image : `${base}${image}`;
+  };
+
+  const profileImageUrl = getProfileImage();
+
   return (
     <header className="header">
       <div className="container">
-        {/* Logo */}
+        {/* Logo - Left */}
         <Link to="/" className="logo">
           <i className="fas fa-tag"></i>
           BuyUk <span>Used</span>
         </Link>
 
-        {/* Navigation Links */}
-        <ul className={`nav-links ${mobileOpen ? 'open' : ''}`}>
-          <li><Link to="/" onClick={() => setMobileOpen(false)}>Home</Link></li>
-          <li><Link to="/products" onClick={() => setMobileOpen(false)}>Browse</Link></li>
-          <li>
-            <Link 
-              to="/post-ad" 
-              className="post-ad-btn" 
-              onClick={() => setMobileOpen(false)}
-            >
-              Post Ad
-            </Link>
-          </li>
-        </ul>
+        {/* ─── CENTER: Glowing Post Ad Button ─── */}
+        <div className="nav-center">
+          <Link to="/post-ad" className="glow-btn">
+            <i className="fas fa-plus-circle"></i> Post Ad
+          </Link>
+        </div>
 
         {/* Right Side Actions */}
         <div className="nav-actions">
@@ -82,8 +70,27 @@ const Navbar = () => {
           {user ? (
             <div className="user-menu" ref={dropdownRef}>
               <div className="profile-trigger" onClick={toggleDropdown}>
-                <div className="avatar">
-                  {userInitial}
+                <div className="avatar" style={{ position: 'relative' }}>
+                  {profileImageUrl ? (
+                    <img
+                      src={profileImageUrl}
+                      alt={user.name || 'User'}
+                      className="avatar-img"
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        borderRadius: '50%',
+                        objectFit: 'cover',
+                        display: 'block',
+                      }}
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                        e.currentTarget.parentElement.textContent = userInitial;
+                      }}
+                    />
+                  ) : (
+                    userInitial
+                  )}
                   {user.role === 'admin' && (
                     <span className="admin-badge" style={{
                       position: 'absolute',
@@ -103,9 +110,17 @@ const Navbar = () => {
                 <i className={`fas fa-chevron-${dropdownOpen ? 'up' : 'down'}`} style={{ fontSize: '12px', color: 'var(--gray-400)' }}></i>
               </div>
 
-              {/* Dropdown Menu */}
               {dropdownOpen && (
                 <div className="dropdown-menu">
+                  {/* ─── GLOWING POST AD BUTTON INSIDE DROPDOWN ─── */}
+                  <Link 
+                    to="/post-ad" 
+                    className="glow-btn-dropdown" 
+                    onClick={() => setDropdownOpen(false)}
+                  >
+                    <i className="fas fa-plus-circle"></i> SELL
+                  </Link>
+                  
                   <Link to="/profile" onClick={() => setDropdownOpen(false)}>
                     <i className="fas fa-user"></i> My Profile
                   </Link>
@@ -133,11 +148,6 @@ const Navbar = () => {
               <Link to="/register" className="btn-primary">Sign Up</Link>
             </div>
           )}
-
-          {/* Mobile Toggle Button */}
-          <button className="mobile-toggle" onClick={toggleMobile}>
-            <i className={mobileOpen ? 'fas fa-times' : 'fas fa-bars'}></i>
-          </button>
         </div>
       </div>
     </header>

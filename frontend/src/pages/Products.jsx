@@ -2,10 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import SearchBar from '../components/SearchBar';
 
-// ✅ API
+// API
 import { getProducts } from '../services/api';
 
-// ✅ Local helper for image URLs
+// Local helper for image URLs
 const getImageUrl = (path) => {
   if (!path) return '/placeholder.png';
   if (path.startsWith('http')) return path;
@@ -15,7 +15,6 @@ const getImageUrl = (path) => {
 
 // ─── ProductCard Component (inline) ────────────────────────────
 const ProductCard = ({ product }) => {
-  // ✅ Guard: if product is undefined, return null
   if (!product) return null;
 
   const {
@@ -30,7 +29,7 @@ const ProductCard = ({ product }) => {
     swapAccepted,
     condition,
     category,
-    warranty, // NEW: destructure warranty
+    warranty,
   } = product;
 
   const imageUrl = images?.[0] || image || '/placeholder.png';
@@ -93,7 +92,7 @@ const ProductCard = ({ product }) => {
           {location || 'Ghana'}
         </div>
 
-        {/* ─── Additional Details ─── */}
+        {/* Additional Details */}
         <div style={{
           display: 'flex',
           flexWrap: 'wrap',
@@ -131,7 +130,6 @@ const ProductCard = ({ product }) => {
               <i className="fas fa-tag"></i> {category}
             </span>
           )}
-          {/* ─── NEW: Warranty ─── */}
           {warranty && (
             <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
               <i className="fas fa-shield-alt"></i> {warranty}
@@ -165,7 +163,7 @@ const ProductCard = ({ product }) => {
   );
 };
 
-// ─── Main Products Page ──────────────────────────────────────
+// ─── Main Products Page ──────────────────────────────────────────
 const Products = () => {
   const location = useLocation();
   const queryParams = new URLSearchParams(location.search);
@@ -222,14 +220,8 @@ const Products = () => {
           No ads found. <a href="/post-ad" style={{ color: 'var(--primary)', fontWeight: 600 }}>Post your ad now!</a>
         </div>
       ) : (
-        <div
-          className="products-grid"
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
-            gap: '20px',
-          }}
-        >
+        /* ─── GRID CONTAINER: inline style removed ─── */
+        <div className="products-grid">
           {products.map((product) => (
             <ProductCard key={product._id} product={product} />
           ))}

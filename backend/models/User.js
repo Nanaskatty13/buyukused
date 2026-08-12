@@ -66,14 +66,19 @@ const userSchema = new mongoose.Schema(
     // PROFILE IMAGE
     // ==========================================================
 
+    // Main profile picture field
     avatar: {
       type: String,
       default: "",
+      trim: true,
     },
 
+    // Alternative profile picture field
+    // Useful for Google/Facebook or existing accounts
     photoURL: {
       type: String,
       default: "",
+      trim: true,
     },
 
     // ==========================================================
@@ -89,6 +94,7 @@ const userSchema = new mongoose.Schema(
     providerId: {
       type: String,
       default: "",
+      trim: true,
     },
 
     // ==========================================================

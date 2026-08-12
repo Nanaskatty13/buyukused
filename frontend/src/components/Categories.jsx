@@ -3,17 +3,17 @@ import { Link } from 'react-router-dom';
 
 const categories = [
   // { name: 'Cars', icon: 'fa-car' },
-  { name: 'Phones', icon: 'fa-mobile-alt' },
-  { name: 'Laptops', icon: 'fa-laptop' },
-  { name: 'Tablets', icon: 'fa-tablet-alt' },
-  { name: 'TV & Game Consoles', icon: 'fa-tv' },
+  // { name: 'Phones', icon: 'fa-mobile-alt' },
+    // { name: 'Laptops', icon: 'fa-laptop' },
+    // { name: 'Tablets', icon: 'fa-tablet-alt' },
+    // { name: 'TV & Game Consoles', icon: 'fa-tv' },
   // { name: 'Real Estate', icon: 'fa-home' },
   // { name: 'Jobs', icon: 'fa-briefcase' },
-  { name: 'Electronics', icon: 'fa-laptop' },
+  // { name: 'Electronics', icon: 'fa-laptop' },
   // { name: 'Fashion', icon: 'fa-tshirt' },
   // { name: 'Home', icon: 'fa-couch' },
   // { name: 'Other', icon: 'fa-tag' },
-  { name: 'Accessories', icon: 'fa-headphones' },
+  // { name: 'Accessories', icon: 'fa-headphones' },
 
 ];
 
