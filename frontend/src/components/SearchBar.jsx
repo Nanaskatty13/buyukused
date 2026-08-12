@@ -105,14 +105,18 @@ const SearchBar = ({ onSearch, initialQuery = {} }) => {
           }}
         >
           <option value="all">All Categories</option>
-          <option value="Cars">Cars</option>
+          {/* <option value="Cars">Cars</option> */}
           <option value="Phones">Phones</option>
-          <option value="Real Estate">Real Estate</option>
-          <option value="Jobs">Jobs</option>
+          {/* <option value="Real Estate">Real Estate</option> */}
+          {/* <option value="Jobs">Jobs</option> */}
+          {/* <option value="Electronics">Electronics</option> */}
+          {/* <option value="Fashion">Fashion</option> */}
+          {/* <option value="Home">Home</option> */}
+          <option value="Other">Laptops</option>
+          <option value="Other">Tablets</option>
+          <option value="Other">Accessories</option>
+          <option value="Other">TV & Game Consoles</option>
           <option value="Electronics">Electronics</option>
-          <option value="Fashion">Fashion</option>
-          <option value="Home">Home</option>
-          <option value="Other">Other</option>
         </select>
       </div>
       <button type="submit" className="search-btn" style={{
