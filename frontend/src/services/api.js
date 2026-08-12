@@ -170,13 +170,10 @@ export const auth = {
         userData.password || ""
       ),
 
-      // Phone is optional
       phone: String(
         userData.phone || ""
       ).trim(),
 
-      // IMPORTANT:
-      // This was missing from your previous api.js.
       role: String(
         userData.role || "buyer"
       )
@@ -308,6 +305,7 @@ export const products = {
       `${API_URL}/api/products`,
       {
         method: "POST",
+
         headers:
           getHeaders(token),
 
@@ -414,7 +412,8 @@ export const products = {
     );
   },
 
-  // ✅ NEW: UPDATE PRODUCT STATUS (Quick Mark as Sold / Available)
+  // --------------------------------------------------------------
+  // UPDATE PRODUCT STATUS
   // --------------------------------------------------------------
 
   updateStatus: async (
@@ -428,7 +427,9 @@ export const products = {
         method: "PATCH",
 
         headers: {
-          "Content-Type": "application/json",
+          "Content-Type":
+            "application/json",
+
           ...(token
             ? {
                 Authorization: `Bearer ${token}`,
@@ -436,7 +437,9 @@ export const products = {
             : {}),
         },
 
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({
+          status,
+        }),
       }
     );
   },
@@ -634,6 +637,7 @@ export const notifications = {
       `${API_URL}/api/notifications/${id}/read`,
       {
         method: "PUT",
+
         headers:
           getHeaders(token),
       }
@@ -874,6 +878,7 @@ export const messages = {
       `${API_URL}/api/messages/${messageId}/read`,
       {
         method: "PUT",
+
         headers:
           getHeaders(token),
       }
@@ -916,6 +921,7 @@ export const favorites = {
       `${API_URL}/api/favorites`,
       {
         method: "GET",
+
         headers:
           getHeaders(token),
       }
@@ -1006,7 +1012,6 @@ export const updateProductWithFiles =
 export const deleteProduct =
   products.delete;
 
-// ✅ NEW: Product Status Export
 export const updateProductStatus =
   products.updateStatus;
 
@@ -1135,7 +1140,7 @@ const api = {
   updateProduct,
   updateProductWithFiles,
   deleteProduct,
-  updateProductStatus, // ✅ NEW
+  updateProductStatus,
 
   // Users
   getUsers,
