@@ -29,6 +29,18 @@ const getHeaders = (token = getToken()) => ({
     : {}),
 });
 
+// Headers for FormData requests.
+// IMPORTANT: Do NOT manually set Content-Type here.
+// The browser will automatically set multipart/form-data
+// with the correct boundary.
+const getFileHeaders = (token = getToken()) => ({
+  ...(token
+    ? {
+        Authorization: `Bearer ${token}`,
+      }
+    : {}),
+});
+
 // ================================================================
 // RESPONSE HANDLER
 // ================================================================
@@ -63,9 +75,13 @@ const handleResponse = async (response) => {
 // REQUEST HELPER
 // ================================================================
 
+const sleep = (ms) =>
+  new Promise((resolve) => setTimeout(resolve, ms));
+
 const request = async (
   url,
-  options = {}
+  options = {},
+  retries = 2
 ) => {
   try {
     const response = await fetch(url, {
@@ -81,6 +97,28 @@ const request = async (
       error
     );
 
+    // Retry temporary network errors.
+    // Do not retry normal HTTP errors such as 400/401/403/404.
+    const isNetworkError =
+      error?.name === "TypeError" ||
+      error?.message === "Failed to fetch";
+
+    if (isNetworkError && retries > 0) {
+      console.log(
+        `🔄 Retrying API request... (${retries} attempt${
+          retries === 1 ? "" : "s"
+        } left)`
+      );
+
+      await sleep(1500);
+
+      return request(
+        url,
+        options,
+        retries - 1
+      );
+    }
+
     throw error;
   }
 };
@@ -95,39 +133,42 @@ export const getImageUrl = (path) => {
     return "/placeholder.png";
   }
 
-  // Already a full URL
+  // Make sure we are working with a string.
+  if (typeof path !== "string") {
+    return "/placeholder.png";
+  }
+
+  const cleanPath = path.trim();
+
+  if (!cleanPath) {
+    return "/placeholder.png";
+  }
+
+  // Cloudinary / external / HTTPS URL
   if (
-    typeof path === "string" &&
-    (
-      path.startsWith("http://") ||
-      path.startsWith("https://")
-    )
+    cleanPath.startsWith("http://") ||
+    cleanPath.startsWith("https://")
   ) {
-    return path;
+    return cleanPath;
   }
 
   // Base64 image
-  if (
-    typeof path === "string" &&
-    path.startsWith("data:")
-  ) {
-    return path;
+  if (cleanPath.startsWith("data:")) {
+    return cleanPath;
   }
 
   // Blob URL
-  if (
-    typeof path === "string" &&
-    path.startsWith("blob:")
-  ) {
-    return path;
+  if (cleanPath.startsWith("blob:")) {
+    return cleanPath;
   }
 
-  // Convert relative path to backend URL
-  return `${API_URL}${
-    path.startsWith("/")
-      ? path
-      : `/${path}`
-  }`;
+  // Already absolute frontend path
+  if (cleanPath.startsWith("/")) {
+    return `${API_URL}${cleanPath}`;
+  }
+
+  // Relative backend path
+  return `${API_URL}/${cleanPath}`;
 };
 
 // ================================================================
@@ -249,7 +290,6 @@ export const auth = {
       `${API_URL}/auth/me`,
       {
         method: "GET",
-
         headers:
           getHeaders(token),
       }
@@ -267,7 +307,6 @@ export const auth = {
       `${API_URL}/auth/logout`,
       {
         method: "POST",
-
         headers:
           getHeaders(token),
       }
@@ -349,13 +388,8 @@ export const products = {
       {
         method: "POST",
 
-        headers: {
-          ...(token
-            ? {
-                Authorization: `Bearer ${token}`,
-              }
-            : {}),
-        },
+        headers:
+          getFileHeaders(token),
 
         body: formData,
       }
@@ -400,13 +434,8 @@ export const products = {
       {
         method: "PUT",
 
-        headers: {
-          ...(token
-            ? {
-                Authorization: `Bearer ${token}`,
-              }
-            : {}),
-        },
+        headers:
+          getFileHeaders(token),
 
         body: formData,
       }
@@ -446,16 +475,8 @@ export const products = {
       {
         method: "PATCH",
 
-        headers: {
-          "Content-Type":
-            "application/json",
-
-          ...(token
-            ? {
-                Authorization: `Bearer ${token}`,
-              }
-            : {}),
-        },
+        headers:
+          getHeaders(token),
 
         body: JSON.stringify({
           status,
@@ -555,13 +576,8 @@ export const users = {
       {
         method: "PUT",
 
-        headers: {
-          ...(token
-            ? {
-                Authorization: `Bearer ${token}`,
-              }
-            : {}),
-        },
+        headers:
+          getFileHeaders(token),
 
         body: formData,
       }
