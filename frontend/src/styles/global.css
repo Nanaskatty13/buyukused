@@ -2042,3 +2042,405 @@ img {
     box-shadow: 0 0 0 1.5px var(--primary);
   }
 }
+/* ============================================================
+   INFORMATION PAGES
+============================================================ */
+
+.info-page {
+  min-height: calc(100vh - 80px);
+  background: #f8fafc;
+  padding: 50px 20px 80px;
+}
+
+.info-page-container {
+  width: 100%;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+/* ============================================================
+   HEADER
+============================================================ */
+
+.info-page-header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.info-page-icon {
+  width: 64px;
+  height: 64px;
+
+  margin: 0 auto 18px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 18px;
+
+  background: #eff6ff;
+  color: #2563eb;
+
+  font-size: 25px;
+}
+
+.info-page-header h1 {
+  margin: 0;
+
+  color: #111827;
+
+  font-size: 38px;
+  font-weight: 800;
+  letter-spacing: -0.8px;
+}
+
+.info-page-header p {
+  max-width: 650px;
+
+  margin: 12px auto 0;
+
+  color: #6b7280;
+
+  font-size: 16px;
+  line-height: 1.7;
+}
+
+/* ============================================================
+   CONTENT
+============================================================ */
+
+.info-page-content {
+  background: #fff;
+
+  border: 1px solid #e5e7eb;
+  border-radius: 20px;
+
+  padding: 40px;
+
+  box-shadow:
+    0 8px 30px rgba(0, 0, 0, 0.04);
+}
+
+.info-page-content section {
+  margin-bottom: 38px;
+}
+
+.info-page-content section:last-child {
+  margin-bottom: 0;
+}
+
+.info-page-content h2 {
+  margin: 0 0 12px;
+
+  color: #111827;
+
+  font-size: 21px;
+  font-weight: 750;
+}
+
+.info-page-content h3 {
+  color: #111827;
+}
+
+.info-page-content p {
+  margin: 0 0 14px;
+
+  color: #4b5563;
+
+  font-size: 15px;
+  line-height: 1.8;
+}
+
+/* ============================================================
+   LIST
+============================================================ */
+
+.info-list {
+  margin: 15px 0 0;
+  padding-left: 22px;
+
+  color: #4b5563;
+}
+
+.info-list li {
+  margin-bottom: 11px;
+
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+/* ============================================================
+   CTA
+============================================================ */
+
+.info-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  margin-top: 10px;
+
+  padding: 12px 20px;
+
+  border-radius: 10px;
+
+  background: #2563eb;
+  color: #fff;
+
+  text-decoration: none;
+
+  font-size: 14px;
+  font-weight: 700;
+
+  transition: 0.2s ease;
+}
+
+.info-cta:hover {
+  background: #1d4ed8;
+  transform: translateY(-1px);
+}
+
+/* ============================================================
+   HOW IT WORKS STEPS
+============================================================ */
+
+.info-step {
+  display: flex;
+  gap: 18px;
+
+  padding-bottom: 28px;
+  margin-bottom: 28px;
+
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.info-step:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.info-step > span {
+  flex-shrink: 0;
+
+  width: 42px;
+  height: 42px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 50%;
+
+  background: #2563eb;
+  color: #fff;
+
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.info-step h2 {
+  margin-bottom: 7px;
+}
+
+/* ============================================================
+   CONTACT CARDS
+============================================================ */
+
+.contact-options {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+
+  gap: 18px;
+}
+
+.contact-card {
+  padding: 25px;
+
+  border: 1px solid #e5e7eb;
+  border-radius: 15px;
+
+  background: #fff;
+}
+
+.contact-card > i {
+  color: #2563eb;
+  font-size: 22px;
+  margin-bottom: 15px;
+}
+
+.contact-card h3 {
+  margin: 0 0 8px;
+  font-size: 16px;
+}
+
+.contact-card p {
+  font-size: 13px;
+}
+
+.contact-card a {
+  color: #2563eb;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.contact-card a:hover {
+  text-decoration: underline;
+}
+
+/* ============================================================
+   FORM
+============================================================ */
+
+.info-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.info-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  color: #374151;
+
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.info-form input,
+.info-form select,
+.info-form textarea {
+  width: 100%;
+
+  box-sizing: border-box;
+
+  padding: 13px 14px;
+
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+
+  background: #fff;
+
+  color: #111827;
+
+  font-family: inherit;
+  font-size: 14px;
+
+  outline: none;
+
+  transition: border-color 0.2s ease,
+              box-shadow 0.2s ease;
+}
+
+.info-form input:focus,
+.info-form select:focus,
+.info-form textarea:focus {
+  border-color: #2563eb;
+
+  box-shadow:
+    0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.info-form textarea {
+  resize: vertical;
+}
+
+.info-submit-btn {
+  align-self: flex-start;
+
+  padding: 13px 22px;
+
+  border: none;
+  border-radius: 10px;
+
+  background: #2563eb;
+  color: #fff;
+
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+
+  cursor: pointer;
+
+  transition: 0.2s ease;
+}
+
+.info-submit-btn:hover {
+  background: #1d4ed8;
+}
+
+/* ============================================================
+   SUCCESS
+============================================================ */
+
+.success-message {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.success-message > i {
+  color: #16a34a;
+  font-size: 50px;
+  margin-bottom: 15px;
+}
+
+.success-message h2 {
+  margin-bottom: 8px;
+}
+
+/* ============================================================
+   BOTTOM
+============================================================ */
+
+.info-page-bottom {
+  margin-top: 25px;
+}
+
+.info-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+
+  color: #6b7280;
+
+  text-decoration: none;
+
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.info-back-btn:hover {
+  color: #2563eb;
+}
+
+/* ============================================================
+   MOBILE
+============================================================ */
+
+@media (max-width: 700px) {
+  .info-page {
+    padding: 35px 15px 60px;
+  }
+
+  .info-page-header h1 {
+    font-size: 30px;
+  }
+
+  .info-page-content {
+    padding: 25px 20px;
+
+    border-radius: 15px;
+  }
+
+  .contact-options {
+    grid-template-columns: 1fr;
+  }
+
+  .info-step {
+    gap: 14px;
+  }
+}

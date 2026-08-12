@@ -9,11 +9,21 @@ import {
 // API CONFIG
 // ================================================================
 
-export const API_URL =
+const RAW_API_URL =
   import.meta.env.VITE_API_URL ||
   "http://localhost:5000";
 
+// Remove trailing slash(es)
+export const API_URL = RAW_API_URL.replace(/\/+$/, "");
+
 console.log("🔗 API_URL:", API_URL);
+
+// ================================================================
+// REQUEST CONFIG
+// ================================================================
+
+const REQUEST_TIMEOUT = 20000;
+const MAX_RETRIES = 2;
 
 // ================================================================
 // HEADERS
@@ -29,10 +39,10 @@ const getHeaders = (token = getToken()) => ({
     : {}),
 });
 
-// Headers for FormData requests.
-// IMPORTANT: Do NOT manually set Content-Type here.
-// The browser will automatically set multipart/form-data
-// with the correct boundary.
+// IMPORTANT:
+// Do NOT set Content-Type for FormData.
+// The browser automatically adds:
+// multipart/form-data; boundary=...
 const getFileHeaders = (token = getToken()) => ({
   ...(token
     ? {
@@ -48,10 +58,26 @@ const getFileHeaders = (token = getToken()) => ({
 const handleResponse = async (response) => {
   let data = {};
 
-  try {
-    data = await response.json();
-  } catch {
-    data = {};
+  // 204 No Content
+  if (response.status !== 204) {
+    const contentType =
+      response.headers.get("content-type") || "";
+
+    try {
+      if (contentType.includes("application/json")) {
+        data = await response.json();
+      } else {
+        const text = await response.text();
+
+        if (text) {
+          data = {
+            message: text,
+          };
+        }
+      }
+    } catch {
+      data = {};
+    }
   }
 
   if (!response.ok) {
@@ -72,42 +98,71 @@ const handleResponse = async (response) => {
 };
 
 // ================================================================
-// REQUEST HELPER
+// SLEEP
 // ================================================================
 
 const sleep = (ms) =>
-  new Promise((resolve) => setTimeout(resolve, ms));
+  new Promise((resolve) =>
+    setTimeout(resolve, ms)
+  );
+
+// ================================================================
+// REQUEST HELPER
+// ================================================================
 
 const request = async (
   url,
   options = {},
-  retries = 2
+  retries = MAX_RETRIES
 ) => {
+  const controller = new AbortController();
+
+  const timeoutId = setTimeout(() => {
+    controller.abort();
+  }, REQUEST_TIMEOUT);
+
   try {
     const response = await fetch(url, {
       credentials: "include",
+
       ...options,
+
+      signal:
+        options.signal || controller.signal,
     });
+
+    clearTimeout(timeoutId);
 
     return await handleResponse(response);
   } catch (error) {
+    clearTimeout(timeoutId);
+
+    const isAbortError =
+      error?.name === "AbortError";
+
+    const isNetworkError =
+      error?.name === "TypeError" ||
+      error?.message === "Failed to fetch" ||
+      isAbortError;
+
     console.error(
       "❌ API request failed:",
       url,
       error
     );
 
-    // Retry temporary network errors.
-    // Do not retry normal HTTP errors such as 400/401/403/404.
-    const isNetworkError =
-      error?.name === "TypeError" ||
-      error?.message === "Failed to fetch";
+    // ------------------------------------------------------------
+    // RETRY NETWORK ERRORS ONLY
+    // ------------------------------------------------------------
 
-    if (isNetworkError && retries > 0) {
-      console.log(
-        `🔄 Retrying API request... (${retries} attempt${
+    if (
+      isNetworkError &&
+      retries > 0
+    ) {
+      console.warn(
+        `🔄 Retrying API request... ${retries} attempt${
           retries === 1 ? "" : "s"
-        } left)`
+        } left`
       );
 
       await sleep(1500);
@@ -117,6 +172,24 @@ const request = async (
         options,
         retries - 1
       );
+    }
+
+    // ------------------------------------------------------------
+    // BETTER ERROR MESSAGE
+    // ------------------------------------------------------------
+
+    if (isAbortError) {
+      const timeoutError =
+        new Error(
+          "The server took too long to respond."
+        );
+
+      timeoutError.code =
+        "REQUEST_TIMEOUT";
+
+      timeoutError.url = url;
+
+      throw timeoutError;
     }
 
     throw error;
@@ -133,7 +206,7 @@ export const getImageUrl = (path) => {
     return "/placeholder.png";
   }
 
-  // Make sure we are working with a string.
+  // Must be a string
   if (typeof path !== "string") {
     return "/placeholder.png";
   }
@@ -144,7 +217,10 @@ export const getImageUrl = (path) => {
     return "/placeholder.png";
   }
 
-  // Cloudinary / external / HTTPS URL
+  // --------------------------------------------------------------
+  // Full external URL
+  // --------------------------------------------------------------
+
   if (
     cleanPath.startsWith("http://") ||
     cleanPath.startsWith("https://")
@@ -152,23 +228,31 @@ export const getImageUrl = (path) => {
     return cleanPath;
   }
 
-  // Base64 image
+  // --------------------------------------------------------------
+  // Base64
+  // --------------------------------------------------------------
+
   if (cleanPath.startsWith("data:")) {
     return cleanPath;
   }
 
-  // Blob URL
+  // --------------------------------------------------------------
+  // Blob
+  // --------------------------------------------------------------
+
   if (cleanPath.startsWith("blob:")) {
     return cleanPath;
   }
 
-  // Already absolute frontend path
-  if (cleanPath.startsWith("/")) {
-    return `${API_URL}${cleanPath}`;
-  }
-
+  // --------------------------------------------------------------
   // Relative backend path
-  return `${API_URL}/${cleanPath}`;
+  // --------------------------------------------------------------
+
+  return `${API_URL}${
+    cleanPath.startsWith("/")
+      ? cleanPath
+      : `/${cleanPath}`
+  }`;
 };
 
 // ================================================================
@@ -290,6 +374,7 @@ export const auth = {
       `${API_URL}/auth/me`,
       {
         method: "GET",
+
         headers:
           getHeaders(token),
       }
@@ -307,6 +392,7 @@ export const auth = {
       `${API_URL}/auth/logout`,
       {
         method: "POST",
+
         headers:
           getHeaders(token),
       }
@@ -347,8 +433,16 @@ export const products = {
   getById: async (
     id
   ) => {
+    if (!id) {
+      throw new Error(
+        "Product ID is required"
+      );
+    }
+
     return request(
-      `${API_URL}/api/products/${id}`
+      `${API_URL}/api/products/${encodeURIComponent(
+        id
+      )}`
     );
   },
 
@@ -406,7 +500,9 @@ export const products = {
     token = getToken()
   ) => {
     return request(
-      `${API_URL}/api/products/${id}`,
+      `${API_URL}/api/products/${encodeURIComponent(
+        id
+      )}`,
       {
         method: "PUT",
 
@@ -430,7 +526,9 @@ export const products = {
     token = getToken()
   ) => {
     return request(
-      `${API_URL}/api/products/${id}`,
+      `${API_URL}/api/products/${encodeURIComponent(
+        id
+      )}`,
       {
         method: "PUT",
 
@@ -451,7 +549,9 @@ export const products = {
     token = getToken()
   ) => {
     return request(
-      `${API_URL}/api/products/${id}`,
+      `${API_URL}/api/products/${encodeURIComponent(
+        id
+      )}`,
       {
         method: "DELETE",
 
@@ -471,7 +571,9 @@ export const products = {
     token = getToken()
   ) => {
     return request(
-      `${API_URL}/api/products/${productId}/status`,
+      `${API_URL}/api/products/${encodeURIComponent(
+        productId
+      )}/status`,
       {
         method: "PATCH",
 
@@ -528,7 +630,9 @@ export const users = {
     token = getToken()
   ) => {
     return request(
-      `${API_URL}/api/users/${id}`,
+      `${API_URL}/api/users/${encodeURIComponent(
+        id
+      )}`,
       {
         method: "GET",
 
@@ -548,7 +652,9 @@ export const users = {
     token = getToken()
   ) => {
     return request(
-      `${API_URL}/api/users/${id}`,
+      `${API_URL}/api/users/${encodeURIComponent(
+        id
+      )}`,
       {
         method: "PUT",
 
@@ -572,7 +678,9 @@ export const users = {
     token = getToken()
   ) => {
     return request(
-      `${API_URL}/api/users/${id}`,
+      `${API_URL}/api/users/${encodeURIComponent(
+        id
+      )}`,
       {
         method: "PUT",
 
@@ -593,7 +701,9 @@ export const users = {
     token = getToken()
   ) => {
     return request(
-      `${API_URL}/api/users/${id}`,
+      `${API_URL}/api/users/${encodeURIComponent(
+        id
+      )}`,
       {
         method: "DELETE",
 
@@ -636,7 +746,9 @@ export const notifications = {
     token = getToken()
   ) => {
     return request(
-      `${API_URL}/api/notifications/${userId}`,
+      `${API_URL}/api/notifications/${encodeURIComponent(
+        userId
+      )}`,
       {
         method: "GET",
 
@@ -702,7 +814,9 @@ export const notifications = {
     token = getToken()
   ) => {
     return request(
-      `${API_URL}/api/notifications/${id}/read`,
+      `${API_URL}/api/notifications/${encodeURIComponent(
+        id
+      )}/read`,
       {
         method: "PUT",
 
@@ -721,7 +835,9 @@ export const notifications = {
     token = getToken()
   ) => {
     return request(
-      `${API_URL}/api/notifications/${id}`,
+      `${API_URL}/api/notifications/${encodeURIComponent(
+        id
+      )}`,
       {
         method: "DELETE",
 
@@ -774,7 +890,9 @@ export const orders = {
     token = getToken()
   ) => {
     return request(
-      `${API_URL}/api/orders/${id}`,
+      `${API_URL}/api/orders/${encodeURIComponent(
+        id
+      )}`,
       {
         method: "GET",
 
@@ -817,7 +935,9 @@ export const orders = {
     token = getToken()
   ) => {
     return request(
-      `${API_URL}/api/orders/${id}`,
+      `${API_URL}/api/orders/${encodeURIComponent(
+        id
+      )}`,
       {
         method: "PUT",
 
@@ -840,7 +960,9 @@ export const orders = {
     token = getToken()
   ) => {
     return request(
-      `${API_URL}/api/orders/${id}`,
+      `${API_URL}/api/orders/${encodeURIComponent(
+        id
+      )}`,
       {
         method: "DELETE",
 
@@ -865,7 +987,9 @@ export const messages = {
     token = getToken()
   ) => {
     return request(
-      `${API_URL}/api/messages/${userId}`,
+      `${API_URL}/api/messages/${encodeURIComponent(
+        userId
+      )}`,
       {
         method: "GET",
 
@@ -902,7 +1026,9 @@ export const messages = {
     token = getToken()
   ) => {
     return request(
-      `${API_URL}/api/messages/conversation/${otherUserId}`,
+      `${API_URL}/api/messages/conversation/${encodeURIComponent(
+        otherUserId
+      )}`,
       {
         method: "GET",
 
@@ -948,7 +1074,9 @@ export const messages = {
     token = getToken()
   ) => {
     return request(
-      `${API_URL}/api/messages/${messageId}/read`,
+      `${API_URL}/api/messages/${encodeURIComponent(
+        messageId
+      )}/read`,
       {
         method: "PUT",
 
@@ -967,7 +1095,9 @@ export const messages = {
     token = getToken()
   ) => {
     return request(
-      `${API_URL}/api/messages/${messageId}`,
+      `${API_URL}/api/messages/${encodeURIComponent(
+        messageId
+      )}`,
       {
         method: "DELETE",
 
@@ -1033,7 +1163,9 @@ export const favorites = {
     token = getToken()
   ) => {
     return request(
-      `${API_URL}/api/favorites/${productId}`,
+      `${API_URL}/api/favorites/${encodeURIComponent(
+        productId
+      )}`,
       {
         method: "DELETE",
 
@@ -1048,17 +1180,10 @@ export const favorites = {
 // NAMED AUTH EXPORTS
 // ================================================================
 
-export const login =
-  auth.login;
-
-export const register =
-  auth.register;
-
-export const getMe =
-  auth.getMe;
-
-export const logout =
-  auth.logout;
+export const login = auth.login;
+export const register = auth.register;
+export const getMe = auth.getMe;
+export const logout = auth.logout;
 
 // ================================================================
 // PRODUCT EXPORTS
