@@ -8,11 +8,11 @@ const router = express.Router();
 /**
  * POST /register
  * Register a new user
- * Body: { name, email, password, phone? }
+ * Body: { name, email, password, phone?, profilePicture? } // profilePicture is base64 string
  */
 router.post("/", async (req, res) => {
   try {
-    const { name, email, password, phone } = req.body;
+    const { name, email, password, phone, profilePicture } = req.body;
 
     // --- Validation ---
     if (!name || !email || !password) {
@@ -42,14 +42,29 @@ router.post("/", async (req, res) => {
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-    // --- Create user ---
-    const newUser = new User({
+    // --- Prepare user data ---
+    const userData = {
       name,
       email,
       password: hashedPassword,
       phone: phone || "",
-      // You can add default role or other fields as needed
-    });
+      role: "buyer", // default role
+    };
+
+    // --- Handle profile picture if provided ---
+    if (profilePicture) {
+      // Optional: validate that it's a valid base64 image string
+      // Simple check: starts with "data:image/"
+      if (typeof profilePicture === "string" && profilePicture.startsWith("data:image/")) {
+        userData.photoURL = profilePicture; // store base64 directly
+      } else {
+        // If not valid, ignore and log a warning (or throw error if you prefer)
+        console.warn("Invalid profilePicture format, ignoring.");
+      }
+    }
+
+    // --- Create user ---
+    const newUser = new User(userData);
 
     await newUser.save();
 

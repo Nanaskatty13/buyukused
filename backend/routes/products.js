@@ -1,5 +1,3 @@
-// backend/routes/products.js
-
 const express = require("express");
 const mongoose = require("mongoose");
 const streamifier = require("streamifier");
@@ -16,218 +14,693 @@ const { cloudinary } = require("../config/cloudinary");
 const router = express.Router();
 
 // ============================================================
-// CLOUDINARY UPLOAD HELPER
+// CONSTANTS
 // ============================================================
 
-const uploadToCloudinary = (file) => {
-  return new Promise((resolve, reject) => {
-    const isVideo =
-      file.mimetype &&
-      file.mimetype.startsWith("video/");
+const MAX_IMAGES = 5;
+const MAX_VIDEOS = 1;
 
-    const uploadStream =
-      cloudinary.uploader.upload_stream(
-        {
-          folder: isVideo
-            ? "kn-classifieds/videos"
-            : "kn-classifieds/images",
+const VALID_STATUSES = [
+  "active",
+  "pending",
+  "inactive",
+  "sold",
+];
 
-          resource_type: isVideo
-            ? "video"
-            : "image",
+const VALID_CATEGORIES = [
+  "Cars",
+  "Phones",
+  "Real Estate",
+  "Jobs",
+  "Electronics",
+  "Fashion",
+  "Home",
+  "Other",
+];
 
-          public_id: `${Date.now()}-${Math.round(
-            Math.random() * 1e9
-          )}`,
-        },
+const VALID_CONDITIONS = [
+  "Brand New",
+  "Like New",
+  "Excellent",
+  "Good",
+  "Fair",
+  "Poor",
+];
 
-        (error, result) => {
-          if (error) {
-            console.error(
-              "❌ Cloudinary upload error:",
-              error
-            );
+const VALID_FACE_ID = [
+  "Working",
+  "Not Working",
+  "Not Available",
+  "",
+];
 
-            reject(error);
-          } else {
-            resolve(result);
-          }
+// ============================================================
+// HELPERS
+// ============================================================
+
+const isValidObjectId = (id) => {
+  return mongoose.Types.ObjectId.isValid(id);
+};
+
+// ------------------------------------------------------------
+// Boolean parser
+// ------------------------------------------------------------
+
+const parseBoolean = (value, defaultValue = false) => {
+  if (typeof value === "boolean") {
+    return value;
+  }
+
+  if (typeof value === "string") {
+    return value.toLowerCase() === "true";
+  }
+
+  return defaultValue;
+};
+
+// ------------------------------------------------------------
+// Number parser
+// ------------------------------------------------------------
+
+const parseNumber = (value, defaultValue = null) => {
+  if (
+    value === undefined ||
+    value === null ||
+    value === ""
+  ) {
+    return defaultValue;
+  }
+
+  const number = Number(value);
+
+  return Number.isFinite(number)
+    ? number
+    : defaultValue;
+};
+
+// ------------------------------------------------------------
+// Cloudinary public ID extraction
+// ------------------------------------------------------------
+
+const getCloudinaryPublicId = (url) => {
+  try {
+    if (
+      !url ||
+      typeof url !== "string" ||
+      !url.includes("cloudinary.com")
+    ) {
+      return null;
+    }
+
+    const uploadMarker = "/upload/";
+
+    const uploadIndex =
+      url.indexOf(uploadMarker);
+
+    if (uploadIndex === -1) {
+      return null;
+    }
+
+    let publicId = url.substring(
+      uploadIndex + uploadMarker.length
+    );
+
+    // Remove transformation section.
+    // Example:
+    // /upload/w_500,h_500/v123/folder/file.jpg
+    const parts = publicId.split("/");
+
+    while (
+      parts.length > 0 &&
+      (
+        parts[0].includes("_") ||
+        parts[0].includes(",")
+      )
+    ) {
+      parts.shift();
+    }
+
+    publicId = parts.join("/");
+
+    // Remove version.
+    publicId = publicId.replace(
+      /^v\d+\//,
+      ""
+    );
+
+    // Remove extension.
+    publicId = publicId.replace(
+      /\.[^/.]+$/,
+      ""
+    );
+
+    return publicId || null;
+  } catch (error) {
+    console.error(
+      "❌ Failed to extract Cloudinary public ID:",
+      error.message
+    );
+
+    return null;
+  }
+};
+
+// ------------------------------------------------------------
+// Delete Cloudinary file
+// ------------------------------------------------------------
+
+const deleteFromCloudinary = async (
+  fileUrl,
+  resourceType = "image"
+) => {
+  try {
+    const publicId =
+      getCloudinaryPublicId(fileUrl);
+
+    if (!publicId) {
+      return;
+    }
+
+    await cloudinary.uploader.destroy(
+      publicId,
+      {
+        resource_type: resourceType,
+      }
+    );
+
+    console.log(
+      `🗑️ Cloudinary file deleted: ${publicId}`
+    );
+  } catch (error) {
+    console.error(
+      "❌ Cloudinary delete error:",
+      error.message
+    );
+  }
+};
+
+// ------------------------------------------------------------
+// Upload buffer to Cloudinary
+// ------------------------------------------------------------
+
+const uploadToCloudinary = (
+  file
+) => {
+  return new Promise(
+    (resolve, reject) => {
+      try {
+        if (
+          !file ||
+          !file.buffer
+        ) {
+          return reject(
+            new Error(
+              "Invalid file buffer"
+            )
+          );
         }
-      );
 
-    streamifier
-      .createReadStream(file.buffer)
-      .pipe(uploadStream);
-  });
+        const isVideo =
+          file.mimetype &&
+          file.mimetype.startsWith(
+            "video/"
+          );
+
+        const resourceType =
+          isVideo
+            ? "video"
+            : "image";
+
+        const folder =
+          isVideo
+            ? "kn-classifieds/videos"
+            : "kn-classifieds/images";
+
+        const uploadStream =
+          cloudinary.uploader.upload_stream(
+            {
+              folder,
+              resource_type:
+                resourceType,
+
+              public_id:
+                `${Date.now()}-${Math.round(
+                  Math.random() * 1e9
+                )}`,
+            },
+
+            (error, result) => {
+              if (error) {
+                console.error(
+                  "❌ Cloudinary upload error:",
+                  error
+                );
+
+                return reject(error);
+              }
+
+              resolve({
+                result,
+                resourceType,
+              });
+            }
+          );
+
+        streamifier
+          .createReadStream(
+            file.buffer
+          )
+          .pipe(uploadStream);
+      } catch (error) {
+        reject(error);
+      }
+    }
+  );
+};
+
+// ------------------------------------------------------------
+// Upload multiple files
+// ------------------------------------------------------------
+
+const uploadFiles = async (
+  files
+) => {
+  const imageFiles = (
+    files || []
+  )
+    .filter(
+      (file) =>
+        file.mimetype &&
+        file.mimetype.startsWith(
+          "image/"
+        )
+    )
+    .slice(0, MAX_IMAGES);
+
+  const videoFiles = (
+    files || []
+  )
+    .filter(
+      (file) =>
+        file.mimetype &&
+        file.mimetype.startsWith(
+          "video/"
+        )
+    )
+    .slice(0, MAX_VIDEOS);
+
+  const imageResults =
+    await Promise.all(
+      imageFiles.map(
+        (file) =>
+          uploadToCloudinary(
+            file
+          )
+      )
+    );
+
+  const videoResults =
+    await Promise.all(
+      videoFiles.map(
+        (file) =>
+          uploadToCloudinary(
+            file
+          )
+      )
+    );
+
+  const images =
+    imageResults
+      .map(
+        (item) =>
+          item.result?.secure_url
+      )
+      .filter(Boolean);
+
+  const videos =
+    videoResults
+      .map(
+        (item) =>
+          item.result?.secure_url
+      )
+      .filter(Boolean);
+
+  return {
+    images,
+    videos,
+  };
+};
+
+// ------------------------------------------------------------
+// Parse JSON array safely
+// ------------------------------------------------------------
+
+const parseJsonArray = (
+  value,
+  fieldName
+) => {
+  if (
+    value === undefined ||
+    value === null ||
+    value === ""
+  ) {
+    return null;
+  }
+
+  try {
+    const parsed =
+      typeof value === "string"
+        ? JSON.parse(value)
+        : value;
+
+    if (!Array.isArray(parsed)) {
+      throw new Error(
+        `${fieldName} must be an array`
+      );
+    }
+
+    return parsed;
+  } catch (error) {
+    throw new Error(
+      `${fieldName} must be valid JSON`
+    );
+  }
 };
 
 // ============================================================
 // TEST
 // ============================================================
 
-router.get("/test", (req, res) => {
-  res.json({
-    success: true,
-    message: "Products router is alive!",
-  });
-});
+router.get(
+  "/test",
+  (req, res) => {
+    res.json({
+      success: true,
+      message:
+        "Products router is alive!",
+    });
+  }
+);
 
 // ============================================================
 // GET ALL PRODUCTS
 // ============================================================
 
-router.get("/", async (req, res) => {
-  try {
-    const {
-      category,
-      location,
-      search,
-      sellerId,
-      status,
-      limit = 20,
-      page = 1,
-    } = req.query;
+router.get(
+  "/",
+  async (req, res) => {
+    try {
+      const {
+        category,
+        location,
+        search,
+        sellerId,
+        status,
+        page = 1,
+        limit = 20,
+      } = req.query;
 
-    const filter = {};
+      const filter = {};
 
-    if (category && category !== "all") {
-      filter.category = category;
-    }
+      // --------------------------------------------------------
+      // Category
+      // --------------------------------------------------------
 
-    if (location && location !== "all") {
-      filter.location = location;
-    }
+      if (
+        category &&
+        category !== "all"
+      ) {
+        filter.category =
+          category;
+      }
 
-    if (sellerId) {
-      filter.sellerId = sellerId;
-    }
+      // --------------------------------------------------------
+      // Location
+      // --------------------------------------------------------
 
-    if (status) {
-      filter.status = status;
-    }
+      if (
+        location &&
+        location !== "all"
+      ) {
+        filter.location =
+          location;
+      }
 
-    if (search) {
-      filter.$or = [
-        {
-          title: {
-            $regex: search,
-            $options: "i",
+      // --------------------------------------------------------
+      // Seller
+      // --------------------------------------------------------
+
+      if (sellerId) {
+        if (
+          !isValidObjectId(
+            sellerId
+          )
+        ) {
+          return res.status(400).json({
+            success: false,
+            message:
+              "Invalid seller ID",
+          });
+        }
+
+        filter.sellerId =
+          sellerId;
+      }
+
+      // --------------------------------------------------------
+      // Status
+      // --------------------------------------------------------
+
+      if (status) {
+        if (
+          !VALID_STATUSES.includes(
+            status
+          )
+        ) {
+          return res.status(400).json({
+            success: false,
+            message:
+              "Invalid product status",
+          });
+        }
+
+        filter.status =
+          status;
+      }
+
+      // --------------------------------------------------------
+      // Search
+      // --------------------------------------------------------
+
+      if (
+        search &&
+        search.trim()
+      ) {
+        const escapedSearch =
+          search
+            .trim()
+            .replace(
+              /[.*+?^${}()|[\]\\]/g,
+              "\\$&"
+            );
+
+        filter.$or = [
+          {
+            title: {
+              $regex:
+                escapedSearch,
+              $options: "i",
+            },
           },
-        },
-        {
-          description: {
-            $regex: search,
-            $options: "i",
+
+          {
+            description: {
+              $regex:
+                escapedSearch,
+              $options: "i",
+            },
           },
-        },
-      ];
-    }
 
-    const parsedLimit = Math.min(
-      parseInt(limit, 10) || 20,
-      100
-    );
+          {
+            brand: {
+              $regex:
+                escapedSearch,
+              $options: "i",
+            },
+          },
 
-    const parsedPage = Math.max(
-      parseInt(page, 10) || 1,
-      1
-    );
+          {
+            model: {
+              $regex:
+                escapedSearch,
+              $options: "i",
+            },
+          },
+        ];
+      }
 
-    const skip =
-      (parsedPage - 1) * parsedLimit;
+      // --------------------------------------------------------
+      // Pagination
+      // --------------------------------------------------------
 
-    const [products, total] =
-      await Promise.all([
+      const parsedLimit = Math.min(
+        Math.max(
+          parseInt(limit, 10) ||
+            20,
+          1
+        ),
+        100
+      );
+
+      const parsedPage = Math.max(
+        parseInt(page, 10) || 1,
+        1
+      );
+
+      const skip =
+        (parsedPage - 1) *
+        parsedLimit;
+
+      // --------------------------------------------------------
+      // Query
+      // --------------------------------------------------------
+
+      const [
+        products,
+        total,
+      ] = await Promise.all([
         Product.find(filter)
-          .sort({ createdAt: -1 })
-          .skip(skip)
-          .limit(parsedLimit)
           .populate(
             "sellerId",
-            "name phone email"
-          ),
+            "name phone email location avatar role"
+          )
+          .sort({
+            createdAt: -1,
+          })
+          .skip(skip)
+          .limit(parsedLimit)
+          .lean(),
 
-        Product.countDocuments(filter),
+        Product.countDocuments(
+          filter
+        ),
       ]);
 
-    res.json({
-      success: true,
-      products,
-      total,
-      page: parsedPage,
-      limit: parsedLimit,
-      totalPages: Math.ceil(
-        total / parsedLimit
-      ),
-    });
-  } catch (err) {
-    console.error(
-      "❌ Error fetching products:",
-      err
-    );
+      res.json({
+        success: true,
 
-    res.status(500).json({
-      success: false,
-      message:
-        err.message ||
-        "Failed to fetch products",
-    });
+        products,
+
+        total,
+
+        page: parsedPage,
+
+        limit: parsedLimit,
+
+        totalPages:
+          Math.ceil(
+            total /
+              parsedLimit
+          ),
+
+        pagination: {
+          currentPage:
+            parsedPage,
+
+          totalPages:
+            Math.ceil(
+              total /
+                parsedLimit
+            ),
+
+          totalProducts:
+            total,
+
+          limit:
+            parsedLimit,
+        },
+      });
+    } catch (error) {
+      console.error(
+        "❌ Error fetching products:",
+        error
+      );
+
+      res.status(500).json({
+        success: false,
+        message:
+          error.message ||
+          "Failed to fetch products",
+      });
+    }
   }
-});
+);
 
 // ============================================================
 // GET SINGLE PRODUCT
 // ============================================================
 
-router.get("/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
+router.get(
+  "/:id",
+  async (req, res) => {
+    try {
+      const { id } =
+        req.params;
 
-    if (
-      !mongoose.Types.ObjectId.isValid(id)
-    ) {
-      return res.status(404).json({
-        success: false,
-        message: "Product not found",
+      if (
+        !isValidObjectId(id)
+      ) {
+        return res.status(404).json({
+          success: false,
+          message:
+            "Product not found",
+        });
+      }
+
+      const product =
+        await Product.findById(
+          id
+        ).populate(
+          "sellerId",
+          "name phone email location avatar role"
+        );
+
+      if (!product) {
+        return res.status(404).json({
+          success: false,
+          message:
+            "Product not found",
+        });
+      }
+
+      // --------------------------------------------------------
+      // Increment views
+      // --------------------------------------------------------
+
+      product.views =
+        (product.views || 0) + 1;
+
+      await product.save();
+
+      res.json({
+        success: true,
+        product,
       });
-    }
-
-    const product =
-      await Product.findById(id).populate(
-        "sellerId",
-        "name phone email"
+    } catch (error) {
+      console.error(
+        "❌ Error fetching product:",
+        error
       );
 
-    if (!product) {
-      return res.status(404).json({
+      res.status(500).json({
         success: false,
-        message: "Product not found",
+        message:
+          error.message ||
+          "Failed to fetch product",
       });
     }
-
-    product.views =
-      (product.views || 0) + 1;
-
-    await product.save();
-
-    res.json({
-      success: true,
-      product,
-    });
-  } catch (err) {
-    console.error(
-      "❌ Error fetching product:",
-      err
-    );
-
-    res.status(500).json({
-      success: false,
-      message:
-        err.message ||
-        "Failed to fetch product",
-    });
   }
-});
+);
 
 // ============================================================
 // CREATE PRODUCT
@@ -237,25 +710,46 @@ router.post(
   "/",
   verifyToken,
   isSeller,
-  upload.array("files", 6),
+  upload.array(
+    "files",
+    6
+  ),
 
   async (req, res) => {
-    console.log(
-      "📩 POST /api/products received"
-    );
-
     try {
-      // --------------------------------------------------------
-      // DEBUG FILES
-      // --------------------------------------------------------
+      console.log(
+        "📩 POST /api/products received"
+      );
 
       console.log(
-        "📦 Number of files received:",
+        "👤 User:",
+        req.userId
+      );
+
+      console.log(
+        "📦 Files:",
         req.files?.length || 0
       );
 
       // --------------------------------------------------------
-      // BODY
+      // Authentication
+      // --------------------------------------------------------
+
+      const sellerId =
+        req.userId ||
+        req.user?.id ||
+        req.user?._id;
+
+      if (!sellerId) {
+        return res.status(401).json({
+          success: false,
+          message:
+            "Authentication required",
+        });
+      }
+
+      // --------------------------------------------------------
+      // Request body
       // --------------------------------------------------------
 
       const {
@@ -266,6 +760,9 @@ router.post(
         description,
         sellerName,
         sellerPhone,
+        brand,
+        model,
+        ram,
         storage,
         color,
         condition,
@@ -276,226 +773,290 @@ router.post(
         faceId,
       } = req.body;
 
+      // --------------------------------------------------------
+      // Validate title
+      // --------------------------------------------------------
+
       if (
         !title ||
-        !price ||
-        !sellerPhone
+        !title.trim()
       ) {
         return res.status(400).json({
           success: false,
           message:
-            "Title, price, and phone number are required",
+            "Product title is required",
         });
       }
 
+      // --------------------------------------------------------
+      // Validate price
+      // --------------------------------------------------------
+
       const parsedPrice =
-        parseFloat(price);
+        Number(price);
 
       if (
-        Number.isNaN(parsedPrice) ||
+        price === undefined ||
+        price === null ||
+        price === "" ||
+        !Number.isFinite(
+          parsedPrice
+        ) ||
         parsedPrice < 0
       ) {
         return res.status(400).json({
           success: false,
-          message: "Invalid price",
+          message:
+            "A valid product price is required",
         });
       }
 
       // --------------------------------------------------------
-      // FILES
+      // Validate phone
       // --------------------------------------------------------
 
-      const files = req.files || [];
+      if (
+        !sellerPhone ||
+        !sellerPhone.trim()
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Seller phone number is required",
+        });
+      }
 
-      // Maximum 5 images
-      const imageFiles = files
-        .filter(
-          (file) =>
-            file.mimetype &&
-            file.mimetype.startsWith(
-              "image/"
-            )
+      // --------------------------------------------------------
+      // Validate category
+      // --------------------------------------------------------
+
+      const selectedCategory =
+        category || "Other";
+
+      if (
+        !VALID_CATEGORIES.includes(
+          selectedCategory
         )
-        .slice(0, 5);
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Invalid product category",
+        });
+      }
 
-      // Maximum 1 video
-      const videoFiles = files
-        .filter(
-          (file) =>
-            file.mimetype &&
-            file.mimetype.startsWith(
-              "video/"
-            )
+      // --------------------------------------------------------
+      // Validate condition
+      // --------------------------------------------------------
+
+      const selectedCondition =
+        condition || "Good";
+
+      if (
+        !VALID_CONDITIONS.includes(
+          selectedCondition
         )
-        .slice(0, 1);
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Invalid product condition",
+        });
+      }
 
-      console.log(
-        "🖼️ Images to upload:",
-        imageFiles.length
+      // --------------------------------------------------------
+      // Battery health
+      // --------------------------------------------------------
+
+      let parsedBatteryHealth =
+        null;
+
+      if (
+        batteryHealth !==
+          undefined &&
+        batteryHealth !== ""
+      ) {
+        parsedBatteryHealth =
+          Number(
+            batteryHealth
+          );
+
+        if (
+          !Number.isFinite(
+            parsedBatteryHealth
+          ) ||
+          parsedBatteryHealth <
+            0 ||
+          parsedBatteryHealth >
+            100
+        ) {
+          return res.status(400).json({
+            success: false,
+            message:
+              "Battery health must be between 0 and 100",
+          });
+        }
+      }
+
+      // --------------------------------------------------------
+      // Face ID
+      // --------------------------------------------------------
+
+      const selectedFaceId =
+        faceId || "";
+
+      if (
+        !VALID_FACE_ID.includes(
+          selectedFaceId
+        )
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Invalid Face ID status",
+        });
+      }
+
+      // --------------------------------------------------------
+      // Upload files
+      // --------------------------------------------------------
+
+      const {
+        images,
+        videos,
+      } = await uploadFiles(
+        req.files || []
       );
 
       console.log(
-        "🎬 Videos to upload:",
-        videoFiles.length
-      );
-
-      // --------------------------------------------------------
-      // UPLOAD IMAGES
-      // --------------------------------------------------------
-
-      const imageResults =
-        await Promise.all(
-          imageFiles.map(
-            (file) =>
-              uploadToCloudinary(file)
-          )
-        );
-
-      // --------------------------------------------------------
-      // UPLOAD VIDEOS
-      // --------------------------------------------------------
-
-      const videoResults =
-        await Promise.all(
-          videoFiles.map(
-            (file) =>
-              uploadToCloudinary(file)
-          )
-        );
-
-      const imageUrls =
-        imageResults
-          .map(
-            (result) =>
-              result.secure_url
-          )
-          .filter(Boolean);
-
-      const videoUrls =
-        videoResults
-          .map(
-            (result) =>
-              result.secure_url
-          )
-          .filter(Boolean);
-
-      console.log(
-        "🔗 Image URLs:",
-        imageUrls
+        "🖼️ Images uploaded:",
+        images.length
       );
 
       console.log(
-        "🔗 Video URLs:",
-        videoUrls
+        "🎬 Videos uploaded:",
+        videos.length
       );
 
       // --------------------------------------------------------
-      // PRODUCT DATA
+      // Product data
       // --------------------------------------------------------
 
       const productData = {
-        title: title.trim(),
+        title:
+          title.trim(),
 
-        price: parsedPrice,
+        price:
+          parsedPrice,
 
         category:
-          category || "Other",
+          selectedCategory,
 
         location:
-          location || "Ghana",
+          location?.trim() ||
+          "Ghana",
 
         description:
-          description || "",
+          description?.trim() ||
+          "",
 
-        sellerId: req.userId,
+        sellerId,
 
         sellerName:
-          sellerName ||
+          sellerName?.trim() ||
           req.user?.name ||
           "",
 
-        sellerPhone,
+        sellerPhone:
+          sellerPhone.trim(),
+
+        brand:
+          brand?.trim() ||
+          "",
+
+        model:
+          model?.trim() ||
+          "",
+
+        ram:
+          ram?.trim() ||
+          "",
 
         storage:
-          storage || "",
+          storage?.trim() ||
+          "",
 
         color:
-          color || "",
+          color?.trim() ||
+          "",
 
         condition:
-          condition || "Good",
+          selectedCondition,
 
         negotiation:
-          negotiation === "true",
+          parseBoolean(
+            negotiation
+          ),
 
         swapAccepted:
-          swapAccepted === "true",
+          parseBoolean(
+            swapAccepted
+          ),
 
         simStatus:
-          simStatus ||
-          "Unlocked",
+          simStatus?.trim() ||
+          "",
 
         batteryHealth:
-          batteryHealth !== undefined &&
-          batteryHealth !== ""
-            ? parseInt(
-                batteryHealth,
-                10
-              )
-            : null,
+          parsedBatteryHealth,
 
         faceId:
-          faceId || "Working",
+          selectedFaceId,
 
-        status: "active",
+        images,
 
-        images: imageUrls,
-
-        videos: videoUrls,
+        videos,
 
         image:
-          imageUrls.length > 0
-            ? imageUrls[0]
+          images.length
+            ? images[0]
             : "",
+
+        status:
+          "active",
       };
 
       // --------------------------------------------------------
-      // SAVE
+      // Save
       // --------------------------------------------------------
 
       const product =
-        new Product(productData);
-
-      await product.save();
+        await Product.create(
+          productData
+        );
 
       console.log(
         `✅ Product created: ${product._id}`
       );
 
-      console.log(
-        `🖼️ Saved ${product.images.length} images`
-      );
-
-      console.log(
-        `🎬 Saved ${product.videos.length} videos`
-      );
-
       res.status(201).json({
         success: true,
-        product,
+
         message:
           "Product created successfully",
+
+        product,
       });
-    } catch (err) {
+    } catch (error) {
       console.error(
         "❌ Error creating product:",
-        err
+        error
       );
 
       res.status(500).json({
         success: false,
         message:
-          err.message ||
+          error.message ||
           "Failed to create product",
       });
     }
@@ -509,47 +1070,91 @@ router.post(
 router.put(
   "/:id",
   verifyToken,
-  upload.array("files", 6),
+  upload.array(
+    "files",
+    6
+  ),
 
   async (req, res) => {
     try {
-      const { id } = req.params;
+      const { id } =
+        req.params;
+
+      // --------------------------------------------------------
+      // Validate ID
+      // --------------------------------------------------------
 
       if (
-        !mongoose.Types.ObjectId.isValid(id)
+        !isValidObjectId(id)
       ) {
         return res.status(404).json({
           success: false,
-          message: "Product not found",
-        });
-      }
-
-      const product =
-        await Product.findById(id);
-
-      if (!product) {
-        return res.status(404).json({
-          success: false,
-          message: "Product not found",
-        });
-      }
-
-      const isOwner =
-        product.sellerId.toString() ===
-        req.userId.toString();
-
-      const isAdmin =
-        req.user?.role === "admin";
-
-      if (!isOwner && !isAdmin) {
-        return res.status(403).json({
-          success: false,
-          message: "Not authorized",
+          message:
+            "Product not found",
         });
       }
 
       // --------------------------------------------------------
-      // TEXT FIELDS
+      // Find product
+      // --------------------------------------------------------
+
+      const product =
+        await Product.findById(
+          id
+        );
+
+      if (!product) {
+        return res.status(404).json({
+          success: false,
+          message:
+            "Product not found",
+        });
+      }
+
+      // --------------------------------------------------------
+      // Authentication
+      // --------------------------------------------------------
+
+      const currentUserId =
+        req.userId ||
+        req.user?.id ||
+        req.user?._id;
+
+      if (!currentUserId) {
+        return res.status(401).json({
+          success: false,
+          message:
+            "Authentication required",
+        });
+      }
+
+      // --------------------------------------------------------
+      // Ownership
+      // --------------------------------------------------------
+
+      const isOwner =
+        product.sellerId &&
+        product.sellerId
+          .toString() ===
+          currentUserId.toString();
+
+      const isAdmin =
+        req.user?.role ===
+        "admin";
+
+      if (
+        !isOwner &&
+        !isAdmin
+      ) {
+        return res.status(403).json({
+          success: false,
+          message:
+            "Not authorized to update this product",
+        });
+      }
+
+      // --------------------------------------------------------
+      // Update text fields
       // --------------------------------------------------------
 
       const {
@@ -560,6 +1165,9 @@ router.put(
         description,
         sellerName,
         sellerPhone,
+        brand,
+        model,
+        ram,
         storage,
         color,
         condition,
@@ -568,222 +1176,473 @@ router.put(
         simStatus,
         batteryHealth,
         faceId,
+        status,
+        oldPrice,
       } = req.body;
 
-      if (title)
-        product.title = title.trim();
+      // Title
+      if (
+        title !== undefined
+      ) {
+        if (
+          !String(title).trim()
+        ) {
+          return res.status(400).json({
+            success: false,
+            message:
+              "Product title cannot be empty",
+          });
+        }
 
-      if (price !== undefined && price !== "") {
+        product.title =
+          String(title).trim();
+      }
+
+      // Price
+      if (
+        price !== undefined &&
+        price !== ""
+      ) {
         const parsedPrice =
-          parseFloat(price);
+          Number(price);
 
         if (
-          Number.isNaN(parsedPrice) ||
+          !Number.isFinite(
+            parsedPrice
+          ) ||
           parsedPrice < 0
         ) {
           return res.status(400).json({
             success: false,
-            message: "Invalid price",
+            message:
+              "Invalid price",
           });
         }
 
-        product.price = parsedPrice;
+        product.price =
+          parsedPrice;
       }
 
-      if (category)
-        product.category = category;
+      // Old price
+      if (
+        oldPrice !== undefined
+      ) {
+        if (
+          oldPrice === ""
+        ) {
+          product.oldPrice =
+            null;
+        } else {
+          const parsedOldPrice =
+            Number(oldPrice);
 
-      if (location)
-        product.location = location;
+          if (
+            !Number.isFinite(
+              parsedOldPrice
+            ) ||
+            parsedOldPrice < 0
+          ) {
+            return res.status(400).json({
+              success: false,
+              message:
+                "Invalid old price",
+            });
+          }
 
-      if (description !== undefined)
+          product.oldPrice =
+            parsedOldPrice;
+        }
+      }
+
+      // Category
+      if (
+        category !== undefined
+      ) {
+        if (
+          !VALID_CATEGORIES.includes(
+            category
+          )
+        ) {
+          return res.status(400).json({
+            success: false,
+            message:
+              "Invalid product category",
+          });
+        }
+
+        product.category =
+          category;
+      }
+
+      // Location
+      if (
+        location !== undefined
+      ) {
+        product.location =
+          String(location).trim();
+      }
+
+      // Description
+      if (
+        description !== undefined
+      ) {
         product.description =
-          description;
+          String(
+            description
+          ).trim();
+      }
 
-      if (sellerName)
+      // Seller name
+      if (
+        sellerName !== undefined
+      ) {
         product.sellerName =
-          sellerName;
+          String(
+            sellerName
+          ).trim();
+      }
 
-      if (sellerPhone)
+      // Seller phone
+      if (
+        sellerPhone !== undefined
+      ) {
         product.sellerPhone =
-          sellerPhone;
+          String(
+            sellerPhone
+          ).trim();
+      }
 
-      if (storage)
-        product.storage = storage;
+      // Brand
+      if (
+        brand !== undefined
+      ) {
+        product.brand =
+          String(
+            brand
+          ).trim();
+      }
 
-      if (color)
-        product.color = color;
+      // Model
+      if (
+        model !== undefined
+      ) {
+        product.model =
+          String(
+            model
+          ).trim();
+      }
 
-      if (condition)
+      // RAM
+      if (
+        ram !== undefined
+      ) {
+        product.ram =
+          String(
+            ram
+          ).trim();
+      }
+
+      // Storage
+      if (
+        storage !== undefined
+      ) {
+        product.storage =
+          String(
+            storage
+          ).trim();
+      }
+
+      // Color
+      if (
+        color !== undefined
+      ) {
+        product.color =
+          String(
+            color
+          ).trim();
+      }
+
+      // Condition
+      if (
+        condition !== undefined
+      ) {
+        if (
+          !VALID_CONDITIONS.includes(
+            condition
+          )
+        ) {
+          return res.status(400).json({
+            success: false,
+            message:
+              "Invalid product condition",
+          });
+        }
+
         product.condition =
           condition;
+      }
 
+      // Negotiation
       if (
         negotiation !== undefined
       ) {
         product.negotiation =
-          negotiation === "true";
+          parseBoolean(
+            negotiation
+          );
       }
 
+      // Swap
       if (
-        swapAccepted !== undefined
+        swapAccepted !==
+        undefined
       ) {
         product.swapAccepted =
-          swapAccepted === "true";
+          parseBoolean(
+            swapAccepted
+          );
       }
 
-      if (simStatus)
+      // SIM
+      if (
+        simStatus !== undefined
+      ) {
         product.simStatus =
-          simStatus;
-
-      if (
-        batteryHealth !== undefined &&
-        batteryHealth !== ""
-      ) {
-        product.batteryHealth =
-          parseInt(
-            batteryHealth,
-            10
-          );
+          String(
+            simStatus
+          ).trim();
       }
 
-      if (faceId)
-        product.faceId = faceId;
-
-      // --------------------------------------------------------
-      // KEEP EXISTING IMAGES
-      // --------------------------------------------------------
-
+      // Battery
       if (
-        req.body.imagesToKeep !==
+        batteryHealth !==
         undefined
       ) {
-        try {
-          const kept = JSON.parse(
-            req.body.imagesToKeep
-          );
-
-          if (Array.isArray(kept)) {
-            product.images = kept;
-          }
-        } catch (err) {
-          console.warn(
-            "⚠️ Invalid imagesToKeep"
-          );
-        }
-      }
-
-      // --------------------------------------------------------
-      // KEEP EXISTING VIDEOS
-      // --------------------------------------------------------
-
-      if (
-        req.body.videosToKeep !==
-        undefined
-      ) {
-        try {
-          const keptVideos =
-            JSON.parse(
-              req.body.videosToKeep
+        if (
+          batteryHealth === ""
+        ) {
+          product.batteryHealth =
+            null;
+        } else {
+          const parsedBatteryHealth =
+            Number(
+              batteryHealth
             );
 
           if (
-            Array.isArray(
-              keptVideos
+            !Number.isFinite(
+              parsedBatteryHealth
+            ) ||
+            parsedBatteryHealth <
+              0 ||
+            parsedBatteryHealth >
+              100
+          ) {
+            return res.status(400).json({
+              success: false,
+              message:
+                "Battery health must be between 0 and 100",
+            });
+          }
+
+          product.batteryHealth =
+            parsedBatteryHealth;
+        }
+      }
+
+      // Face ID
+      if (
+        faceId !== undefined
+      ) {
+        if (
+          !VALID_FACE_ID.includes(
+            faceId
+          )
+        ) {
+          return res.status(400).json({
+            success: false,
+            message:
+              "Invalid Face ID status",
+          });
+        }
+
+        product.faceId =
+          faceId;
+      }
+
+      // Status
+      if (
+        status !== undefined
+      ) {
+        if (
+          !VALID_STATUSES.includes(
+            status
+          )
+        ) {
+          return res.status(400).json({
+            success: false,
+            message:
+              "Invalid product status",
+          });
+        }
+
+        product.status =
+          status;
+      }
+
+      // --------------------------------------------------------
+      // Existing images to keep
+      // --------------------------------------------------------
+
+      const imagesToKeep =
+        parseJsonArray(
+          req.body.imagesToKeep,
+          "imagesToKeep"
+        );
+
+      if (
+        Array.isArray(
+          imagesToKeep
+        )
+      ) {
+        const oldImages =
+          product.images || [];
+
+        for (
+          const oldImage of oldImages
+        ) {
+          if (
+            !imagesToKeep.includes(
+              oldImage
             )
           ) {
-            product.videos =
-              keptVideos;
+            await deleteFromCloudinary(
+              oldImage,
+              "image"
+            );
           }
-        } catch (err) {
-          console.warn(
-            "⚠️ Invalid videosToKeep"
+        }
+
+        product.images =
+          imagesToKeep
+            .filter(
+              (url) =>
+                typeof url ===
+                  "string" &&
+                url.trim()
+            )
+            .slice(
+              0,
+              MAX_IMAGES
+            );
+      }
+
+      // --------------------------------------------------------
+      // Existing videos to keep
+      // --------------------------------------------------------
+
+      const videosToKeep =
+        parseJsonArray(
+          req.body.videosToKeep,
+          "videosToKeep"
+        );
+
+      if (
+        Array.isArray(
+          videosToKeep
+        )
+      ) {
+        const oldVideos =
+          product.videos || [];
+
+        for (
+          const oldVideo of oldVideos
+        ) {
+          if (
+            !videosToKeep.includes(
+              oldVideo
+            )
+          ) {
+            await deleteFromCloudinary(
+              oldVideo,
+              "video"
+            );
+          }
+        }
+
+        product.videos =
+          videosToKeep
+            .filter(
+              (url) =>
+                typeof url ===
+                  "string" &&
+                url.trim()
+            )
+            .slice(
+              0,
+              MAX_VIDEOS
+            );
+      }
+
+      // --------------------------------------------------------
+      // Upload new files
+      // --------------------------------------------------------
+
+      const newFiles =
+        req.files || [];
+
+      if (
+        newFiles.length > 0
+      ) {
+        const {
+          images,
+          videos,
+        } = await uploadFiles(
+          newFiles
+        );
+
+        // Add images
+        if (
+          images.length > 0
+        ) {
+          product.images = [
+            ...(product.images ||
+              []),
+            ...images,
+          ].slice(
+            0,
+            MAX_IMAGES
+          );
+        }
+
+        // Add videos
+        if (
+          videos.length > 0
+        ) {
+          product.videos = [
+            ...(product.videos ||
+              []),
+            ...videos,
+          ].slice(
+            0,
+            MAX_VIDEOS
           );
         }
       }
 
       // --------------------------------------------------------
-      // NEW FILES
+      // Keep legacy image field synchronized
       // --------------------------------------------------------
 
-      const files =
-        req.files || [];
-
-      const newImages =
-        files.filter(
-          (file) =>
-            file.mimetype &&
-            file.mimetype.startsWith(
-              "image/"
-            )
-        );
-
-      const newVideos =
-        files.filter(
-          (file) =>
-            file.mimetype &&
-            file.mimetype.startsWith(
-              "video/"
-            )
-        );
-
-      // Upload new images
-      const uploadedImages =
-        await Promise.all(
-          newImages.map(
-            (file) =>
-              uploadToCloudinary(file)
-          )
-        );
-
-      // Upload new videos
-      const uploadedVideos =
-        await Promise.all(
-          newVideos.map(
-            (file) =>
-              uploadToCloudinary(file)
-          )
-        );
-
-      uploadedImages.forEach(
-        (result) => {
-          if (result.secure_url) {
-            product.images.push(
-              result.secure_url
-            );
-          }
-        }
-      );
-
-      uploadedVideos.forEach(
-        (result) => {
-          if (result.secure_url) {
-            product.videos.push(
-              result.secure_url
-            );
-          }
-        }
-      );
-
-      // Maximum 5 images
-      product.images =
-        product.images.slice(
-          0,
-          5
-        );
-
-      // Maximum 1 video
-      product.videos =
-        product.videos.slice(
-          0,
-          1
-        );
-
-      // First image
       product.image =
+        product.images &&
         product.images.length
           ? product.images[0]
           : "";
+
+      // --------------------------------------------------------
+      // Save
+      // --------------------------------------------------------
 
       await product.save();
 
@@ -791,32 +1650,24 @@ router.put(
         `✅ Product updated: ${product._id}`
       );
 
-      console.log(
-        "🖼️ Images:",
-        product.images.length
-      );
-
-      console.log(
-        "🎬 Videos:",
-        product.videos.length
-      );
-
       res.json({
         success: true,
-        product,
+
         message:
-          "Product updated",
+          "Product updated successfully",
+
+        product,
       });
-    } catch (err) {
+    } catch (error) {
       console.error(
         "❌ Error updating product:",
-        err
+        error
       );
 
       res.status(500).json({
         success: false,
         message:
-          err.message ||
+          error.message ||
           "Failed to update product",
       });
     }
@@ -833,10 +1684,15 @@ router.delete(
 
   async (req, res) => {
     try {
-      const { id } = req.params;
+      const { id } =
+        req.params;
+
+      // --------------------------------------------------------
+      // Validate ID
+      // --------------------------------------------------------
 
       if (
-        !mongoose.Types.ObjectId.isValid(id)
+        !isValidObjectId(id)
       ) {
         return res.status(404).json({
           success: false,
@@ -845,8 +1701,14 @@ router.delete(
         });
       }
 
+      // --------------------------------------------------------
+      // Find product
+      // --------------------------------------------------------
+
       const product =
-        await Product.findById(id);
+        await Product.findById(
+          id
+        );
 
       if (!product) {
         return res.status(404).json({
@@ -856,38 +1718,101 @@ router.delete(
         });
       }
 
-      const isOwner =
-        product.sellerId.toString() ===
-        req.userId.toString();
+      // --------------------------------------------------------
+      // Authentication
+      // --------------------------------------------------------
 
-      const isAdmin =
-        req.user?.role === "admin";
+      const currentUserId =
+        req.userId ||
+        req.user?.id ||
+        req.user?._id;
 
-      if (!isOwner && !isAdmin) {
-        return res.status(403).json({
+      if (!currentUserId) {
+        return res.status(401).json({
           success: false,
           message:
-            "Not authorized",
+            "Authentication required",
         });
       }
 
+      // --------------------------------------------------------
+      // Authorization
+      // --------------------------------------------------------
+
+      const isOwner =
+        product.sellerId &&
+        product.sellerId
+          .toString() ===
+          currentUserId.toString();
+
+      const isAdmin =
+        req.user?.role ===
+        "admin";
+
+      if (
+        !isOwner &&
+        !isAdmin
+      ) {
+        return res.status(403).json({
+          success: false,
+          message:
+            "Not authorized to delete this product",
+        });
+      }
+
+      // --------------------------------------------------------
+      // Delete Cloudinary images
+      // --------------------------------------------------------
+
+      for (
+        const image of
+          product.images || []
+      ) {
+        await deleteFromCloudinary(
+          image,
+          "image"
+        );
+      }
+
+      // --------------------------------------------------------
+      // Delete Cloudinary videos
+      // --------------------------------------------------------
+
+      for (
+        const video of
+          product.videos || []
+      ) {
+        await deleteFromCloudinary(
+          video,
+          "video"
+        );
+      }
+
+      // --------------------------------------------------------
+      // Delete database record
+      // --------------------------------------------------------
+
       await product.deleteOne();
+
+      console.log(
+        `🗑️ Product deleted: ${id}`
+      );
 
       res.json({
         success: true,
         message:
-          "Product deleted",
+          "Product deleted successfully",
       });
-    } catch (err) {
+    } catch (error) {
       console.error(
         "❌ Error deleting product:",
-        err
+        error
       );
 
       res.status(500).json({
         success: false,
         message:
-          err.message ||
+          error.message ||
           "Failed to delete product",
       });
     }
@@ -895,7 +1820,7 @@ router.delete(
 );
 
 // ============================================================
-// ✅ NEW: QUICK UPDATE PRODUCT STATUS (Mark as Sold / Active)
+// UPDATE PRODUCT STATUS
 // ============================================================
 
 router.patch(
@@ -904,64 +1829,141 @@ router.patch(
 
   async (req, res) => {
     try {
-      const { id } = req.params;
-      const { status } = req.body;
+      const { id } =
+        req.params;
 
+      const { status } =
+        req.body;
+
+      // --------------------------------------------------------
       // Validate status
-      const validStatuses = ['active', 'pending', 'inactive', 'sold'];
-      if (!status || !validStatuses.includes(status)) {
+      // --------------------------------------------------------
+
+      if (
+        !status ||
+        !VALID_STATUSES.includes(
+          status
+        )
+      ) {
         return res.status(400).json({
           success: false,
-          message: 'Invalid status. Allowed: active, pending, inactive, sold',
+          message:
+            "Invalid status. Allowed: active, pending, inactive, sold",
         });
       }
 
-      // Validate product ID
-      if (!mongoose.Types.ObjectId.isValid(id)) {
+      // --------------------------------------------------------
+      // Validate ID
+      // --------------------------------------------------------
+
+      if (
+        !isValidObjectId(id)
+      ) {
         return res.status(404).json({
           success: false,
-          message: 'Product not found',
+          message:
+            "Product not found",
         });
       }
 
+      // --------------------------------------------------------
       // Find product
-      const product = await Product.findById(id);
+      // --------------------------------------------------------
+
+      const product =
+        await Product.findById(
+          id
+        );
+
       if (!product) {
         return res.status(404).json({
           success: false,
-          message: 'Product not found',
+          message:
+            "Product not found",
         });
       }
 
-      // Check ownership (allow admin or product owner)
-      const isOwner = product.sellerId.toString() === req.userId.toString();
-      const isAdmin = req.user?.role === 'admin';
-      if (!isOwner && !isAdmin) {
+      // --------------------------------------------------------
+      // Current user
+      // --------------------------------------------------------
+
+      const currentUserId =
+        req.userId ||
+        req.user?.id ||
+        req.user?._id;
+
+      if (!currentUserId) {
+        return res.status(401).json({
+          success: false,
+          message:
+            "Authentication required",
+        });
+      }
+
+      // --------------------------------------------------------
+      // Authorization
+      // --------------------------------------------------------
+
+      const isOwner =
+        product.sellerId &&
+        product.sellerId
+          .toString() ===
+          currentUserId.toString();
+
+      const isAdmin =
+        req.user?.role ===
+        "admin";
+
+      if (
+        !isOwner &&
+        !isAdmin
+      ) {
         return res.status(403).json({
           success: false,
-          message: 'Not authorized to update this product',
+          message:
+            "Not authorized to update this product",
         });
       }
 
-      // Update status
-      product.status = status;
+      // --------------------------------------------------------
+      // Update
+      // --------------------------------------------------------
+
+      product.status =
+        status;
+
       await product.save();
 
-      console.log(`✅ Product ${id} status updated to ${status}`);
+      console.log(
+        `✅ Product ${id} status updated to ${status}`
+      );
 
       res.json({
         success: true,
-        message: `Product status updated to ${status}`,
+
+        message:
+          `Product status updated to ${status}`,
+
         product,
       });
-    } catch (err) {
-      console.error('❌ Error updating product status:', err);
+    } catch (error) {
+      console.error(
+        "❌ Error updating product status:",
+        error
+      );
+
       res.status(500).json({
         success: false,
-        message: err.message || 'Failed to update product status',
+        message:
+          error.message ||
+          "Failed to update product status",
       });
     }
   }
 );
+
+// ============================================================
+// EXPORT
+// ============================================================
 
 module.exports = router;

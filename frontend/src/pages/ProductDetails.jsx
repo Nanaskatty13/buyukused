@@ -822,15 +822,20 @@ const ProductDetails = () => {
   else if (isConsole) specsTitle = "🎮 Game Console Specifications";
   else if (isAccessory) specsTitle = "🎧 Accessories Specifications";
 
+  // ── Check for any spec to decide if the section should show ──
   const hasAnySpec = () => {
     const fields = [
       product.storage, product.color, product.condition,
       product.batteryHealth !== null && product.batteryHealth !== undefined,
-      product.faceId, product.simStatus,
       product.negotiation, product.swapAccepted, product.warranty,
       product.brand, product.model, product.processor, product.ram,
       product.screenSize, product.graphics, product.year, product.connectivity,
     ];
+
+    if (product.category === "Phones") {
+      fields.push(product.faceId, product.simStatus);
+    }
+
     return fields.some(f => f);
   };
 
@@ -1284,7 +1289,7 @@ const ProductDetails = () => {
             </div>
 
             {/* ======================================================
-                SPECIFICATIONS – with all categories
+                SPECIFICATIONS – with laptop tooltips
             ====================================================== */}
 
             {hasAnySpec() && (
@@ -1338,25 +1343,58 @@ const ProductDetails = () => {
                     </div>
                   )}
 
-                  {/* ── Laptop specific ── */}
+                  {/* ── Laptop specific with tooltips ── */}
                   {isLaptop && (
                     <>
                       {product.processor && (
                         <div>
-                          <strong>Processor:</strong>{" "}
+                          <strong
+                            title="The brain of the computer (e.g., Intel Core or AMD Ryzen); higher numbers and more cores mean better multitasking."
+                          >
+                            Processor:
+                          </strong>{" "}
                           {product.processor}
                         </div>
                       )}
                       {product.ram && (
                         <div>
-                          <strong>RAM:</strong>{" "}
+                          <strong
+                            title="Temporary storage for active tasks; 8GB handles basic work, 16GB+ is recommended for gaming and heavy creative work."
+                          >
+                            RAM:
+                          </strong>{" "}
                           {product.ram}
                         </div>
                       )}
                       {product.graphics && (
                         <div>
-                          <strong>Graphics:</strong>{" "}
+                          <strong
+                            title="Handles visual rendering, video editing, and 3D gaming."
+                          >
+                            Graphics:
+                          </strong>{" "}
                           {product.graphics}
+                        </div>
+                      )}
+                      {/* Storage and screen size are already common; we can add tooltips too */}
+                      {product.storage && (
+                        <div>
+                          <strong
+                            title="Solid‑state drives (SSD) offer fast boot and load times compared to older hard drives (HDD)."
+                          >
+                            Storage:
+                          </strong>{" "}
+                          {product.storage}
+                        </div>
+                      )}
+                      {product.screenSize && (
+                        <div>
+                          <strong
+                            title="Display resolution and size, such as Full HD (1920×1080) or WUXGA."
+                          >
+                            Screen Size:
+                          </strong>{" "}
+                          {product.screenSize}
                         </div>
                       )}
                     </>
@@ -1377,6 +1415,7 @@ const ProductDetails = () => {
                           {product.connectivity}
                         </div>
                       )}
+                      {/* Screen size and storage also show for tablets via common fields */}
                     </>
                   )}
 
@@ -1417,11 +1456,19 @@ const ProductDetails = () => {
                     </>
                   )}
 
-                  {/* ── Common fields (storage, color, etc.) ── */}
-                  {product.storage && (
+                  {/* ── Common fields (storage, color, condition, etc.) ── */}
+                  {/* For laptops, storage and screen size are already displayed above, so we skip duplicates if isLaptop */}
+                  {!isLaptop && product.storage && (
                     <div>
                       <strong>Storage:</strong>{" "}
                       {product.storage}
+                    </div>
+                  )}
+
+                  {!isLaptop && product.screenSize && (
+                    <div>
+                      <strong>Screen Size:</strong>{" "}
+                      {product.screenSize}
                     </div>
                   )}
 
@@ -1449,18 +1496,22 @@ const ProductDetails = () => {
                       </div>
                     )}
 
-                  {product.faceId && (
-                    <div>
-                      <strong>Face ID:</strong>{" "}
-                      {product.faceId}
-                    </div>
-                  )}
-
-                  {product.simStatus && (
-                    <div>
-                      <strong>SIM Status:</strong>{" "}
-                      {product.simStatus}
-                    </div>
+                  {/* ── Phone‑only fields ── */}
+                  {product.category === "Phones" && (
+                    <>
+                      {product.faceId && (
+                        <div>
+                          <strong>Face ID:</strong>{" "}
+                          {product.faceId}
+                        </div>
+                      )}
+                      {product.simStatus && (
+                        <div>
+                          <strong>SIM Status:</strong>{" "}
+                          {product.simStatus}
+                        </div>
+                      )}
+                    </>
                   )}
 
                   {product.negotiation && (
@@ -3676,7 +3727,7 @@ const ProductDetails = () => {
 
                 {/* ─── COMMON REMAINING FIELDS ────────────────────────── */}
 
-                {/* STORAGE */}
+                {/* STORAGE (but we already show it for laptops in specs, but we keep it in edit) */}
 
                 <div
                   className="form-group"
@@ -3871,8 +3922,7 @@ const ProductDetails = () => {
                   />
                 </div>
 
-                {/* FACE ID */}
-
+                {/* FACE ID – only for phones, but we keep it in edit form for all */}
                 <div
                   className="form-group"
                   style={{
@@ -3931,8 +3981,7 @@ const ProductDetails = () => {
                   </select>
                 </div>
 
-                {/* SIM */}
-
+                {/* SIM – only for phones, but we keep it in edit form for all */}
                 <div
                   className="form-group"
                   style={{

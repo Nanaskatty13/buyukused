@@ -3,9 +3,8 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { FcGoogle } from 'react-icons/fc';
 import { FaFacebookF } from 'react-icons/fa';
-import { AiFillEye, AiFillEyeInvisible } from 'react-icons/ai'; // 👁️ eye icons
+import { AiFillEye, AiFillEyeInvisible } from 'react-icons/ai';
 
-// 👇 Set this to your actual backend URL
 const API_URL = 'https://sell-platform2.onrender.com';
 
 const Register = () => {
@@ -23,6 +22,10 @@ const Register = () => {
   const { register } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+
+  // ─── Profile picture state ──────────────────────────────────────
+  const [profileImage, setProfileImage] = useState(null);
+  const [profileImagePreview, setProfileImagePreview] = useState(null);
 
   // ─── Password visibility toggles ────────────────────────────────
   const [showPassword, setShowPassword] = useState(false);
@@ -71,9 +74,48 @@ const Register = () => {
     }
   };
 
+  // ─── Profile picture handlers ──────────────────────────────────
+  const handleProfileImageChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('Please select a valid image file.');
+      e.target.value = '';
+      return;
+    }
+
+    if (file.size > 2 * 1024 * 1024) {
+      alert('Image size must be less than 2MB.');
+      e.target.value = '';
+      return;
+    }
+
+    setProfileImage(file);
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setProfileImagePreview(reader.result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const removeProfileImage = () => {
+    setProfileImage(null);
+    setProfileImagePreview(null);
+    const fileInput = document.getElementById('profileImageInput');
+    if (fileInput) fileInput.value = '';
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+
+    // ─── Frontend validation ──────────────────────────────────────
+    if (formData.name.trim().length < 2) {
+      setError('Name must be at least 2 characters long');
+      return;
+    }
 
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
@@ -84,7 +126,13 @@ const Register = () => {
 
     try {
       const { confirmPassword, ...registrationData } = formData;
-      const result = await register(registrationData);
+
+      const payload = { ...registrationData };
+      if (profileImagePreview) {
+        payload.profilePicture = profileImagePreview;
+      }
+
+      const result = await register(payload);
       if (result.success) {
         navigate(from, { replace: true });
       } else {
@@ -169,6 +217,7 @@ const Register = () => {
         </div>
 
         <form onSubmit={handleSubmit}>
+          {/* ─── FULL NAME ───────────────────────────────────────────── */}
           <div className="form-group" style={{ marginBottom: '16px' }}>
             <label style={{ display: 'block', fontWeight: 600, fontSize: '13px', marginBottom: '4px' }}>Full Name</label>
             <input
@@ -178,6 +227,7 @@ const Register = () => {
               onChange={handleChange}
               placeholder="John Doe"
               required
+              minLength="2"
               style={{
                 width: '100%',
                 padding: '12px 16px',
@@ -189,8 +239,12 @@ const Register = () => {
                 background: 'white',
               }}
             />
+            <small style={{ color: 'var(--gray-400)', display: 'block', marginTop: '4px' }}>
+              Minimum 2 characters
+            </small>
           </div>
 
+          {/* ─── EMAIL ───────────────────────────────────────────────── */}
           <div className="form-group" style={{ marginBottom: '16px' }}>
             <label style={{ display: 'block', fontWeight: 600, fontSize: '13px', marginBottom: '4px' }}>Email</label>
             <input
@@ -213,7 +267,7 @@ const Register = () => {
             />
           </div>
 
-          {/* ─── PASSWORD FIELD WITH TOGGLE ─── */}
+          {/* ─── PASSWORD WITH TOGGLE ───────────────────────────────── */}
           <div className="form-group" style={{ marginBottom: '16px' }}>
             <label style={{ display: 'block', fontWeight: 600, fontSize: '13px', marginBottom: '4px' }}>Password</label>
             <div style={{ position: 'relative' }}>
@@ -284,7 +338,7 @@ const Register = () => {
             )}
           </div>
 
-          {/* ─── CONFIRM PASSWORD FIELD WITH TOGGLE ─── */}
+          {/* ─── CONFIRM PASSWORD WITH TOGGLE ───────────────────────── */}
           <div className="form-group" style={{ marginBottom: '16px' }}>
             <label style={{ display: 'block', fontWeight: 600, fontSize: '13px', marginBottom: '4px' }}>Confirm Password</label>
             <div style={{ position: 'relative' }}>
@@ -338,6 +392,7 @@ const Register = () => {
             )}
           </div>
 
+          {/* ─── PHONE ────────────────────────────────────────────────── */}
           <div className="form-group" style={{ marginBottom: '16px' }}>
             <label style={{ display: 'block', fontWeight: 600, fontSize: '13px', marginBottom: '4px' }}>Phone</label>
             <input
@@ -359,6 +414,61 @@ const Register = () => {
             />
           </div>
 
+          {/* ─── PROFILE PICTURE UPLOAD ─────────────────────────────── */}
+          <div className="form-group" style={{ marginBottom: '16px' }}>
+            <label style={{ display: 'block', fontWeight: 600, fontSize: '13px', marginBottom: '4px' }}>
+              Profile Picture <span style={{ fontWeight: 400, color: 'var(--gray-400)' }}>(optional)</span>
+            </label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+              {profileImagePreview && (
+                <div style={{ position: 'relative', width: '64px', height: '64px', borderRadius: '50%', overflow: 'hidden', border: '2px solid var(--gray-200)' }}>
+                  <img src={profileImagePreview} alt="Profile preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <button
+                    type="button"
+                    onClick={removeProfileImage}
+                    style={{
+                      position: 'absolute',
+                      top: '-4px',
+                      right: '-4px',
+                      background: '#dc2626',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '50%',
+                      width: '20px',
+                      height: '20px',
+                      fontSize: '12px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
+              <input
+                id="profileImageInput"
+                type="file"
+                accept="image/jpeg,image/png,image/gif,image/webp"
+                onChange={handleProfileImageChange}
+                style={{
+                  flex: 1,
+                  padding: '8px 12px',
+                  border: '1.5px solid var(--gray-200)',
+                  borderRadius: 'var(--radius-md)',
+                  fontSize: '14px',
+                  fontFamily: 'inherit',
+                  background: 'white',
+                }}
+              />
+            </div>
+            <small style={{ color: 'var(--gray-400)', display: 'block', marginTop: '4px' }}>
+              Max size 2MB. Supported: JPG, PNG, GIF, WebP
+            </small>
+          </div>
+
+          {/* ─── ROLE SELECTION ──────────────────────────────────────── */}
           <div className="form-group" style={{ marginBottom: '20px' }}>
             <label style={{ display: 'block', fontWeight: 600, fontSize: '13px', marginBottom: '6px' }}>
               I want to register as:

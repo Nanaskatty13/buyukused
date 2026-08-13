@@ -30,7 +30,71 @@ const ProductCard = ({ product, onStatusToggle }) => {
     product.sellerId === user._id
   );
 
-  // Handle "Mark as Sold" / "Mark Available"
+  // ─── Helper: render category‑specific specs ──────────────────
+  const renderCategorySpecs = () => {
+    const specs = [];
+    const category = product.category;
+
+    // Laptops
+    if (category === 'Laptops') {
+      if (product.brand) specs.push({ icon: '🏷️', label: product.brand });
+      if (product.model) specs.push({ icon: '📟', label: product.model });
+      if (product.processor) specs.push({ icon: '⚡', label: product.processor });
+      if (product.ram) specs.push({ icon: '🧠', label: product.ram });
+      if (product.graphics) specs.push({ icon: '🖥️', label: product.graphics });
+      if (product.screenSize) specs.push({ icon: '📐', label: product.screenSize });
+    }
+    // Tablets
+    else if (category === 'Tablets') {
+      if (product.brand) specs.push({ icon: '🏷️', label: product.brand });
+      if (product.model) specs.push({ icon: '📟', label: product.model });
+      if (product.year) specs.push({ icon: '📅', label: product.year });
+      if (product.connectivity) specs.push({ icon: '📶', label: product.connectivity });
+      if (product.screenSize) specs.push({ icon: '📐', label: product.screenSize });
+    }
+    // TVs
+    else if (category === 'TVs' || category === 'TV') {
+      if (product.brand) specs.push({ icon: '🏷️', label: product.brand });
+      if (product.model) specs.push({ icon: '📟', label: product.model });
+      if (product.screenSize) specs.push({ icon: '📐', label: product.screenSize });
+      if (product.connectivity) specs.push({ icon: '📶', label: product.connectivity });
+    }
+    // Game Consoles
+    else if (category === 'Game Consoles' || category === 'Consoles') {
+      if (product.brand) specs.push({ icon: '🏷️', label: product.brand });
+      if (product.model) specs.push({ icon: '📟', label: product.model });
+      if (product.connectivity) specs.push({ icon: '📶', label: product.connectivity });
+    }
+    // Accessories
+    else if (category === 'Accessories') {
+      if (product.brand) specs.push({ icon: '🏷️', label: product.brand });
+      if (product.model) specs.push({ icon: '📟', label: product.model });
+      if (product.connectivity) specs.push({ icon: '📶', label: product.connectivity });
+    }
+    // Phones (keep existing + additional)
+    else if (category === 'Phones') {
+      if (product.brand) specs.push({ icon: '🏷️', label: product.brand });
+      if (product.model) specs.push({ icon: '📟', label: product.model });
+      if (product.batteryHealth) specs.push({ icon: '🔋', label: `${product.batteryHealth}%` });
+      if (product.faceId) specs.push({ icon: '😊', label: product.faceId });
+      if (product.simStatus) specs.push({ icon: '📶', label: product.simStatus });
+    }
+
+    // Common: storage (if not already present via category)
+    if (product.storage && !specs.some(s => s.label === product.storage)) {
+      specs.push({ icon: '💾', label: product.storage });
+    }
+
+    // Condition (if not already in specs)
+    if (product.condition && !specs.some(s => s.label === product.condition)) {
+      specs.push({ icon: '📋', label: product.condition });
+    }
+
+    // Limit to first 4 to keep card clean
+    return specs.slice(0, 4);
+  };
+
+  // ─── Handle "Mark as Sold" / "Mark Available" ──────────────
   const handleMarkAsSold = async (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -230,6 +294,7 @@ const ProductCard = ({ product, onStatusToggle }) => {
           )}
         </div>
 
+        {/* ─── Category‑specific specs ─── */}
         <div
           style={{
             display: 'flex',
@@ -240,14 +305,27 @@ const ProductCard = ({ product, onStatusToggle }) => {
             marginBottom: '6px',
           }}
         >
-          {product.storage && (
-            <span style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
-              <i className="fas fa-hdd"></i> {product.storage}
+          {renderCategorySpecs().map((spec, idx) => (
+            <span key={idx} style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+              {spec.icon} {spec.label}
             </span>
-          )}
-          {product.simStatus && (
+          ))}
+        </div>
+
+        {/* ─── Common extra fields ─── */}
+        <div
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: '4px 10px',
+            fontSize: '11px',
+            color: 'var(--gray-600)',
+            marginBottom: '6px',
+          }}
+        >
+          {product.warranty && (
             <span style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
-              <i className="fas fa-sim-card"></i> {product.simStatus}
+              <i className="fas fa-shield-alt"></i> {product.warranty}
             </span>
           )}
           <span style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>

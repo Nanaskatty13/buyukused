@@ -26,7 +26,7 @@ const FeaturedProducts = ({ products = [], title = 'Latest Ads', link = '/produc
               color: 'var(--primary)',
               fontWeight: 600,
               fontSize: '14px',
-            }}>View All <i className="fas fa-arrow-right"></i></a>
+            }}>View All Products <i className="fas fa-arrow-right"></i></a>
           </div>
           <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--gray-500)' }}>
             No products available at the moment.
@@ -55,7 +55,7 @@ const FeaturedProducts = ({ products = [], title = 'Latest Ads', link = '/produc
             color: 'var(--primary)',
             fontWeight: 600,
             fontSize: '14px',
-          }}>View All <i className="fas fa-arrow-right"></i></a>
+          }}>View All Products <i className="fas fa-arrow-right"></i></a>
         </div>
 
         <div className="products-grid" style={{
