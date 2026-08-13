@@ -13,6 +13,49 @@ import { useCart } from "../context/CartContext";
 
 import SoldBadge from "../components/SoldBadge";
 
+// ── Laptop constants ──────────────────────────────────────────────
+import {
+  LAPTOP_BRANDS,
+  getModelsByBrand,
+  PROCESSOR_OPTIONS,
+  RAM_OPTIONS,
+  SCREEN_SIZE_OPTIONS,
+  GRAPHICS_OPTIONS,
+} from "../components/LaptopForm";
+
+// ── Tablet constants ──────────────────────────────────────────────
+import {
+  TABLET_BRANDS,
+  getTabletModelsByBrand,
+  TABLET_COLORS,
+  TABLET_SCREEN_SIZES,
+  CONNECTIVITY_OPTIONS,
+  YEAR_OPTIONS,
+} from "../components/TabletForm";
+
+// ── Brand lists for TV, Consoles, Accessories ──────────────────
+const TV_BRANDS = ['Samsung', 'LG', 'Sony', 'TCL', 'Hisense', 'Panasonic', 'Philips', 'Vizio', 'Sharp', 'Other'];
+const CONSOLE_BRANDS = ['Sony PlayStation', 'Microsoft Xbox', 'Nintendo', 'Sega', 'Atari', 'Other'];
+const ACCESSORY_BRANDS = ['Apple', 'Samsung', 'Sony', 'Bose', 'Beats', 'JBL', 'Logitech', 'Razer', 'Corsair', 'SteelSeries', 'HyperX', 'Other'];
+
+// ── Unified colour list (iPhone colours + tablet colours) ──────
+const iphoneColors = [
+  "Space Gray", "Orange", "Deep Blue", "Silver", "Gold", "Black", "White",
+  "Blue", "Coral", "Yellow", "Red", "Purple", "Green", "Midnight Green",
+  "Graphite", "Pacific Blue", "Midnight", "Starlight", "Pink", "Sierra Blue",
+  "Alpine Green", "Deep Purple", "Space Black", "Black Titanium", "White Titanium",
+  "Blue Titanium", "Natural Titanium", "Desert Titanium", "Teal", "Ultramarine",
+  "Product Red", "Rose Gold", "Matte Black", "Jet Black", "Burgundy", "Crimson",
+];
+
+const ALL_COLORS = [
+  ...new Set([...iphoneColors, ...TABLET_COLORS]),
+].sort((a, b) => a.localeCompare(b));
+
+// ================================================================
+// COMPONENT
+// ================================================================
+
 const ProductDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -57,6 +100,16 @@ const ProductDetails = () => {
     negotiation: false,
     swapAccepted: false,
     warranty: "",
+    // Laptop & Tablet & other electronics
+    brand: "",
+    model: "",
+    processor: "",
+    ram: "",
+    screenSize: "",
+    graphics: "",
+    // Tablet specific
+    year: "",
+    connectivity: "",
   });
 
   const [imagesToKeep, setImagesToKeep] = useState([]);
@@ -101,8 +154,7 @@ const ProductDetails = () => {
             status: p.status || "active",
             sellerPhone: p.sellerPhone || "",
             batteryHealth:
-              p.batteryHealth !== null &&
-              p.batteryHealth !== undefined
+              p.batteryHealth !== null && p.batteryHealth !== undefined
                 ? p.batteryHealth
                 : "",
             faceId: p.faceId || "",
@@ -110,6 +162,15 @@ const ProductDetails = () => {
             negotiation: Boolean(p.negotiation),
             swapAccepted: Boolean(p.swapAccepted),
             warranty: p.warranty || "",
+            // Laptop / Tablet / TV / Console / Accessory fields
+            brand: p.brand || "",
+            model: p.model || "",
+            processor: p.processor || "",
+            ram: p.ram || "",
+            screenSize: p.screenSize || "",
+            graphics: p.graphics || "",
+            year: p.year || "",
+            connectivity: p.connectivity || "",
           });
 
           const existingImages =
@@ -126,9 +187,7 @@ const ProductDetails = () => {
       } catch (err) {
         console.error("Failed to load product:", err);
 
-        setError(
-          err?.message || "Failed to load product."
-        );
+        setError(err?.message || "Failed to load product.");
       } finally {
         setLoading(false);
       }
@@ -413,6 +472,15 @@ const ProductDetails = () => {
             ),
           warranty:
             updated.product.warranty || "",
+          // Laptop / Tablet / TV / Console / Accessory
+          brand: updated.product.brand || "",
+          model: updated.product.model || "",
+          processor: updated.product.processor || "",
+          ram: updated.product.ram || "",
+          screenSize: updated.product.screenSize || "",
+          graphics: updated.product.graphics || "",
+          year: updated.product.year || "",
+          connectivity: updated.product.connectivity || "",
         });
       }
 
@@ -500,11 +568,10 @@ const ProductDetails = () => {
   };
 
   // ================================================================
-  // WHATSAPP CONTACT SELLER
+  // WHATSAPP CONTACT SELLER – simple and reliable
   // ================================================================
 
   const handleContact = () => {
-    // Product sold
     if (product?.status === "sold") {
       alert(
         "Sorry, this item has already been sold."
@@ -512,27 +579,19 @@ const ProductDetails = () => {
       return;
     }
 
-    // Require login
     if (!user) {
       navigate("/login");
       return;
     }
 
-    // Get seller phone
     const rawPhone =
       product?.sellerPhone || "";
 
-    // Remove spaces, +, -, brackets, etc.
     let phone =
       String(rawPhone).replace(
         /\D/g,
         ""
       );
-
-    // Ghana local format:
-    // 0541234567
-    // becomes:
-    // 233541234567
 
     if (
       phone.startsWith("0") &&
@@ -543,14 +602,6 @@ const ProductDetails = () => {
         phone.substring(1);
     }
 
-    // Ghana number with 233 already
-    if (
-      phone.startsWith("233")
-    ) {
-      // Already correct
-    }
-
-    // Invalid number
     if (
       !phone ||
       phone.length < 10
@@ -560,10 +611,6 @@ const ProductDetails = () => {
       );
       return;
     }
-
-    // ============================================================
-    // PRICE
-    // ============================================================
 
     const price = Number(
       product?.price || 0
@@ -579,10 +626,6 @@ const ProductDetails = () => {
         }
       ).format(price);
 
-    // ============================================================
-    // PRODUCT TITLE
-    // ============================================================
-
     let titleWithSpecs =
       `"${product?.title || "this item"}"`;
 
@@ -590,10 +633,6 @@ const ProductDetails = () => {
       titleWithSpecs =
         `"${product.title}" (${product.storage})`;
     }
-
-    // ============================================================
-    // WHATSAPP MESSAGE
-    // ============================================================
 
     const message =
       `Hello, I'm interested in ${titleWithSpecs} ` +
@@ -606,20 +645,9 @@ const ProductDetails = () => {
         message
       );
 
-    // ============================================================
-    // WHATSAPP URL
-    // ============================================================
-
+    // ── Always use the web‑based link ──
     const whatsappUrl =
       `https://wa.me/${phone}?text=${encodedMessage}`;
-
-    // ============================================================
-    // MOBILE / IPHONE
-    // ============================================================
-
-    // Use the normal HTTPS WhatsApp URL.
-    // This allows iOS/Android to decide whether
-    // to open the WhatsApp application.
 
     window.location.href =
       whatsappUrl;
@@ -780,6 +808,31 @@ const ProductDetails = () => {
 
   const isSold =
     product.status === "sold";
+
+  const isLaptop = product.category === "Laptops";
+  const isTablet = product.category === "Tablets";
+  const isTV = product.category === "TVs" || product.category === "TV";
+  const isConsole = product.category === "Game Consoles" || product.category === "Consoles";
+  const isAccessory = product.category === "Accessories";
+
+  let specsTitle = "📋 Specifications";
+  if (isLaptop) specsTitle = "💻 Laptop Specifications";
+  else if (isTablet) specsTitle = "📲 Tablet Specifications";
+  else if (isTV) specsTitle = "📺 TV Specifications";
+  else if (isConsole) specsTitle = "🎮 Game Console Specifications";
+  else if (isAccessory) specsTitle = "🎧 Accessories Specifications";
+
+  const hasAnySpec = () => {
+    const fields = [
+      product.storage, product.color, product.condition,
+      product.batteryHealth !== null && product.batteryHealth !== undefined,
+      product.faceId, product.simStatus,
+      product.negotiation, product.swapAccepted, product.warranty,
+      product.brand, product.model, product.processor, product.ram,
+      product.screenSize, product.graphics, product.year, product.connectivity,
+    ];
+    return fields.some(f => f);
+  };
 
   // ================================================================
   // RENDER
@@ -1231,19 +1284,10 @@ const ProductDetails = () => {
             </div>
 
             {/* ======================================================
-                SPECIFICATIONS
+                SPECIFICATIONS – with all categories
             ====================================================== */}
 
-            {(product.storage ||
-              product.color ||
-              product.condition ||
-              product.batteryHealth !==
-                null ||
-              product.faceId ||
-              product.simStatus ||
-              product.negotiation ||
-              product.swapAccepted ||
-              product.warranty) && (
+            {hasAnySpec() && (
               <div
                 className="specs"
                 style={{
@@ -1267,7 +1311,7 @@ const ProductDetails = () => {
                       "12px",
                   }}
                 >
-                  📋 Specifications
+                  {specsTitle}
                 </h3>
 
                 <div
@@ -1280,36 +1324,118 @@ const ProductDetails = () => {
                     gap: "8px",
                   }}
                 >
+                  {/* ── Common: Brand & Model ── */}
+                  {product.brand && (
+                    <div>
+                      <strong>Brand:</strong>{" "}
+                      {product.brand}
+                    </div>
+                  )}
+                  {product.model && (
+                    <div>
+                      <strong>Model:</strong>{" "}
+                      {product.model}
+                    </div>
+                  )}
+
+                  {/* ── Laptop specific ── */}
+                  {isLaptop && (
+                    <>
+                      {product.processor && (
+                        <div>
+                          <strong>Processor:</strong>{" "}
+                          {product.processor}
+                        </div>
+                      )}
+                      {product.ram && (
+                        <div>
+                          <strong>RAM:</strong>{" "}
+                          {product.ram}
+                        </div>
+                      )}
+                      {product.graphics && (
+                        <div>
+                          <strong>Graphics:</strong>{" "}
+                          {product.graphics}
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {/* ── Tablet specific ── */}
+                  {isTablet && (
+                    <>
+                      {product.year && (
+                        <div>
+                          <strong>Year:</strong>{" "}
+                          {product.year}
+                        </div>
+                      )}
+                      {product.connectivity && (
+                        <div>
+                          <strong>Connectivity:</strong>{" "}
+                          {product.connectivity}
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {/* ── TV specific ── */}
+                  {isTV && (
+                    <>
+                      {product.screenSize && (
+                        <div>
+                          <strong>Screen Size:</strong>{" "}
+                          {product.screenSize}
+                        </div>
+                      )}
+                      {product.connectivity && (
+                        <div>
+                          <strong>Connectivity:</strong>{" "}
+                          {product.connectivity}
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {/* ── Game Console specific ── */}
+                  {isConsole && (
+                    <>
+                      {product.connectivity && (
+                        <div>
+                          <strong>Connectivity:</strong>{" "}
+                          {product.connectivity}
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {/* ── Accessories specific ── */}
+                  {isAccessory && (
+                    <>
+                      {/* No extra fields, but could add compatibility later */}
+                    </>
+                  )}
+
+                  {/* ── Common fields (storage, color, etc.) ── */}
                   {product.storage && (
                     <div>
-                      <strong>
-                        Storage:
-                      </strong>{" "}
-                      {
-                        product.storage
-                      }
+                      <strong>Storage:</strong>{" "}
+                      {product.storage}
                     </div>
                   )}
 
                   {product.color && (
                     <div>
-                      <strong>
-                        Color:
-                      </strong>{" "}
-                      {
-                        product.color
-                      }
+                      <strong>Color:</strong>{" "}
+                      {product.color}
                     </div>
                   )}
 
                   {product.condition && (
                     <div>
-                      <strong>
-                        Condition:
-                      </strong>{" "}
-                      {
-                        product.condition
-                      }
+                      <strong>Condition:</strong>{" "}
+                      {product.condition}
                     </div>
                   )}
 
@@ -1318,65 +1444,41 @@ const ProductDetails = () => {
                     product.batteryHealth !==
                       undefined && (
                       <div>
-                        <strong>
-                          Battery
-                          Health:
-                        </strong>{" "}
-                        {
-                          product.batteryHealth
-                        }
-                        %
+                        <strong>Battery Health:</strong>{" "}
+                        {product.batteryHealth}%
                       </div>
                     )}
 
                   {product.faceId && (
                     <div>
-                      <strong>
-                        Face ID:
-                      </strong>{" "}
-                      {
-                        product.faceId
-                      }
+                      <strong>Face ID:</strong>{" "}
+                      {product.faceId}
                     </div>
                   )}
 
                   {product.simStatus && (
                     <div>
-                      <strong>
-                        SIM Status:
-                      </strong>{" "}
-                      {
-                        product.simStatus
-                      }
+                      <strong>SIM Status:</strong>{" "}
+                      {product.simStatus}
                     </div>
                   )}
 
                   {product.negotiation && (
                     <div>
-                      <strong>
-                        Negotiable:
-                      </strong>{" "}
-                      Yes
+                      <strong>Negotiable:</strong> Yes
                     </div>
                   )}
 
                   {product.swapAccepted && (
                     <div>
-                      <strong>
-                        Swap Accepted:
-                      </strong>{" "}
-                      Yes
+                      <strong>Swap Accepted:</strong> Yes
                     </div>
                   )}
 
                   {product.warranty && (
                     <div>
-                      <strong>
-                        Warranty:
-                      </strong>{" "}
-                      {
-                        product.warranty
-                      }
+                      <strong>Warranty:</strong>{" "}
+                      {product.warranty}
                     </div>
                   )}
                 </div>
@@ -1743,7 +1845,7 @@ const ProductDetails = () => {
         </div>
 
         {/* ============================================================
-            EDIT MODAL
+            EDIT MODAL – with all categories and ALL_COLORS
         ============================================================ */}
 
         {showEditModal && (
@@ -2068,6 +2170,21 @@ const ProductDetails = () => {
                     <option value="Phones">
                       Phones
                     </option>
+                    <option value="Laptops">
+                      Laptops
+                    </option>
+                    <option value="Tablets">
+                      Tablets
+                    </option>
+                    <option value="TVs">
+                      TVs
+                    </option>
+                    <option value="Game Consoles">
+                      Game Consoles
+                    </option>
+                    <option value="Accessories">
+                      Accessories
+                    </option>
                     <option value="Real Estate">
                       Real Estate
                     </option>
@@ -2253,6 +2370,1312 @@ const ProductDetails = () => {
                   </select>
                 </div>
 
+                {/* ─── CATEGORY‑SPECIFIC SECTIONS ────────────────────────── */}
+
+                {/* LAPTOP */}
+                {editForm.category === "Laptops" && (
+                  <>
+                    <div
+                      className="form-group"
+                      style={{
+                        marginBottom:
+                          "12px",
+                      }}
+                    >
+                      <label
+                        style={{
+                          display:
+                            "block",
+                          fontWeight:
+                            600,
+                          fontSize:
+                            "13px",
+                          marginBottom:
+                            "4px",
+                        }}
+                      >
+                        Brand
+                      </label>
+
+                      <select
+                        name="brand"
+                        value={
+                          editForm.brand
+                        }
+                        onChange={
+                          handleEditChange
+                        }
+                        style={{
+                          width:
+                            "100%",
+                          padding:
+                            "10px 14px",
+                          border:
+                            "1.5px solid var(--gray-200)",
+                          borderRadius:
+                            "var(--radius-md)",
+                          fontSize:
+                            "14px",
+                        }}
+                      >
+                        <option value="">
+                          Select brand
+                        </option>
+                        {LAPTOP_BRANDS.map(
+                          (brand) => (
+                            <option
+                              key={
+                                brand
+                              }
+                              value={
+                                brand
+                              }
+                            >
+                              {brand}
+                            </option>
+                          )
+                        )}
+                      </select>
+                    </div>
+
+                    <div
+                      className="form-group"
+                      style={{
+                        marginBottom:
+                          "12px",
+                      }}
+                    >
+                      <label
+                        style={{
+                          display:
+                            "block",
+                          fontWeight:
+                            600,
+                          fontSize:
+                            "13px",
+                          marginBottom:
+                            "4px",
+                        }}
+                      >
+                        Model
+                      </label>
+
+                      <select
+                        name="model"
+                        value={
+                          editForm.model
+                        }
+                        onChange={
+                          handleEditChange
+                        }
+                        style={{
+                          width:
+                            "100%",
+                          padding:
+                            "10px 14px",
+                          border:
+                            "1.5px solid var(--gray-200)",
+                          borderRadius:
+                            "var(--radius-md)",
+                          fontSize:
+                            "14px",
+                        }}
+                        disabled={
+                          !editForm.brand
+                        }
+                      >
+                        <option value="">
+                          {editForm.brand
+                            ? "Select model"
+                            : "Select a brand first"}
+                        </option>
+                        {getModelsByBrand(
+                          editForm.brand
+                        ).map(
+                          (model) => (
+                            <option
+                              key={
+                                model
+                              }
+                              value={
+                                model
+                              }
+                            >
+                              {model}
+                            </option>
+                          )
+                        )}
+                      </select>
+                    </div>
+
+                    <div
+                      className="form-group"
+                      style={{
+                        marginBottom:
+                          "12px",
+                      }}
+                    >
+                      <label
+                        style={{
+                          display:
+                            "block",
+                          fontWeight:
+                            600,
+                          fontSize:
+                            "13px",
+                          marginBottom:
+                            "4px",
+                        }}
+                      >
+                        Processor
+                      </label>
+
+                      <select
+                        name="processor"
+                        value={
+                          editForm.processor
+                        }
+                        onChange={
+                          handleEditChange
+                        }
+                        style={{
+                          width:
+                            "100%",
+                          padding:
+                            "10px 14px",
+                          border:
+                            "1.5px solid var(--gray-200)",
+                          borderRadius:
+                            "var(--radius-md)",
+                          fontSize:
+                            "14px",
+                        }}
+                      >
+                        <option value="">
+                          Select processor
+                        </option>
+                        {PROCESSOR_OPTIONS.map(
+                          (option) => (
+                            <option
+                              key={
+                                option
+                              }
+                              value={
+                                option
+                              }
+                            >
+                              {option}
+                            </option>
+                          )
+                        )}
+                      </select>
+                    </div>
+
+                    <div
+                      className="form-group"
+                      style={{
+                        marginBottom:
+                          "12px",
+                      }}
+                    >
+                      <label
+                        style={{
+                          display:
+                            "block",
+                          fontWeight:
+                            600,
+                          fontSize:
+                            "13px",
+                          marginBottom:
+                            "4px",
+                        }}
+                      >
+                        RAM
+                      </label>
+
+                      <select
+                        name="ram"
+                        value={
+                          editForm.ram
+                        }
+                        onChange={
+                          handleEditChange
+                        }
+                        style={{
+                          width:
+                            "100%",
+                          padding:
+                            "10px 14px",
+                          border:
+                            "1.5px solid var(--gray-200)",
+                          borderRadius:
+                            "var(--radius-md)",
+                          fontSize:
+                            "14px",
+                        }}
+                      >
+                        <option value="">
+                          Select RAM
+                        </option>
+                        {RAM_OPTIONS.map(
+                          (option) => (
+                            <option
+                              key={
+                                option
+                              }
+                              value={
+                                option
+                              }
+                            >
+                              {option}
+                            </option>
+                          )
+                        )}
+                      </select>
+                    </div>
+
+                    <div
+                      className="form-group"
+                      style={{
+                        marginBottom:
+                          "12px",
+                      }}
+                    >
+                      <label
+                        style={{
+                          display:
+                            "block",
+                          fontWeight:
+                            600,
+                          fontSize:
+                            "13px",
+                          marginBottom:
+                            "4px",
+                        }}
+                      >
+                        Screen Size
+                      </label>
+
+                      <select
+                        name="screenSize"
+                        value={
+                          editForm.screenSize
+                        }
+                        onChange={
+                          handleEditChange
+                        }
+                        style={{
+                          width:
+                            "100%",
+                          padding:
+                            "10px 14px",
+                          border:
+                            "1.5px solid var(--gray-200)",
+                          borderRadius:
+                            "var(--radius-md)",
+                          fontSize:
+                            "14px",
+                        }}
+                      >
+                        <option value="">
+                          Select screen size
+                        </option>
+                        {SCREEN_SIZE_OPTIONS.map(
+                          (option) => (
+                            <option
+                              key={
+                                option
+                              }
+                              value={
+                                option
+                              }
+                            >
+                              {option}
+                            </option>
+                          )
+                        )}
+                      </select>
+                    </div>
+
+                    <div
+                      className="form-group"
+                      style={{
+                        marginBottom:
+                          "12px",
+                      }}
+                    >
+                      <label
+                        style={{
+                          display:
+                            "block",
+                          fontWeight:
+                            600,
+                          fontSize:
+                            "13px",
+                          marginBottom:
+                            "4px",
+                        }}
+                      >
+                        Graphics
+                      </label>
+
+                      <select
+                        name="graphics"
+                        value={
+                          editForm.graphics
+                        }
+                        onChange={
+                          handleEditChange
+                        }
+                        style={{
+                          width:
+                            "100%",
+                          padding:
+                            "10px 14px",
+                          border:
+                            "1.5px solid var(--gray-200)",
+                          borderRadius:
+                            "var(--radius-md)",
+                          fontSize:
+                            "14px",
+                        }}
+                      >
+                        <option value="">
+                          Select graphics
+                        </option>
+                        {GRAPHICS_OPTIONS.map(
+                          (option) => (
+                            <option
+                              key={
+                                option
+                              }
+                              value={
+                                option
+                              }
+                            >
+                              {option}
+                            </option>
+                          )
+                        )}
+                      </select>
+                    </div>
+                  </>
+                )}
+
+                {/* TABLET */}
+                {editForm.category === "Tablets" && (
+                  <>
+                    <div
+                      className="form-group"
+                      style={{
+                        marginBottom:
+                          "12px",
+                      }}
+                    >
+                      <label
+                        style={{
+                          display:
+                            "block",
+                          fontWeight:
+                            600,
+                          fontSize:
+                            "13px",
+                          marginBottom:
+                            "4px",
+                        }}
+                      >
+                        Brand
+                      </label>
+
+                      <select
+                        name="brand"
+                        value={
+                          editForm.brand
+                        }
+                        onChange={
+                          handleEditChange
+                        }
+                        style={{
+                          width:
+                            "100%",
+                          padding:
+                            "10px 14px",
+                          border:
+                            "1.5px solid var(--gray-200)",
+                          borderRadius:
+                            "var(--radius-md)",
+                          fontSize:
+                            "14px",
+                        }}
+                      >
+                        <option value="">
+                          Select brand
+                        </option>
+                        {TABLET_BRANDS.map(
+                          (brand) => (
+                            <option
+                              key={
+                                brand
+                              }
+                              value={
+                                brand
+                              }
+                            >
+                              {brand}
+                            </option>
+                          )
+                        )}
+                      </select>
+                    </div>
+
+                    <div
+                      className="form-group"
+                      style={{
+                        marginBottom:
+                          "12px",
+                      }}
+                    >
+                      <label
+                        style={{
+                          display:
+                            "block",
+                          fontWeight:
+                            600,
+                          fontSize:
+                            "13px",
+                          marginBottom:
+                            "4px",
+                        }}
+                      >
+                        Model
+                      </label>
+
+                      <select
+                        name="model"
+                        value={
+                          editForm.model
+                        }
+                        onChange={
+                          handleEditChange
+                        }
+                        style={{
+                          width:
+                            "100%",
+                          padding:
+                            "10px 14px",
+                          border:
+                            "1.5px solid var(--gray-200)",
+                          borderRadius:
+                            "var(--radius-md)",
+                          fontSize:
+                            "14px",
+                        }}
+                        disabled={
+                          !editForm.brand
+                        }
+                      >
+                        <option value="">
+                          {editForm.brand
+                            ? "Select model"
+                            : "Select a brand first"}
+                        </option>
+                        {getTabletModelsByBrand(
+                          editForm.brand
+                        ).map(
+                          (model) => (
+                            <option
+                              key={
+                                model
+                              }
+                              value={
+                                model
+                              }
+                            >
+                              {model}
+                            </option>
+                          )
+                        )}
+                      </select>
+                    </div>
+
+                    <div
+                      className="form-group"
+                      style={{
+                        marginBottom:
+                          "12px",
+                      }}
+                    >
+                      <label
+                        style={{
+                          display:
+                            "block",
+                          fontWeight:
+                            600,
+                          fontSize:
+                            "13px",
+                          marginBottom:
+                            "4px",
+                        }}
+                      >
+                        Year
+                      </label>
+
+                      <select
+                        name="year"
+                        value={
+                          editForm.year
+                        }
+                        onChange={
+                          handleEditChange
+                        }
+                        style={{
+                          width:
+                            "100%",
+                          padding:
+                            "10px 14px",
+                          border:
+                            "1.5px solid var(--gray-200)",
+                          borderRadius:
+                            "var(--radius-md)",
+                          fontSize:
+                            "14px",
+                        }}
+                      >
+                        <option value="">
+                          Select year
+                        </option>
+                        {YEAR_OPTIONS.map(
+                          (year) => (
+                            <option
+                              key={year}
+                              value={year}
+                            >
+                              {year}
+                            </option>
+                          )
+                        )}
+                      </select>
+                    </div>
+
+                    <div
+                      className="form-group"
+                      style={{
+                        marginBottom:
+                          "12px",
+                      }}
+                    >
+                      <label
+                        style={{
+                          display:
+                            "block",
+                          fontWeight:
+                            600,
+                          fontSize:
+                            "13px",
+                          marginBottom:
+                            "4px",
+                        }}
+                      >
+                        Connectivity
+                      </label>
+
+                      <select
+                        name="connectivity"
+                        value={
+                          editForm.connectivity
+                        }
+                        onChange={
+                          handleEditChange
+                        }
+                        style={{
+                          width:
+                            "100%",
+                          padding:
+                            "10px 14px",
+                          border:
+                            "1.5px solid var(--gray-200)",
+                          borderRadius:
+                            "var(--radius-md)",
+                          fontSize:
+                            "14px",
+                        }}
+                      >
+                        <option value="">
+                          Select connectivity
+                        </option>
+                        {CONNECTIVITY_OPTIONS.map(
+                          (option) => (
+                            <option
+                              key={
+                                option
+                              }
+                              value={
+                                option
+                              }
+                            >
+                              {option}
+                            </option>
+                          )
+                        )}
+                      </select>
+                    </div>
+
+                    <div
+                      className="form-group"
+                      style={{
+                        marginBottom:
+                          "12px",
+                      }}
+                    >
+                      <label
+                        style={{
+                          display:
+                            "block",
+                          fontWeight:
+                            600,
+                          fontSize:
+                            "13px",
+                          marginBottom:
+                            "4px",
+                        }}
+                      >
+                        Screen Size
+                      </label>
+
+                      <select
+                        name="screenSize"
+                        value={
+                          editForm.screenSize
+                        }
+                        onChange={
+                          handleEditChange
+                        }
+                        style={{
+                          width:
+                            "100%",
+                          padding:
+                            "10px 14px",
+                          border:
+                            "1.5px solid var(--gray-200)",
+                          borderRadius:
+                            "var(--radius-md)",
+                          fontSize:
+                            "14px",
+                        }}
+                      >
+                        <option value="">
+                          Select screen size
+                        </option>
+                        {TABLET_SCREEN_SIZES.map(
+                          (size) => (
+                            <option
+                              key={size}
+                              value={size}
+                            >
+                              {size}
+                            </option>
+                          )
+                        )}
+                      </select>
+                    </div>
+                  </>
+                )}
+
+                {/* TV */}
+                {editForm.category === "TVs" && (
+                  <>
+                    <div
+                      className="form-group"
+                      style={{
+                        marginBottom:
+                          "12px",
+                      }}
+                    >
+                      <label
+                        style={{
+                          display:
+                            "block",
+                          fontWeight:
+                            600,
+                          fontSize:
+                            "13px",
+                          marginBottom:
+                            "4px",
+                        }}
+                      >
+                        Brand
+                      </label>
+
+                      <select
+                        name="brand"
+                        value={
+                          editForm.brand
+                        }
+                        onChange={
+                          handleEditChange
+                        }
+                        style={{
+                          width:
+                            "100%",
+                          padding:
+                            "10px 14px",
+                          border:
+                            "1.5px solid var(--gray-200)",
+                          borderRadius:
+                            "var(--radius-md)",
+                          fontSize:
+                            "14px",
+                        }}
+                      >
+                        <option value="">
+                          Select brand
+                        </option>
+                        {TV_BRANDS.map(
+                          (brand) => (
+                            <option
+                              key={
+                                brand
+                              }
+                              value={
+                                brand
+                              }
+                            >
+                              {brand}
+                            </option>
+                          )
+                        )}
+                      </select>
+                    </div>
+
+                    <div
+                      className="form-group"
+                      style={{
+                        marginBottom:
+                          "12px",
+                      }}
+                    >
+                      <label
+                        style={{
+                          display:
+                            "block",
+                          fontWeight:
+                            600,
+                          fontSize:
+                            "13px",
+                          marginBottom:
+                            "4px",
+                        }}
+                      >
+                        Model
+                      </label>
+
+                      <input
+                        type="text"
+                        name="model"
+                        value={
+                          editForm.model
+                        }
+                        onChange={
+                          handleEditChange
+                        }
+                        placeholder="e.g. QN90B"
+                        style={{
+                          width:
+                            "100%",
+                          padding:
+                            "10px 14px",
+                          border:
+                            "1.5px solid var(--gray-200)",
+                          borderRadius:
+                            "var(--radius-md)",
+                          fontSize:
+                            "14px",
+                        }}
+                      />
+                    </div>
+
+                    <div
+                      className="form-group"
+                      style={{
+                        marginBottom:
+                          "12px",
+                      }}
+                    >
+                      <label
+                        style={{
+                          display:
+                            "block",
+                          fontWeight:
+                            600,
+                          fontSize:
+                            "13px",
+                          marginBottom:
+                            "4px",
+                        }}
+                      >
+                        Screen Size
+                      </label>
+
+                      <select
+                        name="screenSize"
+                        value={
+                          editForm.screenSize
+                        }
+                        onChange={
+                          handleEditChange
+                        }
+                        style={{
+                          width:
+                            "100%",
+                          padding:
+                            "10px 14px",
+                          border:
+                            "1.5px solid var(--gray-200)",
+                          borderRadius:
+                            "var(--radius-md)",
+                          fontSize:
+                            "14px",
+                        }}
+                      >
+                        <option value="">
+                          Select screen size
+                        </option>
+                        {SCREEN_SIZE_OPTIONS.map(
+                          (size) => (
+                            <option
+                              key={size}
+                              value={size}
+                            >
+                              {size}
+                            </option>
+                          )
+                        )}
+                      </select>
+                    </div>
+
+                    <div
+                      className="form-group"
+                      style={{
+                        marginBottom:
+                          "12px",
+                      }}
+                    >
+                      <label
+                        style={{
+                          display:
+                            "block",
+                          fontWeight:
+                            600,
+                          fontSize:
+                            "13px",
+                          marginBottom:
+                            "4px",
+                        }}
+                      >
+                        Connectivity (Smart TV features)
+                      </label>
+
+                      <select
+                        name="connectivity"
+                        value={
+                          editForm.connectivity
+                        }
+                        onChange={
+                          handleEditChange
+                        }
+                        style={{
+                          width:
+                            "100%",
+                          padding:
+                            "10px 14px",
+                          border:
+                            "1.5px solid var(--gray-200)",
+                          borderRadius:
+                            "var(--radius-md)",
+                          fontSize:
+                            "14px",
+                        }}
+                      >
+                        <option value="">
+                          Select connectivity
+                        </option>
+                        {CONNECTIVITY_OPTIONS.map(
+                          (option) => (
+                            <option
+                              key={
+                                option
+                              }
+                              value={
+                                option
+                              }
+                            >
+                              {option}
+                            </option>
+                          )
+                        )}
+                      </select>
+                    </div>
+                  </>
+                )}
+
+                {/* GAME CONSOLES */}
+                {editForm.category === "Game Consoles" && (
+                  <>
+                    <div
+                      className="form-group"
+                      style={{
+                        marginBottom:
+                          "12px",
+                      }}
+                    >
+                      <label
+                        style={{
+                          display:
+                            "block",
+                          fontWeight:
+                            600,
+                          fontSize:
+                            "13px",
+                          marginBottom:
+                            "4px",
+                        }}
+                      >
+                        Brand
+                      </label>
+
+                      <select
+                        name="brand"
+                        value={
+                          editForm.brand
+                        }
+                        onChange={
+                          handleEditChange
+                        }
+                        style={{
+                          width:
+                            "100%",
+                          padding:
+                            "10px 14px",
+                          border:
+                            "1.5px solid var(--gray-200)",
+                          borderRadius:
+                            "var(--radius-md)",
+                          fontSize:
+                            "14px",
+                        }}
+                      >
+                        <option value="">
+                          Select brand
+                        </option>
+                        {CONSOLE_BRANDS.map(
+                          (brand) => (
+                            <option
+                              key={
+                                brand
+                              }
+                              value={
+                                brand
+                              }
+                            >
+                              {brand}
+                            </option>
+                          )
+                        )}
+                      </select>
+                    </div>
+
+                    <div
+                      className="form-group"
+                      style={{
+                        marginBottom:
+                          "12px",
+                      }}
+                    >
+                      <label
+                        style={{
+                          display:
+                            "block",
+                          fontWeight:
+                            600,
+                          fontSize:
+                            "13px",
+                          marginBottom:
+                            "4px",
+                        }}
+                      >
+                        Model
+                      </label>
+
+                      <input
+                        type="text"
+                        name="model"
+                        value={
+                          editForm.model
+                        }
+                        onChange={
+                          handleEditChange
+                        }
+                        placeholder="e.g. PS5, Xbox Series X"
+                        style={{
+                          width:
+                            "100%",
+                          padding:
+                            "10px 14px",
+                          border:
+                            "1.5px solid var(--gray-200)",
+                          borderRadius:
+                            "var(--radius-md)",
+                          fontSize:
+                            "14px",
+                        }}
+                      />
+                    </div>
+
+                    <div
+                      className="form-group"
+                      style={{
+                        marginBottom:
+                          "12px",
+                      }}
+                    >
+                      <label
+                        style={{
+                          display:
+                            "block",
+                          fontWeight:
+                            600,
+                          fontSize:
+                            "13px",
+                          marginBottom:
+                            "4px",
+                        }}
+                      >
+                        Connectivity (Wi‑Fi, Bluetooth, etc.)
+                      </label>
+
+                      <select
+                        name="connectivity"
+                        value={
+                          editForm.connectivity
+                        }
+                        onChange={
+                          handleEditChange
+                        }
+                        style={{
+                          width:
+                            "100%",
+                          padding:
+                            "10px 14px",
+                          border:
+                            "1.5px solid var(--gray-200)",
+                          borderRadius:
+                            "var(--radius-md)",
+                          fontSize:
+                            "14px",
+                        }}
+                      >
+                        <option value="">
+                          Select connectivity
+                        </option>
+                        {CONNECTIVITY_OPTIONS.map(
+                          (option) => (
+                            <option
+                              key={
+                                option
+                              }
+                              value={
+                                option
+                              }
+                            >
+                              {option}
+                            </option>
+                          )
+                        )}
+                      </select>
+                    </div>
+                  </>
+                )}
+
+                {/* ACCESSORIES */}
+                {editForm.category === "Accessories" && (
+                  <>
+                    <div
+                      className="form-group"
+                      style={{
+                        marginBottom:
+                          "12px",
+                      }}
+                    >
+                      <label
+                        style={{
+                          display:
+                            "block",
+                          fontWeight:
+                            600,
+                          fontSize:
+                            "13px",
+                          marginBottom:
+                            "4px",
+                        }}
+                      >
+                        Brand
+                      </label>
+
+                      <select
+                        name="brand"
+                        value={
+                          editForm.brand
+                        }
+                        onChange={
+                          handleEditChange
+                        }
+                        style={{
+                          width:
+                            "100%",
+                          padding:
+                            "10px 14px",
+                          border:
+                            "1.5px solid var(--gray-200)",
+                          borderRadius:
+                            "var(--radius-md)",
+                          fontSize:
+                            "14px",
+                        }}
+                      >
+                        <option value="">
+                          Select brand
+                        </option>
+                        {ACCESSORY_BRANDS.map(
+                          (brand) => (
+                            <option
+                              key={
+                                brand
+                              }
+                              value={
+                                brand
+                              }
+                            >
+                              {brand}
+                            </option>
+                          )
+                        )}
+                      </select>
+                    </div>
+
+                    <div
+                      className="form-group"
+                      style={{
+                        marginBottom:
+                          "12px",
+                      }}
+                    >
+                      <label
+                        style={{
+                          display:
+                            "block",
+                          fontWeight:
+                            600,
+                          fontSize:
+                            "13px",
+                          marginBottom:
+                            "4px",
+                        }}
+                      >
+                        Model
+                      </label>
+
+                      <input
+                        type="text"
+                        name="model"
+                        value={
+                          editForm.model
+                        }
+                        onChange={
+                          handleEditChange
+                        }
+                        placeholder="e.g. AirPods Pro, 4K Webcam"
+                        style={{
+                          width:
+                            "100%",
+                          padding:
+                            "10px 14px",
+                          border:
+                            "1.5px solid var(--gray-200)",
+                          borderRadius:
+                            "var(--radius-md)",
+                          fontSize:
+                            "14px",
+                        }}
+                      />
+                    </div>
+
+                    <div
+                      className="form-group"
+                      style={{
+                        marginBottom:
+                          "12px",
+                      }}
+                    >
+                      <label
+                        style={{
+                          display:
+                            "block",
+                          fontWeight:
+                            600,
+                          fontSize:
+                            "13px",
+                          marginBottom:
+                            "4px",
+                        }}
+                      >
+                        Connectivity (if applicable)
+                      </label>
+
+                      <select
+                        name="connectivity"
+                        value={
+                          editForm.connectivity
+                        }
+                        onChange={
+                          handleEditChange
+                        }
+                        style={{
+                          width:
+                            "100%",
+                          padding:
+                            "10px 14px",
+                          border:
+                            "1.5px solid var(--gray-200)",
+                          borderRadius:
+                            "var(--radius-md)",
+                          fontSize:
+                            "14px",
+                        }}
+                      >
+                        <option value="">
+                          Select connectivity
+                        </option>
+                        {CONNECTIVITY_OPTIONS.map(
+                          (option) => (
+                            <option
+                              key={
+                                option
+                              }
+                              value={
+                                option
+                              }
+                            >
+                              {option}
+                            </option>
+                          )
+                        )}
+                      </select>
+                    </div>
+                  </>
+                )}
+
+                {/* ─── COMMON REMAINING FIELDS ────────────────────────── */}
+
                 {/* STORAGE */}
 
                 <div
@@ -2331,7 +3754,7 @@ const ProductDetails = () => {
                   </select>
                 </div>
 
-                {/* COLOR */}
+                {/* COLOR – using ALL_COLORS */}
 
                 <div
                   className="form-group"
@@ -2380,42 +3803,7 @@ const ProductDetails = () => {
                       Select color
                     </option>
 
-                    {[
-                      "Space Gray",
-                      "Silver",
-                      "Gold",
-                      "Black",
-                      "White",
-                      "Blue",
-                      "Coral",
-                      "Yellow",
-                      "Red",
-                      "Purple",
-                      "Green",
-                      "Midnight Green",
-                      "Graphite",
-                      "Pacific Blue",
-                      "Midnight",
-                      "Starlight",
-                      "Pink",
-                      "Sierra Blue",
-                      "Alpine Green",
-                      "Deep Purple",
-                      "Space Black",
-                      "Black Titanium",
-                      "White Titanium",
-                      "Blue Titanium",
-                      "Natural Titanium",
-                      "Desert Titanium",
-                      "Teal",
-                      "Ultramarine",
-                      "Product Red",
-                      "Rose Gold",
-                      "Matte Black",
-                      "Jet Black",
-                      "Burgundy",
-                      "Crimson",
-                    ].map(
+                    {ALL_COLORS.map(
                       (color) => (
                         <option
                           key={
@@ -2425,9 +3813,7 @@ const ProductDetails = () => {
                             color
                           }
                         >
-                          {
-                            color
-                          }
+                          {color}
                         </option>
                       )
                     )}
