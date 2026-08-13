@@ -16,44 +16,56 @@ const Footer = () => {
           gap: '30px',
           marginBottom: '30px',
         }}>
+          {/* About Us */}
           <div>
             <h4 style={{ color: 'white', marginBottom: '12px', fontSize: '16px' }}>BuyUk Used</h4>
-            <ul style={{ listStyle: 'none' }}>
+            <ul style={{ listStyle: 'none', padding: 0 }}>
               <li style={{ marginBottom: '8px' }}><Link to="/about">About Us</Link></li>
-              <li style={{ marginBottom: '8px' }}><Link to="/how-it-works">How it works</Link></li>
+              <li style={{ marginBottom: '8px' }}><Link to="/how-it-works">How It Works</Link></li>
               <li style={{ marginBottom: '8px' }}><Link to="/contact">Contact</Link></li>
             </ul>
           </div>
+
+          {/* For Sellers */}
           <div>
             <h4 style={{ color: 'white', marginBottom: '12px', fontSize: '16px' }}>For Sellers</h4>
-            <ul style={{ listStyle: 'none' }}>
-              <li style={{ marginBottom: '8px' }}><Link to="/post-ad">Post Free Ad</Link></li>
-              <li style={{ marginBottom: '8px' }}><Link to="/pricing">Pricing</Link></li>
-              <li style={{ marginBottom: '8px' }}><Link to="/tips">Tips</Link></li>
+            <ul style={{ listStyle: 'none', padding: 0 }}>
+              <li style={{ marginBottom: '8px' }}><Link to="/for-sellers">Overview</Link></li>
+              <li style={{ marginBottom: '8px' }}><Link to="/for-sellers/post-free-ad">Post Free Ad</Link></li>
+              <li style={{ marginBottom: '8px' }}><Link to="/for-sellers/pricing">Pricing</Link></li>
+              <li style={{ marginBottom: '8px' }}><Link to="/for-sellers/tips">Tips</Link></li>
             </ul>
           </div>
+
+          {/* For Buyers */}
           <div>
             <h4 style={{ color: 'white', marginBottom: '12px', fontSize: '16px' }}>For Buyers</h4>
-            <ul style={{ listStyle: 'none' }}>
-              <li style={{ marginBottom: '8px' }}><Link to="/products">Browse Ads</Link></li>
-              <li style={{ marginBottom: '8px' }}><Link to="/safety">Safety Tips</Link></li>
-              <li style={{ marginBottom: '8px' }}><Link to="/report">Report Ad</Link></li>
+            <ul style={{ listStyle: 'none', padding: 0 }}>
+              <li style={{ marginBottom: '8px' }}><Link to="/for-buyers">Overview</Link></li>
+              <li style={{ marginBottom: '8px' }}><Link to="/for-buyers/browse-ads">Browse Ads</Link></li>
+              <li style={{ marginBottom: '8px' }}><Link to="/for-buyers/safety-tips">Safety Tips</Link></li>
+              <li style={{ marginBottom: '8px' }}><Link to="/for-buyers/report-ad">Report Ad</Link></li>
             </ul>
           </div>
+
+          {/* Support */}
           <div>
             <h4 style={{ color: 'white', marginBottom: '12px', fontSize: '16px' }}>Support</h4>
-            <ul style={{ listStyle: 'none' }}>
-              <li style={{ marginBottom: '8px' }}><a href="tel:+233542928081">Call Us</a></li>
-              <li style={{ marginBottom: '8px' }}><a href="mailto:knsmartgadgetshub@gmail.com">Email</a></li>
-              <li style={{ marginBottom: '8px' }}><a href="https://wa.me/233542928081" target="_blank">WhatsApp</a></li>
+            <ul style={{ listStyle: 'none', padding: 0 }}>
+              <li style={{ marginBottom: '8px' }}><Link to="/support">Help Center</Link></li>
+              <li style={{ marginBottom: '8px' }}><Link to="/support/call-us">Call Us</Link></li>
+              <li style={{ marginBottom: '8px' }}><Link to="/support/email">Email</Link></li>
+              <li style={{ marginBottom: '8px' }}><Link to="/support/whatsapp">WhatsApp</Link></li>
             </ul>
           </div>
+
+          {/* Legal */}
           <div>
             <h4 style={{ color: 'white', marginBottom: '12px', fontSize: '16px' }}>Legal</h4>
-            <ul style={{ listStyle: 'none' }}>
-              <li style={{ marginBottom: '8px' }}><Link to="/terms">Terms</Link></li>
-              <li style={{ marginBottom: '8px' }}><Link to="/privacy">Privacy</Link></li>
-              <li style={{ marginBottom: '8px' }}><Link to="/cookies">Cookies</Link></li>
+            <ul style={{ listStyle: 'none', padding: 0 }}>
+              <li style={{ marginBottom: '8px' }}><Link to="/legal/terms">Terms</Link></li>
+              <li style={{ marginBottom: '8px' }}><Link to="/legal/privacy">Privacy</Link></li>
+              <li style={{ marginBottom: '8px' }}><Link to="/legal/cookies">Cookies</Link></li>
             </ul>
           </div>
         </div>
@@ -68,7 +80,7 @@ const Footer = () => {
           gap: '12px',
           fontSize: '13px',
         }}>
-          <span>&copy; 2026 BuyUk Used. All rights reserved.</span>
+          <span>&copy; {new Date().getFullYear()} BuyUk Used. All rights reserved.</span>
           <div className="social" style={{ display: 'flex', gap: '12px' }}>
             <a href="#" style={{
               display: 'flex',

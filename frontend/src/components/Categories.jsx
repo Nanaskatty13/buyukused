@@ -1,25 +1,48 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 
-const categories = [
-  // { name: 'Cars', icon: 'fa-car' },
-  // { name: 'Phones', icon: 'fa-mobile-alt' },
-    // { name: 'Laptops', icon: 'fa-laptop' },
-    // { name: 'Tablets', icon: 'fa-tablet-alt' },
-    // { name: 'TV & Game Consoles', icon: 'fa-tv' },
-  // { name: 'Real Estate', icon: 'fa-home' },
-  // { name: 'Jobs', icon: 'fa-briefcase' },
-  // { name: 'Electronics', icon: 'fa-laptop' },
-  // { name: 'Fashion', icon: 'fa-tshirt' },
-  // { name: 'Home', icon: 'fa-couch' },
-  // { name: 'Other', icon: 'fa-tag' },
-  // { name: 'Accessories', icon: 'fa-headphones' },
+// ─── Icon mapping ──────────────────────────────────────────
+const getCategoryIcon = (name) => {
+  const icons = {
+    'Phones': 'fa-mobile-alt',
+    'Laptops': 'fa-laptop',
+    'Tablets': 'fa-tablet-alt',
+    'Accessories': 'fa-headphones',
+    'TV & Game Consoles': 'fa-tv',
+    'Electronics': 'fa-laptop',
+    'Cars': 'fa-car',
+    'Real Estate': 'fa-home',
+    'Jobs': 'fa-briefcase',
+    'Fashion': 'fa-tshirt',
+    'Home': 'fa-couch',
+    'Other': 'fa-tag',
+  };
+  return icons[name] || 'fa-tag';
+};
 
-];
+// ─── Main Component ──────────────────────────────────────
+const Categories = ({ products = [], onCategorySelect }) => {
+  // ─── Build dynamic categories from products ───
+  const categoryMap = {};
+  products.forEach((p) => {
+    const cat = p.category || 'Other';
+    categoryMap[cat] = (categoryMap[cat] || 0) + 1;
+  });
 
-const Categories = ({ products = [] }) => {
-  const getCount = (cat) => products.filter(p => p.category === cat).length;
+  const categories = Object.keys(categoryMap).map((name) => ({
+    name,
+    count: categoryMap[name],
+    icon: getCategoryIcon(name),
+  }));
 
+  // ─── Handlers ──────────────────────────────────────────
+  const handleCategoryClick = (catName) => {
+    if (onCategorySelect) {
+      onCategorySelect(catName);
+    }
+  };
+
+  // ─── Render ─────────────────────────────────────────────
   return (
     <section className="section" style={{ padding: '40px 0' }}>
       <div className="container">
@@ -47,29 +70,48 @@ const Categories = ({ products = [] }) => {
           gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))',
           gap: '16px',
         }}>
-          {categories.map(cat => (
-            <Link to={`/products?category=${cat.name}`} key={cat.name} className="category-card" style={{
-              background: 'white',
-              padding: '20px 12px',
-              borderRadius: 'var(--radius-md)',
-              textAlign: 'center',
-              cursor: 'pointer',
-              transition: 'var(--transition)',
-              border: '1px solid var(--gray-200)',
-              boxShadow: 'var(--shadow-sm)',
-            }}>
-              <i className={`fas ${cat.icon}`} style={{
-                fontSize: '32px',
-                color: 'var(--primary)',
-                display: 'block',
-                marginBottom: '8px',
-              }}></i>
-              <div className="name" style={{ fontWeight: 600, fontSize: '13px' }}>{cat.name}</div>
-              <div className="count" style={{ fontSize: '11px', color: 'var(--gray-400)' }}>
-                {getCount(cat.name)} ads
+          {categories.length === 0 ? (
+            <p style={{ color: 'var(--gray-500)', textAlign: 'center', gridColumn: '1 / -1' }}>
+              No categories yet
+            </p>
+          ) : (
+            categories.map((cat) => (
+              <div
+                key={cat.name}
+                className="category-card"
+                onClick={() => handleCategoryClick(cat.name)}
+                style={{
+                  background: 'white',
+                  padding: '20px 12px',
+                  borderRadius: 'var(--radius-md)',
+                  textAlign: 'center',
+                  cursor: 'pointer',
+                  transition: 'var(--transition)',
+                  border: '1px solid var(--gray-200)',
+                  boxShadow: 'var(--shadow-sm)',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-4px)';
+                  e.currentTarget.style.boxShadow = 'var(--shadow-md)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = 'var(--shadow-sm)';
+                }}
+              >
+                <i className={`fas ${cat.icon}`} style={{
+                  fontSize: '32px',
+                  color: 'var(--primary)',
+                  display: 'block',
+                  marginBottom: '8px',
+                }}></i>
+                <div className="name" style={{ fontWeight: 600, fontSize: '13px' }}>{cat.name}</div>
+                <div className="count" style={{ fontSize: '11px', color: 'var(--gray-400)' }}>
+                  {cat.count} ad{cat.count !== 1 ? 's' : ''}
+                </div>
               </div>
-            </Link>
-          ))}
+            ))
+          )}
         </div>
       </div>
     </section>

@@ -257,6 +257,7 @@ const citiesByRegion = {
 };
 
 const iphoneColors = [
+  'All Colors',
   'Space Gray',
   'Orange',
   'Deep Blue',
