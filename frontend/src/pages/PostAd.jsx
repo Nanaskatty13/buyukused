@@ -338,6 +338,7 @@ const PostAd = () => {
     brand: '',
     model: '',
     processor: '',
+    storage: '',
     ram: '',
     screenSize: '',
     graphics: '',
@@ -759,17 +760,12 @@ const PostAd = () => {
                 onChange={handleChange}
                 required
               >
-                <option value="Cars">🚗 Cars</option>
+      
                 <option value="Phones">📱 Phones</option>
                 <option value="Laptops">💻 Laptops</option>
                 <option value="Tablets">📲 Tablets</option>
                 <option value="Accessories">🎧 Accessories</option>
                 <option value="Electronics">📺 Electronics</option>
-                <option value="Fashion">👗 Fashion</option>
-                <option value="Home">🏠 Home</option>
-                <option value="Real Estate">🏠 Real Estate</option>
-                <option value="Jobs">💼 Jobs</option>
-                <option value="Other">📦 Other</option>
               </select>
             </div>
 
@@ -841,7 +837,7 @@ const PostAd = () => {
                 name="title"
                 value={formData.title}
                 onChange={handleChange}
-                placeholder='e.g. MacBook Pro 14" M1 Pro 2021'
+                placeholder='Ad Title'
                 required
               />
             </div>

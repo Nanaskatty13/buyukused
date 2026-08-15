@@ -25,7 +25,7 @@ const Products = () => {
   const [total, setTotal] = useState(0);
 
   // Available categories (hardcoded – can be fetched from API later)
-  const categories = ['Cars', 'Phones', 'Real Estate', 'Jobs', 'Electronics', 'Fashion', 'Home', 'Other'];
+  const categories = ['Phones', 'Laptops', 'Tablets', 'Electronics', 'Accessories', 'TV & Game Consoles', 'Other'];
   const locations = ['Ghana', 'Accra', 'Kumasi', 'Takoradi', 'Tamale', 'Tema', 'Cape Coast'];
 
   // Fetch products
