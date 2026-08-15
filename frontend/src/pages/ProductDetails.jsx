@@ -1552,51 +1552,130 @@ const ProductDetails = () => {
                 "No description provided."}
             </div>
 
-            {/* SELLER */}
-
+            {/* ─── SELLER CARD – UPDATED ─── */}
             <div
               className="seller"
               style={{
-                background:
-                  "var(--gray-50)",
-                borderRadius:
-                  "var(--radius-md)",
-                padding:
-                  "16px 20px",
-                marginBottom:
-                  "20px",
+                background: 'var(--gray-50)',
+                borderRadius: 'var(--radius-md)',
+                padding: '16px 20px',
+                marginBottom: '20px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '16px',
               }}
             >
+              {/* Avatar */}
               <div
+                className="seller-avatar-wrapper"
                 style={{
-                  fontWeight:
-                    700,
-                  fontSize:
-                    "16px",
-                  marginBottom:
-                    "4px",
+                  position: 'relative',
+                  width: '56px',
+                  height: '56px',
+                  borderRadius: '50%',
+                  overflow: 'hidden',
+                  flexShrink: 0,
+                  background: 'var(--gray-200)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '24px',
+                  fontWeight: 700,
+                  color: 'var(--primary)',
                 }}
               >
-                <i className="fas fa-user" />{" "}
-                {product.sellerName ||
-                  "KN Seller"}
+                {(() => {
+                  const seller = product.seller || product.sellerId || {};
+                  const image = seller.profileImage || seller.photo || seller.avatar || seller.profilePicture || null;
+                  const name = seller.name || product.sellerName || 'KN Seller';
+
+                  if (image) {
+                    return (
+                      <img
+                        src={getImageUrl(image)}
+                        alt={name}
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover',
+                        }}
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          e.currentTarget.parentElement.textContent = name.charAt(0).toUpperCase();
+                        }}
+                      />
+                    );
+                  }
+                  return name.charAt(0).toUpperCase();
+                })()}
+
+                {/* Status indicator */}
+                <span
+                  className={`seller-status-dot ${
+                    (() => {
+                      const seller = product.seller || product.sellerId || {};
+                      if (seller.online === true) return 'online';
+                      if (seller.online === false) return 'offline';
+                      if (seller.lastActive) {
+                        const last = new Date(seller.lastActive);
+                        const now = new Date();
+                        const diffMs = now - last;
+                        const diffMin = diffMs / 60000;
+                        return diffMin < 2 ? 'online' : 'offline';
+                      }
+                      return 'unknown';
+                    })()
+                  }`}
+                />
               </div>
 
-              {product.sellerPhone && (
+              {/* Seller info */}
+              <div style={{ flex: 1 }}>
                 <div
                   style={{
-                    fontSize:
-                      "14px",
-                    color:
-                      "var(--gray-600)",
+                    fontWeight: 700,
+                    fontSize: '16px',
+                    marginBottom: '2px',
                   }}
                 >
-                  <i className="fas fa-phone" />{" "}
-                  {
-                    product.sellerPhone
-                  }
+                  <i className="fas fa-user" style={{ marginRight: '6px' }} />
+                  {(() => {
+                    const seller = product.seller || product.sellerId || {};
+                    return seller.name || product.sellerName || 'KN Seller';
+                  })()}
                 </div>
-              )}
+
+                {product.sellerPhone && (
+                  <div
+                    style={{
+                      fontSize: '14px',
+                      color: 'var(--gray-600)',
+                    }}
+                  >
+                    <i className="fas fa-phone" style={{ marginRight: '6px' }} />
+                    {product.sellerPhone}
+                  </div>
+                )}
+
+                {(() => {
+                  const seller = product.seller || product.sellerId || {};
+                  if (seller.createdAt) {
+                    return (
+                      <div
+                        style={{
+                          fontSize: '12px',
+                          color: 'var(--gray-400)',
+                          marginTop: '4px',
+                        }}
+                      >
+                        <i className="fas fa-calendar-alt" style={{ marginRight: '4px' }} />
+                        Member since {new Date(seller.createdAt).toLocaleDateString()}
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
+              </div>
             </div>
 
             {/* ======================================================

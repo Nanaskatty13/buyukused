@@ -1,7 +1,8 @@
+// frontend/src/pages/Profile.jsx
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import '../styles/global.css'; 
+import '../styles/global.css';
 
 import {
   getProducts,
@@ -53,7 +54,6 @@ const Profile = () => {
 
   useEffect(() => {
     if (!user) return;
-
     setEditName(user.name || '');
     setEditEmail(user.email || '');
     setEditPhone(user.phone || '');
@@ -63,7 +63,7 @@ const Profile = () => {
   }, [user]);
 
   // ================================================================
-  // LOAD PROFILE DATA
+  // LOAD PROFILE DATA – IMPROVED
   // ================================================================
 
   const loadUserData = useCallback(async () => {
@@ -73,7 +73,6 @@ const Profile = () => {
     }
 
     const userId = user._id || user.id || user.userId;
-
     if (!userId) {
       console.warn('⚠️ No user ID found in user object:', user);
       setLoading(false);
@@ -82,110 +81,83 @@ const Profile = () => {
 
     try {
       setLoading(true);
-
       console.log('👤 Fetching data for user:', userId);
 
-      /*
-       * IMPORTANT:
-       *
-       * Use getUserNotifications here.
-       *
-       * DO NOT use getNotifications because getNotifications
-       * points to the ADMIN notification endpoint.
-       */
+      // ─── PRODUCTS ──────────────────────────────────────────────
+      // We request all products by this seller (limit 100 to avoid pagination issues)
+      let userProducts = [];
+      try {
+        const productResponse = await getProducts({ sellerId: userId, limit: 100 });
+        userProducts = Array.isArray(productResponse)
+          ? productResponse
+          : productResponse?.products || [];
+      } catch (productError) {
+        console.error('❌ Error fetching user products:', productError);
+        // Fallback: try the /api/users/me/products endpoint if it exists
+        try {
+          const response = await fetch(`${API_URL}/api/users/me/products`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (response.ok) {
+            const data = await response.json();
+            userProducts = data?.products || [];
+          }
+        } catch (fallbackError) {
+          console.error('❌ Fallback product fetch also failed:', fallbackError);
+        }
+      }
 
-      const [userProducts, userNotifs, userMessages] =
-        await Promise.all([
-          getProducts({ sellerId: userId }),
+      // ─── NOTIFICATIONS ─────────────────────────────────────────
+      let userNotifs = [];
+      try {
+        const notifResponse = await getUserNotifications(userId, token);
+        userNotifs = Array.isArray(notifResponse)
+          ? notifResponse
+          : notifResponse?.notifications || notifResponse?.data || [];
+      } catch (notifError) {
+        console.error('❌ Error fetching notifications:', notifError);
+      }
 
-          // FIXED:
-          getUserNotifications(userId, token),
+      // ─── MESSAGES ──────────────────────────────────────────────
+      let userMessages = [];
+      try {
+        const msgResponse = await messages.getForUser(userId, token);
+        userMessages = Array.isArray(msgResponse)
+          ? msgResponse
+          : msgResponse?.messages || msgResponse?.data || [];
+      } catch (msgError) {
+        console.error('❌ Error fetching messages:', msgError);
+      }
 
-          messages.getForUser(userId, token),
-        ]);
+      setProducts(userProducts);
+      setNotifications(userNotifs);
+      setMessagesList(userMessages);
 
-      // ============================================================
-      // PRODUCTS
-      // ============================================================
-
-      const productsList = Array.isArray(userProducts)
-        ? userProducts
-        : userProducts?.products || [];
-
-      // ============================================================
-      // NOTIFICATIONS
-      // Supports:
-      // []
-      // { notifications: [] }
-      // { data: [] }
-      // ============================================================
-
-      const notifsList = Array.isArray(userNotifs)
-        ? userNotifs
-        : Array.isArray(userNotifs?.notifications)
-          ? userNotifs.notifications
-          : Array.isArray(userNotifs?.data)
-            ? userNotifs.data
-            : [];
-
-      // ============================================================
-      // MESSAGES
-      // ============================================================
-
-      const loadedMessages = Array.isArray(userMessages)
-        ? userMessages
-        : Array.isArray(userMessages?.messages)
-          ? userMessages.messages
-          : Array.isArray(userMessages?.data)
-            ? userMessages.data
-            : [];
-
-      setProducts(productsList);
-      setNotifications(notifsList);
-      setMessagesList(loadedMessages);
-
-      // ============================================================
-      // UNREAD MESSAGES
-      // ============================================================
-
-      const unreadMsgs = loadedMessages.filter((message) => {
+      // ─── UNREAD MESSAGES ──────────────────────────────────────
+      const unreadMsgs = userMessages.filter((message) => {
         const receiverId =
           typeof message.receiver === 'string'
             ? message.receiver
             : message.receiver?._id;
-
         return receiverId === userId && !message.read;
       }).length;
 
-      // ============================================================
-      // STATS
-      // ============================================================
-
+      // ─── STATS ────────────────────────────────────────────────
       setStats({
-        totalAds: productsList.length,
-
-        totalViews: productsList.reduce(
-          (sum, product) => sum + Number(product.views || 0),
-          0
-        ),
-
-        totalNotifications: notifsList.length,
-
-        unreadNotifications: notifsList.filter(
-          (notification) => !notification.read
-        ).length,
-
+        totalAds: userProducts.length,
+        totalViews: userProducts.reduce((sum, p) => sum + Number(p.views || 0), 0),
+        totalNotifications: userNotifs.length,
+        unreadNotifications: userNotifs.filter((n) => !n.read).length,
         unreadMessages: unreadMsgs,
       });
 
-      console.log('✅ Profile data loaded successfully');
+      console.log('✅ Profile data loaded:', {
+        totalAds: userProducts.length,
+        notifications: userNotifs.length,
+        messages: userMessages.length,
+      });
     } catch (error) {
-      console.error('❌ Error fetching profile data:', error);
-
-      /*
-       * Do not crash the entire Profile page if notifications
-       * fail. The rest of the profile can still display.
-       */
+      console.error('❌ Profile loading error:', error);
     } finally {
       setLoading(false);
     }
@@ -200,47 +172,24 @@ const Profile = () => {
   // ================================================================
 
   const handleDeleteProduct = async (productId) => {
-    const confirmed = window.confirm(
-      'Are you sure you want to delete this product? This action cannot be undone.'
-    );
-
-    if (!confirmed) return;
-
+    if (!window.confirm('Delete this product permanently?')) return;
     if (!token) {
-      alert('Your session has expired. Please login again.');
+      alert('Session expired. Please login again.');
       return;
     }
 
     setDeletingProductId(productId);
-
     try {
       const result = await deleteProduct(productId, token);
-
-      if (
-        result?.success ||
-        result?.message === 'Product deleted' ||
-        result?.message === 'Product deleted successfully'
-      ) {
-        setProducts((prev) =>
-          prev.filter((product) => product._id !== productId)
-        );
-
-        setStats((prev) => ({
-          ...prev,
-          totalAds: Math.max(0, prev.totalAds - 1),
-        }));
-
-        alert('Product deleted successfully.');
+      if (result?.success || result?.message?.includes('deleted')) {
+        setProducts((prev) => prev.filter((p) => p._id !== productId));
+        setStats((prev) => ({ ...prev, totalAds: Math.max(0, prev.totalAds - 1) }));
       } else {
-        alert(result?.message || 'Failed to delete product.');
+        alert(result?.message || 'Delete failed.');
       }
     } catch (error) {
-      console.error('❌ Delete product error:', error);
-
-      alert(
-        error?.message ||
-          'An error occurred while deleting the product.'
-      );
+      console.error('❌ Delete error:', error);
+      alert(error?.message || 'Something went wrong.');
     } finally {
       setDeletingProductId(null);
     }
@@ -252,9 +201,7 @@ const Profile = () => {
 
   const handleEditPhotoChange = (event) => {
     const file = event.target.files?.[0];
-
     if (!file) return;
-
     setEditPhoto(file);
     setEditPhotoPreview(URL.createObjectURL(file));
     setRemovePhoto(false);
@@ -272,9 +219,8 @@ const Profile = () => {
 
   const handleUpdateProfile = async (event) => {
     event.preventDefault();
-
     if (!token) {
-      setEditError('Your session has expired. Please login again.');
+      setEditError('Session expired. Please login again.');
       return;
     }
 
@@ -283,31 +229,23 @@ const Profile = () => {
 
     try {
       const formData = new FormData();
-
       formData.append('name', editName.trim());
       formData.append('email', editEmail.trim().toLowerCase());
       formData.append('phone', editPhone.trim());
-
       if (removePhoto) {
         formData.append('removePhoto', 'true');
       } else if (editPhoto) {
         formData.append('photo', editPhoto);
       }
 
-      const response = await fetch(
-        `${API_URL}/api/users/profile`,
-        {
-          method: 'PUT',
-          credentials: 'include',
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-          body: formData,
-        }
-      );
+      const response = await fetch(`${API_URL}/api/users/profile`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
 
       let data = {};
-
       try {
         data = await response.json();
       } catch {
@@ -315,30 +253,19 @@ const Profile = () => {
       }
 
       if (!response.ok) {
-        throw new Error(
-          data?.message ||
-            data?.error ||
-            `Profile update failed (${response.status})`
-        );
+        throw new Error(data?.message || data?.error || `Update failed (${response.status})`);
       }
 
       if (data.success !== false) {
         setShowEditModal(false);
-
-        /*
-         * Reloading ensures the AuthContext gets the latest
-         * profile information.
-         */
+        // Reload to refresh AuthContext
         window.location.reload();
       } else {
         setEditError(data.message || 'Update failed');
       }
     } catch (error) {
       console.error('❌ Profile update error:', error);
-
-      setEditError(
-        error?.message || 'Something went wrong while updating your profile.'
-      );
+      setEditError(error?.message || 'Something went wrong.');
     } finally {
       setEditLoading(false);
     }
@@ -350,94 +277,49 @@ const Profile = () => {
 
   const openConversation = async (otherUserId) => {
     if (!user?._id) return;
-
     const currentUserId = user._id;
 
     const conversationMessages = messagesList.filter((message) => {
-      const senderId =
-        typeof message.sender === 'string'
-          ? message.sender
-          : message.sender?._id;
-
-      const receiverId =
-        typeof message.receiver === 'string'
-          ? message.receiver
-          : message.receiver?._id;
-
+      const senderId = typeof message.sender === 'string' ? message.sender : message.sender?._id;
+      const receiverId = typeof message.receiver === 'string' ? message.receiver : message.receiver?._id;
       return (
         (senderId === otherUserId || receiverId === otherUserId) &&
         (senderId === currentUserId || receiverId === currentUserId)
       );
     });
 
-    setSelectedConversation({
-      userId: otherUserId,
-      messages: conversationMessages,
+    setSelectedConversation({ userId: otherUserId, messages: conversationMessages });
+
+    // Mark unread messages as read
+    const unread = conversationMessages.filter((msg) => {
+      const receiverId = typeof msg.receiver === 'string' ? msg.receiver : msg.receiver?._id;
+      return receiverId === currentUserId && !msg.read;
     });
 
-    const unreadMessages = conversationMessages.filter((message) => {
-      const receiverId =
-        typeof message.receiver === 'string'
-          ? message.receiver
-          : message.receiver?._id;
-
-      return receiverId === currentUserId && !message.read;
-    });
-
-    for (const message of unreadMessages) {
+    for (const msg of unread) {
       try {
-        await messages.markRead(message._id, token);
-
-        setMessagesList((prev) =>
-          prev.map((msg) =>
-            msg._id === message._id
-              ? { ...msg, read: true }
-              : msg
-          )
-        );
-
-        setSelectedConversation((prev) => {
-          if (!prev) return prev;
-
-          return {
-            ...prev,
-            messages: prev.messages.map((msg) =>
-              msg._id === message._id
-                ? { ...msg, read: true }
-                : msg
-            ),
-          };
-        });
-
-        setStats((prev) => ({
+        await messages.markRead(msg._id, token);
+        setMessagesList((prev) => prev.map((m) => (m._id === msg._id ? { ...m, read: true } : m)));
+        setSelectedConversation((prev) => ({
           ...prev,
-          unreadMessages: Math.max(
-            0,
-            prev.unreadMessages - 1
-          ),
+          messages: prev.messages.map((m) => (m._id === msg._id ? { ...m, read: true } : m)),
         }));
+        setStats((prev) => ({ ...prev, unreadMessages: Math.max(0, prev.unreadMessages - 1) }));
       } catch (error) {
-        console.error(
-          '❌ Error marking message as read:',
-          error
-        );
+        console.error('❌ Error marking message as read:', error);
       }
     }
   };
 
   // ================================================================
-  // SEND MESSAGE
+  // SEND REPLY
   // ================================================================
 
   const handleSendReply = async (event) => {
     event.preventDefault();
-
-    if (!replyMessage.trim()) return;
-    if (!selectedConversation?.userId) return;
-    if (!token) return;
+    if (!replyMessage.trim() || !selectedConversation?.userId || !token) return;
 
     setSendingReply(true);
-
     try {
       const newMessage = await messages.send(
         selectedConversation.userId,
@@ -445,25 +327,12 @@ const Profile = () => {
         null,
         token
       );
-
-      const normalizedMessage =
-        newMessage?.message || newMessage?.data
-          ? newMessage?.message || newMessage?.data
-          : newMessage;
-
-      setMessagesList((prev) => [
-        normalizedMessage,
-        ...prev,
-      ]);
-
+      const normalized = newMessage?.message || newMessage?.data || newMessage;
+      setMessagesList((prev) => [normalized, ...prev]);
       setSelectedConversation((prev) => ({
         ...prev,
-        messages: [
-          normalizedMessage,
-          ...prev.messages,
-        ],
+        messages: [normalized, ...prev.messages],
       }));
-
       setReplyMessage('');
     } catch (error) {
       console.error('❌ Failed to send reply:', error);
@@ -479,111 +348,41 @@ const Profile = () => {
 
   const getConversations = () => {
     if (!user?._id) return [];
-
     const currentUserId = user._id;
     const partners = new Set();
 
     messagesList.forEach((message) => {
-      const senderId =
-        typeof message.sender === 'string'
-          ? message.sender
-          : message.sender?._id;
-
-      const receiverId =
-        typeof message.receiver === 'string'
-          ? message.receiver
-          : message.receiver?._id;
-
-      if (senderId === currentUserId && receiverId) {
-        partners.add(receiverId);
-      }
-
-      if (receiverId === currentUserId && senderId) {
-        partners.add(senderId);
-      }
+      const senderId = typeof message.sender === 'string' ? message.sender : message.sender?._id;
+      const receiverId = typeof message.receiver === 'string' ? message.receiver : message.receiver?._id;
+      if (senderId === currentUserId && receiverId) partners.add(receiverId);
+      if (receiverId === currentUserId && senderId) partners.add(senderId);
     });
 
     return Array.from(partners)
       .map((partnerId) => {
-        const conversationMessages = messagesList.filter(
-          (message) => {
-            const senderId =
-              typeof message.sender === 'string'
-                ? message.sender
-                : message.sender?._id;
-
-            const receiverId =
-              typeof message.receiver === 'string'
-                ? message.receiver
-                : message.receiver?._id;
-
-            return (
-              (senderId === partnerId ||
-                receiverId === partnerId) &&
-              (senderId === currentUserId ||
-                receiverId === currentUserId)
-            );
-          }
-        );
-
-        const sortedMessages = [...conversationMessages].sort(
-          (a, b) =>
-            new Date(b.createdAt || 0) -
-            new Date(a.createdAt || 0)
-        );
-
-        const last = sortedMessages[0] || null;
-
-        const unread = conversationMessages.filter(
-          (message) => {
-            const receiverId =
-              typeof message.receiver === 'string'
-                ? message.receiver
-                : message.receiver?._id;
-
-            return (
-              receiverId === currentUserId &&
-              !message.read
-            );
-          }
-        ).length;
+        const conversationMessages = messagesList.filter((msg) => {
+          const s = typeof msg.sender === 'string' ? msg.sender : msg.sender?._id;
+          const r = typeof msg.receiver === 'string' ? msg.receiver : msg.receiver?._id;
+          return (s === partnerId || r === partnerId) && (s === currentUserId || r === currentUserId);
+        });
+        const sorted = [...conversationMessages].sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+        const last = sorted[0] || null;
+        const unread = conversationMessages.filter((msg) => {
+          const r = typeof msg.receiver === 'string' ? msg.receiver : msg.receiver?._id;
+          return r === currentUserId && !msg.read;
+        }).length;
 
         let partner = null;
-
-        for (const message of sortedMessages) {
-          const senderId =
-            typeof message.sender === 'string'
-              ? message.sender
-              : message.sender?._id;
-
-          const receiverId =
-            typeof message.receiver === 'string'
-              ? message.receiver
-              : message.receiver?._id;
-
-          if (senderId === partnerId) {
-            partner = message.sender;
-            break;
-          }
-
-          if (receiverId === partnerId) {
-            partner = message.receiver;
-            break;
-          }
+        for (const msg of sorted) {
+          const s = typeof msg.sender === 'string' ? msg.sender : msg.sender?._id;
+          const r = typeof msg.receiver === 'string' ? msg.receiver : msg.receiver?._id;
+          if (s === partnerId) { partner = msg.sender; break; }
+          if (r === partnerId) { partner = msg.receiver; break; }
         }
 
-        return {
-          userId: partnerId,
-          partner,
-          last,
-          unread,
-        };
+        return { userId: partnerId, partner, last, unread };
       })
-      .sort(
-        (a, b) =>
-          new Date(b.last?.createdAt || 0) -
-          new Date(a.last?.createdAt || 0)
-      );
+      .sort((a, b) => new Date(b.last?.createdAt || 0) - new Date(a.last?.createdAt || 0));
   };
 
   // ================================================================
@@ -592,31 +391,10 @@ const Profile = () => {
 
   if (!user) {
     return (
-      <div
-        className="container"
-        style={{
-          padding: '60px 20px',
-          textAlign: 'center',
-        }}
-      >
+      <div className="container" style={{ padding: '60px 20px', textAlign: 'center' }}>
         <h2>Please Login</h2>
-
-        <p
-          style={{
-            color: 'var(--gray-500)',
-          }}
-        >
-          You need to be logged in to view your profile.
-        </p>
-
-        <Link
-          to="/login"
-          className="btn-primary"
-          style={{
-            display: 'inline-block',
-            marginTop: '16px',
-          }}
-        >
+        <p style={{ color: 'var(--gray-500)' }}>You need to be logged in to view your profile.</p>
+        <Link to="/login" className="btn-primary" style={{ display: 'inline-block', marginTop: '16px' }}>
           Login
         </Link>
       </div>
@@ -628,16 +406,8 @@ const Profile = () => {
   // ================================================================
 
   return (
-    <div
-      className="container"
-      style={{
-        padding: '30px 20px',
-      }}
-    >
-      {/* ============================================================
-          PROFILE HEADER
-      ============================================================ */}
-
+    <div className="container" style={{ padding: '30px 20px' }}>
+      {/* Profile Header */}
       <div
         className="profile-header"
         style={{
@@ -670,71 +440,29 @@ const Profile = () => {
           }}
         >
           {user.photoURL ? (
-            <img
-              src={user.photoURL}
-              alt={user.name || 'Profile'}
-              style={{
-                width: '100%',
-                height: '100%',
-                objectFit: 'cover',
-              }}
-            />
+            <img src={user.photoURL} alt={user.name || 'Profile'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           ) : (
             user.name?.charAt(0).toUpperCase() || 'U'
           )}
         </div>
 
         <div style={{ flex: 1 }}>
-          <h1
-            style={{
-              fontSize: '24px',
-              fontWeight: 700,
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-              flexWrap: 'wrap',
-            }}
-          >
+          <h1 style={{ fontSize: '24px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
             {user.name}
-
             {user.role === 'admin' && (
-              <span
-                style={{
-                  background: '#f59e0b',
-                  color: 'white',
-                  fontSize: '12px',
-                  padding: '2px 12px',
-                  borderRadius: 'var(--radius-full)',
-                  fontWeight: 600,
-                }}
-              >
+              <span style={{ background: '#f59e0b', color: 'white', fontSize: '12px', padding: '2px 12px', borderRadius: 'var(--radius-full)', fontWeight: 600 }}>
                 Admin
               </span>
             )}
           </h1>
-
+          <p style={{ color: 'var(--gray-500)' }}>{user.email}</p>
           <p style={{ color: 'var(--gray-500)' }}>
-            {user.email}
-          </p>
-
-          <p style={{ color: 'var(--gray-500)' }}>
-            <i className="fas fa-calendar-alt"></i>{' '}
-            Member since{' '}
-            {user.createdAt
-              ? new Date(
-                  user.createdAt
-                ).toLocaleDateString()
-              : 'N/A'}
+            <i className="fas fa-calendar-alt"></i> Member since{' '}
+            {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}
           </p>
         </div>
 
-        <div
-          style={{
-            display: 'flex',
-            gap: '10px',
-            flexWrap: 'wrap',
-          }}
-        >
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
           <Link
             to="/post-ad"
             className="btn-secondary"
@@ -751,10 +479,8 @@ const Profile = () => {
               gap: '8px',
             }}
           >
-            <i className="fas fa-plus-circle"></i>
-            Post Ad
+            <i className="fas fa-plus-circle"></i> Post Ad
           </Link>
-
           <button
             className="btn-outline"
             onClick={() => {
@@ -771,265 +497,70 @@ const Profile = () => {
               cursor: 'pointer',
             }}
           >
-            <i className="fas fa-pen"></i>
-            Edit Profile
+            <i className="fas fa-pen"></i> Edit Profile
           </button>
         </div>
       </div>
 
-      {/* ============================================================
-          STATS
-      ============================================================ */}
-
+      {/* Stats */}
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns:
-            'repeat(auto-fit, minmax(150px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
           gap: '16px',
           marginBottom: '24px',
         }}
       >
-        <div
-          style={{
-            background: 'white',
-            padding: '16px 20px',
-            borderRadius: 'var(--radius-md)',
-            border: '1px solid var(--gray-200)',
-            textAlign: 'center',
-          }}
-        >
-          <div
-            style={{
-              fontSize: '28px',
-              fontWeight: 800,
-              color: 'var(--primary)',
-            }}
-          >
-            {stats.totalAds}
-          </div>
-
-          <div
-            style={{
-              fontSize: '13px',
-              color: 'var(--gray-500)',
-            }}
-          >
-            Total Ads
-          </div>
+        <div style={{ background: 'white', padding: '16px 20px', borderRadius: 'var(--radius-md)', border: '1px solid var(--gray-200)', textAlign: 'center' }}>
+          <div style={{ fontSize: '28px', fontWeight: 800, color: 'var(--primary)' }}>{stats.totalAds}</div>
+          <div style={{ fontSize: '13px', color: 'var(--gray-500)' }}>Total Ads</div>
         </div>
-
-        <div
-          style={{
-            background: 'white',
-            padding: '16px 20px',
-            borderRadius: 'var(--radius-md)',
-            border: '1px solid var(--gray-200)',
-            textAlign: 'center',
-          }}
-        >
-          <div
-            style={{
-              fontSize: '28px',
-              fontWeight: 800,
-              color: '#8b5cf6',
-            }}
-          >
-            {stats.totalViews}
-          </div>
-
-          <div
-            style={{
-              fontSize: '13px',
-              color: 'var(--gray-500)',
-            }}
-          >
-            Total Views
-          </div>
+        <div style={{ background: 'white', padding: '16px 20px', borderRadius: 'var(--radius-md)', border: '1px solid var(--gray-200)', textAlign: 'center' }}>
+          <div style={{ fontSize: '28px', fontWeight: 800, color: '#8b5cf6' }}>{stats.totalViews}</div>
+          <div style={{ fontSize: '13px', color: 'var(--gray-500)' }}>Total Views</div>
         </div>
-
-        <div
-          style={{
-            background: 'white',
-            padding: '16px 20px',
-            borderRadius: 'var(--radius-md)',
-            border: '1px solid var(--gray-200)',
-            textAlign: 'center',
-          }}
-        >
-          <div
-            style={{
-              fontSize: '28px',
-              fontWeight: 800,
-              color: '#f59e0b',
-            }}
-          >
-            {stats.totalNotifications}
-          </div>
-
-          <div
-            style={{
-              fontSize: '13px',
-              color: 'var(--gray-500)',
-            }}
-          >
-            Notifications
-          </div>
-
+        <div style={{ background: 'white', padding: '16px 20px', borderRadius: 'var(--radius-md)', border: '1px solid var(--gray-200)', textAlign: 'center' }}>
+          <div style={{ fontSize: '28px', fontWeight: 800, color: '#f59e0b' }}>{stats.totalNotifications}</div>
+          <div style={{ fontSize: '13px', color: 'var(--gray-500)' }}>Notifications</div>
           {stats.unreadNotifications > 0 && (
-            <span
-              style={{
-                background: '#e74c3c',
-                color: 'white',
-                fontSize: '11px',
-                padding: '1px 10px',
-                borderRadius: 'var(--radius-full)',
-                display: 'inline-block',
-                marginTop: '4px',
-              }}
-            >
+            <span style={{ background: '#e74c3c', color: 'white', fontSize: '11px', padding: '1px 10px', borderRadius: 'var(--radius-full)', display: 'inline-block', marginTop: '4px' }}>
               {stats.unreadNotifications} unread
             </span>
           )}
         </div>
-
-        <div
-          style={{
-            background: 'white',
-            padding: '16px 20px',
-            borderRadius: 'var(--radius-md)',
-            border: '1px solid var(--gray-200)',
-            textAlign: 'center',
-          }}
-        >
-          <div
-            style={{
-              fontSize: '28px',
-              fontWeight: 800,
-              color: '#0ea5e9',
-            }}
-          >
-            {messagesList.length}
-          </div>
-
-          <div
-            style={{
-              fontSize: '13px',
-              color: 'var(--gray-500)',
-            }}
-          >
-            Messages
-          </div>
-
+        <div style={{ background: 'white', padding: '16px 20px', borderRadius: 'var(--radius-md)', border: '1px solid var(--gray-200)', textAlign: 'center' }}>
+          <div style={{ fontSize: '28px', fontWeight: 800, color: '#0ea5e9' }}>{messagesList.length}</div>
+          <div style={{ fontSize: '13px', color: 'var(--gray-500)' }}>Messages</div>
           {stats.unreadMessages > 0 && (
-            <span
-              style={{
-                background: '#e74c3c',
-                color: 'white',
-                fontSize: '11px',
-                padding: '1px 10px',
-                borderRadius: 'var(--radius-full)',
-                display: 'inline-block',
-                marginTop: '4px',
-              }}
-            >
+            <span style={{ background: '#e74c3c', color: 'white', fontSize: '11px', padding: '1px 10px', borderRadius: 'var(--radius-full)', display: 'inline-block', marginTop: '4px' }}>
               {stats.unreadMessages} unread
             </span>
           )}
         </div>
       </div>
 
-      {/* ============================================================
-          MAIN CONTENT
-      ============================================================ */}
-
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'minmax(0, 2fr) minmax(300px, 1fr)',
-          gap: '24px',
-        }}
-      >
-        {/* ==========================================================
-            MY ADS
-        ========================================================== */}
-
+      {/* Main Content */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(300px, 1fr)', gap: '24px' }}>
+        {/* My Ads */}
         <div>
-          <h2
-            style={{
-              fontSize: '18px',
-              fontWeight: 700,
-              marginBottom: '16px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-            }}
-          >
-            <i
-              className="fas fa-box"
-              style={{
-                color: 'var(--primary)',
-              }}
-            ></i>
-
-            My Ads
-
-            <span
-              style={{
-                fontSize: '13px',
-                color: 'var(--gray-500)',
-                fontWeight: 400,
-              }}
-            >
-              ({stats.totalAds})
-            </span>
+          <h2 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <i className="fas fa-box" style={{ color: 'var(--primary)' }}></i> My Ads
+            <span style={{ fontSize: '13px', color: 'var(--gray-500)', fontWeight: 400 }}>({stats.totalAds})</span>
           </h2>
 
           {loading ? (
             <p>Loading...</p>
           ) : products.length === 0 ? (
-            <div
-              style={{
-                background: 'white',
-                padding: '40px',
-                borderRadius: 'var(--radius-md)',
-                border: '1px solid var(--gray-200)',
-                textAlign: 'center',
-              }}
-            >
-              <p
-                style={{
-                  color: 'var(--gray-500)',
-                }}
-              >
-                You haven't posted any ads yet.
-              </p>
-
-              <Link
-                to="/post-ad"
-                className="btn-primary"
-                style={{
-                  display: 'inline-block',
-                  marginTop: '12px',
-                }}
-              >
+            <div style={{ background: 'white', padding: '40px', borderRadius: 'var(--radius-md)', border: '1px solid var(--gray-200)', textAlign: 'center' }}>
+              <p style={{ color: 'var(--gray-500)' }}>You haven't posted any ads yet.</p>
+              <Link to="/post-ad" className="btn-primary" style={{ display: 'inline-block', marginTop: '12px' }}>
                 Post Your First Ad
               </Link>
             </div>
           ) : (
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '12px',
-              }}
-            >
-              {products.slice(0, 5).map((product) => {
-                const imageUrl =
-                  product.images?.length > 0
-                    ? getImageUrl(product.images[0])
-                    : null;
-
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {products.map((product) => {
+                const imageUrl = product.images?.length > 0 ? getImageUrl(product.images[0]) : null;
                 return (
                   <div
                     key={product._id}
@@ -1047,89 +578,24 @@ const Profile = () => {
                     }}
                   >
                     {imageUrl && (
-                      <div
-                        style={{
-                          width: '60px',
-                          height: '60px',
-                          flexShrink: 0,
-                          borderRadius: 'var(--radius-sm)',
-                          overflow: 'hidden',
-                        }}
-                      >
-                        <img
-                          src={imageUrl}
-                          alt={product.title || 'Product'}
-                          style={{
-                            width: '100%',
-                            height: '100%',
-                            objectFit: 'cover',
-                          }}
-                        />
+                      <div style={{ width: '60px', height: '60px', flexShrink: 0, borderRadius: 'var(--radius-sm)', overflow: 'hidden' }}>
+                        <img src={imageUrl} alt={product.title || 'Product'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       </div>
                     )}
-
-                    <div
-                      style={{
-                        flex: 1,
-                        minWidth: '150px',
-                      }}
-                    >
-                      <div
-                        style={{
-                          fontWeight: 600,
-                          color: 'var(--gray-800)',
-                        }}
-                      >
-                        <Link
-                          to={`/product/${product._id}`}
-                          style={{
-                            textDecoration: 'none',
-                            color: 'inherit',
-                          }}
-                        >
+                    <div style={{ flex: 1, minWidth: '150px' }}>
+                      <div style={{ fontWeight: 600, color: 'var(--gray-800)' }}>
+                        <Link to={`/product/${product._id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
                           {product.title}
                         </Link>
                       </div>
-
-                      <div
-                        style={{
-                          fontSize: '13px',
-                          color: 'var(--gray-500)',
-                        }}
-                      >
-                        {product.category} •{' '}
-                        {product.location} •{' '}
-                        <i className="fas fa-eye"></i>{' '}
-                        {product.views || 0}
+                      <div style={{ fontSize: '13px', color: 'var(--gray-500)' }}>
+                        {product.category} • {product.location} • <i className="fas fa-eye"></i> {product.views || 0}
                       </div>
                     </div>
-
-                    <div
-                      style={{
-                        fontWeight: 700,
-                        color: 'var(--primary)',
-                      }}
-                    >
-                      ₵
-                      {Number(
-                        product.price || 0
-                      ).toLocaleString()}
-                    </div>
-
-                    <div
-                      style={{
-                        display: 'flex',
-                        gap: '8px',
-                        alignItems: 'center',
-                      }}
-                    >
+                    <div style={{ fontWeight: 700, color: 'var(--primary)' }}>₵{Number(product.price || 0).toLocaleString()}</div>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                       <button
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          navigate(
-                            `/edit-product/${product._id}`
-                          );
-                        }}
+                        onClick={() => navigate(`/edit-product/${product._id}`)}
                         style={{
                           padding: '6px 12px',
                           background: 'var(--primary)',
@@ -1141,107 +607,39 @@ const Profile = () => {
                           fontWeight: 600,
                         }}
                       >
-                        <i className="fas fa-pen"></i>{' '}
-                        Edit
+                        <i className="fas fa-pen"></i> Edit
                       </button>
-
                       <button
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          handleDeleteProduct(
-                            product._id
-                          );
-                        }}
-                        disabled={
-                          deletingProductId ===
-                          product._id
-                        }
+                        onClick={() => handleDeleteProduct(product._id)}
+                        disabled={deletingProductId === product._id}
                         style={{
                           padding: '6px 12px',
                           background: '#dc2626',
                           color: 'white',
                           border: 'none',
                           borderRadius: 'var(--radius-sm)',
-                          cursor:
-                            deletingProductId ===
-                            product._id
-                              ? 'not-allowed'
-                              : 'pointer',
+                          cursor: deletingProductId === product._id ? 'not-allowed' : 'pointer',
                           fontSize: '13px',
                           fontWeight: 600,
-                          opacity:
-                            deletingProductId ===
-                            product._id
-                              ? 0.6
-                              : 1,
+                          opacity: deletingProductId === product._id ? 0.6 : 1,
                         }}
                       >
-                        {deletingProductId ===
-                        product._id ? (
-                          'Deleting...'
-                        ) : (
-                          <>
-                            <i className="fas fa-trash"></i>{' '}
-                            Delete
-                          </>
-                        )}
+                        {deletingProductId === product._id ? 'Deleting...' : <><i className="fas fa-trash"></i> Delete</>}
                       </button>
                     </div>
                   </div>
                 );
               })}
-
-              {products.length > 5 && (
-                <Link
-                  to="/products?my-ads=true"
-                  style={{
-                    color: 'var(--primary)',
-                    fontWeight: 600,
-                    textAlign: 'center',
-                  }}
-                >
-                  View all {products.length} ads →
-                </Link>
-              )}
             </div>
           )}
         </div>
 
-        {/* ==========================================================
-            MESSAGES
-        ========================================================== */}
-
+        {/* Messages */}
         <div>
-          <h2
-            style={{
-              fontSize: '18px',
-              fontWeight: 700,
-              marginBottom: '16px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-            }}
-          >
-            <i
-              className="fas fa-envelope"
-              style={{
-                color: 'var(--primary)',
-              }}
-            ></i>
-
-            Messages
-
+          <h2 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <i className="fas fa-envelope" style={{ color: 'var(--primary)' }}></i> Messages
             {stats.unreadMessages > 0 && (
-              <span
-                style={{
-                  background: '#e74c3c',
-                  color: 'white',
-                  fontSize: '11px',
-                  padding: '1px 10px',
-                  borderRadius: 'var(--radius-full)',
-                  fontWeight: 600,
-                }}
-              >
+              <span style={{ background: '#e74c3c', color: 'white', fontSize: '11px', padding: '1px 10px', borderRadius: 'var(--radius-full)', fontWeight: 600 }}>
                 {stats.unreadMessages} new
               </span>
             )}
@@ -1250,173 +648,63 @@ const Profile = () => {
           {loading ? (
             <p>Loading...</p>
           ) : messagesList.length === 0 ? (
-            <div
-              style={{
-                background: 'white',
-                padding: '30px',
-                borderRadius: 'var(--radius-md)',
-                border: '1px solid var(--gray-200)',
-                textAlign: 'center',
-              }}
-            >
-              <p
-                style={{
-                  color: 'var(--gray-500)',
-                }}
-              >
-                No messages yet.
-              </p>
+            <div style={{ background: 'white', padding: '30px', borderRadius: 'var(--radius-md)', border: '1px solid var(--gray-200)', textAlign: 'center' }}>
+              <p style={{ color: 'var(--gray-500)' }}>No messages yet.</p>
             </div>
           ) : selectedConversation ? (
-            <div
-              style={{
-                background: 'white',
-                borderRadius: 'var(--radius-md)',
-                border: '1px solid var(--gray-200)',
-                overflow: 'hidden',
-              }}
-            >
-              <div
-                style={{
-                  padding: '12px 16px',
-                  borderBottom:
-                    '1px solid var(--gray-200)',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                }}
-              >
+            <div style={{ background: 'white', borderRadius: 'var(--radius-md)', border: '1px solid var(--gray-200)', overflow: 'hidden' }}>
+              <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--gray-200)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <strong>
                   {(() => {
-                    const first =
-                      selectedConversation.messages[0];
-
+                    const first = selectedConversation.messages[0];
                     if (!first) return 'User';
-
-                    const senderId =
-                      typeof first.sender === 'string'
-                        ? first.sender
-                        : first.sender?._id;
-
-                    return senderId ===
-                      selectedConversation.userId
+                    const senderId = typeof first.sender === 'string' ? first.sender : first.sender?._id;
+                    return senderId === selectedConversation.userId
                       ? first.sender?.name || 'User'
                       : first.receiver?.name || 'User';
                   })()}
                 </strong>
-
-                <button
-                  onClick={() =>
-                    setSelectedConversation(null)
-                  }
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    fontSize: '20px',
-                    cursor: 'pointer',
-                  }}
-                >
+                <button onClick={() => setSelectedConversation(null)} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer' }}>
                   &times;
                 </button>
               </div>
 
-              <div
-                style={{
-                  maxHeight: '300px',
-                  overflowY: 'auto',
-                  padding: '12px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '8px',
-                }}
-              >
+              <div style={{ maxHeight: '300px', overflowY: 'auto', padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {[...selectedConversation.messages]
-                  .sort(
-                    (a, b) =>
-                      new Date(
-                        a.createdAt || 0
-                      ) -
-                      new Date(
-                        b.createdAt || 0
-                      )
-                  )
+                  .sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0))
                   .map((message) => {
-                    const senderId =
-                      typeof message.sender === 'string'
-                        ? message.sender
-                        : message.sender?._id;
-
-                    const isMine =
-                      senderId === user._id;
-
+                    const senderId = typeof message.sender === 'string' ? message.sender : message.sender?._id;
+                    const isMine = senderId === user._id;
                     return (
                       <div
                         key={message._id}
                         style={{
-                          alignSelf: isMine
-                            ? 'flex-end'
-                            : 'flex-start',
+                          alignSelf: isMine ? 'flex-end' : 'flex-start',
                           maxWidth: '80%',
-                          background: isMine
-                            ? 'var(--primary)'
-                            : 'var(--gray-100)',
-                          color: isMine
-                            ? 'white'
-                            : 'var(--gray-800)',
+                          background: isMine ? 'var(--primary)' : 'var(--gray-100)',
+                          color: isMine ? 'white' : 'var(--gray-800)',
                           padding: '8px 14px',
-                          borderRadius:
-                            'var(--radius-md)',
+                          borderRadius: 'var(--radius-md)',
                           fontSize: '14px',
                         }}
                       >
                         {message.message}
-
-                        <div
-                          style={{
-                            fontSize: '10px',
-                            opacity: 0.7,
-                            marginTop: '4px',
-                          }}
-                        >
-                          {message.createdAt
-                            ? new Date(
-                                message.createdAt
-                              ).toLocaleTimeString()
-                            : ''}
+                        <div style={{ fontSize: '10px', opacity: 0.7, marginTop: '4px' }}>
+                          {message.createdAt ? new Date(message.createdAt).toLocaleTimeString() : ''}
                         </div>
                       </div>
                     );
                   })}
               </div>
 
-              <form
-                onSubmit={handleSendReply}
-                style={{
-                  display: 'flex',
-                  gap: '8px',
-                  padding: '12px',
-                  borderTop:
-                    '1px solid var(--gray-200)',
-                }}
-              >
+              <form onSubmit={handleSendReply} style={{ display: 'flex', gap: '8px', padding: '12px', borderTop: '1px solid var(--gray-200)' }}>
                 <input
                   type="text"
                   value={replyMessage}
-                  onChange={(event) =>
-                    setReplyMessage(event.target.value)
-                  }
+                  onChange={(e) => setReplyMessage(e.target.value)}
                   placeholder="Type a reply..."
-                  style={{
-                    flex: 1,
-                    padding: '8px 14px',
-                    border:
-                      '1.5px solid var(--gray-200)',
-                    borderRadius:
-                      'var(--radius-md)',
-                    fontSize: '14px',
-                  }}
+                  style={{ flex: 1, padding: '8px 14px', border: '1.5px solid var(--gray-200)', borderRadius: 'var(--radius-md)', fontSize: '14px' }}
                 />
-
                 <button
                   type="submit"
                   disabled={sendingReply}
@@ -1425,105 +713,49 @@ const Profile = () => {
                     background: 'var(--secondary)',
                     color: 'white',
                     border: 'none',
-                    borderRadius:
-                      'var(--radius-full)',
+                    borderRadius: 'var(--radius-full)',
                     fontWeight: 600,
-                    cursor: sendingReply
-                      ? 'not-allowed'
-                      : 'pointer',
+                    cursor: sendingReply ? 'not-allowed' : 'pointer',
                     opacity: sendingReply ? 0.7 : 1,
                   }}
                 >
-                  {sendingReply
-                    ? 'Sending...'
-                    : 'Reply'}
+                  {sendingReply ? 'Sending...' : 'Reply'}
                 </button>
               </form>
             </div>
           ) : (
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '8px',
-              }}
-            >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {getConversations().map((conversation) => (
                 <div
                   key={conversation.userId}
-                  onClick={() =>
-                    openConversation(
-                      conversation.userId
-                    )
-                  }
+                  onClick={() => openConversation(conversation.userId)}
                   style={{
                     background: 'white',
                     padding: '12px 16px',
-                    borderRadius:
-                      'var(--radius-md)',
-                    border:
-                      '1px solid var(--gray-200)',
+                    borderRadius: 'var(--radius-md)',
+                    border: '1px solid var(--gray-200)',
                     cursor: 'pointer',
-                    transition:
-                      'var(--transition)',
+                    transition: 'var(--transition)',
                     display: 'flex',
-                    justifyContent:
-                      'space-between',
+                    justifyContent: 'space-between',
                     alignItems: 'center',
                   }}
                 >
                   <div>
-                    <div
-                      style={{
-                        fontWeight: 600,
-                      }}
-                    >
-                      {conversation.partner?.name ||
-                        'User'}
-
+                    <div style={{ fontWeight: 600 }}>
+                      {conversation.partner?.name || 'User'}
                       {conversation.unread > 0 && (
-                        <span
-                          style={{
-                            background: '#e74c3c',
-                            color: 'white',
-                            fontSize: '10px',
-                            padding: '1px 8px',
-                            borderRadius:
-                              'var(--radius-full)',
-                            marginLeft: '8px',
-                          }}
-                        >
+                        <span style={{ background: '#e74c3c', color: 'white', fontSize: '10px', padding: '1px 8px', borderRadius: 'var(--radius-full)', marginLeft: '8px' }}>
                           {conversation.unread}
                         </span>
                       )}
                     </div>
-
-                    <div
-                      style={{
-                        fontSize: '13px',
-                        color: 'var(--gray-500)',
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        maxWidth: '150px',
-                      }}
-                    >
-                      {conversation.last?.message ||
-                        'No messages'}
+                    <div style={{ fontSize: '13px', color: 'var(--gray-500)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '150px' }}>
+                      {conversation.last?.message || 'No messages'}
                     </div>
                   </div>
-
-                  <div
-                    style={{
-                      fontSize: '11px',
-                      color: 'var(--gray-400)',
-                    }}
-                  >
-                    {conversation.last?.createdAt
-                      ? new Date(
-                          conversation.last.createdAt
-                        ).toLocaleDateString()
-                      : ''}
+                  <div style={{ fontSize: '11px', color: 'var(--gray-400)' }}>
+                    {conversation.last?.createdAt ? new Date(conversation.last.createdAt).toLocaleDateString() : ''}
                   </div>
                 </div>
               ))}
@@ -1532,141 +764,45 @@ const Profile = () => {
         </div>
       </div>
 
-      {/* ============================================================
-          EDIT PROFILE MODAL
-      ============================================================ */}
-
+      {/* Edit Profile Modal */}
       {showEditModal && (
-        <div
-          className="edit-profile-overlay"
-          onClick={() =>
-            setShowEditModal(false)
-          }
-        >
-          <div
-            className="edit-profile-modal"
-            onClick={(event) =>
-              event.stopPropagation()
-            }
-          >
-            <button
-              className="close-btn"
-              onClick={() =>
-                setShowEditModal(false)
-              }
-            >
+        <div className="edit-profile-overlay" onClick={() => setShowEditModal(false)}>
+          <div className="edit-profile-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="close-btn" onClick={() => setShowEditModal(false)}>
               &times;
             </button>
-
             <h2>Edit Profile</h2>
-
-            {editError && (
-              <div className="error-banner">
-                {editError}
-              </div>
-            )}
-
+            {editError && <div className="error-banner">{editError}</div>}
             <form onSubmit={handleUpdateProfile}>
-              {/* PHOTO */}
-
               <div className="form-group">
                 <label>Profile Photo</label>
-
                 <div className="photo-upload-row">
                   <div className="photo-preview">
-                    {editPhotoPreview ? (
-                      <img
-                        src={editPhotoPreview}
-                        alt="Preview"
-                      />
-                    ) : (
-                      <i className="fas fa-user"></i>
-                    )}
+                    {editPhotoPreview ? <img src={editPhotoPreview} alt="Preview" /> : <i className="fas fa-user"></i>}
                   </div>
-
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={
-                      handleEditPhotoChange
-                    }
-                  />
-
-                  <button
-                    type="button"
-                    className="remove-photo-btn"
-                    onClick={
-                      handleRemovePhoto
-                    }
-                  >
+                  <input type="file" accept="image/*" onChange={handleEditPhotoChange} />
+                  <button type="button" className="remove-photo-btn" onClick={handleRemovePhoto}>
                     Remove Photo
                   </button>
                 </div>
-
-                {removePhoto && (
-                  <small className="remove-photo-hint">
-                    Photo will be removed when
-                    you save.
-                  </small>
-                )}
+                {removePhoto && <small className="remove-photo-hint">Photo will be removed when you save.</small>}
               </div>
-
-              {/* NAME */}
 
               <div className="form-group">
                 <label>Full Name</label>
-
-                <input
-                  type="text"
-                  value={editName}
-                  onChange={(event) =>
-                    setEditName(event.target.value)
-                  }
-                  required
-                />
+                <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} required />
               </div>
-
-              {/* EMAIL */}
-
               <div className="form-group">
                 <label>Email</label>
-
-                <input
-                  type="email"
-                  value={editEmail}
-                  onChange={(event) =>
-                    setEditEmail(
-                      event.target.value
-                    )
-                  }
-                  required
-                />
+                <input type="email" value={editEmail} onChange={(e) => setEditEmail(e.target.value)} required />
               </div>
-
-              {/* PHONE */}
-
               <div className="form-group">
                 <label>Phone</label>
-
-                <input
-                  type="tel"
-                  value={editPhone}
-                  onChange={(event) =>
-                    setEditPhone(
-                      event.target.value
-                    )
-                  }
-                />
+                <input type="tel" value={editPhone} onChange={(e) => setEditPhone(e.target.value)} />
               </div>
 
-              <button
-                type="submit"
-                className="save-btn"
-                disabled={editLoading}
-              >
-                {editLoading
-                  ? 'Saving...'
-                  : 'Save Changes'}
+              <button type="submit" className="save-btn" disabled={editLoading}>
+                {editLoading ? 'Saving...' : 'Save Changes'}
               </button>
             </form>
           </div>

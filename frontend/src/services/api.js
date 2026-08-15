@@ -18,16 +18,14 @@ export const API_URL = RAW_API_URL.replace(/\/+$/, "");
 console.log("🔗 API_URL:", API_URL);
 
 // ================================================================
-// REQUEST CONFIG
+// REQUEST CONFIG – IMPROVED FOR RENDER COLD START
 // ================================================================
 
-// Keep requests reasonably fast.
-// Render may need a few seconds to wake up, but we don't want
-// repeated requests making the page appear frozen.
-const REQUEST_TIMEOUT = 15000;
+// Allow up to 30 seconds for the server to respond (Render cold start ~20s)
+const REQUEST_TIMEOUT = 30000;
 
-// Only retry temporary network failures once.
-const MAX_RETRIES = 1;
+// Retry up to 2 times (total 3 attempts) to handle transient failures
+const MAX_RETRIES = 2;
 
 // ================================================================
 // HEADERS
@@ -108,7 +106,7 @@ const sleep = (ms) =>
   new Promise((resolve) => setTimeout(resolve, ms));
 
 // ================================================================
-// REQUEST HELPER
+// REQUEST HELPER – WITH RETRY ON TIMEOUT
 // ================================================================
 
 const request = async (
@@ -146,12 +144,20 @@ const request = async (
       error?.message === "Failed to fetch";
 
     // ------------------------------------------------------------
-    // TIMEOUT
+    // TIMEOUT – RETRY IF ATTEMPTS REMAIN
     // ------------------------------------------------------------
 
     if (isAbortError) {
+      if (retries > 0) {
+        console.warn(
+          `⏳ Request timeout (server cold start?) – retrying... ${retries} attempt(s) left`
+        );
+        await sleep(1500); // give the server a bit more time to wake
+        return request(url, options, retries - 1);
+      }
+
       const timeoutError = new Error(
-        "The server took too long to respond."
+        "The server is taking too long to respond. Please try again in a moment."
       );
 
       timeoutError.code = "REQUEST_TIMEOUT";
@@ -161,7 +167,7 @@ const request = async (
     }
 
     // ------------------------------------------------------------
-    // RETRY NETWORK ERRORS ONLY
+    // NETWORK ERRORS – RETRY IF ATTEMPTS REMAIN
     // ------------------------------------------------------------
 
     if (
@@ -169,7 +175,7 @@ const request = async (
       retries > 0
     ) {
       console.warn(
-        `🔄 Retrying API request... ${retries} attempt left`
+        `🔄 Network error – retrying... ${retries} attempt(s) left`
       );
 
       await sleep(800);
@@ -302,6 +308,19 @@ export const getImageUrl = (path) => {
       ? cleanPath
       : `/${cleanPath}`
   }`;
+};
+
+// ================================================================
+// KEEP ALIVE – Ping the server every 10 minutes to prevent sleep
+// ================================================================
+
+export const startKeepAlive = (intervalMs = 10 * 60 * 1000) => {
+  const ping = () => {
+    fetch(`${API_URL}/api/health`, { method: "HEAD" })
+      .catch(() => {});
+  };
+  ping(); // ping immediately
+  return setInterval(ping, intervalMs);
 };
 
 // ================================================================
@@ -1257,6 +1276,9 @@ const api = {
   getImageUrl,
   getToken,
   clearAuthData,
+
+  // Keep‑alive utility
+  startKeepAlive,
 };
 
 export default api;
