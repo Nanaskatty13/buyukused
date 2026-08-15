@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 
-// ─── Icon mapping ──────────────────────────────────────────
+// ─── Icon mapping (FontAwesome) ──────────────────────────
 const getCategoryIcon = (name) => {
   const icons = {
     'Phones': 'fa-mobile-alt',
@@ -29,90 +29,59 @@ const Categories = ({ products = [], onCategorySelect }) => {
     categoryMap[cat] = (categoryMap[cat] || 0) + 1;
   });
 
-  const categories = Object.keys(categoryMap).map((name) => ({
-    name,
-    count: categoryMap[name],
-    icon: getCategoryIcon(name),
-  }));
+  // If no products, show a default set
+  const fallbackCategories = [
+    'Phones', 'Laptops', 'Tablets', 'Accessories', 'TV & Game Consoles',
+    'Cars', 'Real Estate', 'Jobs', 'Fashion', 'Home'
+  ];
 
-  // ─── Handlers ──────────────────────────────────────────
+  const categories = Object.keys(categoryMap).length > 0
+    ? Object.keys(categoryMap).map((name) => ({
+        name,
+        count: categoryMap[name],
+        icon: getCategoryIcon(name),
+      }))
+    : fallbackCategories.map((name) => ({
+        name,
+        count: 0,
+        icon: getCategoryIcon(name),
+      }));
+
+  // ─── Handler ──────────────────────────────────────────
   const handleCategoryClick = (catName) => {
     if (onCategorySelect) {
       onCategorySelect(catName);
     }
   };
 
-  // ─── Render ─────────────────────────────────────────────
   return (
-    <section className="section" style={{ padding: '40px 0' }}>
-      <div className="container">
-        <div className="section-header" style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '24px',
-          flexWrap: 'wrap',
-          gap: '8px 16px',
-        }}>
-          <h2 className="section-title" style={{ fontSize: '22px', fontWeight: 800 }}>
-            <i className="fas fa-th-large" style={{ color: 'var(--primary)', marginRight: '8px' }}></i>
-            Popular Categories
-          </h2>
-          <Link to="/products" className="section-link" style={{
-            color: 'var(--primary)',
-            fontWeight: 600,
-            fontSize: '14px',
-          }}>View All <i className="fas fa-arrow-right"></i></Link>
-        </div>
+    <section className="categories-apple">
+      <div className="categories-apple-header">
+        <h2 className="categories-apple-title">
+          <span className="categories-apple-icon">⌘</span> Browse Categories
+        </h2>
+        <Link to="/products" className="categories-apple-link">See All →</Link>
+      </div>
 
-        <div className="categories-grid" style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))',
-          gap: '16px',
-        }}>
-          {categories.length === 0 ? (
-            <p style={{ color: 'var(--gray-500)', textAlign: 'center', gridColumn: '1 / -1' }}>
-              No categories yet
-            </p>
-          ) : (
-            categories.map((cat) => (
-              <div
-                key={cat.name}
-                className="category-card"
-                onClick={() => handleCategoryClick(cat.name)}
-                style={{
-                  background: 'white',
-                  padding: '20px 12px',
-                  borderRadius: 'var(--radius-md)',
-                  textAlign: 'center',
-                  cursor: 'pointer',
-                  transition: 'var(--transition)',
-                  border: '1px solid var(--gray-200)',
-                  boxShadow: 'var(--shadow-sm)',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'translateY(-4px)';
-                  e.currentTarget.style.boxShadow = 'var(--shadow-md)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = 'var(--shadow-sm)';
-                }}
-              >
-                <i className={`fas ${cat.icon}`} style={{
-                  fontSize: '32px',
-                  color: 'var(--primary)',
-                  display: 'block',
-                  marginBottom: '8px',
-                }}></i>
-                <div className="name" style={{ fontWeight: 600, fontSize: '13px' }}>{cat.name}</div>
-                <div className="count" style={{ fontSize: '11px', color: 'var(--gray-400)' }}>
-                  {cat.count} ad{cat.count !== 1 ? 's' : ''}
-                </div>
-              </div>
-            ))
-          )}
-        </div>
+      <div className="categories-apple-grid">
+        {categories.map((cat) => (
+          <div
+            key={cat.name}
+            className="categories-apple-card"
+            onClick={() => handleCategoryClick(cat.name)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => e.key === 'Enter' && handleCategoryClick(cat.name)}
+          >
+            <div className="categories-apple-icon-wrapper">
+              <i className={`fas ${cat.icon}`}></i>
+            </div>
+            <div className="categories-apple-name">{cat.name}</div>
+            <div className="categories-apple-count">
+              {cat.count} {cat.count === 1 ? 'item' : 'items'}
+            </div>
+          </div>
+        ))}
       </div>
     </section>
   );

@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { getImageUrl, updateProductStatus } from '../services/api';
 import SoldBadge from './SoldBadge';
 
-const ProductCard = ({ product, onStatusToggle }) => {
+const ProductCard = ({ product, onStatusToggle, appleStyle = false, videoPreview = false }) => {
   const { toggleFavorite, isFavorite } = useCart();
   const { user, token } = useAuth();
   const [isUpdating, setIsUpdating] = useState(false);
@@ -133,19 +133,20 @@ const ProductCard = ({ product, onStatusToggle }) => {
 
   return (
     <div
-      className="product-card"
+      className={`product-card ${appleStyle ? 'product-card-apple' : ''}`}
       style={{
         background: 'white',
-        borderRadius: 'var(--radius-md)',
+        borderRadius: appleStyle ? '18px' : 'var(--radius-md)',
         overflow: 'hidden',
-        border: '1px solid var(--gray-200)',
-        transition: 'var(--transition)',
-        boxShadow: 'var(--shadow-sm)',
+        border: appleStyle ? 'none' : '1px solid var(--gray-200)',
+        transition: 'all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+        boxShadow: appleStyle ? '0 2px 12px rgba(0,0,0,0.04)' : 'var(--shadow-sm)',
         cursor: 'pointer',
         display: 'flex',
         flexDirection: 'column',
         maxWidth: '280px',
         margin: '0 auto',
+        height: '100%',
       }}
     >
       {/* ─── Image ─── */}
@@ -171,6 +172,7 @@ const ProductCard = ({ product, onStatusToggle }) => {
             height: '100%',
             objectFit: 'contain',
             backgroundColor: 'var(--gray-100)',
+            transition: 'transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
           }}
           loading="lazy"
           onError={(e) => {
@@ -200,6 +202,33 @@ const ProductCard = ({ product, onStatusToggle }) => {
           </span>
         )}
 
+        {/* ─── Video preview badge ─── */}
+        {videoPreview && (
+          <div
+            className="product-card-video-badge"
+            style={{
+              position: 'absolute',
+              bottom: '12px',
+              right: '12px',
+              background: 'rgba(0,0,0,0.7)',
+              backdropFilter: 'blur(4px)',
+              color: 'white',
+              width: '36px',
+              height: '36px',
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '14px',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+              pointerEvents: 'none',
+              zIndex: 2,
+            }}
+          >
+            <span style={{ marginLeft: '2px' }}>▶</span>
+          </div>
+        )}
+
         <button
           type="button"
           className="fav-btn"
@@ -224,6 +253,8 @@ const ProductCard = ({ product, onStatusToggle }) => {
             color: liked ? '#e74c3c' : 'var(--gray-600)',
             transition: 'var(--transition)',
             cursor: 'pointer',
+            zIndex: 3,
+            backdropFilter: 'blur(4px)',
           }}
           aria-label={liked ? 'Remove from favorites' : 'Add to favorites'}
         >
@@ -235,7 +266,7 @@ const ProductCard = ({ product, onStatusToggle }) => {
       <div
         className="info"
         style={{
-          padding: '10px 12px 12px',
+          padding: appleStyle ? '14px 16px 16px' : '10px 12px 12px',
           flex: 1,
           display: 'flex',
           flexDirection: 'column',
@@ -252,13 +283,14 @@ const ProductCard = ({ product, onStatusToggle }) => {
             className="title"
             style={{
               fontWeight: 600,
-              fontSize: '14px',
+              fontSize: appleStyle ? '15px' : '14px',
               marginBottom: '2px',
               lineHeight: 1.3,
               display: '-webkit-box',
               WebkitLineClamp: 2,
               WebkitBoxOrient: 'vertical',
               overflow: 'hidden',
+              color: '#1f2937',
             }}
           >
             {product.title || 'Untitled'}
@@ -268,9 +300,9 @@ const ProductCard = ({ product, onStatusToggle }) => {
         <div
           className="price"
           style={{
-            fontSize: '16px',
+            fontSize: appleStyle ? '18px' : '16px',
             fontWeight: 700,
-            color: isSold ? '#9ca3af' : 'var(--primary)',
+            color: isSold ? '#9ca3af' : '#0071e3',
             marginBottom: '4px',
             display: 'flex',
             alignItems: 'center',
@@ -365,24 +397,31 @@ const ProductCard = ({ product, onStatusToggle }) => {
           <Link
             to={`/product/${product._id}`}
             style={{
-              padding: '6px 14px',
-              background: isSold ? '#9ca3af' : 'var(--primary)',
+              padding: appleStyle ? '8px 16px' : '6px 14px',
+              background: isSold ? '#9ca3af' : '#0071e3',
               color: 'white',
               border: 'none',
-              borderRadius: 'var(--radius-full)',
+              borderRadius: appleStyle ? '9999px' : 'var(--radius-full)',
               fontWeight: 600,
-              fontSize: '12px',
+              fontSize: appleStyle ? '13px' : '12px',
               textAlign: 'center',
               textDecoration: 'none',
-              transition: 'var(--transition)',
+              transition: 'all 0.2s ease',
               display: 'block',
               cursor: isSold ? 'default' : 'pointer',
+              boxShadow: isSold ? 'none' : '0 2px 8px rgba(0,113,227,0.3)',
             }}
             onMouseEnter={(e) => {
-              if (!isSold) e.currentTarget.style.background = 'var(--primary-dark)';
+              if (!isSold) {
+                e.currentTarget.style.background = '#0077ed';
+                e.currentTarget.style.transform = 'scale(1.02)';
+              }
             }}
             onMouseLeave={(e) => {
-              if (!isSold) e.currentTarget.style.background = 'var(--primary)';
+              if (!isSold) {
+                e.currentTarget.style.background = '#0071e3';
+                e.currentTarget.style.transform = 'scale(1)';
+              }
             }}
           >
             {isSold ? 'Sold Out' : 'View Product →'}
@@ -392,16 +431,16 @@ const ProductCard = ({ product, onStatusToggle }) => {
             <button
               onClick={handleMarkAsSold}
               style={{
-                padding: '4px 12px',
+                padding: appleStyle ? '6px 14px' : '4px 12px',
                 background: isSold ? '#22c55e' : '#dc2626',
                 color: 'white',
                 border: 'none',
-                borderRadius: 'var(--radius-full)',
+                borderRadius: appleStyle ? '9999px' : 'var(--radius-full)',
                 fontWeight: 600,
-                fontSize: '11px',
+                fontSize: appleStyle ? '12px' : '11px',
                 textAlign: 'center',
                 cursor: 'pointer',
-                transition: 'var(--transition)',
+                transition: 'all 0.2s ease',
                 display: 'block',
                 width: '100%',
               }}
@@ -419,11 +458,11 @@ const ProductCard = ({ product, onStatusToggle }) => {
           {isOwner && isUpdating && (
             <div
               style={{
-                padding: '4px 12px',
+                padding: '6px 14px',
                 background: '#9ca3af',
                 color: 'white',
-                borderRadius: 'var(--radius-full)',
-                fontSize: '11px',
+                borderRadius: appleStyle ? '9999px' : 'var(--radius-full)',
+                fontSize: '12px',
                 textAlign: 'center',
                 opacity: 0.7,
               }}

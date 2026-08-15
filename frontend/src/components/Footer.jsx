@@ -66,6 +66,7 @@ const Footer = () => {
               <li style={{ marginBottom: '8px' }}><Link to="/legal/terms">Terms</Link></li>
               <li style={{ marginBottom: '8px' }}><Link to="/legal/privacy">Privacy</Link></li>
               <li style={{ marginBottom: '8px' }}><Link to="/legal/cookies">Cookies</Link></li>
+              <li style={{ marginBottom: '8px' }}><Link to="/legal/cookies">Version 0.01</Link></li>
             </ul>
           </div>
         </div>
