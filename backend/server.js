@@ -1,3 +1,5 @@
+// backend/server.js
+
 const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
@@ -60,9 +62,6 @@ app.use((req, res, next) => {
   next();
 });
 
-const passwordRoutes = require("./routes/passwordRoutes");
-app.use("/api/password", passwordRoutes);
-
 // ============================================================
 // SECURITY
 // ============================================================
@@ -87,6 +86,7 @@ app.use(
 
 // ============================================================
 // CORS
+// IMPORTANT: CORS MUST COME BEFORE ROUTES
 // ============================================================
 
 const allowedOrigins = [
@@ -113,19 +113,20 @@ app.use(
         origin
       );
 
-      // Requests without Origin
+      // Allow requests without Origin
+      // Example: curl/server-to-server requests
       if (!origin) {
         return callback(null, true);
       }
 
-      // Explicit origins
+      // Explicitly allowed origins
       if (
         allowedOrigins.includes(origin)
       ) {
         return callback(null, true);
       }
 
-      // Vercel deployments
+      // Allow Vercel preview deployments
       if (
         /^https:\/\/[a-zA-Z0-9-]+\.vercel\.app$/.test(
           origin
@@ -161,6 +162,8 @@ app.use(
       "Content-Type",
       "Authorization",
     ],
+
+    optionsSuccessStatus: 204,
   })
 );
 
@@ -183,16 +186,6 @@ app.use(
 
 // ============================================================
 // STATIC UPLOADS
-// ============================================================
-//
-// Profile images can be accessed through:
-//
-// https://your-api.onrender.com/uploads/profiles/file.jpg
-//
-// NOTE:
-// Render's local filesystem is not persistent across
-// deployments/restarts. For permanent production storage,
-// Cloudinary/S3/etc. should eventually be used.
 // ============================================================
 
 const uploadsDirectory = path.join(
@@ -315,35 +308,62 @@ app.use(
 // ROOT API CHECK
 // ============================================================
 
-app.get("/", (req, res) => {
-  res.json({
-    success: true,
-    message:
-      "Sell Platform API is running",
-    environment:
-      process.env.NODE_ENV ||
-      "development",
-  });
-});
-
-// ============================================================
-// HEALTH CHECK
-// ============================================================
-
 app.get(
-  "/health",
+  "/",
   (req, res) => {
-    res.json({
+    res.status(200).json({
       success: true,
-      status: "ok",
-      timestamp:
-        new Date().toISOString(),
+      message:
+        "Sell Platform API is running",
+      environment:
+        process.env.NODE_ENV ||
+        "development",
     });
   }
 );
 
 // ============================================================
-// ROUTES
+// HEALTH CHECK
+// Supports BOTH /health and /api/health
+// ============================================================
+
+const healthResponse = (
+  req,
+  res
+) => {
+  res.status(200).json({
+    success: true,
+    status: "ok",
+    timestamp:
+      new Date().toISOString(),
+  });
+};
+
+app.get(
+  "/health",
+  healthResponse
+);
+
+app.get(
+  "/api/health",
+  healthResponse
+);
+
+// ============================================================
+// PASSWORD RESET ROUTES
+// IMPORTANT: Mounted AFTER CORS
+// ============================================================
+
+const passwordRoutes =
+  require("./routes/passwordRoutes");
+
+app.use(
+  "/api/password",
+  passwordRoutes
+);
+
+// ============================================================
+// APPLICATION ROUTES
 // ============================================================
 
 const authRoutes =
@@ -368,37 +388,55 @@ console.log(
   "✅ Routes loaded"
 );
 
-// Authentication
+// ============================================================
+// AUTHENTICATION
+// ============================================================
+
 app.use(
   "/auth",
   authRoutes
 );
 
-// Products
+// ============================================================
+// PRODUCTS
+// ============================================================
+
 app.use(
   "/api/products",
   productRoutes
 );
 
-// Notifications
+// ============================================================
+// NOTIFICATIONS
+// ============================================================
+
 app.use(
   "/api/notifications",
   notificationRoutes
 );
 
-// Users
+// ============================================================
+// USERS
+// ============================================================
+
 app.use(
   "/api/users",
   userRoutes
 );
 
-// Messages
+// ============================================================
+// MESSAGES
+// ============================================================
+
 app.use(
   "/api/messages",
   messageRoutes
 );
 
-// Admin
+// ============================================================
+// ADMIN
+// ============================================================
+
 app.use(
   "/api/admin",
   adminRoutes
@@ -722,8 +760,16 @@ const start =
           }
         );
 
+      // Allow long-running requests
+      // such as Render cold starts.
       server.timeout =
         120000;
+
+      server.keepAliveTimeout =
+        65000;
+
+      server.headersTimeout =
+        66000;
     } catch (error) {
       console.error(
         "❌ Server failed:",
