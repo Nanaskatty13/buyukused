@@ -7,12 +7,12 @@ import { CartProvider } from "./context/CartContext";
 import Navbar from "./components/Navbar";
 import FloatingPhone from "./components/FloatingPhone";
 
-// Public pages
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
-import ForgotPassword from "./pages/ForgotPassword"; // ADDED
-import ResetPassword from "./pages/ResetPassword"; // ADDED
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
+
 import Products from "./pages/Products";
 import ProductDetails from "./pages/ProductDetails";
 import Profile from "./pages/Profile";
@@ -20,7 +20,6 @@ import Wishlist from "./pages/Wishlist";
 import Cart from "./pages/Cart";
 import SearchResultsPage from "./pages/SearchResultsPage";
 
-// Information pages
 import About from "./pages/About";
 import HowItWorks from "./pages/HowItWorks";
 import Contact from "./pages/Contact";
@@ -35,11 +34,9 @@ import Privacy from "./pages/Privacy";
 import Cookies from "./pages/Cookies";
 import InfoPage from "./pages/InfoPage";
 
-// Seller pages
 import PostAd from "./pages/PostAd";
 import EditProduct from "./pages/EditProduct";
 
-// Admin pages
 import AdminDashboard from "./pages/Admin/AdminDashboard";
 
 function App() {
@@ -49,48 +46,155 @@ function App() {
         <Navbar />
 
         <Routes>
-          {/* Public */}
-          <Route path="/" element={<Home />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/reset-password/:token" element={<ResetPassword />} />
-          <Route path="/products" element={<Products />} />
-          <Route path="/product/:id" element={<ProductDetails />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/wishlist" element={<Wishlist />} />
-          <Route path="/cart" element={<Cart />} />
+          {/* PUBLIC */}
 
-          {/* Search Results */}
-          <Route path="/search-results" element={<SearchResultsPage />} />
+          <Route
+            path="/"
+            element={<Home />}
+          />
 
-          {/* Information / Footer Pages */}
-          <Route path="/about" element={<About />} />
-          <Route path="/how-it-works" element={<HowItWorks />} />
-          <Route path="/contact" element={<Contact />} />
-          <Route path="/for-sellers" element={<Buyers />} />
-          <Route path="/for-sellers/pricing" element={<Pricing />} />
-          <Route path="/for-sellers/tips" element={<Tips />} />
-          <Route path="/for-buyers" element={<Buyers />} />
-          <Route path="/for-buyers/safety-tips" element={<SafetyTips />} />
-          <Route path="/for-buyers/report-ad" element={<ReportAd />} />
-          <Route path="/support" element={<Support />} />
-          <Route path="/legal/terms" element={<Terms />} />
-          <Route path="/legal/privacy" element={<Privacy />} />
-          <Route path="/legal/cookies" element={<Cookies />} />
+          <Route
+            path="/login"
+            element={<Login />}
+          />
 
-          {/* Optional InfoPage fallback */}
-          <Route path="/info" element={<InfoPage />} />
+          <Route
+            path="/register"
+            element={<Register />}
+          />
 
-          {/* Seller */}
-          <Route path="/post-ad" element={<PostAd />} />
+          <Route
+            path="/forgot-password"
+            element={<ForgotPassword />}
+          />
+
+          <Route
+            path="/reset-password/:token"
+            element={<ResetPassword />}
+          />
+
+          <Route
+            path="/products"
+            element={<Products />}
+          />
+
+          <Route
+            path="/product/:id"
+            element={<ProductDetails />}
+          />
+
+          <Route
+            path="/profile"
+            element={<Profile />}
+          />
+
+          <Route
+            path="/wishlist"
+            element={<Wishlist />}
+          />
+
+          <Route
+            path="/cart"
+            element={<Cart />}
+          />
+
+          {/* SEARCH */}
+
+          <Route
+            path="/search-results"
+            element={<SearchResultsPage />}
+          />
+
+          {/* INFORMATION */}
+
+          <Route
+            path="/about"
+            element={<About />}
+          />
+
+          <Route
+            path="/how-it-works"
+            element={<HowItWorks />}
+          />
+
+          <Route
+            path="/contact"
+            element={<Contact />}
+          />
+
+          <Route
+            path="/for-sellers"
+            element={<Buyers />}
+          />
+
+          <Route
+            path="/for-sellers/pricing"
+            element={<Pricing />}
+          />
+
+          <Route
+            path="/for-sellers/tips"
+            element={<Tips />}
+          />
+
+          <Route
+            path="/for-buyers"
+            element={<Buyers />}
+          />
+
+          <Route
+            path="/for-buyers/safety-tips"
+            element={<SafetyTips />}
+          />
+
+          <Route
+            path="/for-buyers/report-ad"
+            element={<ReportAd />}
+          />
+
+          <Route
+            path="/support"
+            element={<Support />}
+          />
+
+          <Route
+            path="/legal/terms"
+            element={<Terms />}
+          />
+
+          <Route
+            path="/legal/privacy"
+            element={<Privacy />}
+          />
+
+          <Route
+            path="/legal/cookies"
+            element={<Cookies />}
+          />
+
+          <Route
+            path="/info"
+            element={<InfoPage />}
+          />
+
+          {/* SELLER */}
+
+          <Route
+            path="/post-ad"
+            element={<PostAd />}
+          />
+
           <Route
             path="/edit-product/:id"
             element={<EditProduct />}
           />
 
-          {/* Admin */}
-          <Route path="/admin" element={<AdminDashboard />} />
+          {/* ADMIN */}
+
+          <Route
+            path="/admin"
+            element={<AdminDashboard />}
+          />
         </Routes>
 
         <FloatingPhone />

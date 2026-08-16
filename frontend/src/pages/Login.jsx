@@ -4,12 +4,9 @@ import {
   useNavigate,
   useLocation,
 } from "react-router-dom";
-
 import { useAuth } from "../context/AuthContext";
-
 import { FcGoogle } from "react-icons/fc";
 import { FaFacebookF } from "react-icons/fa";
-
 import {
   AiFillEye,
   AiFillEyeInvisible,
@@ -31,22 +28,12 @@ console.log("🔗 Login API_URL:", API_URL);
 // ============================================================
 
 const Login = () => {
-  // ==========================================================
-  // STATE
-  // ==========================================================
-
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-
-  const [showPassword, setShowPassword] =
-    useState(false);
-
-  // ==========================================================
-  // AUTH / ROUTER
-  // ==========================================================
+  const [showPassword, setShowPassword] = useState(false);
 
   const { login } = useAuth();
 
@@ -63,24 +50,16 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (loading) {
-      return;
-    }
-
     setError("");
     setLoading(true);
 
-    const normalizedEmail = email
-      .trim()
-      .toLowerCase();
+    const normalizedEmail = email.trim().toLowerCase();
 
     try {
       const result = await login(
         normalizedEmail,
         password
       );
-
-      console.log("🔐 Login result:", result);
 
       if (result?.success) {
         navigate(from, {
@@ -96,10 +75,7 @@ const Login = () => {
           "Login failed. Please check your email and password."
       );
     } catch (err) {
-      console.error(
-        "❌ Login error:",
-        err
-      );
+      console.error("❌ Login error:", err);
 
       setError(
         err?.response?.data?.message ||
@@ -117,14 +93,9 @@ const Login = () => {
   // ==========================================================
 
   const handleGoogleLogin = () => {
-    if (loading) {
-      return;
-    }
-
     setError("");
 
-    window.location.href =
-      `${API_URL}/auth/google`;
+    window.location.href = `${API_URL}/auth/google`;
   };
 
   // ==========================================================
@@ -132,14 +103,9 @@ const Login = () => {
   // ==========================================================
 
   const handleFacebookLogin = () => {
-    if (loading) {
-      return;
-    }
-
     setError("");
 
-    window.location.href =
-      `${API_URL}/auth/facebook`;
+    window.location.href = `${API_URL}/auth/facebook`;
   };
 
   // ==========================================================
@@ -199,8 +165,7 @@ const Login = () => {
               background: "#fee2e2",
               color: "#dc2626",
               padding: "10px 14px",
-              borderRadius:
-                "var(--radius-sm)",
+              borderRadius: "8px",
               marginBottom: "16px",
               fontSize: "14px",
             }}
@@ -294,8 +259,7 @@ const Login = () => {
             style={{
               flex: 1,
               border: "none",
-              borderTop:
-                "1px solid #e5e7eb",
+              borderTop: "1px solid #e5e7eb",
             }}
           />
 
@@ -313,8 +277,7 @@ const Login = () => {
             style={{
               flex: 1,
               border: "none",
-              borderTop:
-                "1px solid #e5e7eb",
+              borderTop: "1px solid #e5e7eb",
             }}
           />
         </div>
@@ -338,7 +301,7 @@ const Login = () => {
                 display: "block",
                 fontWeight: 600,
                 fontSize: "13px",
-                marginBottom: "4px",
+                marginBottom: "6px",
               }}
             >
               Email
@@ -357,17 +320,13 @@ const Login = () => {
               disabled={loading}
               style={{
                 width: "100%",
+                boxSizing: "border-box",
                 padding: "12px 16px",
-                border:
-                  "1.5px solid var(--gray-200)",
-                borderRadius:
-                  "var(--radius-md)",
+                border: "1.5px solid var(--gray-200)",
+                borderRadius: "var(--radius-md)",
                 fontSize: "14px",
                 fontFamily: "inherit",
-                transition:
-                  "var(--transition)",
                 background: "white",
-                boxSizing: "border-box",
               }}
             />
           </div>
@@ -377,7 +336,7 @@ const Login = () => {
           <div
             className="form-group"
             style={{
-              marginBottom: "8px",
+              marginBottom: "10px",
             }}
           >
             <label
@@ -386,7 +345,7 @@ const Login = () => {
                 display: "block",
                 fontWeight: 600,
                 fontSize: "13px",
-                marginBottom: "4px",
+                marginBottom: "6px",
               }}
             >
               Password
@@ -395,6 +354,7 @@ const Login = () => {
             <div
               style={{
                 position: "relative",
+                width: "100%",
               }}
             >
               <input
@@ -406,9 +366,7 @@ const Login = () => {
                 }
                 value={password}
                 onChange={(e) =>
-                  setPassword(
-                    e.target.value
-                  )
+                  setPassword(e.target.value)
                 }
                 placeholder="Enter your password"
                 autoComplete="current-password"
@@ -416,18 +374,13 @@ const Login = () => {
                 disabled={loading}
                 style={{
                   width: "100%",
-                  padding: "12px 16px",
-                  paddingRight: "44px",
-                  border:
-                    "1.5px solid var(--gray-200)",
-                  borderRadius:
-                    "var(--radius-md)",
+                  boxSizing: "border-box",
+                  padding: "12px 44px 12px 16px",
+                  border: "1.5px solid var(--gray-200)",
+                  borderRadius: "var(--radius-md)",
                   fontSize: "14px",
                   fontFamily: "inherit",
-                  transition:
-                    "var(--transition)",
                   background: "white",
-                  boxSizing: "border-box",
                 }}
               />
 
@@ -435,8 +388,7 @@ const Login = () => {
                 type="button"
                 onClick={() =>
                   setShowPassword(
-                    (previous) =>
-                      !previous
+                    (previous) => !previous
                   )
                 }
                 aria-label={
@@ -446,20 +398,18 @@ const Login = () => {
                 }
                 style={{
                   position: "absolute",
-                  right: "12px",
+                  right: "10px",
                   top: "50%",
-                  transform:
-                    "translateY(-50%)",
-                  background: "none",
+                  transform: "translateY(-50%)",
+                  background: "transparent",
                   border: "none",
                   cursor: "pointer",
                   color: "#64748b",
                   fontSize: "20px",
-                  padding: "4px",
+                  padding: "5px",
                   display: "flex",
                   alignItems: "center",
-                  justifyContent:
-                    "center",
+                  justifyContent: "center",
                 }}
               >
                 {showPassword ? (
@@ -473,44 +423,32 @@ const Login = () => {
 
           {/* ==================================================
               FORGOT PASSWORD
-              IMPORTANT: INLINE STYLES FORCE VISIBILITY
           ================================================== */}
 
           <div
-            className="forgot-password-link-wrapper"
             style={{
+              width: "100%",
               display: "flex",
               justifyContent: "flex-end",
               alignItems: "center",
-              width: "100%",
-              minHeight: "28px",
-              marginTop: "4px",
-              marginBottom: "16px",
-              position: "relative",
-              zIndex: 9999,
-              visibility: "visible",
-              opacity: 1,
+              marginTop: "8px",
+              marginBottom: "20px",
             }}
           >
             <Link
               to="/forgot-password"
-              className="forgot-password-link"
-              aria-label="Forgot Password"
+              aria-label="Forgot your password?"
               style={{
                 display: "inline-block",
-                color: "#2563eb",
-                backgroundColor:
-                  "transparent",
+                color: "var(--primary)",
                 fontSize: "14px",
                 fontWeight: 700,
-                lineHeight: "20px",
                 textDecoration: "none",
                 cursor: "pointer",
                 visibility: "visible",
                 opacity: 1,
                 position: "relative",
-                zIndex: 9999,
-                padding: "4px 0",
+                zIndex: 10,
               }}
             >
               Forgot Password?
@@ -529,15 +467,11 @@ const Login = () => {
               width: "100%",
               padding: "14px",
               border: "none",
-              borderRadius:
-                "var(--radius-full)",
-              background:
-                "var(--primary)",
+              borderRadius: "50px",
+              background: "var(--primary)",
               color: "white",
               fontWeight: 700,
               fontSize: "16px",
-              transition:
-                "var(--transition)",
               cursor: loading
                 ? "not-allowed"
                 : "pointer",
@@ -570,6 +504,7 @@ const Login = () => {
             style={{
               color: "var(--primary)",
               fontWeight: 700,
+              textDecoration: "none",
             }}
           >
             Create free account
