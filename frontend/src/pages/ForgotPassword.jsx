@@ -1,0 +1,306 @@
+import React, { useState } from "react";
+import { Link } from "react-router-dom";
+import axios from "axios";
+
+// ============================================================
+// API CONFIG
+// ============================================================
+
+const API_URL = (
+  import.meta.env.VITE_API_URL ||
+  "https://buyukused.onrender.com"
+).replace(/\/+$/, "");
+
+console.log(
+  "🔗 Forgot Password API_URL:",
+  API_URL
+);
+
+// ============================================================
+// FORGOT PASSWORD PAGE
+// ============================================================
+
+const ForgotPassword = () => {
+  const [email, setEmail] = useState("");
+
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState("");
+  const [error, setError] = useState("");
+
+  // ==========================================================
+  // SUBMIT
+  // ==========================================================
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    setLoading(true);
+    setSuccess("");
+    setError("");
+
+    const normalizedEmail = email
+      .trim()
+      .toLowerCase();
+
+    if (!normalizedEmail) {
+      setError("Please enter your email address.");
+      setLoading(false);
+      return;
+    }
+
+    try {
+      console.log(
+        "📧 Sending password reset request..."
+      );
+
+      const response = await axios.post(
+        `${API_URL}/api/password/forgot`,
+        {
+          email: normalizedEmail,
+        },
+        {
+          timeout: 60000,
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      console.log(
+        "✅ Password reset response:",
+        response.data
+      );
+
+      setSuccess(
+        response.data?.message ||
+          "If that email exists, a password reset link has been sent."
+      );
+
+      setEmail("");
+    } catch (err) {
+      console.error(
+        "❌ Forgot password error:",
+        err
+      );
+
+      if (
+        err.code === "ECONNABORTED"
+      ) {
+        setError(
+          "The server took too long to respond. Please try again in a moment."
+        );
+      } else if (
+        err.response?.data?.message
+      ) {
+        setError(
+          err.response.data.message
+        );
+      } else if (
+        err.message ===
+        "Network Error"
+      ) {
+        setError(
+          "Unable to connect to the server. Please check your internet connection and try again."
+        );
+      } else {
+        setError(
+          "Unable to process your request. Please try again later."
+        );
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ==========================================================
+  // RENDER
+  // ==========================================================
+
+  return (
+    <div
+      className="container"
+      style={{
+        maxWidth: "440px",
+        margin: "0 auto",
+        padding: "40px 20px",
+      }}
+    >
+      <div
+        className="card"
+        style={{
+          padding: "32px",
+        }}
+      >
+        {/* ==================================================
+            HEADER
+        ================================================== */}
+
+        <h2
+          style={{
+            textAlign: "center",
+            fontSize: "24px",
+            fontWeight: 800,
+            marginBottom: "8px",
+          }}
+        >
+          Forgot Password?
+        </h2>
+
+        <p
+          style={{
+            textAlign: "center",
+            color: "var(--gray-500)",
+            fontSize: "14px",
+            lineHeight: 1.6,
+            marginBottom: "24px",
+          }}
+        >
+          Enter the email address associated
+          with your account and we'll send
+          you a password reset link.
+        </p>
+
+        {/* ==================================================
+            SUCCESS
+        ================================================== */}
+
+        {success && (
+          <div
+            role="status"
+            style={{
+              background: "#dcfce7",
+              color: "#166534",
+              padding: "12px 14px",
+              borderRadius: "8px",
+              marginBottom: "18px",
+              fontSize: "14px",
+              lineHeight: 1.5,
+            }}
+          >
+            {success}
+          </div>
+        )}
+
+        {/* ==================================================
+            ERROR
+        ================================================== */}
+
+        {error && (
+          <div
+            role="alert"
+            style={{
+              background: "#fee2e2",
+              color: "#b91c1c",
+              padding: "12px 14px",
+              borderRadius: "8px",
+              marginBottom: "18px",
+              fontSize: "14px",
+              lineHeight: 1.5,
+            }}
+          >
+            {error}
+          </div>
+        )}
+
+        {/* ==================================================
+            FORM
+        ================================================== */}
+
+        <form onSubmit={handleSubmit}>
+          <div
+            style={{
+              marginBottom: "18px",
+            }}
+          >
+            <label
+              htmlFor="forgot-password-email"
+              style={{
+                display: "block",
+                fontWeight: 600,
+                fontSize: "13px",
+                marginBottom: "6px",
+              }}
+            >
+              Email Address
+            </label>
+
+            <input
+              id="forgot-password-email"
+              type="email"
+              value={email}
+              onChange={(e) =>
+                setEmail(e.target.value)
+              }
+              placeholder="your@email.com"
+              autoComplete="email"
+              required
+              disabled={loading}
+              style={{
+                width: "100%",
+                boxSizing: "border-box",
+                padding: "13px 15px",
+                border:
+                  "1.5px solid var(--gray-200)",
+                borderRadius:
+                  "var(--radius-md)",
+                fontSize: "14px",
+                fontFamily: "inherit",
+                background: "white",
+              }}
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="btn-primary"
+            style={{
+              width: "100%",
+              padding: "14px",
+              border: "none",
+              borderRadius: "50px",
+              background:
+                "var(--primary)",
+              color: "white",
+              fontWeight: 700,
+              fontSize: "16px",
+              cursor: loading
+                ? "not-allowed"
+                : "pointer",
+              opacity: loading ? 0.7 : 1,
+            }}
+          >
+            {loading
+              ? "Sending..."
+              : "Send Reset Link"}
+          </button>
+        </form>
+
+        {/* ==================================================
+            BACK TO LOGIN
+        ================================================== */}
+
+        <div
+          style={{
+            textAlign: "center",
+            marginTop: "20px",
+            fontSize: "14px",
+          }}
+        >
+          <Link
+            to="/login"
+            style={{
+              color: "var(--primary)",
+              fontWeight: 700,
+              textDecoration: "none",
+            }}
+          >
+            ← Back to Login
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default ForgotPassword;
