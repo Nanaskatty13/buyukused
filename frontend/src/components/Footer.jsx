@@ -2,6 +2,13 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 
 const Footer = () => {
+  const currentDate = new Date();
+  const fullDate = currentDate.toLocaleDateString('en-GH', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+
   return (
     <footer className="footer" style={{
       background: 'var(--gray-900)',
@@ -31,7 +38,7 @@ const Footer = () => {
             <h4 style={{ color: 'white', marginBottom: '12px', fontSize: '16px' }}>For Sellers</h4>
             <ul style={{ listStyle: 'none', padding: 0 }}>
               <li style={{ marginBottom: '8px' }}><Link to="/for-sellers">Overview</Link></li>
-              <li style={{ marginBottom: '8px' }}><Link to="/for-sellers/post-free-ad">Post Free Ad</Link></li>
+              <li style={{ marginBottom: '8px' }}><Link to="/post-ad">Post Free Ad</Link></li>
               <li style={{ marginBottom: '8px' }}><Link to="/for-sellers/pricing">Pricing</Link></li>
               <li style={{ marginBottom: '8px' }}><Link to="/for-sellers/tips">Tips</Link></li>
             </ul>
@@ -42,7 +49,7 @@ const Footer = () => {
             <h4 style={{ color: 'white', marginBottom: '12px', fontSize: '16px' }}>For Buyers</h4>
             <ul style={{ listStyle: 'none', padding: 0 }}>
               <li style={{ marginBottom: '8px' }}><Link to="/for-buyers">Overview</Link></li>
-              <li style={{ marginBottom: '8px' }}><Link to="/for-buyers/browse-ads">Browse Ads</Link></li>
+              <li style={{ marginBottom: '8px' }}><Link to="/products">Browse Ads</Link></li>
               <li style={{ marginBottom: '8px' }}><Link to="/for-buyers/safety-tips">Safety Tips</Link></li>
               <li style={{ marginBottom: '8px' }}><Link to="/for-buyers/report-ad">Report Ad</Link></li>
             </ul>
@@ -53,9 +60,9 @@ const Footer = () => {
             <h4 style={{ color: 'white', marginBottom: '12px', fontSize: '16px' }}>Support</h4>
             <ul style={{ listStyle: 'none', padding: 0 }}>
               <li style={{ marginBottom: '8px' }}><Link to="/support">Help Center</Link></li>
-              <li style={{ marginBottom: '8px' }}><Link to="/support/call-us">Call Us</Link></li>
-              <li style={{ marginBottom: '8px' }}><Link to="/support/email">Email</Link></li>
-              <li style={{ marginBottom: '8px' }}><Link to="/support/whatsapp">WhatsApp</Link></li>
+              <li style={{ marginBottom: '8px' }}><Link to="/support#call-us">Call Us</Link></li>
+              <li style={{ marginBottom: '8px' }}><Link to="/support#email">Email</Link></li>
+              <li style={{ marginBottom: '8px' }}><Link to="/support#whatsapp">WhatsApp</Link></li>
             </ul>
           </div>
 
@@ -66,7 +73,7 @@ const Footer = () => {
               <li style={{ marginBottom: '8px' }}><Link to="/legal/terms">Terms</Link></li>
               <li style={{ marginBottom: '8px' }}><Link to="/legal/privacy">Privacy</Link></li>
               <li style={{ marginBottom: '8px' }}><Link to="/legal/cookies">Cookies</Link></li>
-              <li style={{ marginBottom: '8px' }}><Link to="/legal/cookies">Version 0.01</Link></li>
+              <li style={{ marginBottom: '8px' }}><Link to="/legal/cookies">Version 0.09</Link></li>
             </ul>
           </div>
         </div>
@@ -81,52 +88,110 @@ const Footer = () => {
           gap: '12px',
           fontSize: '13px',
         }}>
-          <span>&copy; {new Date().getFullYear()} BuyUk Used. All rights reserved.</span>
+          <span>
+            &copy; {currentDate.getFullYear()} BuyUk Used. All rights reserved. | {fullDate}
+          </span>
+
           <div className="social" style={{ display: 'flex', gap: '12px' }}>
-            <a href="#" style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: '36px',
-              height: '36px',
-              background: 'var(--gray-800)',
-              borderRadius: '50%',
-              transition: 'var(--transition)',
-              color: 'var(--gray-400)',
-            }}><i className="fab fa-facebook-f"></i></a>
-            <a href="#" style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: '36px',
-              height: '36px',
-              background: 'var(--gray-800)',
-              borderRadius: '50%',
-              transition: 'var(--transition)',
-              color: 'var(--gray-400)',
-            }}><i className="fab fa-instagram"></i></a>
-            <a href="#" style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: '36px',
-              height: '36px',
-              background: 'var(--gray-800)',
-              borderRadius: '50%',
-              transition: 'var(--transition)',
-              color: 'var(--gray-400)',
-            }}><i className="fab fa-twitter"></i></a>
-            <a href="#" style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: '36px',
-              height: '36px',
-              background: 'var(--gray-800)',
-              borderRadius: '50%',
-              transition: 'var(--transition)',
-              color: 'var(--gray-400)',
-            }}><i className="fab fa-youtube"></i></a>
+            <a
+              href="https://www.facebook.com/profile.php?id=61589482561470"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Facebook"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '36px',
+                height: '36px',
+                background: 'var(--gray-800)',
+                borderRadius: '50%',
+                transition: 'var(--transition)',
+                color: 'var(--gray-400)',
+              }}
+            >
+              <i className="fab fa-facebook-f"></i>
+            </a>
+
+            <a
+              href="https://www.instagram.com/nana_skatty/"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Instagram"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '36px',
+                height: '36px',
+                background: 'var(--gray-800)',
+                borderRadius: '50%',
+                transition: 'var(--transition)',
+                color: 'var(--gray-400)',
+              }}
+            >
+              <i className="fab fa-instagram"></i>
+            </a>
+
+            <a
+              href="https://x.com/knsmartgadgets"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Twitter"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '36px',
+                height: '36px',
+                background: 'var(--gray-800)',
+                borderRadius: '50%',
+                transition: 'var(--transition)',
+                color: 'var(--gray-400)',
+              }}
+            >
+              <i className="fab fa-twitter"></i>
+            </a>
+
+            <a
+              href="https://www.youtube.com/@KnsmartGadgetshub"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="YouTube"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '36px',
+                height: '36px',
+                background: 'var(--gray-800)',
+                borderRadius: '50%',
+                transition: 'var(--transition)',
+                color: 'var(--gray-400)',
+              }}
+            >
+              <i className="fab fa-youtube"></i>
+            </a>
+
+            <a
+              href="https://www.tiktok.com/@kn.smart.gadgets"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="TikTok"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '36px',
+                height: '36px',
+                background: 'var(--gray-800)',
+                borderRadius: '50%',
+                transition: 'var(--transition)',
+                color: 'var(--gray-400)',
+              }}
+            >
+              <i className="fab fa-tiktok"></i>
+            </a>
           </div>
         </div>
       </div>

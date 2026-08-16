@@ -16,7 +16,22 @@ import ProductDetails from "./pages/ProductDetails";
 import Profile from "./pages/Profile";
 import Wishlist from "./pages/Wishlist";
 import Cart from "./pages/Cart";
-import SearchResultsPage from "./pages/SearchResultsPage"; // NEW
+import SearchResultsPage from "./pages/SearchResultsPage";
+
+// Information pages
+import About from "./pages/About";
+import HowItWorks from "./pages/HowItWorks";
+import Contact from "./pages/Contact";
+import Buyers from "./pages/Buyers";
+import Pricing from "./pages/Pricing";
+import Tips from "./pages/Tips";
+import SafetyTips from "./pages/SafetyTips";
+import ReportAd from "./pages/ReportAd";
+import Support from "./pages/Support";
+import Terms from "./pages/Terms";
+import Privacy from "./pages/Privacy";
+import Cookies from "./pages/Cookies";
+import InfoPage from "./pages/InfoPage"; // Optional if needed
 
 // Seller pages
 import PostAd from "./pages/PostAd";
@@ -44,6 +59,24 @@ function App() {
 
           {/* Search Results */}
           <Route path="/search-results" element={<SearchResultsPage />} />
+
+          {/* Information / Footer Pages */}
+          <Route path="/about" element={<About />} />
+          <Route path="/how-it-works" element={<HowItWorks />} />
+          <Route path="/contact" element={<Contact />} />
+          <Route path="/for-sellers" element={<Buyers />} /> {/* or create Sellers page if needed */}
+          <Route path="/for-sellers/pricing" element={<Pricing />} />
+          <Route path="/for-sellers/tips" element={<Tips />} />
+          <Route path="/for-buyers" element={<Buyers />} />
+          <Route path="/for-buyers/safety-tips" element={<SafetyTips />} />
+          <Route path="/for-buyers/report-ad" element={<ReportAd />} />
+          <Route path="/support" element={<Support />} />
+          <Route path="/legal/terms" element={<Terms />} />
+          <Route path="/legal/privacy" element={<Privacy />} />
+          <Route path="/legal/cookies" element={<Cookies />} />
+
+          {/* Optional InfoPage fallback */}
+          <Route path="/info" element={<InfoPage />} />
 
           {/* Seller */}
           <Route path="/post-ad" element={<PostAd />} />

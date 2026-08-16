@@ -23,16 +23,16 @@ const Support = () => {
         <div className="contact-card">
           <i className="fas fa-phone"></i>
           <h3>Call Us</h3>
-          <a href="tel:+233000000000">
-            +233 00 000 0000
+          <a href="tel:+2330542928081">
+            +233 054 292 8081
           </a>
         </div>
 
         <div className="contact-card">
           <i className="fas fa-envelope"></i>
           <h3>Email</h3>
-          <a href="mailto:support@buyukused.com">
-            support@buyukused.com
+          <a href="mailto:knsmartgadgetshub@gmail.com">
+            knsmartgadgetshub@gmail.com
           </a>
         </div>
 
@@ -40,7 +40,7 @@ const Support = () => {
           <i className="fab fa-whatsapp"></i>
           <h3>WhatsApp</h3>
           <a
-            href="https://wa.me/233000000000"
+            href="https://wa.me/2330542928081"
             target="_blank"
             rel="noopener noreferrer"
           >

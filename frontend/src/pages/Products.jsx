@@ -3,6 +3,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useLocation, Link } from "react-router-dom";
 import SearchBar from "../components/SearchBar";
 import FilterSidebar from "../components/FilterSidebar";
+import Footer from "../components/Footer"; // <-- ADDED
 
 // API
 import { getProducts, getImageUrl } from "../services/api";
@@ -209,7 +210,7 @@ const ProductCard = ({ product }) => {
             fontSize: "12px",
             fontWeight: 600,
             zIndex: 2,
-            pointerEvents: "none", // allows click to pass through to product link
+            pointerEvents: "none",
             maxWidth: "80%",
             whiteSpace: "nowrap",
             overflow: "hidden",
@@ -486,7 +487,7 @@ const ProductSkeleton = () => {
 };
 
 // ================================================================
-// MAIN PRODUCTS PAGE (Tonaton Layout) – unchanged
+// MAIN PRODUCTS PAGE (Tonaton Layout) – with Footer added
 // ================================================================
 
 const Products = () => {
@@ -524,7 +525,7 @@ const Products = () => {
   // Sort & pagination
   const [sortOption, setSortOption] = useState("recommended");
   const [currentPage, setCurrentPage] = useState(1);
-  const ITEMS_PER_PAGE = 20;
+  const ITEMS_PER_PAGE = 6; // Changed to 6 products per page
 
   // --------------------------------------------------------------
   // KEEP FILTERS IN SYNC WITH URL
@@ -697,177 +698,140 @@ const Products = () => {
   // --------------------------------------------------------------
 
   return (
-    <div
-      className="products-page"
-      style={{
-        display: "flex",
-        gap: "24px",
-        maxWidth: "1200px",
-        margin: "0 auto",
-        padding: "20px 16px",
-      }}
-    >
-      {/* ========== SIDEBAR (FILTERS) ========== */}
-      <FilterSidebar
-        filters={filters}
-        setFilters={setFilters}
-        priceMin={priceMin}
-        setPriceMin={setPriceMin}
-        priceMax={priceMax}
-        setPriceMax={setPriceMax}
-        verifiedOnly={verifiedOnly}
-        setVerifiedOnly={setVerifiedOnly}
-        discountOnly={discountOnly}
-        setDiscountOnly={setDiscountOnly}
-        onClearFilters={handleClearFilters}
-        activeCategory={filters.category}
-      />
-
-      {/* ========== MAIN CONTENT ========== */}
-      <main
-        className="main-content"
+    <>
+      <div
+        className="products-page"
         style={{
-          flex: 1,
-          minWidth: 0,
+          display: "flex",
+          gap: "24px",
+          maxWidth: "1200px",
+          margin: "0 auto",
+          padding: "20px 16px",
         }}
       >
-        {/* SEARCH BAR (Tonaton style, integrated) */}
-        <div
+        {/* ========== SIDEBAR (FILTERS) ========== */}
+        <FilterSidebar
+          filters={filters}
+          setFilters={setFilters}
+          priceMin={priceMin}
+          setPriceMin={setPriceMin}
+          priceMax={priceMax}
+          setPriceMax={setPriceMax}
+          verifiedOnly={verifiedOnly}
+          setVerifiedOnly={setVerifiedOnly}
+          discountOnly={discountOnly}
+          setDiscountOnly={setDiscountOnly}
+          onClearFilters={handleClearFilters}
+          activeCategory={filters.category}
+        />
+
+        {/* ========== MAIN CONTENT ========== */}
+        <main
+          className="main-content"
           style={{
-            marginBottom: "24px",
+            flex: 1,
+            minWidth: 0,
           }}
         >
-          <SearchBar
-            onSearch={handleSearch}
-            initialQuery={filters}
-          />
-        </div>
-
-        {/* RESULTS HEADER */}
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            flexWrap: "wrap",
-            gap: "12px",
-            marginBottom: "20px",
-          }}
-        >
-          <h1
-            style={{
-              fontSize: "22px",
-              fontWeight: 700,
-              margin: 0,
-              color: "#333",
-            }}
-          >
-            {loading
-              ? "Loading..."
-              : `${sortedProducts.length} results`}
-            {filters.category !== "all" && (
-              <>
-                {" "}
-                for{" "}
-                <span style={{ color: "#0066cc" }}>
-                  {filters.category}
-                </span>
-              </>
-            )}
-          </h1>
-
-          <select
-            value={sortOption}
-            onChange={(e) => setSortOption(e.target.value)}
-            style={{
-              padding: "8px 12px",
-              border: "1px solid #e5e7eb",
-              borderRadius: "4px",
-              fontSize: "14px",
-              outline: "none",
-              background: "#fff",
-              cursor: "pointer",
-            }}
-          >
-            <option value="recommended">Recommended</option>
-            <option value="price-asc">Price: Low to High</option>
-            <option value="price-desc">Price: High to Low</option>
-            <option value="newest">Newest</option>
-          </select>
-        </div>
-
-        {/* ERROR */}
-        {error && !loading && (
+          {/* SEARCH BAR (Tonaton style, integrated) */}
           <div
             style={{
-              textAlign: "center",
-              padding: "30px 20px",
               marginBottom: "24px",
-              color: "#dc2626",
-              background: "#fef2f2",
-              border: "1px solid #fecaca",
-              borderRadius: "8px",
             }}
           >
-            <p style={{ marginBottom: "12px" }}>{error}</p>
-            <button
-              type="button"
-              onClick={() => fetchProducts()}
-              style={{
-                border: "none",
-                borderRadius: "4px",
-                padding: "8px 18px",
-                cursor: "pointer",
-                fontWeight: 600,
-                background: "#0066cc",
-                color: "white",
-              }}
-            >
-              Try Again
-            </button>
+            <SearchBar
+              onSearch={handleSearch}
+              initialQuery={filters}
+            />
           </div>
-        )}
 
-        {/* LOADING SKELETON */}
-        {loading ? (
-          <div
-            className="products-grid"
-            style={{
-              display: "grid",
-              gridTemplateColumns:
-                "repeat(auto-fill, minmax(220px, 1fr))",
-              gap: "16px",
-            }}
-          >
-            {Array.from({ length: 8 }).map((_, index) => (
-              <ProductSkeleton key={index} />
-            ))}
-          </div>
-        ) : currentProducts.length === 0 ? (
+          {/* RESULTS HEADER */}
           <div
             style={{
-              textAlign: "center",
-              padding: "60px 0",
-              color: "#777",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              flexWrap: "wrap",
+              gap: "12px",
+              marginBottom: "20px",
             }}
           >
-            No ads found.
-            <br />
-            <Link
-              to="/post-ad"
+            <h1
               style={{
-                display: "inline-block",
-                marginTop: "10px",
-                color: "#0066cc",
-                fontWeight: 600,
+                fontSize: "22px",
+                fontWeight: 700,
+                margin: 0,
+                color: "#333",
               }}
             >
-              Post your ad now!
-            </Link>
+              {loading
+                ? "Loading..."
+                : `${sortedProducts.length} results`}
+              {filters.category !== "all" && (
+                <>
+                  {" "}
+                  for{" "}
+                  <span style={{ color: "#0066cc" }}>
+                    {filters.category}
+                  </span>
+                </>
+              )}
+            </h1>
+
+            <select
+              value={sortOption}
+              onChange={(e) => setSortOption(e.target.value)}
+              style={{
+                padding: "8px 12px",
+                border: "1px solid #e5e7eb",
+                borderRadius: "4px",
+                fontSize: "14px",
+                outline: "none",
+                background: "#fff",
+                cursor: "pointer",
+              }}
+            >
+              <option value="recommended">Recommended</option>
+              <option value="price-asc">Price: Low to High</option>
+              <option value="price-desc">Price: High to Low</option>
+              <option value="newest">Newest</option>
+            </select>
           </div>
-        ) : (
-          <>
-            {/* PRODUCTS GRID */}
+
+          {/* ERROR */}
+          {error && !loading && (
+            <div
+              style={{
+                textAlign: "center",
+                padding: "30px 20px",
+                marginBottom: "24px",
+                color: "#dc2626",
+                background: "#fef2f2",
+                border: "1px solid #fecaca",
+                borderRadius: "8px",
+              }}
+            >
+              <p style={{ marginBottom: "12px" }}>{error}</p>
+              <button
+                type="button"
+                onClick={() => fetchProducts()}
+                style={{
+                  border: "none",
+                  borderRadius: "4px",
+                  padding: "8px 18px",
+                  cursor: "pointer",
+                  fontWeight: 600,
+                  background: "#0066cc",
+                  color: "white",
+                }}
+              >
+                Try Again
+              </button>
+            </div>
+          )}
+
+          {/* LOADING SKELETON */}
+          {loading ? (
             <div
               className="products-grid"
               style={{
@@ -877,88 +841,128 @@ const Products = () => {
                 gap: "16px",
               }}
             >
-              {currentProducts.map((product) => (
-                <ProductCard key={product._id} product={product} />
+              {Array.from({ length: 6 }).map((_, index) => (
+                <ProductSkeleton key={index} />
               ))}
             </div>
-
-            {/* PAGINATION */}
-            {totalPages > 1 && (
-              <div
+          ) : currentProducts.length === 0 ? (
+            <div
+              style={{
+                textAlign: "center",
+                padding: "60px 0",
+                color: "#777",
+              }}
+            >
+              No ads found.
+              <br />
+              <Link
+                to="/post-ad"
                 style={{
-                  display: "flex",
-                  justifyContent: "center",
-                  gap: "8px",
-                  marginTop: "32px",
-                  flexWrap: "wrap",
+                  display: "inline-block",
+                  marginTop: "10px",
+                  color: "#0066cc",
+                  fontWeight: 600,
                 }}
               >
-                <button
-                  onClick={() =>
-                    handlePageChange(Math.max(1, currentPage - 1))
-                  }
-                  disabled={currentPage === 1}
-                  style={{
-                    padding: "8px 12px",
-                    border: "1px solid #e5e7eb",
-                    borderRadius: "4px",
-                    background: "#fff",
-                    cursor: currentPage === 1 ? "default" : "pointer",
-                    opacity: currentPage === 1 ? 0.5 : 1,
-                    fontWeight: 600,
-                  }}
-                >
-                  Prev
-                </button>
-
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map(
-                  (page) => (
-                    <button
-                      key={page}
-                      onClick={() => handlePageChange(page)}
-                      style={{
-                        padding: "8px 12px",
-                        border:
-                          page === currentPage
-                            ? "1px solid #0066cc"
-                            : "1px solid #e5e7eb",
-                        borderRadius: "4px",
-                        background:
-                          page === currentPage ? "#0066cc" : "#fff",
-                        color: page === currentPage ? "#fff" : "#333",
-                        cursor: "pointer",
-                        fontWeight: page === currentPage ? 700 : 400,
-                      }}
-                    >
-                      {page}
-                    </button>
-                  )
-                )}
-
-                <button
-                  onClick={() =>
-                    handlePageChange(Math.min(totalPages, currentPage + 1))
-                  }
-                  disabled={currentPage === totalPages}
-                  style={{
-                    padding: "8px 12px",
-                    border: "1px solid #e5e7eb",
-                    borderRadius: "4px",
-                    background: "#fff",
-                    cursor:
-                      currentPage === totalPages ? "default" : "pointer",
-                    opacity: currentPage === totalPages ? 0.5 : 1,
-                    fontWeight: 600,
-                  }}
-                >
-                  Next
-                </button>
+                Post your ad now!
+              </Link>
+            </div>
+          ) : (
+            <>
+              {/* PRODUCTS GRID */}
+              <div
+                className="products-grid"
+                style={{
+                  display: "grid",
+                  gridTemplateColumns:
+                    "repeat(auto-fill, minmax(220px, 1fr))",
+                  gap: "16px",
+                }}
+              >
+                {currentProducts.map((product) => (
+                  <ProductCard key={product._id} product={product} />
+                ))}
               </div>
-            )}
-          </>
-        )}
-      </main>
-    </div>
+
+              {/* PAGINATION (Prev/Next) */}
+              {totalPages > 1 && (
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "center",
+                    gap: "8px",
+                    marginTop: "32px",
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <button
+                    onClick={() =>
+                      handlePageChange(Math.max(1, currentPage - 1))
+                    }
+                    disabled={currentPage === 1}
+                    style={{
+                      padding: "8px 12px",
+                      border: "1px solid #e5e7eb",
+                      borderRadius: "4px",
+                      background: "#fff",
+                      cursor: currentPage === 1 ? "default" : "pointer",
+                      opacity: currentPage === 1 ? 0.5 : 1,
+                      fontWeight: 600,
+                    }}
+                  >
+                    Prev
+                  </button>
+
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                    (page) => (
+                      <button
+                        key={page}
+                        onClick={() => handlePageChange(page)}
+                        style={{
+                          padding: "8px 12px",
+                          border:
+                            page === currentPage
+                              ? "1px solid #0066cc"
+                              : "1px solid #e5e7eb",
+                          borderRadius: "4px",
+                          background:
+                            page === currentPage ? "#0066cc" : "#fff",
+                          color: page === currentPage ? "#fff" : "#333",
+                          cursor: "pointer",
+                          fontWeight: page === currentPage ? 700 : 400,
+                        }}
+                      >
+                        {page}
+                      </button>
+                    )
+                  )}
+
+                  <button
+                    onClick={() =>
+                      handlePageChange(Math.min(totalPages, currentPage + 1))
+                    }
+                    disabled={currentPage === totalPages}
+                    style={{
+                      padding: "8px 12px",
+                      border: "1px solid #e5e7eb",
+                      borderRadius: "4px",
+                      background: "#fff",
+                      cursor:
+                        currentPage === totalPages ? "default" : "pointer",
+                      opacity: currentPage === totalPages ? 0.5 : 1,
+                      fontWeight: 600,
+                    }}
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+        </main>
+      </div>
+      <Footer /> {/* <-- FOOTER ADDED HERE */}
+    </>
   );
 };
 

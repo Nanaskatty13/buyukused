@@ -363,6 +363,13 @@ const ProductCard = ({ product, onStatusToggle, appleStyle = false, videoPreview
           <span style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
             {swapLabel}
           </span>
+
+          {/* ─── SIM STATUS (always visible for phones) ─── */}
+          {product.category === 'Phones' && product.simStatus && (
+            <span style={{ display: 'flex', alignItems: 'center', gap: '3px', color: '#0055a5', fontWeight: 600 }}>
+              <i className="fas fa-sim-card"></i> SIM: {product.simStatus}
+            </span>
+          )}
         </div>
 
         <div
