@@ -1,4 +1,4 @@
-// frontend/src/pages/Products.jsx
+// frontend/src/pages/SearchResultsPage.jsx
 import React, { useState, useEffect, useCallback } from "react";
 import { useLocation, Link } from "react-router-dom";
 import SearchBar from "../components/SearchBar";
@@ -27,7 +27,6 @@ const ProductCard = ({ product }) => {
     condition,
     category,
     warranty,
-    // ── Laptop / Tablet / TV / Console / Accessory fields ──
     brand,
     model,
     processor,
@@ -38,20 +37,7 @@ const ProductCard = ({ product }) => {
     connectivity,
     batteryHealth,
     faceId,
-    // ── Seller fields ──
-    sellerId,
-    seller,
-    sellerName: sellerNameProp,
-    sellerProfileImage: sellerProfileImageProp,
-    // ── Status field ──
-    status,
   } = product;
-
-  // Determine seller info from possible shapes
-  const sellerObj = sellerId && typeof sellerId === 'object' ? sellerId : (seller && typeof seller === 'object' ? seller : null);
-  const sellerName = sellerObj?.name || sellerNameProp || 'Unknown Seller';
-  const sellerImage = sellerObj?.profileImage || sellerObj?.avatar || sellerObj?.photo || sellerObj?.picture || sellerProfileImageProp || null;
-  const sellerImageUrl = sellerImage ? (sellerImage.startsWith('http') ? sellerImage : getImageUrl(sellerImage)) : null;
 
   const imageUrl = images?.[0] || image || "/placeholder.png";
 
@@ -61,11 +47,9 @@ const ProductCard = ({ product }) => {
     minimumFractionDigits: 0,
   }).format(price || 0);
 
-  // ─── Helper: render category‑specific specs ──────────────────
   const renderCategorySpecs = () => {
     const specs = [];
 
-    // Laptops
     if (category === "Laptops") {
       if (brand) specs.push({ icon: "🏷️", label: brand });
       if (model) specs.push({ icon: "📟", label: model });
@@ -73,36 +57,26 @@ const ProductCard = ({ product }) => {
       if (ram) specs.push({ icon: "🧠", label: ram });
       if (graphics) specs.push({ icon: "🖥️", label: graphics });
       if (screenSize) specs.push({ icon: "📐", label: screenSize });
-    }
-    // Tablets
-    else if (category === "Tablets") {
+    } else if (category === "Tablets") {
       if (brand) specs.push({ icon: "🏷️", label: brand });
       if (model) specs.push({ icon: "📟", label: model });
       if (year) specs.push({ icon: "📅", label: year });
       if (connectivity) specs.push({ icon: "📶", label: connectivity });
       if (screenSize) specs.push({ icon: "📐", label: screenSize });
-    }
-    // TVs
-    else if (category === "TVs" || category === "TV") {
+    } else if (category === "TVs" || category === "TV") {
       if (brand) specs.push({ icon: "🏷️", label: brand });
       if (model) specs.push({ icon: "📟", label: model });
       if (screenSize) specs.push({ icon: "📐", label: screenSize });
       if (connectivity) specs.push({ icon: "📶", label: connectivity });
-    }
-    // Game Consoles
-    else if (category === "Game Consoles" || category === "Consoles") {
+    } else if (category === "Game Consoles" || category === "Consoles") {
       if (brand) specs.push({ icon: "🏷️", label: brand });
       if (model) specs.push({ icon: "📟", label: model });
       if (connectivity) specs.push({ icon: "📶", label: connectivity });
-    }
-    // Accessories
-    else if (category === "Accessories") {
+    } else if (category === "Accessories") {
       if (brand) specs.push({ icon: "🏷️", label: brand });
       if (model) specs.push({ icon: "📟", label: model });
       if (connectivity) specs.push({ icon: "📶", label: connectivity });
-    }
-    // Phones
-    else if (category === "Phones") {
+    } else if (category === "Phones") {
       if (brand) specs.push({ icon: "🏷️", label: brand });
       if (model) specs.push({ icon: "📟", label: model });
       if (batteryHealth) specs.push({ icon: "🔋", label: `${batteryHealth}%` });
@@ -110,20 +84,12 @@ const ProductCard = ({ product }) => {
       if (simStatus) specs.push({ icon: "📶", label: simStatus });
     }
 
-    // Common: storage
-    if (storage) {
-      specs.push({ icon: "💾", label: storage });
-    }
-
-    // Condition
+    if (storage) specs.push({ icon: "💾", label: storage });
     if (condition && !specs.some(s => s.label === condition)) {
       specs.push({ icon: "📋", label: condition });
     }
 
-    const maxSpecs = 4;
-    const displayed = specs.slice(0, maxSpecs);
-
-    return displayed.map((spec, index) => (
+    return specs.slice(0, 4).map((spec, index) => (
       <span
         key={index}
         style={{
@@ -154,7 +120,6 @@ const ProductCard = ({ product }) => {
         flexDirection: "column",
       }}
     >
-      {/* IMAGE */}
       <Link
         to={`/product/${_id}`}
         style={{
@@ -192,92 +157,8 @@ const ProductCard = ({ product }) => {
             e.currentTarget.style.transform = "scale(1)";
           }}
         />
-
-        {/* ─── SELLER INFO OVERLAY (top‑left) ─── */}
-        <div
-          style={{
-            position: "absolute",
-            top: "10px",
-            left: "10px",
-            display: "flex",
-            alignItems: "center",
-            gap: "6px",
-            background: "rgba(0, 0, 0, 0.65)",
-            padding: "4px 10px",
-            borderRadius: "20px",
-            color: "white",
-            fontSize: "12px",
-            fontWeight: 600,
-            zIndex: 2,
-            pointerEvents: "none", // allows click to pass through to product link
-            maxWidth: "80%",
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-          }}
-        >
-          {sellerImageUrl ? (
-            <img
-              src={sellerImageUrl}
-              alt={sellerName}
-              style={{
-                width: "20px",
-                height: "20px",
-                borderRadius: "50%",
-                objectFit: "cover",
-                flexShrink: 0,
-              }}
-              onError={(e) => {
-                e.currentTarget.style.display = "none";
-              }}
-            />
-          ) : (
-            <i
-              className="fas fa-user-circle"
-              style={{
-                fontSize: "18px",
-                color: "#ccc",
-                flexShrink: 0,
-              }}
-            ></i>
-          )}
-          <span
-            style={{
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {sellerName}
-          </span>
-        </div>
-
-        {/* ─── SOLD BADGE (top‑right) ─── */}
-        {status === 'sold' && (
-          <div
-            style={{
-              position: "absolute",
-              top: "10px",
-              right: "10px",
-              background: "#dc2626",
-              color: "white",
-              padding: "4px 12px",
-              borderRadius: "20px",
-              fontSize: "12px",
-              fontWeight: 700,
-              textTransform: "uppercase",
-              letterSpacing: "0.5px",
-              boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
-              zIndex: 2,
-              pointerEvents: "none",
-            }}
-          >
-            SOLD
-          </div>
-        )}
       </Link>
 
-      {/* CONTENT */}
       <div
         style={{
           padding: "12px 14px",
@@ -288,10 +169,7 @@ const ProductCard = ({ product }) => {
       >
         <Link
           to={`/product/${_id}`}
-          style={{
-            textDecoration: "none",
-            color: "inherit",
-          }}
+          style={{ textDecoration: "none", color: "inherit" }}
         >
           <h3
             style={{
@@ -310,7 +188,6 @@ const ProductCard = ({ product }) => {
           </h3>
         </Link>
 
-        {/* PRICE */}
         <div
           style={{
             fontSize: "16px",
@@ -322,7 +199,6 @@ const ProductCard = ({ product }) => {
           {formattedPrice}
         </div>
 
-        {/* LOCATION */}
         <div
           style={{
             fontSize: "12px",
@@ -337,7 +213,6 @@ const ProductCard = ({ product }) => {
           {location || "Ghana"}
         </div>
 
-        {/* DETAILS / SPECS */}
         <div
           style={{
             display: "flex",
@@ -352,11 +227,7 @@ const ProductCard = ({ product }) => {
 
           {warranty && (
             <span
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "4px",
-              }}
+              style={{ display: "flex", alignItems: "center", gap: "4px" }}
             >
               <i className="fas fa-shield-alt"></i>
               {warranty}
@@ -365,26 +236,17 @@ const ProductCard = ({ product }) => {
 
           {swapAccepted !== undefined && (
             <span
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "4px",
-              }}
+              style={{ display: "flex", alignItems: "center", gap: "4px" }}
             >
               {swapAccepted ? (
-                <span style={{ color: "#22c55e" }}>
-                  🔄 Swap OK
-                </span>
+                <span style={{ color: "#22c55e" }}>🔄 Swap OK</span>
               ) : (
-                <span style={{ color: "#94a3b8" }}>
-                  🚫 No swap
-                </span>
+                <span style={{ color: "#94a3b8" }}>🚫 No swap</span>
               )}
             </span>
           )}
         </div>
 
-        {/* VIEW DETAILS */}
         <Link
           to={`/product/${_id}`}
           style={{
@@ -418,7 +280,7 @@ const ProductCard = ({ product }) => {
 };
 
 // ================================================================
-// PRODUCT SKELETON (Tonaton Style) – unchanged
+// PRODUCT SKELETON (Tonaton Style)
 // ================================================================
 
 const ProductSkeleton = () => {
@@ -440,7 +302,6 @@ const ProductSkeleton = () => {
           background: "#f4f5f7",
         }}
       />
-
       <div style={{ padding: "14px" }}>
         <div
           style={{
@@ -451,7 +312,6 @@ const ProductSkeleton = () => {
             marginBottom: "10px",
           }}
         />
-
         <div
           style={{
             width: "45%",
@@ -461,7 +321,6 @@ const ProductSkeleton = () => {
             marginBottom: "10px",
           }}
         />
-
         <div
           style={{
             width: "60%",
@@ -471,7 +330,6 @@ const ProductSkeleton = () => {
             marginBottom: "18px",
           }}
         />
-
         <div
           style={{
             width: "100%",
@@ -486,10 +344,10 @@ const ProductSkeleton = () => {
 };
 
 // ================================================================
-// MAIN PRODUCTS PAGE (Tonaton Layout) – unchanged
+// MAIN SEARCH RESULTS PAGE
 // ================================================================
 
-const Products = () => {
+const SearchResultsPage = () => {
   const location = useLocation();
 
   // --------------------------------------------------------------
@@ -497,8 +355,9 @@ const Products = () => {
   // --------------------------------------------------------------
 
   const queryParams = new URLSearchParams(location.search);
-  const initialCategory = queryParams.get("category") || "all";
   const initialSearch = queryParams.get("search") || "";
+  const initialCategory = queryParams.get("category") || "all";
+  const initialLocation = queryParams.get("location") || "all";
 
   // --------------------------------------------------------------
   // STATE
@@ -508,20 +367,17 @@ const Products = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // Main filters from URL / search
   const [filters, setFilters] = useState({
     search: initialSearch,
     category: initialCategory,
-    location: "all",
+    location: initialLocation,
   });
 
-  // Additional sidebar filters
   const [priceMin, setPriceMin] = useState("");
   const [priceMax, setPriceMax] = useState("");
   const [verifiedOnly, setVerifiedOnly] = useState(false);
   const [discountOnly, setDiscountOnly] = useState(false);
 
-  // Sort & pagination
   const [sortOption, setSortOption] = useState("recommended");
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 20;
@@ -532,26 +388,28 @@ const Products = () => {
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
-    const category = params.get("category") || "all";
     const search = params.get("search") || "";
+    const category = params.get("category") || "all";
+    const locationFilter = params.get("location") || "all";
 
     setFilters((previous) => {
       if (
+        previous.search === search &&
         previous.category === category &&
-        previous.search === search
+        previous.location === locationFilter
       ) {
         return previous;
       }
       return {
-        ...previous,
-        category,
         search,
+        category,
+        location: locationFilter,
       };
     });
   }, [location.search]);
 
   // --------------------------------------------------------------
-  // FETCH PRODUCTS (using useCallback)
+  // FETCH PRODUCTS
   // --------------------------------------------------------------
 
   const fetchProducts = useCallback(async () => {
@@ -561,7 +419,6 @@ const Products = () => {
     setError("");
 
     try {
-      // Build clean filter object
       const cleanFilters = {
         ...(filters.search ? { search: filters.search } : {}),
         ...(filters.category && filters.category !== "all"
@@ -570,7 +427,6 @@ const Products = () => {
         ...(filters.location && filters.location !== "all"
           ? { location: filters.location }
           : {}),
-        // Additional filters from sidebar
         ...(priceMin ? { priceMin } : {}),
         ...(priceMax ? { priceMax } : {}),
         ...(verifiedOnly ? { verified: true } : {}),
@@ -592,13 +448,11 @@ const Products = () => {
               .filter(Boolean)
               .map((img) => getImageUrl(img))
           : [],
-        image: product.image
-          ? getImageUrl(product.image)
-          : null,
+        image: product.image ? getImageUrl(product.image) : null,
       }));
 
       setProducts(processedProducts);
-      setCurrentPage(1); // reset to first page on new fetch
+      setCurrentPage(1);
     } catch (err) {
       if (cancelled) return;
 
@@ -652,7 +506,7 @@ const Products = () => {
   };
 
   // --------------------------------------------------------------
-  // DERIVED DATA: SORTED & PAGINATED PRODUCTS
+  // SORTING & PAGINATION
   // --------------------------------------------------------------
 
   const sortedProducts = React.useMemo(() => {
@@ -673,9 +527,7 @@ const Products = () => {
             new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
         );
         break;
-      case "recommended":
       default:
-        // keep original order
         break;
     }
     return sorted;
@@ -698,7 +550,7 @@ const Products = () => {
 
   return (
     <div
-      className="products-page"
+      className="search-results-page"
       style={{
         display: "flex",
         gap: "24px",
@@ -707,7 +559,7 @@ const Products = () => {
         padding: "20px 16px",
       }}
     >
-      {/* ========== SIDEBAR (FILTERS) ========== */}
+      {/* Sidebar with filters */}
       <FilterSidebar
         filters={filters}
         setFilters={setFilters}
@@ -723,27 +575,20 @@ const Products = () => {
         activeCategory={filters.category}
       />
 
-      {/* ========== MAIN CONTENT ========== */}
+      {/* Main content */}
       <main
         className="main-content"
-        style={{
-          flex: 1,
-          minWidth: 0,
-        }}
+        style={{ flex: 1, minWidth: 0 }}
       >
-        {/* SEARCH BAR (Tonaton style, integrated) */}
-        <div
-          style={{
-            marginBottom: "24px",
-          }}
-        >
+        {/* Search bar */}
+        <div style={{ marginBottom: "24px" }}>
           <SearchBar
             onSearch={handleSearch}
             initialQuery={filters}
           />
         </div>
 
-        {/* RESULTS HEADER */}
+        {/* Results header */}
         <div
           style={{
             display: "flex",
@@ -765,10 +610,19 @@ const Products = () => {
             {loading
               ? "Loading..."
               : `${sortedProducts.length} results`}
-            {filters.category !== "all" && (
+            {filters.search && (
               <>
                 {" "}
                 for{" "}
+                <span style={{ color: "#0066cc" }}>
+                  "{filters.search}"
+                </span>
+              </>
+            )}
+            {filters.category !== "all" && (
+              <>
+                {" "}
+                in{" "}
                 <span style={{ color: "#0066cc" }}>
                   {filters.category}
                 </span>
@@ -796,7 +650,7 @@ const Products = () => {
           </select>
         </div>
 
-        {/* ERROR */}
+        {/* Error */}
         {error && !loading && (
           <div
             style={{
@@ -828,14 +682,13 @@ const Products = () => {
           </div>
         )}
 
-        {/* LOADING SKELETON */}
+        {/* Loading skeleton */}
         {loading ? (
           <div
             className="products-grid"
             style={{
               display: "grid",
-              gridTemplateColumns:
-                "repeat(auto-fill, minmax(220px, 1fr))",
+              gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
               gap: "16px",
             }}
           >
@@ -851,7 +704,7 @@ const Products = () => {
               color: "#777",
             }}
           >
-            No ads found.
+            No results found.
             <br />
             <Link
               to="/post-ad"
@@ -867,13 +720,12 @@ const Products = () => {
           </div>
         ) : (
           <>
-            {/* PRODUCTS GRID */}
+            {/* Products grid */}
             <div
               className="products-grid"
               style={{
                 display: "grid",
-                gridTemplateColumns:
-                  "repeat(auto-fill, minmax(220px, 1fr))",
+                gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
                 gap: "16px",
               }}
             >
@@ -882,7 +734,7 @@ const Products = () => {
               ))}
             </div>
 
-            {/* PAGINATION */}
+            {/* Pagination */}
             {totalPages > 1 && (
               <div
                 style={{
@@ -923,8 +775,7 @@ const Products = () => {
                             ? "1px solid #0066cc"
                             : "1px solid #e5e7eb",
                         borderRadius: "4px",
-                        background:
-                          page === currentPage ? "#0066cc" : "#fff",
+                        background: page === currentPage ? "#0066cc" : "#fff",
                         color: page === currentPage ? "#fff" : "#333",
                         cursor: "pointer",
                         fontWeight: page === currentPage ? 700 : 400,
@@ -945,8 +796,7 @@ const Products = () => {
                     border: "1px solid #e5e7eb",
                     borderRadius: "4px",
                     background: "#fff",
-                    cursor:
-                      currentPage === totalPages ? "default" : "pointer",
+                    cursor: currentPage === totalPages ? "default" : "pointer",
                     opacity: currentPage === totalPages ? 0.5 : 1,
                     fontWeight: 600,
                   }}
@@ -962,4 +812,4 @@ const Products = () => {
   );
 };
 
-export default Products;
+export default SearchResultsPage;

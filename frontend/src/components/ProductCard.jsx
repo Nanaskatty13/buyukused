@@ -136,11 +136,11 @@ const ProductCard = ({ product, onStatusToggle, appleStyle = false, videoPreview
       className={`product-card ${appleStyle ? 'product-card-apple' : ''}`}
       style={{
         background: 'white',
-        borderRadius: appleStyle ? '18px' : 'var(--radius-md)',
+        borderRadius: appleStyle ? '18px' : '8px',
         overflow: 'hidden',
-        border: appleStyle ? 'none' : '1px solid var(--gray-200)',
-        transition: 'all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
-        boxShadow: appleStyle ? '0 2px 12px rgba(0,0,0,0.04)' : 'var(--shadow-sm)',
+        border: appleStyle ? 'none' : '1px solid #e5e7eb',
+        transition: 'all 0.2s ease',
+        boxShadow: appleStyle ? '0 2px 12px rgba(0,0,0,0.04)' : '0 1px 2px rgba(0,0,0,0.05)',
         cursor: 'pointer',
         display: 'flex',
         flexDirection: 'column',
@@ -156,7 +156,7 @@ const ProductCard = ({ product, onStatusToggle, appleStyle = false, videoPreview
         style={{
           position: 'relative',
           paddingTop: '100%',
-          background: 'var(--gray-100)',
+          background: '#f4f5f7',
           overflow: 'hidden',
           display: 'block',
         }}
@@ -171,8 +171,8 @@ const ProductCard = ({ product, onStatusToggle, appleStyle = false, videoPreview
             width: '100%',
             height: '100%',
             objectFit: 'contain',
-            backgroundColor: 'var(--gray-100)',
-            transition: 'transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+            backgroundColor: '#f4f5f7',
+            transition: 'transform 0.3s ease',
           }}
           loading="lazy"
           onError={(e) => {
@@ -191,10 +191,10 @@ const ProductCard = ({ product, onStatusToggle, appleStyle = false, videoPreview
               left: '10px',
               background: '#f59e0b',
               color: 'white',
-              fontSize: '15px',
-              fontWeight: 800,
-              padding: '2px 10px',
-              borderRadius: 'var(--radius-full)',
+              fontSize: '12px',
+              fontWeight: 700,
+              padding: '3px 10px',
+              borderRadius: '4px',
               textTransform: 'uppercase',
             }}
           >
@@ -241,17 +241,17 @@ const ProductCard = ({ product, onStatusToggle, appleStyle = false, videoPreview
             position: 'absolute',
             top: '10px',
             right: '10px',
-            background: 'rgba(255,255,255,0.9)',
+            background: 'rgba(255,255,255,0.8)',
             border: 'none',
-            borderRadius: '70%',
-            width: '35px',
-            height: '35px',
+            borderRadius: '50%',
+            width: '32px',
+            height: '32px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            fontSize: '15px',
-            color: liked ? '#e74c3c' : 'var(--gray-600)',
-            transition: 'var(--transition)',
+            fontSize: '14px',
+            color: liked ? '#e74c3c' : '#666',
+            transition: '0.2s',
             cursor: 'pointer',
             zIndex: 3,
             backdropFilter: 'blur(4px)',
@@ -266,7 +266,7 @@ const ProductCard = ({ product, onStatusToggle, appleStyle = false, videoPreview
       <div
         className="info"
         style={{
-          padding: appleStyle ? '14px 16px 16px' : '10px 12px 12px',
+          padding: appleStyle ? '14px 16px 16px' : '12px',
           flex: 1,
           display: 'flex',
           flexDirection: 'column',
@@ -284,13 +284,13 @@ const ProductCard = ({ product, onStatusToggle, appleStyle = false, videoPreview
             style={{
               fontWeight: 600,
               fontSize: appleStyle ? '15px' : '14px',
-              marginBottom: '2px',
+              marginBottom: '4px',
               lineHeight: 1.3,
               display: '-webkit-box',
               WebkitLineClamp: 2,
               WebkitBoxOrient: 'vertical',
               overflow: 'hidden',
-              color: '#1f2937',
+              color: '#333',
             }}
           >
             {product.title || 'Untitled'}
@@ -302,7 +302,7 @@ const ProductCard = ({ product, onStatusToggle, appleStyle = false, videoPreview
           style={{
             fontSize: appleStyle ? '18px' : '16px',
             fontWeight: 700,
-            color: isSold ? '#9ca3af' : '#0071e3',
+            color: isSold ? '#9ca3af' : '#0066cc',
             marginBottom: '4px',
             display: 'flex',
             alignItems: 'center',
@@ -313,11 +313,11 @@ const ProductCard = ({ product, onStatusToggle, appleStyle = false, videoPreview
           {isSold && (
             <span
               style={{
-                fontSize: '12px',
+                fontSize: '11px',
                 fontWeight: 700,
                 color: '#dc2626',
                 background: '#fee2e2',
-                padding: '2px 10px',
+                padding: '2px 8px',
                 borderRadius: '4px',
               }}
             >
@@ -333,7 +333,7 @@ const ProductCard = ({ product, onStatusToggle, appleStyle = false, videoPreview
             flexWrap: 'wrap',
             gap: '4px 10px',
             fontSize: '11px',
-            color: 'var(--gray-600)',
+            color: '#666',
             marginBottom: '6px',
           }}
         >
@@ -351,7 +351,7 @@ const ProductCard = ({ product, onStatusToggle, appleStyle = false, videoPreview
             flexWrap: 'wrap',
             gap: '4px 10px',
             fontSize: '11px',
-            color: 'var(--gray-600)',
+            color: '#666',
             marginBottom: '6px',
           }}
         >
@@ -371,7 +371,7 @@ const ProductCard = ({ product, onStatusToggle, appleStyle = false, videoPreview
             display: 'flex',
             justifyContent: 'space-between',
             fontSize: '11px',
-            color: 'var(--gray-500)',
+            color: '#777',
             marginTop: '2px',
             marginBottom: '8px',
             flexWrap: 'wrap',
@@ -397,11 +397,11 @@ const ProductCard = ({ product, onStatusToggle, appleStyle = false, videoPreview
           <Link
             to={`/product/${product._id}`}
             style={{
-              padding: appleStyle ? '8px 16px' : '6px 14px',
-              background: isSold ? '#9ca3af' : '#0071e3',
+              padding: appleStyle ? '8px 16px' : '8px 12px',
+              background: isSold ? '#9ca3af' : '#0066cc',
               color: 'white',
               border: 'none',
-              borderRadius: appleStyle ? '9999px' : 'var(--radius-full)',
+              borderRadius: appleStyle ? '9999px' : '4px',
               fontWeight: 600,
               fontSize: appleStyle ? '13px' : '12px',
               textAlign: 'center',
@@ -409,18 +409,18 @@ const ProductCard = ({ product, onStatusToggle, appleStyle = false, videoPreview
               transition: 'all 0.2s ease',
               display: 'block',
               cursor: isSold ? 'default' : 'pointer',
-              boxShadow: isSold ? 'none' : '0 2px 8px rgba(0,113,227,0.3)',
+              boxShadow: isSold ? 'none' : '0 2px 4px rgba(0,102,204,0.2)',
             }}
             onMouseEnter={(e) => {
               if (!isSold) {
-                e.currentTarget.style.background = '#0077ed';
-                e.currentTarget.style.transform = 'scale(1.02)';
+                e.currentTarget.style.background = '#005bb5';
+                e.currentTarget.style.transform = 'translateY(-1px)';
               }
             }}
             onMouseLeave={(e) => {
               if (!isSold) {
-                e.currentTarget.style.background = '#0071e3';
-                e.currentTarget.style.transform = 'scale(1)';
+                e.currentTarget.style.background = '#0066cc';
+                e.currentTarget.style.transform = 'translateY(0)';
               }
             }}
           >
@@ -431,11 +431,11 @@ const ProductCard = ({ product, onStatusToggle, appleStyle = false, videoPreview
             <button
               onClick={handleMarkAsSold}
               style={{
-                padding: appleStyle ? '6px 14px' : '4px 12px',
+                padding: appleStyle ? '6px 14px' : '4px 10px',
                 background: isSold ? '#22c55e' : '#dc2626',
                 color: 'white',
                 border: 'none',
-                borderRadius: appleStyle ? '9999px' : 'var(--radius-full)',
+                borderRadius: appleStyle ? '9999px' : '4px',
                 fontWeight: 600,
                 fontSize: appleStyle ? '12px' : '11px',
                 textAlign: 'center',
@@ -461,7 +461,7 @@ const ProductCard = ({ product, onStatusToggle, appleStyle = false, videoPreview
                 padding: '6px 14px',
                 background: '#9ca3af',
                 color: 'white',
-                borderRadius: appleStyle ? '9999px' : 'var(--radius-full)',
+                borderRadius: appleStyle ? '9999px' : '4px',
                 fontSize: '12px',
                 textAlign: 'center',
                 opacity: 0.7,

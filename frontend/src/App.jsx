@@ -16,6 +16,7 @@ import ProductDetails from "./pages/ProductDetails";
 import Profile from "./pages/Profile";
 import Wishlist from "./pages/Wishlist";
 import Cart from "./pages/Cart";
+import SearchResultsPage from "./pages/SearchResultsPage"; // NEW
 
 // Seller pages
 import PostAd from "./pages/PostAd";
@@ -40,6 +41,9 @@ function App() {
           <Route path="/profile" element={<Profile />} />
           <Route path="/wishlist" element={<Wishlist />} />
           <Route path="/cart" element={<Cart />} />
+
+          {/* Search Results */}
+          <Route path="/search-results" element={<SearchResultsPage />} />
 
           {/* Seller */}
           <Route path="/post-ad" element={<PostAd />} />
