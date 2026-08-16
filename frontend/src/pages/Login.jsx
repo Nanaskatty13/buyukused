@@ -4,9 +4,12 @@ import {
   useNavigate,
   useLocation,
 } from "react-router-dom";
+
 import { useAuth } from "../context/AuthContext";
+
 import { FcGoogle } from "react-icons/fc";
 import { FaFacebookF } from "react-icons/fa";
+
 import {
   AiFillEye,
   AiFillEyeInvisible,
@@ -28,20 +31,29 @@ console.log("🔗 Login API_URL:", API_URL);
 // ============================================================
 
 const Login = () => {
+  // ==========================================================
+  // STATE
+  // ==========================================================
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
   const [showPassword, setShowPassword] =
     useState(false);
+
+  // ==========================================================
+  // AUTH / ROUTER
+  // ==========================================================
 
   const { login } = useAuth();
 
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Where the user should return after login.
+  // Return user to the page they originally wanted.
   const from = location.state?.from || "/";
 
   // ==========================================================
@@ -50,6 +62,10 @@ const Login = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (loading) {
+      return;
+    }
 
     setError("");
     setLoading(true);
@@ -63,6 +79,8 @@ const Login = () => {
         normalizedEmail,
         password
       );
+
+      console.log("🔐 Login result:", result);
 
       if (result?.success) {
         navigate(from, {
@@ -85,6 +103,7 @@ const Login = () => {
 
       setError(
         err?.response?.data?.message ||
+          err?.data?.message ||
           err?.message ||
           "Something went wrong. Please try again."
       );
@@ -98,6 +117,10 @@ const Login = () => {
   // ==========================================================
 
   const handleGoogleLogin = () => {
+    if (loading) {
+      return;
+    }
+
     setError("");
 
     window.location.href =
@@ -109,6 +132,10 @@ const Login = () => {
   // ==========================================================
 
   const handleFacebookLogin = () => {
+    if (loading) {
+      return;
+    }
+
     setError("");
 
     window.location.href =
@@ -125,6 +152,7 @@ const Login = () => {
       style={{
         maxWidth: "440px",
         padding: "40px 20px",
+        margin: "0 auto",
       }}
     >
       <div
@@ -133,9 +161,9 @@ const Login = () => {
           padding: "32px",
         }}
       >
-        {/* ================================================== */}
-        {/* HEADER */}
-        {/* ================================================== */}
+        {/* ==================================================
+            HEADER
+        ================================================== */}
 
         <h2
           style={{
@@ -160,9 +188,9 @@ const Login = () => {
             : "Login to your account"}
         </p>
 
-        {/* ================================================== */}
-        {/* ERROR */}
-        {/* ================================================== */}
+        {/* ==================================================
+            ERROR
+        ================================================== */}
 
         {error && (
           <div
@@ -174,15 +202,16 @@ const Login = () => {
               borderRadius:
                 "var(--radius-sm)",
               marginBottom: "16px",
+              fontSize: "14px",
             }}
           >
             {error}
           </div>
         )}
 
-        {/* ================================================== */}
-        {/* SOCIAL LOGIN */}
-        {/* ================================================== */}
+        {/* ==================================================
+            SOCIAL LOGIN
+        ================================================== */}
 
         <div
           style={{
@@ -250,9 +279,9 @@ const Login = () => {
           </button>
         </div>
 
-        {/* ================================================== */}
-        {/* DIVIDER */}
-        {/* ================================================== */}
+        {/* ==================================================
+            DIVIDER
+        ================================================== */}
 
         <div
           style={{
@@ -290,9 +319,9 @@ const Login = () => {
           />
         </div>
 
-        {/* ================================================== */}
-        {/* LOGIN FORM */}
-        {/* ================================================== */}
+        {/* ==================================================
+            LOGIN FORM
+        ================================================== */}
 
         <form onSubmit={handleSubmit}>
           {/* EMAIL */}
@@ -338,6 +367,7 @@ const Login = () => {
                 transition:
                   "var(--transition)",
                 background: "white",
+                boxSizing: "border-box",
               }}
             />
           </div>
@@ -347,7 +377,7 @@ const Login = () => {
           <div
             className="form-group"
             style={{
-              marginBottom: "16px",
+              marginBottom: "8px",
             }}
           >
             <label
@@ -397,6 +427,7 @@ const Login = () => {
                   transition:
                     "var(--transition)",
                   background: "white",
+                  boxSizing: "border-box",
                 }}
               />
 
@@ -440,32 +471,55 @@ const Login = () => {
             </div>
           </div>
 
-          {/* ================================================== */}
-          {/* FORGOT PASSWORD */}
-          {/* ================================================== */}
+          {/* ==================================================
+              FORGOT PASSWORD
+              IMPORTANT: INLINE STYLES FORCE VISIBILITY
+          ================================================== */}
 
           <div
+            className="forgot-password-link-wrapper"
             style={{
-              textAlign: "right",
+              display: "flex",
+              justifyContent: "flex-end",
+              alignItems: "center",
+              width: "100%",
+              minHeight: "28px",
+              marginTop: "4px",
               marginBottom: "16px",
+              position: "relative",
+              zIndex: 9999,
+              visibility: "visible",
+              opacity: 1,
             }}
           >
             <Link
               to="/forgot-password"
+              className="forgot-password-link"
+              aria-label="Forgot Password"
               style={{
-                color: "var(--primary)",
-                fontSize: "13px",
-                fontWeight: 600,
+                display: "inline-block",
+                color: "#2563eb",
+                backgroundColor:
+                  "transparent",
+                fontSize: "14px",
+                fontWeight: 700,
+                lineHeight: "20px",
                 textDecoration: "none",
+                cursor: "pointer",
+                visibility: "visible",
+                opacity: 1,
+                position: "relative",
+                zIndex: 9999,
+                padding: "4px 0",
               }}
             >
               Forgot Password?
             </Link>
           </div>
 
-          {/* ================================================== */}
-          {/* LOGIN BUTTON */}
-          {/* ================================================== */}
+          {/* ==================================================
+              LOGIN BUTTON
+          ================================================== */}
 
           <button
             type="submit"
@@ -496,9 +550,9 @@ const Login = () => {
           </button>
         </form>
 
-        {/* ================================================== */}
-        {/* REGISTER */}
-        {/* ================================================== */}
+        {/* ==================================================
+            REGISTER
+        ================================================== */}
 
         <div
           className="auth-footer"
@@ -522,9 +576,9 @@ const Login = () => {
           </Link>
         </div>
 
-        {/* ================================================== */}
-        {/* BACK HOME */}
-        {/* ================================================== */}
+        {/* ==================================================
+            BACK HOME
+        ================================================== */}
 
         {from !== "/" && (
           <div
