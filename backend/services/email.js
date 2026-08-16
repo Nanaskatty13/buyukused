@@ -1,71 +1,99 @@
-
 // backend/services/email.js
 
 const nodemailer = require("nodemailer");
 
-// ======================================================
-// GMAIL TRANSPORTER
-// ======================================================
+// ============================================================
+// ENVIRONMENT CHECK
+// ============================================================
 
-const transporter = nodemailer.createTransport({
-  service: "gmail",
+if (!process.env.EMAIL_USER) {
+  console.warn(
+    "⚠️ EMAIL_USER is not configured."
+  );
+}
 
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
+if (!process.env.EMAIL_PASS) {
+  console.warn(
+    "⚠️ EMAIL_PASS is not configured."
+  );
+}
+
+// ============================================================
+// EMAIL TRANSPORTER
+// ============================================================
+
+const transporter =
+  nodemailer.createTransport({
+    service: "gmail",
+
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
+    },
+  });
+
+// ============================================================
+// VERIFY EMAIL CONNECTION
+// ============================================================
+
+transporter.verify((error, success) => {
+  if (error) {
+    console.error(
+      "❌ Email transporter verification failed:",
+      error.message
+    );
+  } else {
+    console.log(
+      "✅ Email transporter is ready"
+    );
+  }
 });
 
-// ======================================================
+// ============================================================
 // SEND PASSWORD RESET EMAIL
-// ======================================================
+// ============================================================
 
 async function sendPasswordResetEmail(
   to,
   resetUrl,
   name
 ) {
+  if (!process.env.EMAIL_USER) {
+    throw new Error(
+      "EMAIL_USER is not configured on the server"
+    );
+  }
+
+  if (!process.env.EMAIL_PASS) {
+    throw new Error(
+      "EMAIL_PASS is not configured on the server"
+    );
+  }
+
   if (!to) {
     throw new Error(
-      "Password reset email recipient is required."
+      "Recipient email is required"
     );
   }
 
   if (!resetUrl) {
     throw new Error(
-      "Password reset URL is required."
-    );
-  }
-
-  if (
-    !process.env.EMAIL_USER ||
-    !process.env.EMAIL_PASS
-  ) {
-    throw new Error(
-      "Email service is not configured. Missing EMAIL_USER or EMAIL_PASS."
+      "Password reset URL is required"
     );
   }
 
   const mailOptions = {
-    from: `"KN Classifieds" <${process.env.EMAIL_USER}>`,
+    from: `"BuyUk Used" <${process.env.EMAIL_USER}>`,
 
     to,
 
     subject:
-      "Password Reset Request",
+      "Password Reset Request - BuyUk Used",
 
     html: `
       <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="UTF-8" />
-          <meta
-            name="viewport"
-            content="width=device-width, initial-scale=1.0"
-          />
-          <title>Password Reset</title>
-        </head>
 
+      <html>
         <body
           style="
             margin: 0;
@@ -74,51 +102,32 @@ async function sendPasswordResetEmail(
             font-family: Arial, Helvetica, sans-serif;
           "
         >
+
           <div
             style="
               max-width: 600px;
               margin: 40px auto;
-              padding: 32px;
               background: #ffffff;
+              padding: 32px;
               border-radius: 12px;
             "
           >
 
-            <h1
-              style="
-                color: #111827;
-                margin-bottom: 20px;
-              "
-            >
-              Hello ${name || ""},
+            <h1>
+              Hello ${name || "there"},
             </h1>
 
-            <p
-              style="
-                color: #4b5563;
-                line-height: 1.6;
-              "
-            >
-              You requested a password reset for
-              your KN Classifieds account.
+            <p>
+              You requested to reset your
+              KN Classifieds account password.
             </p>
 
-            <p
-              style="
-                color: #4b5563;
-                line-height: 1.6;
-              "
-            >
+            <p>
               Click the button below to create
               a new password.
             </p>
 
-            <div
-              style="
-                margin: 30px 0;
-                text-align: center;
-              "
-            >
+            <p style="margin: 30px 0;">
               <a
                 href="${resetUrl}"
                 style="
@@ -133,79 +142,56 @@ async function sendPasswordResetEmail(
               >
                 Reset Password
               </a>
-            </div>
-
-            <p
-              style="
-                color: #6b7280;
-                font-size: 14px;
-                line-height: 1.6;
-              "
-            >
-              This password reset link will
-              expire in 1 hour.
             </p>
 
-            <p
-              style="
-                color: #6b7280;
-                font-size: 14px;
-                line-height: 1.6;
-              "
-            >
+            <p>
+              This password reset link will expire
+              in 1 hour.
+            </p>
+
+            <p>
               If you did not request this password
               reset, you can safely ignore this email.
             </p>
 
-            <hr
-              style="
-                border: 0;
-                border-top: 1px solid #e5e7eb;
-                margin: 30px 0;
-              "
-            />
+            <hr />
 
             <p
               style="
-                color: #111827;
-                font-size: 14px;
+                color: #777;
+                font-size: 12px;
               "
             >
-              Regards,<br />
-              <strong>KN Classifieds</strong>
+              KN Classifieds
             </p>
 
           </div>
+
         </body>
       </html>
     `,
   };
 
-  try {
-    const info =
-      await transporter.sendMail(
-        mailOptions
-      );
-
-    console.log(
-      "✅ Password reset email sent:",
-      info.messageId
+  const result =
+    await transporter.sendMail(
+      mailOptions
     );
 
-    return info;
-  } catch (error) {
-    console.error(
-      "❌ Password reset email failed:",
-      error.message
-    );
+  console.log(
+    "✅ Password reset email sent:",
+    {
+      messageId:
+        result.messageId,
+      to,
+    }
+  );
 
-    throw error;
-  }
+  return result;
 }
 
-// ======================================================
+// ============================================================
 // EXPORT
-// ======================================================
+// ============================================================
 
 module.exports = {
   sendPasswordResetEmail,
