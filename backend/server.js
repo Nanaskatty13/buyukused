@@ -60,6 +60,9 @@ app.use((req, res, next) => {
   next();
 });
 
+const passwordRoutes = require("./routes/passwordRoutes");
+app.use("/api/password", passwordRoutes);
+
 // ============================================================
 // SECURITY
 // ============================================================

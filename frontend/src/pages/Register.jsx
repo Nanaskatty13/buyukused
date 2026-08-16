@@ -14,6 +14,7 @@ const Register = () => {
     password: '',
     confirmPassword: '',
     phone: '',
+    country: '', // <-- ADDED country field
     role: 'buyer',
   });
   const [error, setError] = useState('');
@@ -412,6 +413,56 @@ const Register = () => {
                 background: 'white',
               }}
             />
+          </div>
+
+          {/* ─── COUNTRY DROPDOWN ───────────────────────────────────── */}
+          <div className="form-group" style={{ marginBottom: '16px' }}>
+            <label style={{ display: 'block', fontWeight: 600, fontSize: '13px', marginBottom: '4px' }}>
+              Country <span style={{ color: '#dc2626' }}>*</span>
+            </label>
+            <select
+              name="country"
+              value={formData.country}
+              onChange={handleChange}
+              required
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                border: '1.5px solid var(--gray-200)',
+                borderRadius: 'var(--radius-md)',
+                fontSize: '14px',
+                fontFamily: 'inherit',
+                transition: 'var(--transition)',
+                background: 'white',
+                outline: 'none',
+                cursor: 'pointer',
+              }}
+            >
+              <option value="" disabled>Select your country</option>
+              <option value="Ghana">Ghana</option>
+              <option value="Nigeria">Nigeria</option>
+              <option value="Kenya">Kenya</option>
+              <option value="South Africa">South Africa</option>
+              <option value="Egypt">Egypt</option>
+              <option value="Morocco">Morocco</option>
+              <option value="Tanzania">Tanzania</option>
+              <option value="Uganda">Uganda</option>
+              <option value="Cameroon">Cameroon</option>
+              <option value="Ivory Coast">Ivory Coast</option>
+              <option value="Senegal">Senegal</option>
+              <option value="United States">United States</option>
+              <option value="United Kingdom">United Kingdom</option>
+              <option value="Canada">Canada</option>
+              <option value="Germany">Germany</option>
+              <option value="France">France</option>
+              <option value="China">China</option>
+              <option value="India">India</option>
+              <option value="United Arab Emirates">United Arab Emirates</option>
+              <option value="Other">Other</option>
+            </select>
+            <small style={{ color: 'var(--gray-400)', display: 'block', marginTop: '4px' }}>
+              Select the country you are based in.
+            </small>
           </div>
 
           {/* ─── PROFILE PICTURE UPLOAD ─────────────────────────────── */}

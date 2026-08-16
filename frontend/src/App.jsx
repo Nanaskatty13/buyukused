@@ -11,6 +11,8 @@ import FloatingPhone from "./components/FloatingPhone";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import ForgotPassword from "./pages/ForgotPassword"; // ADDED
+import ResetPassword from "./pages/ResetPassword"; // ADDED
 import Products from "./pages/Products";
 import ProductDetails from "./pages/ProductDetails";
 import Profile from "./pages/Profile";
@@ -31,7 +33,7 @@ import Support from "./pages/Support";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
 import Cookies from "./pages/Cookies";
-import InfoPage from "./pages/InfoPage"; // Optional if needed
+import InfoPage from "./pages/InfoPage";
 
 // Seller pages
 import PostAd from "./pages/PostAd";
@@ -51,6 +53,8 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password/:token" element={<ResetPassword />} />
           <Route path="/products" element={<Products />} />
           <Route path="/product/:id" element={<ProductDetails />} />
           <Route path="/profile" element={<Profile />} />
@@ -64,7 +68,7 @@ function App() {
           <Route path="/about" element={<About />} />
           <Route path="/how-it-works" element={<HowItWorks />} />
           <Route path="/contact" element={<Contact />} />
-          <Route path="/for-sellers" element={<Buyers />} /> {/* or create Sellers page if needed */}
+          <Route path="/for-sellers" element={<Buyers />} />
           <Route path="/for-sellers/pricing" element={<Pricing />} />
           <Route path="/for-sellers/tips" element={<Tips />} />
           <Route path="/for-buyers" element={<Buyers />} />

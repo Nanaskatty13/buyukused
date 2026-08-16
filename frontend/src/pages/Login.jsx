@@ -177,6 +177,21 @@ const Login = () => {
             </div>
           </div>
 
+          {/* ─── FORGOT PASSWORD LINK ─── */}
+          <div style={{ textAlign: 'right', marginBottom: '16px' }}>
+            <Link
+              to="/forgot-password"
+              style={{
+                color: 'var(--primary)',
+                fontSize: '13px',
+                fontWeight: 600,
+                textDecoration: 'none',
+              }}
+            >
+              Forgot Password?
+            </Link>
+          </div>
+
           <button
             type="submit"
             disabled={loading}

@@ -8,11 +8,19 @@ const router = express.Router();
 /**
  * POST /register
  * Register a new user
- * Body: { name, email, password, phone?, profilePicture? } // profilePicture is base64 string
+ * Body: { name, email, password, phone?, country?, profilePicture?, role? }
  */
 router.post("/", async (req, res) => {
   try {
-    const { name, email, password, phone, profilePicture } = req.body;
+    const {
+      name,
+      email,
+      password,
+      phone,
+      country,
+      profilePicture,
+      role,
+    } = req.body;
 
     // --- Validation ---
     if (!name || !email || !password) {
@@ -26,6 +34,15 @@ router.post("/", async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "Password must be at least 6 characters",
+      });
+    }
+
+    // Optional: validate role if provided
+    const allowedRoles = ["buyer", "seller"];
+    if (role && !allowedRoles.includes(role)) {
+      return res.status(400).json({
+        success: false,
+        message: "Role must be either 'buyer' or 'seller'",
       });
     }
 
@@ -48,24 +65,21 @@ router.post("/", async (req, res) => {
       email,
       password: hashedPassword,
       phone: phone || "",
-      role: "buyer", // default role
+      country: country || "",
+      role: role || "buyer",
     };
 
     // --- Handle profile picture if provided ---
     if (profilePicture) {
-      // Optional: validate that it's a valid base64 image string
-      // Simple check: starts with "data:image/"
       if (typeof profilePicture === "string" && profilePicture.startsWith("data:image/")) {
-        userData.photoURL = profilePicture; // store base64 directly
+        userData.photoURL = profilePicture;
       } else {
-        // If not valid, ignore and log a warning (or throw error if you prefer)
         console.warn("Invalid profilePicture format, ignoring.");
       }
     }
 
     // --- Create user ---
     const newUser = new User(userData);
-
     await newUser.save();
 
     // --- Generate JWT token ---
@@ -81,6 +95,7 @@ router.post("/", async (req, res) => {
       name: newUser.name,
       email: newUser.email,
       phone: newUser.phone,
+      country: newUser.country || "",
       photoURL: newUser.photoURL || "",
       role: newUser.role || "buyer",
     };
