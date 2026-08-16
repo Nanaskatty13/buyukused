@@ -35,14 +35,58 @@ const getSafeUser = (user) => {
     email: user.email,
     phone: user.phone || "",
     role: user.role,
+
     location: user.location || "Ghana",
+
     avatar: user.avatar || user.photoURL || "",
+
     photoURL: user.photoURL || "",
+
     provider: user.provider || "local",
+
     isActive: user.isActive !== false,
+
     lastLogin: user.lastLogin || null,
+
     createdAt: user.createdAt,
+
     updatedAt: user.updatedAt,
+
+    // ----------------------------------------------------------
+    // RIDER PROFILE
+    // ----------------------------------------------------------
+
+    riderProfile:
+      user.role === "rider"
+        ? {
+            isAvailable:
+              user.riderProfile?.isAvailable === true,
+
+            isVerified:
+              user.riderProfile?.isVerified === true,
+
+            bikeType:
+              user.riderProfile?.bikeType || "",
+
+            bikeNumber:
+              user.riderProfile?.bikeNumber || "",
+
+            currentLocation:
+              user.riderProfile?.currentLocation || {
+                address: "",
+                latitude: null,
+                longitude: null,
+              },
+
+            rating:
+              typeof user.riderProfile?.rating === "number"
+                ? user.riderProfile.rating
+                : 5,
+
+            totalDeliveries:
+              user.riderProfile?.totalDeliveries || 0,
+          }
+        : null,
   };
 };
 
@@ -83,7 +127,6 @@ exports.register = async (req, res) => {
       .trim()
       .toLowerCase();
 
-    // Phone is OPTIONAL.
     const trimmedPhone =
       phone !== undefined &&
       phone !== null
@@ -95,7 +138,11 @@ exports.register = async (req, res) => {
       .toLowerCase();
 
     // ----------------------------------------------------------
-    // VALIDATE ROLE
+    // PUBLIC REGISTRATION
+    //
+    // IMPORTANT:
+    // Riders are NOT created through the normal registration
+    // endpoint. Admin approval/application will be added later.
     // ----------------------------------------------------------
 
     if (!["buyer", "seller"].includes(selectedRole)) {
@@ -170,8 +217,11 @@ exports.register = async (req, res) => {
       email: trimmedEmail,
       password: String(password),
       phone: trimmedPhone,
+
       role: selectedRole,
+
       provider: "local",
+
       isActive: true,
     });
 
@@ -187,12 +237,19 @@ exports.register = async (req, res) => {
 
     return res.status(201).json({
       success: true,
-      message: "Account created successfully",
+
+      message:
+        "Account created successfully",
+
       token,
+
       user: getSafeUser(user),
     });
   } catch (error) {
-    console.error("❌ Registration error:", error);
+    console.error(
+      "❌ Registration error:",
+      error
+    );
 
     // Duplicate email
     if (error.code === 11000) {
@@ -211,13 +268,17 @@ exports.register = async (req, res) => {
 
       return res.status(400).json({
         success: false,
-        message: "Validation error",
+
+        message:
+          "Validation error",
+
         errors,
       });
     }
 
     return res.status(500).json({
       success: false,
+
       message:
         "Server error. Please try again later.",
     });
@@ -243,6 +304,7 @@ exports.login = async (req, res) => {
     if (!email || !password) {
       return res.status(400).json({
         success: false,
+
         message:
           "Email and password are required",
       });
@@ -267,6 +329,7 @@ exports.login = async (req, res) => {
     if (!user) {
       return res.status(401).json({
         success: false,
+
         message:
           "Invalid email or password",
       });
@@ -279,6 +342,7 @@ exports.login = async (req, res) => {
     if (user.isActive === false) {
       return res.status(403).json({
         success: false,
+
         message:
           "Your account has been deactivated",
       });
@@ -294,6 +358,7 @@ exports.login = async (req, res) => {
     if (!isMatch) {
       return res.status(401).json({
         success: false,
+
         message:
           "Invalid email or password",
       });
@@ -321,15 +386,23 @@ exports.login = async (req, res) => {
 
     return res.json({
       success: true,
-      message: "Login successful",
+
+      message:
+        "Login successful",
+
       token,
+
       user: getSafeUser(user),
     });
   } catch (error) {
-    console.error("❌ Login error:", error);
+    console.error(
+      "❌ Login error:",
+      error
+    );
 
     return res.status(500).json({
       success: false,
+
       message:
         "Server error. Please try again later.",
     });
@@ -346,7 +419,9 @@ exports.getMe = async (req, res) => {
     if (!req.user || !req.user._id) {
       return res.status(401).json({
         success: false,
-        message: "Authentication required",
+
+        message:
+          "Authentication required",
       });
     }
 
@@ -357,13 +432,16 @@ exports.getMe = async (req, res) => {
     if (!user) {
       return res.status(404).json({
         success: false,
-        message: "User not found",
+
+        message:
+          "User not found",
       });
     }
 
     if (user.isActive === false) {
       return res.status(403).json({
         success: false,
+
         message:
           "Your account has been deactivated",
       });
@@ -371,13 +449,18 @@ exports.getMe = async (req, res) => {
 
     return res.json({
       success: true,
-      user,
+
+      user: getSafeUser(user),
     });
   } catch (error) {
-    console.error("❌ GetMe error:", error);
+    console.error(
+      "❌ GetMe error:",
+      error
+    );
 
     return res.status(500).json({
       success: false,
+
       message:
         "Server error. Please try again later.",
     });
@@ -397,7 +480,9 @@ exports.updateProfile = async (
     if (!req.user || !req.user._id) {
       return res.status(401).json({
         success: false,
-        message: "Authentication required",
+
+        message:
+          "Authentication required",
       });
     }
 
@@ -425,12 +510,14 @@ exports.updateProfile = async (
       if (trimmedName.length < 2) {
         return res.status(400).json({
           success: false,
+
           message:
             "Name must be at least 2 characters long",
         });
       }
 
-      updateFields.name = trimmedName;
+      updateFields.name =
+        trimmedName;
     }
 
     // ----------------------------------------------------------
@@ -490,7 +577,9 @@ exports.updateProfile = async (
     ) {
       return res.status(400).json({
         success: false,
-        message: "No fields to update",
+
+        message:
+          "No fields to update",
       });
     }
 
@@ -501,11 +590,14 @@ exports.updateProfile = async (
     const user =
       await User.findByIdAndUpdate(
         req.user._id,
+
         {
           $set: updateFields,
         },
+
         {
           new: true,
+
           runValidators: true,
         }
       ).select("-password");
@@ -513,15 +605,19 @@ exports.updateProfile = async (
     if (!user) {
       return res.status(404).json({
         success: false,
-        message: "User not found",
+
+        message:
+          "User not found",
       });
     }
 
     return res.json({
       success: true,
+
       message:
         "Profile updated successfully",
-      user,
+
+      user: getSafeUser(user),
     });
   } catch (error) {
     console.error(
@@ -530,21 +626,28 @@ exports.updateProfile = async (
     );
 
     if (
-      error.name === "ValidationError"
+      error.name ===
+      "ValidationError"
     ) {
       const errors = Object.values(
         error.errors
-      ).map((err) => err.message);
+      ).map(
+        (err) => err.message
+      );
 
       return res.status(400).json({
         success: false,
-        message: "Validation error",
+
+        message:
+          "Validation error",
+
         errors,
       });
     }
 
     return res.status(500).json({
       success: false,
+
       message:
         "Server error. Please try again later.",
     });
@@ -556,9 +659,14 @@ exports.updateProfile = async (
 // POST /auth/logout
 // ============================================================
 
-exports.logout = async (req, res) => {
+exports.logout = async (
+  req,
+  res
+) => {
   return res.json({
     success: true,
-    message: "Logged out successfully",
+
+    message:
+      "Logged out successfully",
   });
 };

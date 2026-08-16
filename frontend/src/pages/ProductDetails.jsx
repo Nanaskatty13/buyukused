@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 
+import { FaMotorcycle } from "react-icons/fa";
+
 import {
   getProduct,
   updateProductWithFiles,
@@ -1765,6 +1767,39 @@ const ProductDetails = () => {
                   Contact Seller
                 </button>
               )}
+
+              {/* ── NEW: BOOK A BIKE RIDER BUTTON ── */}
+              <button
+                type="button"
+                onClick={() =>
+                  navigate("/book-rider", {
+                    state: {
+                      productId: product?._id || product?.id,
+                      productTitle: product?.title || product?.name || "",
+                      productPrice: product?.price || 0,
+                      sellerId: product?.sellerId?._id || product?.sellerId || "",
+                      sellerName: product?.sellerName || "",
+                      sellerPhone: product?.sellerPhone || "",
+                    },
+                  })
+                }
+                style={{
+                  padding: "12px 24px",
+                  border: "1px solid #e5e7eb",
+                  borderRadius: "var(--radius-full)",
+                  background: "#fff",
+                  color: "#111827",
+                  fontWeight: 700,
+                  fontSize: "16px",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                }}
+              >
+                <FaMotorcycle size={18} />
+                BOOK A BIKE RIDER
+              </button>
 
               {/* MARK SOLD / AVAILABLE */}
 

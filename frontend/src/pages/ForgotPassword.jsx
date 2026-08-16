@@ -51,7 +51,6 @@ const ForgotPassword = () => {
       return;
     }
 
-    // Basic email validation
     const emailPattern =
       /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -106,10 +105,6 @@ const ForgotPassword = () => {
         err
       );
 
-      // ------------------------------------------------------
-      // Axios timeout
-      // ------------------------------------------------------
-
       if (
         err.code === "ECONNABORTED" ||
         err.code === "ETIMEDOUT"
@@ -120,10 +115,6 @@ const ForgotPassword = () => {
 
         return;
       }
-
-      // ------------------------------------------------------
-      // Backend returned an error
-      // ------------------------------------------------------
 
       if (err.response) {
         console.error(
@@ -139,10 +130,6 @@ const ForgotPassword = () => {
         return;
       }
 
-      // ------------------------------------------------------
-      // Network error
-      // ------------------------------------------------------
-
       if (
         err.message === "Network Error" ||
         !err.response
@@ -153,10 +140,6 @@ const ForgotPassword = () => {
 
         return;
       }
-
-      // ------------------------------------------------------
-      // Generic error
-      // ------------------------------------------------------
 
       setError(
         "Unable to process your request. Please try again later."
@@ -172,197 +155,215 @@ const ForgotPassword = () => {
 
   return (
     <div
-      className="container"
       style={{
-        maxWidth: "440px",
-        margin: "0 auto",
-        padding: "40px 20px",
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "20px",
+        backgroundImage:
+          "linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.55)), url('https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=1600&q=80')",
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
       }}
     >
       <div
-        className="card"
+        className="container"
         style={{
-          padding: "32px",
+          maxWidth: "440px",
+          width: "100%",
+          margin: "0 auto",
+          padding: "0",
         }}
       >
-        {/* ==================================================
-            HEADER
-        ================================================== */}
-
-        <h2
+        <div
+          className="card"
           style={{
-            textAlign: "center",
-            fontSize: "24px",
-            fontWeight: 800,
-            marginBottom: "8px",
+            padding: "32px",
+            backgroundColor: "#ffffff",
+            boxShadow: "0 8px 32px rgba(0,0,0,0.2)",
           }}
         >
-          Forgot Password?
-        </h2>
-
-        <p
-          style={{
-            textAlign: "center",
-            color: "var(--gray-500)",
-            fontSize: "14px",
-            lineHeight: 1.6,
-            marginBottom: "24px",
-          }}
-        >
-          Enter the email address associated with
-          your account and we'll send you a password
-          reset link.
-        </p>
-
-        {/* ==================================================
-            SUCCESS MESSAGE
-        ================================================== */}
-
-        {success && (
-          <div
-            role="status"
-            aria-live="polite"
-            style={{
-              background: "#dcfce7",
-              color: "#166534",
-              padding: "12px 14px",
-              borderRadius: "8px",
-              marginBottom: "18px",
-              fontSize: "14px",
-              lineHeight: 1.5,
-            }}
-          >
-            {success}
-          </div>
-        )}
-
-        {/* ==================================================
-            ERROR MESSAGE
-        ================================================== */}
-
-        {error && (
-          <div
-            role="alert"
-            aria-live="assertive"
-            style={{
-              background: "#fee2e2",
-              color: "#b91c1c",
-              padding: "12px 14px",
-              borderRadius: "8px",
-              marginBottom: "18px",
-              fontSize: "14px",
-              lineHeight: 1.5,
-            }}
-          >
-            {error}
-          </div>
-        )}
-
-        {/* ==================================================
-            FORM
-        ================================================== */}
-
-        <form onSubmit={handleSubmit} noValidate>
-          <div
-            style={{
-              marginBottom: "18px",
-            }}
-          >
-            <label
-              htmlFor="forgot-password-email"
-              style={{
-                display: "block",
-                fontWeight: 600,
-                fontSize: "13px",
-                marginBottom: "6px",
-              }}
-            >
-              Email Address
-            </label>
-
-            <input
-              id="forgot-password-email"
-              name="email"
-              type="email"
-              value={email}
-              onChange={(e) =>
-                setEmail(e.target.value)
-              }
-              placeholder="your@email.com"
-              autoComplete="email"
-              autoCapitalize="none"
-              autoCorrect="off"
-              spellCheck={false}
-              required
-              disabled={loading}
-              style={{
-                width: "100%",
-                boxSizing: "border-box",
-                padding: "13px 15px",
-                border:
-                  "1.5px solid var(--gray-200)",
-                borderRadius:
-                  "var(--radius-md)",
-                fontSize: "14px",
-                fontFamily: "inherit",
-                background: "white",
-                outline: "none",
-              }}
-            />
-          </div>
-
           {/* ==================================================
-              SEND BUTTON
+              HEADER
           ================================================== */}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="btn-primary"
+          <h2
             style={{
-              width: "100%",
-              padding: "14px",
-              border: "none",
-              borderRadius: "50px",
-              background: "var(--primary)",
-              color: "white",
-              fontWeight: 700,
-              fontSize: "16px",
-              cursor: loading
-                ? "not-allowed"
-                : "pointer",
-              opacity: loading ? 0.7 : 1,
-              transition:
-                "opacity 0.2s ease",
+              textAlign: "center",
+              fontSize: "24px",
+              fontWeight: 800,
+              marginBottom: "8px",
             }}
           >
-            {loading
-              ? "Sending..."
-              : "Send Reset Link"}
-          </button>
-        </form>
+            Forgot Password?
+          </h2>
 
-        {/* ==================================================
-            BACK TO LOGIN
-        ================================================== */}
-
-        <div
-          style={{
-            textAlign: "center",
-            marginTop: "20px",
-            fontSize: "14px",
-          }}
-        >
-          <Link
-            to="/login"
+          <p
             style={{
-              color: "var(--primary)",
-              fontWeight: 700,
-              textDecoration: "none",
+              textAlign: "center",
+              color: "var(--gray-500)",
+              fontSize: "14px",
+              lineHeight: 1.6,
+              marginBottom: "24px",
             }}
           >
-            ← Back to Login
-          </Link>
+            Enter the email address associated with
+            your account and we'll send you a password
+            reset link.
+          </p>
+
+          {/* ==================================================
+              SUCCESS MESSAGE
+          ================================================== */}
+
+          {success && (
+            <div
+              role="status"
+              aria-live="polite"
+              style={{
+                background: "#dcfce7",
+                color: "#166534",
+                padding: "12px 14px",
+                borderRadius: "8px",
+                marginBottom: "18px",
+                fontSize: "14px",
+                lineHeight: 1.5,
+              }}
+            >
+              {success}
+            </div>
+          )}
+
+          {/* ==================================================
+              ERROR MESSAGE
+          ================================================== */}
+
+          {error && (
+            <div
+              role="alert"
+              aria-live="assertive"
+              style={{
+                background: "#fee2e2",
+                color: "#b91c1c",
+                padding: "12px 14px",
+                borderRadius: "8px",
+                marginBottom: "18px",
+                fontSize: "14px",
+                lineHeight: 1.5,
+              }}
+            >
+              {error}
+            </div>
+          )}
+
+          {/* ==================================================
+              FORM
+          ================================================== */}
+
+          <form onSubmit={handleSubmit} noValidate>
+            <div
+              style={{
+                marginBottom: "18px",
+              }}
+            >
+              <label
+                htmlFor="forgot-password-email"
+                style={{
+                  display: "block",
+                  fontWeight: 600,
+                  fontSize: "13px",
+                  marginBottom: "6px",
+                }}
+              >
+                Email Address
+              </label>
+
+              <input
+                id="forgot-password-email"
+                name="email"
+                type="email"
+                value={email}
+                onChange={(e) =>
+                  setEmail(e.target.value)
+                }
+                placeholder="your@email.com"
+                autoComplete="email"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                required
+                disabled={loading}
+                style={{
+                  width: "100%",
+                  boxSizing: "border-box",
+                  padding: "13px 15px",
+                  border:
+                    "1.5px solid var(--gray-200)",
+                  borderRadius:
+                    "var(--radius-md)",
+                  fontSize: "14px",
+                  fontFamily: "inherit",
+                  background: "white",
+                  outline: "none",
+                }}
+              />
+            </div>
+
+            {/* ==================================================
+                SEND BUTTON
+            ================================================== */}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="btn-primary"
+              style={{
+                width: "100%",
+                padding: "14px",
+                border: "none",
+                borderRadius: "50px",
+                background: "var(--primary)",
+                color: "white",
+                fontWeight: 700,
+                fontSize: "16px",
+                cursor: loading
+                  ? "not-allowed"
+                  : "pointer",
+                opacity: loading ? 0.7 : 1,
+                transition:
+                  "opacity 0.2s ease",
+              }}
+            >
+              {loading
+                ? "Sending..."
+                : "Send Reset Link"}
+            </button>
+          </form>
+
+          {/* ==================================================
+              BACK TO LOGIN
+          ================================================== */}
+
+          <div
+            style={{
+              textAlign: "center",
+              marginTop: "20px",
+              fontSize: "14px",
+            }}
+          >
+            <Link
+              to="/login"
+              style={{
+                color: "var(--primary)",
+                fontWeight: 700,
+                textDecoration: "none",
+              }}
+            >
+              ← Back to Login
+            </Link>
+          </div>
         </div>
       </div>
     </div>

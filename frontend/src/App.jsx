@@ -1,3 +1,5 @@
+// frontend/src/App.jsx
+
 import React from "react";
 import { Routes, Route } from "react-router-dom";
 
@@ -7,11 +9,19 @@ import { CartProvider } from "./context/CartContext";
 import Navbar from "./components/Navbar";
 import FloatingPhone from "./components/FloatingPhone";
 
+// ============================================================
+// PUBLIC / AUTH
+// ============================================================
+
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
+
+// ============================================================
+// PRODUCTS
+// ============================================================
 
 import Products from "./pages/Products";
 import ProductDetails from "./pages/ProductDetails";
@@ -19,6 +29,10 @@ import Profile from "./pages/Profile";
 import Wishlist from "./pages/Wishlist";
 import Cart from "./pages/Cart";
 import SearchResultsPage from "./pages/SearchResultsPage";
+
+// ============================================================
+// INFORMATION
+// ============================================================
 
 import About from "./pages/About";
 import HowItWorks from "./pages/HowItWorks";
@@ -34,10 +48,29 @@ import Privacy from "./pages/Privacy";
 import Cookies from "./pages/Cookies";
 import InfoPage from "./pages/InfoPage";
 
+// ============================================================
+// SELLER
+// ============================================================
+
 import PostAd from "./pages/PostAd";
 import EditProduct from "./pages/EditProduct";
 
+// ============================================================
+// ADMIN
+// ============================================================
+
 import AdminDashboard from "./pages/Admin/AdminDashboard";
+
+// ============================================================
+// DELIVERY / RIDER
+// ============================================================
+
+import BookRider from "./pages/BookRider";
+import RiderDashboard from "./pages/RiderDashboard";
+
+// ============================================================
+// APP
+// ============================================================
 
 function App() {
   return (
@@ -46,7 +79,10 @@ function App() {
         <Navbar />
 
         <Routes>
-          {/* PUBLIC */}
+
+          {/* ==================================================
+              PUBLIC
+          ================================================== */}
 
           <Route
             path="/"
@@ -73,6 +109,10 @@ function App() {
             element={<ResetPassword />}
           />
 
+          {/* ==================================================
+              PRODUCTS
+          ================================================== */}
+
           <Route
             path="/products"
             element={<Products />}
@@ -98,14 +138,18 @@ function App() {
             element={<Cart />}
           />
 
-          {/* SEARCH */}
+          {/* ==================================================
+              SEARCH
+          ================================================== */}
 
           <Route
             path="/search-results"
             element={<SearchResultsPage />}
           />
 
-          {/* INFORMATION */}
+          {/* ==================================================
+              INFORMATION
+          ================================================== */}
 
           <Route
             path="/about"
@@ -177,7 +221,9 @@ function App() {
             element={<InfoPage />}
           />
 
-          {/* SELLER */}
+          {/* ==================================================
+              SELLER
+          ================================================== */}
 
           <Route
             path="/post-ad"
@@ -189,12 +235,33 @@ function App() {
             element={<EditProduct />}
           />
 
-          {/* ADMIN */}
+          {/* ==================================================
+              DELIVERY / BOOK A RIDER
+          ================================================== */}
+
+          <Route
+            path="/book-rider"
+            element={<BookRider />}
+          />
+
+          {/* ==================================================
+              RIDER DASHBOARD
+          ================================================== */}
+
+          <Route
+            path="/rider/dashboard"
+            element={<RiderDashboard />}
+          />
+
+          {/* ==================================================
+              ADMIN
+          ================================================== */}
 
           <Route
             path="/admin"
             element={<AdminDashboard />}
           />
+
         </Routes>
 
         <FloatingPhone />

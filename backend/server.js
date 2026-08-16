@@ -1,4 +1,3 @@
-
 // backend/server.js
 
 const express = require("express");
@@ -87,7 +86,6 @@ app.use(
 
 // ============================================================
 // CORS
-// IMPORTANT: CORS MUST BE BEFORE ROUTES
 // ============================================================
 
 const allowedOrigins = [
@@ -98,16 +96,24 @@ const allowedOrigins = [
 
   "https://sell-platform2-mcv0eniwt-nanaskatty13s-projects.vercel.app",
 
+  "https://buyukused-2w4b8fl3w-nanaskatty13s-projects.vercel.app",
+
   process.env.FRONTEND_URL,
 ].filter(Boolean);
 
-console.log("🟢 Allowed Origins:", allowedOrigins);
+console.log(
+  "🟢 Allowed Origins:",
+  allowedOrigins
+);
 
 const corsOptions = {
   origin: (origin, callback) => {
-    console.log("🔍 Incoming origin:", origin);
+    console.log(
+      "🔍 Incoming origin:",
+      origin
+    );
 
-    // Server-to-server / curl / health checks
+    // Server-to-server / Render health checks / curl
     if (!origin) {
       return callback(null, true);
     }
@@ -117,7 +123,7 @@ const corsOptions = {
       return callback(null, true);
     }
 
-    // Allow Vercel preview deployments
+    // Vercel preview deployments
     if (
       /^https:\/\/[a-zA-Z0-9-]+\.vercel\.app$/.test(
         origin
@@ -126,10 +132,15 @@ const corsOptions = {
       return callback(null, true);
     }
 
-    console.log("🚫 Blocked CORS:", origin);
+    console.log(
+      "🚫 Blocked CORS:",
+      origin
+    );
 
     return callback(
-      new Error("CORS not allowed for this origin")
+      new Error(
+        "CORS not allowed for this origin"
+      )
     );
   },
 
@@ -152,11 +163,12 @@ const corsOptions = {
   optionsSuccessStatus: 204,
 };
 
-// Apply CORS globally
 app.use(cors(corsOptions));
 
-// Explicitly handle preflight requests
-app.options("*", cors(corsOptions));
+app.options(
+  "*",
+  cors(corsOptions)
+);
 
 // ============================================================
 // BODY PARSERS
@@ -187,7 +199,9 @@ const uploadsDirectory = path.join(
 
 app.use(
   "/uploads",
-  express.static(uploadsDirectory)
+  express.static(
+    uploadsDirectory
+  )
 );
 
 console.log(
@@ -199,13 +213,19 @@ console.log(
 // PASSPORT
 // ============================================================
 
-app.use(passport.initialize());
+app.use(
+  passport.initialize()
+);
 
 // ============================================================
 // RATE LIMITING
 // ============================================================
 
-const skipIfAdmin = (req, res, next) => {
+const skipIfAdmin = (
+  req,
+  res,
+  next
+) => {
   const authHeader =
     req.headers.authorization;
 
@@ -220,12 +240,15 @@ const skipIfAdmin = (req, res, next) => {
     authHeader.split(" ")[1];
 
   try {
-    const decoded = jwt.verify(
-      token,
-      process.env.JWT_SECRET
-    );
+    const decoded =
+      jwt.verify(
+        token,
+        process.env.JWT_SECRET
+      );
 
-    if (decoded.role === "admin") {
+    if (
+      decoded.role === "admin"
+    ) {
       req.skipRateLimit = true;
     }
   } catch (error) {
@@ -238,74 +261,106 @@ const skipIfAdmin = (req, res, next) => {
 
 app.use(skipIfAdmin);
 
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
+const limiter =
+  rateLimit({
+    windowMs:
+      15 * 60 * 1000,
 
-  max:
-    process.env.NODE_ENV === "production"
-      ? 100
-      : 500,
+    max:
+      process.env.NODE_ENV ===
+      "production"
+        ? 100
+        : 500,
 
-  skip: (req) => {
-    if (req.skipRateLimit) {
-      return true;
-    }
+    skip: (req) => {
+      if (
+        req.skipRateLimit
+      ) {
+        return true;
+      }
 
-    if (process.env.NODE_ENV === "development") {
-      return true;
-    }
+      if (
+        process.env.NODE_ENV ===
+        "development"
+      ) {
+        return true;
+      }
 
-    return false;
-  },
+      return false;
+    },
 
-  standardHeaders: true,
-  legacyHeaders: false,
+    standardHeaders: true,
+    legacyHeaders: false,
 
-  message: {
-    success: false,
-    message:
-      "Too many requests, please try again later.",
-  },
-});
+    message: {
+      success: false,
+      message:
+        "Too many requests, please try again later.",
+    },
+  });
 
-app.use("/api", limiter);
-app.use("/auth", limiter);
+app.use(
+  "/api",
+  limiter
+);
+
+app.use(
+  "/auth",
+  limiter
+);
 
 // ============================================================
 // ROOT API CHECK
 // ============================================================
 
-app.get("/", (req, res) => {
-  res.status(200).json({
-    success: true,
-    message: "Sell Platform API is running",
-    environment:
-      process.env.NODE_ENV || "development",
-  });
-});
+app.get(
+  "/",
+  (req, res) => {
+    res.status(200).json({
+      success: true,
+      message:
+        "Sell Platform API is running",
+      environment:
+        process.env.NODE_ENV ||
+        "development",
+    });
+  }
+);
 
 // ============================================================
 // HEALTH CHECK
 // ============================================================
 
-const healthResponse = (req, res) => {
+const healthResponse = (
+  req,
+  res
+) => {
   res.status(200).json({
     success: true,
     status: "ok",
-    timestamp: new Date().toISOString(),
+    timestamp:
+      new Date().toISOString(),
   });
 };
 
-app.get("/health", healthResponse);
+app.get(
+  "/health",
+  healthResponse
+);
 
-app.get("/api/health", healthResponse);
+app.get(
+  "/api/health",
+  healthResponse
+);
 
 // ============================================================
-// PASSWORD RESET ROUTES
+// PASSWORD RESET
 // ============================================================
 
 const passwordRoutes =
-  require("./routes/passwordRoutes");
+  require(
+    "./routes/passwordRoutes"
+  );
 
 app.use(
   "/api/password",
@@ -334,7 +389,16 @@ const messageRoutes =
 const adminRoutes =
   require("./routes/admin");
 
-console.log("✅ Routes loaded");
+// ============================================================
+// DELIVERY ROUTES
+// ============================================================
+
+const deliveryRoutes =
+  require("./routes/deliveryRoutes");
+
+console.log(
+  "✅ Routes loaded"
+);
 
 // ============================================================
 // AUTHENTICATION
@@ -391,30 +455,69 @@ app.use(
 );
 
 // ============================================================
+// DELIVERY / RIDER SYSTEM
+// ============================================================
+//
+// Endpoints:
+//
+// POST   /api/deliveries
+// GET    /api/deliveries
+// GET    /api/deliveries/my
+// GET    /api/deliveries/available
+// GET    /api/deliveries/:id
+// PUT    /api/deliveries/:id/accept
+// PUT    /api/deliveries/:id/status
+// PUT    /api/deliveries/:id/cancel
+//
+// ============================================================
+
+app.use(
+  "/api/deliveries",
+  deliveryRoutes
+);
+
+// ============================================================
 // 404 HANDLER
 // ============================================================
 
-app.use((req, res) => {
-  if (
-    req.path.startsWith("/api") ||
-    req.path.startsWith("/auth")
-  ) {
-    return res.status(404).json({
-      success: false,
-      message: "API endpoint not found",
-    });
-  }
+app.use(
+  (req, res) => {
+    if (
+      req.path.startsWith(
+        "/api"
+      ) ||
+      req.path.startsWith(
+        "/auth"
+      )
+    ) {
+      return res.status(404).json({
+        success: false,
+        message:
+          "API endpoint not found",
+      });
+    }
 
-  return res.status(404).send("Not Found");
-});
+    return res
+      .status(404)
+      .send("Not Found");
+  }
+);
 
 // ============================================================
 // GLOBAL ERROR HANDLER
 // ============================================================
 
 app.use(
-  (err, req, res, next) => {
-    console.error("❌ Error:", err);
+  (
+    err,
+    req,
+    res,
+    next
+  ) => {
+    console.error(
+      "❌ Error:",
+      err
+    );
 
     // --------------------------------------------------------
     // CORS
@@ -427,7 +530,8 @@ app.use(
     ) {
       return res.status(403).json({
         success: false,
-        message: err.message,
+        message:
+          err.message,
       });
     }
 
@@ -437,24 +541,30 @@ app.use(
 
     if (
       err &&
-      err.name === "MulterError"
+      err.name ===
+        "MulterError"
     ) {
       if (
-        err.code === "LIMIT_FILE_SIZE"
+        err.code ===
+        "LIMIT_FILE_SIZE"
       ) {
-        return res.status(413).json({
-          success: false,
-          message:
-            "File too large. Maximum size is 5MB.",
-        });
+        return res
+          .status(413)
+          .json({
+            success: false,
+            message:
+              "File too large. Maximum size is 5MB.",
+          });
       }
 
-      return res.status(400).json({
-        success: false,
-        message:
-          err.message ||
-          "File upload error.",
-      });
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message:
+            err.message ||
+            "File upload error.",
+        });
     }
 
     // --------------------------------------------------------
@@ -467,13 +577,16 @@ app.use(
     ) {
       const field =
         Object.keys(
-          err.keyPattern || {}
+          err.keyPattern ||
+            {}
         )[0] || "field";
 
-      return res.status(409).json({
-        success: false,
-        message: `${field} already exists`,
-      });
+      return res
+        .status(409)
+        .json({
+          success: false,
+          message: `${field} already exists`,
+        });
     }
 
     // --------------------------------------------------------
@@ -482,7 +595,8 @@ app.use(
 
     if (
       err &&
-      err.name === "ValidationError"
+      err.name ===
+        "ValidationError"
     ) {
       const messages =
         Object.values(
@@ -492,11 +606,15 @@ app.use(
             error.message
         );
 
-      return res.status(400).json({
-        success: false,
-        message: "Validation error",
-        errors: messages,
-      });
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message:
+            "Validation error",
+          errors:
+            messages,
+        });
     }
 
     // --------------------------------------------------------
@@ -504,7 +622,9 @@ app.use(
     // --------------------------------------------------------
 
     return res
-      .status(err?.status || 500)
+      .status(
+        err?.status || 500
+      )
       .json({
         success: false,
         message:
@@ -551,138 +671,157 @@ process.on(
 // ============================================================
 
 const PORT =
-  process.env.PORT || 5000;
+  process.env.PORT ||
+  5000;
 
 // ============================================================
 // DEFAULT ADMIN
 // ============================================================
 
-const createDefaultAdmin = async () => {
-  try {
-    const User =
-      require("./models/User");
+const createDefaultAdmin =
+  async () => {
+    try {
+      const User =
+        require(
+          "./models/User"
+        );
 
-    const adminEmail =
-      process.env.ADMIN_EMAIL;
+      const adminEmail =
+        process.env.ADMIN_EMAIL;
 
-    const adminPassword =
-      process.env.ADMIN_PASSWORD;
+      const adminPassword =
+        process.env.ADMIN_PASSWORD;
 
-    if (
-      !adminEmail ||
-      !adminPassword
-    ) {
-      console.log(
-        "ℹ️ ADMIN_EMAIL or ADMIN_PASSWORD not configured. Skipping default admin creation."
+      if (
+        !adminEmail ||
+        !adminPassword
+      ) {
+        console.log(
+          "ℹ️ ADMIN_EMAIL or ADMIN_PASSWORD not configured. Skipping default admin creation."
+        );
+
+        return;
+      }
+
+      const normalizedEmail =
+        adminEmail
+          .trim()
+          .toLowerCase();
+
+      let user =
+        await User.findOne({
+          email:
+            normalizedEmail,
+        });
+
+      if (!user) {
+        user =
+          new User({
+            name: "Admin",
+            email:
+              normalizedEmail,
+            password:
+              adminPassword,
+            phone: "",
+            role: "admin",
+            isActive: true,
+          });
+
+        await user.save();
+
+        console.log(
+          `✅ Default admin created: ${normalizedEmail}`
+        );
+      } else if (
+        user.role !==
+        "admin"
+      ) {
+        user.role =
+          "admin";
+
+        await user.save();
+
+        console.log(
+          `✅ User ${normalizedEmail} promoted to admin`
+        );
+      } else {
+        console.log(
+          `ℹ️ Admin user already exists: ${normalizedEmail}`
+        );
+      }
+    } catch (error) {
+      console.warn(
+        "⚠️ Could not create admin:",
+        error.message
       );
-
-      return;
     }
-
-    const normalizedEmail =
-      adminEmail
-        .trim()
-        .toLowerCase();
-
-    let user =
-      await User.findOne({
-        email: normalizedEmail,
-      });
-
-    if (!user) {
-      user = new User({
-        name: "Admin",
-        email: normalizedEmail,
-        password: adminPassword,
-        phone: "",
-        role: "admin",
-        isActive: true,
-      });
-
-      await user.save();
-
-      console.log(
-        `✅ Default admin created: ${normalizedEmail}`
-      );
-    } else if (
-      user.role !== "admin"
-    ) {
-      user.role = "admin";
-
-      await user.save();
-
-      console.log(
-        `✅ User ${normalizedEmail} promoted to admin`
-      );
-    } else {
-      console.log(
-        `ℹ️ Admin user already exists: ${normalizedEmail}`
-      );
-    }
-  } catch (error) {
-    console.warn(
-      "⚠️ Could not create admin:",
-      error.message
-    );
-  }
-};
+  };
 
 // ============================================================
 // START SERVER
 // ============================================================
 
-const start = async () => {
-  try {
-    const connection =
-      await connectDB();
+const start =
+  async () => {
+    try {
+      const connection =
+        await connectDB();
 
-    console.log(
-      `✅ MongoDB connected to: ${connection.name}`
-    );
+      console.log(
+        `✅ MongoDB connected to: ${connection.name}`
+      );
 
-    await createDefaultAdmin();
+      await createDefaultAdmin();
 
-    const server = app.listen(
-      PORT,
-      () => {
-        console.log(
-          `🚀 Server running on port ${PORT}`
+      const server =
+        app.listen(
+          PORT,
+          () => {
+            console.log(
+              `🚀 Server running on port ${PORT}`
+            );
+
+            console.log(
+              `🌍 Environment: ${
+                process.env.NODE_ENV ||
+                "development"
+              }`
+            );
+
+            console.log(
+              `🔗 Base URL: ${
+                process.env.BASE_URL ||
+                "(auto-detected)"
+              }`
+            );
+
+            console.log(
+              `📁 Uploads: ${uploadsDirectory}`
+            );
+
+            console.log(
+              "🚴 Delivery/Rider API: /api/deliveries"
+            );
+          }
         );
 
-        console.log(
-          `🌍 Environment: ${
-            process.env.NODE_ENV ||
-            "development"
-          }`
-        );
+      // Allow long-running requests
+      server.timeout =
+        120000;
 
-        console.log(
-          `🔗 Base URL: ${
-            process.env.BASE_URL ||
-            "(auto-detected)"
-          }`
-        );
+      server.keepAliveTimeout =
+        65000;
 
-        console.log(
-          `📁 Uploads: ${uploadsDirectory}`
-        );
-      }
-    );
+      server.headersTimeout =
+        66000;
+    } catch (error) {
+      console.error(
+        "❌ Server failed:",
+        error
+      );
 
-    // Allow long-running requests
-    server.timeout = 120000;
-
-    server.keepAliveTimeout = 65000;
-
-    server.headersTimeout = 66000;
-  } catch (error) {
-    console.error(
-      "❌ Server failed:",
-      error
-    );
-
-    process.exit(1);
-  }
-};
+      process.exit(1);
+    }
+  };
 
 start();
