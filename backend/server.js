@@ -1,3 +1,4 @@
+
 // backend/server.js
 
 const express = require("express");
@@ -86,7 +87,7 @@ app.use(
 
 // ============================================================
 // CORS
-// IMPORTANT: CORS MUST COME BEFORE ROUTES
+// IMPORTANT: CORS MUST BE BEFORE ROUTES
 // ============================================================
 
 const allowedOrigins = [
@@ -100,72 +101,62 @@ const allowedOrigins = [
   process.env.FRONTEND_URL,
 ].filter(Boolean);
 
-console.log(
-  "🟢 Allowed Origins:",
-  allowedOrigins
-);
+console.log("🟢 Allowed Origins:", allowedOrigins);
 
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      console.log(
-        "🔍 Incoming origin:",
+const corsOptions = {
+  origin: (origin, callback) => {
+    console.log("🔍 Incoming origin:", origin);
+
+    // Server-to-server / curl / health checks
+    if (!origin) {
+      return callback(null, true);
+    }
+
+    // Explicitly allowed origins
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    // Allow Vercel preview deployments
+    if (
+      /^https:\/\/[a-zA-Z0-9-]+\.vercel\.app$/.test(
         origin
-      );
+      )
+    ) {
+      return callback(null, true);
+    }
 
-      // Allow requests without Origin
-      // Example: curl/server-to-server requests
-      if (!origin) {
-        return callback(null, true);
-      }
+    console.log("🚫 Blocked CORS:", origin);
 
-      // Explicitly allowed origins
-      if (
-        allowedOrigins.includes(origin)
-      ) {
-        return callback(null, true);
-      }
+    return callback(
+      new Error("CORS not allowed for this origin")
+    );
+  },
 
-      // Allow Vercel preview deployments
-      if (
-        /^https:\/\/[a-zA-Z0-9-]+\.vercel\.app$/.test(
-          origin
-        )
-      ) {
-        return callback(null, true);
-      }
+  credentials: true,
 
-      console.log(
-        "🚫 Blocked CORS:",
-        origin
-      );
+  methods: [
+    "GET",
+    "POST",
+    "PUT",
+    "PATCH",
+    "DELETE",
+    "OPTIONS",
+  ],
 
-      return callback(
-        new Error(
-          "CORS not allowed for this origin"
-        )
-      );
-    },
+  allowedHeaders: [
+    "Content-Type",
+    "Authorization",
+  ],
 
-    credentials: true,
+  optionsSuccessStatus: 204,
+};
 
-    methods: [
-      "GET",
-      "POST",
-      "PUT",
-      "PATCH",
-      "DELETE",
-      "OPTIONS",
-    ],
+// Apply CORS globally
+app.use(cors(corsOptions));
 
-    allowedHeaders: [
-      "Content-Type",
-      "Authorization",
-    ],
-
-    optionsSuccessStatus: 204,
-  })
-);
+// Explicitly handle preflight requests
+app.options("*", cors(corsOptions));
 
 // ============================================================
 // BODY PARSERS
@@ -208,19 +199,13 @@ console.log(
 // PASSPORT
 // ============================================================
 
-app.use(
-  passport.initialize()
-);
+app.use(passport.initialize());
 
 // ============================================================
 // RATE LIMITING
 // ============================================================
 
-const skipIfAdmin = (
-  req,
-  res,
-  next
-) => {
+const skipIfAdmin = (req, res, next) => {
   const authHeader =
     req.headers.authorization;
 
@@ -235,15 +220,12 @@ const skipIfAdmin = (
     authHeader.split(" ")[1];
 
   try {
-    const decoded =
-      jwt.verify(
-        token,
-        process.env.JWT_SECRET
-      );
+    const decoded = jwt.verify(
+      token,
+      process.env.JWT_SECRET
+    );
 
-    if (
-      decoded.role === "admin"
-    ) {
+    if (decoded.role === "admin") {
       req.skipRateLimit = true;
     }
   } catch (error) {
@@ -256,102 +238,70 @@ const skipIfAdmin = (
 
 app.use(skipIfAdmin);
 
-const limiter =
-  rateLimit({
-    windowMs:
-      15 * 60 * 1000,
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
 
-    max:
-      process.env.NODE_ENV ===
-      "production"
-        ? 100
-        : 500,
+  max:
+    process.env.NODE_ENV === "production"
+      ? 100
+      : 500,
 
-    skip: (req) => {
-      if (
-        req.skipRateLimit
-      ) {
-        return true;
-      }
+  skip: (req) => {
+    if (req.skipRateLimit) {
+      return true;
+    }
 
-      if (
-        process.env.NODE_ENV ===
-        "development"
-      ) {
-        return true;
-      }
+    if (process.env.NODE_ENV === "development") {
+      return true;
+    }
 
-      return false;
-    },
+    return false;
+  },
 
-    standardHeaders: true,
-    legacyHeaders: false,
+  standardHeaders: true,
+  legacyHeaders: false,
 
-    message: {
-      success: false,
-      message:
-        "Too many requests, please try again later.",
-    },
-  });
+  message: {
+    success: false,
+    message:
+      "Too many requests, please try again later.",
+  },
+});
 
-app.use(
-  "/api",
-  limiter
-);
-
-app.use(
-  "/auth",
-  limiter
-);
+app.use("/api", limiter);
+app.use("/auth", limiter);
 
 // ============================================================
 // ROOT API CHECK
 // ============================================================
 
-app.get(
-  "/",
-  (req, res) => {
-    res.status(200).json({
-      success: true,
-      message:
-        "Sell Platform API is running",
-      environment:
-        process.env.NODE_ENV ||
-        "development",
-    });
-  }
-);
+app.get("/", (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "Sell Platform API is running",
+    environment:
+      process.env.NODE_ENV || "development",
+  });
+});
 
 // ============================================================
 // HEALTH CHECK
-// Supports BOTH /health and /api/health
 // ============================================================
 
-const healthResponse = (
-  req,
-  res
-) => {
+const healthResponse = (req, res) => {
   res.status(200).json({
     success: true,
     status: "ok",
-    timestamp:
-      new Date().toISOString(),
+    timestamp: new Date().toISOString(),
   });
 };
 
-app.get(
-  "/health",
-  healthResponse
-);
+app.get("/health", healthResponse);
 
-app.get(
-  "/api/health",
-  healthResponse
-);
+app.get("/api/health", healthResponse);
 
 // ============================================================
 // PASSWORD RESET ROUTES
-// IMPORTANT: Mounted AFTER CORS
 // ============================================================
 
 const passwordRoutes =
@@ -384,9 +334,7 @@ const messageRoutes =
 const adminRoutes =
   require("./routes/admin");
 
-console.log(
-  "✅ Routes loaded"
-);
+console.log("✅ Routes loaded");
 
 // ============================================================
 // AUTHENTICATION
@@ -446,45 +394,45 @@ app.use(
 // 404 HANDLER
 // ============================================================
 
-app.use(
-  (req, res) => {
-    if (
-      req.path.startsWith("/api") ||
-      req.path.startsWith("/auth")
-    ) {
-      return res
-        .status(404)
-        .json({
-          success: false,
-          message:
-            "API endpoint not found",
-        });
-    }
-
-    return res
-      .status(404)
-      .send("Not Found");
+app.use((req, res) => {
+  if (
+    req.path.startsWith("/api") ||
+    req.path.startsWith("/auth")
+  ) {
+    return res.status(404).json({
+      success: false,
+      message: "API endpoint not found",
+    });
   }
-);
+
+  return res.status(404).send("Not Found");
+});
 
 // ============================================================
 // GLOBAL ERROR HANDLER
 // ============================================================
 
 app.use(
-  (
-    err,
-    req,
-    res,
-    next
-  ) => {
-    console.error(
-      "❌ Error:",
-      err
-    );
+  (err, req, res, next) => {
+    console.error("❌ Error:", err);
 
     // --------------------------------------------------------
-    // Multer
+    // CORS
+    // --------------------------------------------------------
+
+    if (
+      err &&
+      err.message ===
+        "CORS not allowed for this origin"
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: err.message,
+      });
+    }
+
+    // --------------------------------------------------------
+    // MULTER
     // --------------------------------------------------------
 
     if (
@@ -492,30 +440,25 @@ app.use(
       err.name === "MulterError"
     ) {
       if (
-        err.code ===
-        "LIMIT_FILE_SIZE"
+        err.code === "LIMIT_FILE_SIZE"
       ) {
-        return res
-          .status(413)
-          .json({
-            success: false,
-            message:
-              "File too large. Maximum size is 5MB.",
-          });
-      }
-
-      return res
-        .status(400)
-        .json({
+        return res.status(413).json({
           success: false,
           message:
-            err.message ||
-            "File upload error.",
+            "File too large. Maximum size is 5MB.",
         });
+      }
+
+      return res.status(400).json({
+        success: false,
+        message:
+          err.message ||
+          "File upload error.",
+      });
     }
 
     // --------------------------------------------------------
-    // Duplicate MongoDB field
+    // DUPLICATE MONGODB FIELD
     // --------------------------------------------------------
 
     if (
@@ -527,23 +470,19 @@ app.use(
           err.keyPattern || {}
         )[0] || "field";
 
-      return res
-        .status(409)
-        .json({
-          success: false,
-          message:
-            `${field} already exists`,
-        });
+      return res.status(409).json({
+        success: false,
+        message: `${field} already exists`,
+      });
     }
 
     // --------------------------------------------------------
-    // Mongoose validation
+    // MONGOOSE VALIDATION
     // --------------------------------------------------------
 
     if (
       err &&
-      err.name ===
-        "ValidationError"
+      err.name === "ValidationError"
     ) {
       const messages =
         Object.values(
@@ -553,42 +492,19 @@ app.use(
             error.message
         );
 
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message:
-            "Validation error",
-          errors: messages,
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Validation error",
+        errors: messages,
+      });
     }
 
     // --------------------------------------------------------
-    // CORS
-    // --------------------------------------------------------
-
-    if (
-      err &&
-      err.message ===
-        "CORS not allowed for this origin"
-    ) {
-      return res
-        .status(403)
-        .json({
-          success: false,
-          message:
-            err.message,
-        });
-    }
-
-    // --------------------------------------------------------
-    // Generic
+    // GENERIC ERROR
     // --------------------------------------------------------
 
     return res
-      .status(
-        err?.status || 500
-      )
+      .status(err?.status || 500)
       .json({
         success: false,
         message:
@@ -641,143 +557,132 @@ const PORT =
 // DEFAULT ADMIN
 // ============================================================
 
-const createDefaultAdmin =
-  async () => {
-    try {
-      const User =
-        require("./models/User");
+const createDefaultAdmin = async () => {
+  try {
+    const User =
+      require("./models/User");
 
-      const adminEmail =
-        process.env.ADMIN_EMAIL;
+    const adminEmail =
+      process.env.ADMIN_EMAIL;
 
-      const adminPassword =
-        process.env.ADMIN_PASSWORD;
+    const adminPassword =
+      process.env.ADMIN_PASSWORD;
 
-      if (
-        !adminEmail ||
-        !adminPassword
-      ) {
-        console.log(
-          "ℹ️ ADMIN_EMAIL or ADMIN_PASSWORD not configured. Skipping default admin creation."
-        );
+    if (
+      !adminEmail ||
+      !adminPassword
+    ) {
+      console.log(
+        "ℹ️ ADMIN_EMAIL or ADMIN_PASSWORD not configured. Skipping default admin creation."
+      );
 
-        return;
-      }
+      return;
+    }
 
-      const normalizedEmail =
-        adminEmail
-          .trim()
-          .toLowerCase();
+    const normalizedEmail =
+      adminEmail
+        .trim()
+        .toLowerCase();
 
-      let user =
-        await User.findOne({
-          email:
-            normalizedEmail,
-        });
+    let user =
+      await User.findOne({
+        email: normalizedEmail,
+      });
 
-      if (!user) {
-        user =
-          new User({
-            name: "Admin",
-            email:
-              normalizedEmail,
-            password:
-              adminPassword,
-            phone: "",
-            role: "admin",
-            isActive: true,
-          });
+    if (!user) {
+      user = new User({
+        name: "Admin",
+        email: normalizedEmail,
+        password: adminPassword,
+        phone: "",
+        role: "admin",
+        isActive: true,
+      });
 
-        await user.save();
+      await user.save();
 
-        console.log(
-          `✅ Default admin created: ${normalizedEmail}`
-        );
-      } else if (
-        user.role !== "admin"
-      ) {
-        user.role = "admin";
+      console.log(
+        `✅ Default admin created: ${normalizedEmail}`
+      );
+    } else if (
+      user.role !== "admin"
+    ) {
+      user.role = "admin";
 
-        await user.save();
+      await user.save();
 
-        console.log(
-          `✅ User ${normalizedEmail} promoted to admin`
-        );
-      } else {
-        console.log(
-          `ℹ️ Admin user already exists: ${normalizedEmail}`
-        );
-      }
-    } catch (error) {
-      console.warn(
-        "⚠️ Could not create admin:",
-        error.message
+      console.log(
+        `✅ User ${normalizedEmail} promoted to admin`
+      );
+    } else {
+      console.log(
+        `ℹ️ Admin user already exists: ${normalizedEmail}`
       );
     }
-  };
+  } catch (error) {
+    console.warn(
+      "⚠️ Could not create admin:",
+      error.message
+    );
+  }
+};
 
 // ============================================================
 // START SERVER
 // ============================================================
 
-const start =
-  async () => {
-    try {
-      const connection =
-        await connectDB();
+const start = async () => {
+  try {
+    const connection =
+      await connectDB();
 
-      console.log(
-        `✅ MongoDB connected to: ${connection.name}`
-      );
+    console.log(
+      `✅ MongoDB connected to: ${connection.name}`
+    );
 
-      await createDefaultAdmin();
+    await createDefaultAdmin();
 
-      const server =
-        app.listen(
-          PORT,
-          () => {
-            console.log(
-              `🚀 Server running on port ${PORT}`
-            );
-
-            console.log(
-              `🌍 Environment: ${
-                process.env.NODE_ENV ||
-                "development"
-              }`
-            );
-
-            console.log(
-              `🔗 Base URL: ${
-                process.env.BASE_URL ||
-                "(auto-detected)"
-              }`
-            );
-
-            console.log(
-              `📁 Uploads: ${uploadsDirectory}`
-            );
-          }
+    const server = app.listen(
+      PORT,
+      () => {
+        console.log(
+          `🚀 Server running on port ${PORT}`
         );
 
-      // Allow long-running requests
-      // such as Render cold starts.
-      server.timeout =
-        120000;
+        console.log(
+          `🌍 Environment: ${
+            process.env.NODE_ENV ||
+            "development"
+          }`
+        );
 
-      server.keepAliveTimeout =
-        65000;
+        console.log(
+          `🔗 Base URL: ${
+            process.env.BASE_URL ||
+            "(auto-detected)"
+          }`
+        );
 
-      server.headersTimeout =
-        66000;
-    } catch (error) {
-      console.error(
-        "❌ Server failed:",
-        error
-      );
+        console.log(
+          `📁 Uploads: ${uploadsDirectory}`
+        );
+      }
+    );
 
-      process.exit(1);
-    }
-  };
+    // Allow long-running requests
+    server.timeout = 120000;
+
+    server.keepAliveTimeout = 65000;
+
+    server.headersTimeout = 66000;
+  } catch (error) {
+    console.error(
+      "❌ Server failed:",
+      error
+    );
+
+    process.exit(1);
+  }
+};
 
 start();

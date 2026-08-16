@@ -2,6 +2,10 @@ import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import axios from "axios";
 
+const API_URL =
+  import.meta.env.VITE_API_URL ||
+  "https://buyukused.onrender.com";
+
 const ForgotPassword = () => {
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
@@ -10,18 +14,50 @@ const ForgotPassword = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
     setLoading(true);
     setError("");
     setMessage("");
 
     try {
-      const res = await axios.post(
-        `${import.meta.env.VITE_API_URL}/api/password/forgot`,
-        { email }
+      const response = await axios.post(
+        `${API_URL}/api/password/forgot`,
+        {
+          email: email.trim().toLowerCase(),
+        },
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+          withCredentials: true,
+          timeout: 30000,
+        }
       );
-      setMessage(res.data.message);
+
+      setMessage(
+        response.data?.message ||
+          "If that email exists, a reset link has been sent."
+      );
     } catch (err) {
-      setError(err.response?.data?.message || "Something went wrong");
+      console.error(
+        "Forgot password error:",
+        err
+      );
+
+      if (err.response) {
+        setError(
+          err.response.data?.message ||
+            `Server error (${err.response.status})`
+        );
+      } else if (err.code === "ECONNABORTED") {
+        setError(
+          "The server is taking too long to respond. Please try again."
+        );
+      } else {
+        setError(
+          "Unable to connect to the server. Please try again."
+        );
+      }
     } finally {
       setLoading(false);
     }
@@ -30,29 +66,49 @@ const ForgotPassword = () => {
   return (
     <div className="forgot-password-page">
       <div className="forgot-password-container">
-        <h2 className="forgot-password-title">Forgot Password</h2>
+
+        <h2 className="forgot-password-title">
+          Forgot Password
+        </h2>
+
         <p className="forgot-password-subtitle">
           Enter your email and we'll send you a reset link.
         </p>
 
         {error && (
-          <div className="forgot-password-message error">{error}</div>
-        )}
-        {message && (
-          <div className="forgot-password-message success">{message}</div>
+          <div className="forgot-password-message error">
+            {error}
+          </div>
         )}
 
-        <form className="forgot-password-form" onSubmit={handleSubmit}>
+        {message && (
+          <div className="forgot-password-message success">
+            {message}
+          </div>
+        )}
+
+        <form
+          className="forgot-password-form"
+          onSubmit={handleSubmit}
+        >
           <div className="forgot-password-field">
-            <label htmlFor="forgot-email">Email</label>
+
+            <label htmlFor="forgot-email">
+              Email
+            </label>
+
             <input
               id="forgot-email"
               type="email"
               placeholder="Email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) =>
+                setEmail(e.target.value)
+              }
               required
+              autoComplete="email"
             />
+
           </div>
 
           <button
@@ -60,13 +116,18 @@ const ForgotPassword = () => {
             type="submit"
             disabled={loading}
           >
-            {loading ? "Sending..." : "Send Reset Link"}
+            {loading
+              ? "Sending..."
+              : "Send Reset Link"}
           </button>
         </form>
 
         <div className="forgot-password-back">
-          <Link to="/login">Back to Login</Link>
+          <Link to="/login">
+            Back to Login
+          </Link>
         </div>
+
       </div>
     </div>
   );
