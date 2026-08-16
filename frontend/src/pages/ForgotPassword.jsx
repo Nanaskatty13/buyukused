@@ -11,10 +11,7 @@ const API_URL = (
   "https://buyukused.onrender.com"
 ).replace(/\/+$/, "");
 
-console.log(
-  "🔗 Forgot Password API_URL:",
-  API_URL
-);
+console.log("🔗 Forgot Password API_URL:", API_URL);
 
 // ============================================================
 // FORGOT PASSWORD PAGE
@@ -34,16 +31,32 @@ const ForgotPassword = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    if (loading) {
+      return;
+    }
+
     setLoading(true);
     setSuccess("");
     setError("");
 
-    const normalizedEmail = email
-      .trim()
-      .toLowerCase();
+    const normalizedEmail = email.trim().toLowerCase();
+
+    // --------------------------------------------------------
+    // Validate email
+    // --------------------------------------------------------
 
     if (!normalizedEmail) {
       setError("Please enter your email address.");
+      setLoading(false);
+      return;
+    }
+
+    // Basic email validation
+    const emailPattern =
+      /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!emailPattern.test(normalizedEmail)) {
+      setError("Please enter a valid email address.");
       setLoading(false);
       return;
     }
@@ -62,6 +75,7 @@ const ForgotPassword = () => {
           timeout: 60000,
           headers: {
             "Content-Type": "application/json",
+            Accept: "application/json",
           },
         }
       );
@@ -70,6 +84,15 @@ const ForgotPassword = () => {
         "✅ Password reset response:",
         response.data
       );
+
+      if (response.data?.success === false) {
+        setError(
+          response.data?.message ||
+            "Unable to process your request."
+        );
+
+        return;
+      }
 
       setSuccess(
         response.data?.message ||
@@ -83,30 +106,61 @@ const ForgotPassword = () => {
         err
       );
 
+      // ------------------------------------------------------
+      // Axios timeout
+      // ------------------------------------------------------
+
       if (
-        err.code === "ECONNABORTED"
+        err.code === "ECONNABORTED" ||
+        err.code === "ETIMEDOUT"
       ) {
         setError(
           "The server took too long to respond. Please try again in a moment."
         );
-      } else if (
-        err.response?.data?.message
-      ) {
-        setError(
-          err.response.data.message
+
+        return;
+      }
+
+      // ------------------------------------------------------
+      // Backend returned an error
+      // ------------------------------------------------------
+
+      if (err.response) {
+        console.error(
+          "❌ Backend response:",
+          err.response.data
         );
-      } else if (
-        err.message ===
-        "Network Error"
+
+        setError(
+          err.response.data?.message ||
+            `Request failed with status ${err.response.status}.`
+        );
+
+        return;
+      }
+
+      // ------------------------------------------------------
+      // Network error
+      // ------------------------------------------------------
+
+      if (
+        err.message === "Network Error" ||
+        !err.response
       ) {
         setError(
           "Unable to connect to the server. Please check your internet connection and try again."
         );
-      } else {
-        setError(
-          "Unable to process your request. Please try again later."
-        );
+
+        return;
       }
+
+      // ------------------------------------------------------
+      // Generic error
+      // ------------------------------------------------------
+
+      setError(
+        "Unable to process your request. Please try again later."
+      );
     } finally {
       setLoading(false);
     }
@@ -155,18 +209,19 @@ const ForgotPassword = () => {
             marginBottom: "24px",
           }}
         >
-          Enter the email address associated
-          with your account and we'll send
-          you a password reset link.
+          Enter the email address associated with
+          your account and we'll send you a password
+          reset link.
         </p>
 
         {/* ==================================================
-            SUCCESS
+            SUCCESS MESSAGE
         ================================================== */}
 
         {success && (
           <div
             role="status"
+            aria-live="polite"
             style={{
               background: "#dcfce7",
               color: "#166534",
@@ -182,12 +237,13 @@ const ForgotPassword = () => {
         )}
 
         {/* ==================================================
-            ERROR
+            ERROR MESSAGE
         ================================================== */}
 
         {error && (
           <div
             role="alert"
+            aria-live="assertive"
             style={{
               background: "#fee2e2",
               color: "#b91c1c",
@@ -206,7 +262,7 @@ const ForgotPassword = () => {
             FORM
         ================================================== */}
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} noValidate>
           <div
             style={{
               marginBottom: "18px",
@@ -226,6 +282,7 @@ const ForgotPassword = () => {
 
             <input
               id="forgot-password-email"
+              name="email"
               type="email"
               value={email}
               onChange={(e) =>
@@ -233,6 +290,9 @@ const ForgotPassword = () => {
               }
               placeholder="your@email.com"
               autoComplete="email"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
               required
               disabled={loading}
               style={{
@@ -246,9 +306,14 @@ const ForgotPassword = () => {
                 fontSize: "14px",
                 fontFamily: "inherit",
                 background: "white",
+                outline: "none",
               }}
             />
           </div>
+
+          {/* ==================================================
+              SEND BUTTON
+          ================================================== */}
 
           <button
             type="submit"
@@ -259,8 +324,7 @@ const ForgotPassword = () => {
               padding: "14px",
               border: "none",
               borderRadius: "50px",
-              background:
-                "var(--primary)",
+              background: "var(--primary)",
               color: "white",
               fontWeight: 700,
               fontSize: "16px",
@@ -268,6 +332,8 @@ const ForgotPassword = () => {
                 ? "not-allowed"
                 : "pointer",
               opacity: loading ? 0.7 : 1,
+              transition:
+                "opacity 0.2s ease",
             }}
           >
             {loading
