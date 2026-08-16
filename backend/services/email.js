@@ -3,11 +3,20 @@
 const nodemailer = require("nodemailer");
 
 // ============================================================
-// ENVIRONMENT VALIDATION
+// EMAIL CONFIGURATION
 // ============================================================
 
-const EMAIL_USER = process.env.EMAIL_USER;
-const EMAIL_PASS = process.env.EMAIL_PASS;
+const EMAIL_USER = String(
+  process.env.EMAIL_USER || ""
+).trim();
+
+const EMAIL_PASS = String(
+  process.env.EMAIL_PASS || ""
+).trim();
+
+// ============================================================
+// VALIDATE EMAIL CONFIGURATION
+// ============================================================
 
 if (!EMAIL_USER || !EMAIL_PASS) {
   console.warn(
@@ -16,54 +25,53 @@ if (!EMAIL_USER || !EMAIL_PASS) {
 }
 
 // ============================================================
-// SMTP TRANSPORTER
+// GMAIL SMTP TRANSPORTER
 // ============================================================
 //
-// Gmail:
-// EMAIL_USER = your Gmail address
-// EMAIL_PASS = Google App Password
-//
 // IMPORTANT:
-// EMAIL_PASS must NOT be your normal Gmail password.
+// - Use port 587 instead of 465.
+// - Force IPv4 with family: 4.
+// - This avoids Render IPv6 connection problems.
+// - Gmail requires an App Password when 2-Step
+//   Verification is enabled.
+//
 // ============================================================
 
 const transporter = nodemailer.createTransport({
   host: "smtp.gmail.com",
 
-  port: 465,
+  port: 587,
 
-  secure: true,
+  secure: false,
+
+  family: 4,
+
+  requireTLS: true,
 
   auth: {
     user: EMAIL_USER,
     pass: EMAIL_PASS,
   },
 
-  // Prevent SMTP from hanging indefinitely.
-  connectionTimeout: 10000,
+  connectionTimeout: 15000,
 
-  greetingTimeout: 10000,
+  greetingTimeout: 15000,
 
-  socketTimeout: 15000,
+  socketTimeout: 20000,
 
-  // Require TLS certificate validation.
   tls: {
-    rejectUnauthorized: true,
+    minVersion: "TLSv1.2",
   },
 });
 
 // ============================================================
-// VERIFY EMAIL CONFIGURATION
+// VERIFY EMAIL TRANSPORTER
 // ============================================================
 
 const verifyEmailTransporter = async () => {
   if (!EMAIL_USER || !EMAIL_PASS) {
     console.warn(
-      "⚠️ Email transporter verification skipped."
-    );
-
-    console.warn(
-      "⚠️ Set EMAIL_USER and EMAIL_PASS in Render Environment Variables."
+      "⚠️ Email transporter verification skipped because EMAIL_USER or EMAIL_PASS is missing."
     );
 
     return false;
@@ -73,7 +81,7 @@ const verifyEmailTransporter = async () => {
     await transporter.verify();
 
     console.log(
-      `✅ Email transporter is ready: ${EMAIL_USER}`
+      "✅ Email transporter is ready"
     );
 
     return true;
@@ -83,50 +91,37 @@ const verifyEmailTransporter = async () => {
     );
 
     console.error(
-      "   Code:",
-      error.code || "N/A"
+      "Message:",
+      error?.message || error
     );
 
     console.error(
-      "   Command:",
-      error.command || "N/A"
+      "Code:",
+      error?.code || "N/A"
     );
 
     console.error(
-      "   Response:",
-      error.response || "N/A"
+      "Command:",
+      error?.command || "N/A"
     );
 
     console.error(
-      "   Message:",
-      error.message
+      "Response:",
+      error?.response || "N/A"
     );
 
     return false;
   }
 };
 
-// Verify in the background.
-// Do not prevent the server from starting if
-// Gmail is temporarily unavailable.
-verifyEmailTransporter();
-
-// ============================================================
-// HTML ESCAPE
-// ============================================================
+// Verify when the backend starts.
 //
-// Prevent user-provided values such as the user's name
-// from being inserted directly into HTML.
-// ============================================================
+// IMPORTANT:
+// Do NOT crash the server if Gmail is temporarily
+// unavailable. The rest of the website should remain
+// operational.
 
-const escapeHtml = (value) => {
-  return String(value || "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
-};
+verifyEmailTransporter();
 
 // ============================================================
 // SEND PASSWORD RESET EMAIL
@@ -138,18 +133,12 @@ async function sendPasswordResetEmail(
   name
 ) {
   // ----------------------------------------------------------
-  // Validate environment
+  // Validate configuration
   // ----------------------------------------------------------
 
-  if (!EMAIL_USER) {
+  if (!EMAIL_USER || !EMAIL_PASS) {
     throw new Error(
-      "EMAIL_USER is not configured"
-    );
-  }
-
-  if (!EMAIL_PASS) {
-    throw new Error(
-      "EMAIL_PASS is not configured"
+      "EMAIL_USER or EMAIL_PASS is not configured"
     );
   }
 
@@ -157,7 +146,13 @@ async function sendPasswordResetEmail(
   // Validate recipient
   // ----------------------------------------------------------
 
-  if (!to) {
+  const recipient = String(
+    to || ""
+  )
+    .trim()
+    .toLowerCase();
+
+  if (!recipient) {
     throw new Error(
       "Password reset recipient email is missing"
     );
@@ -174,11 +169,12 @@ async function sendPasswordResetEmail(
   }
 
   // ----------------------------------------------------------
-  // Escape display name
+  // Safe display name
   // ----------------------------------------------------------
 
-  const safeName =
-    escapeHtml(name || "there");
+  const displayName =
+    String(name || "there")
+      .trim();
 
   // ----------------------------------------------------------
   // Email
@@ -187,17 +183,17 @@ async function sendPasswordResetEmail(
   const mailOptions = {
     from: `"KN Classifieds" <${EMAIL_USER}>`,
 
-    to,
+    to: recipient,
 
     subject:
       "Reset Your KN Classifieds Password",
 
     text: `
-Hello ${name || "there"},
+Hello ${displayName},
 
 We received a request to reset your KN Classifieds account password.
 
-Reset your password here:
+Use the following link to create a new password:
 
 ${resetUrl}
 
@@ -210,7 +206,7 @@ KN Classifieds
 
     html: `
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta
@@ -224,30 +220,29 @@ KN Classifieds
   style="
     margin: 0;
     padding: 0;
-    background: #f3f4f6;
+    background: #f5f7fa;
     font-family: Arial, Helvetica, sans-serif;
   "
 >
   <div
     style="
-      width: 100%;
-      padding: 40px 0;
+      max-width: 600px;
+      margin: 40px auto;
+      padding: 0 20px;
     "
   >
     <div
       style="
-        max-width: 600px;
-        margin: 0 auto;
         background: #ffffff;
         border-radius: 12px;
         padding: 35px;
-        box-sizing: border-box;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.06);
       "
     >
 
       <h2
         style="
-          margin: 0 0 20px;
+          margin: 0 0 15px;
           color: #111827;
           font-size: 24px;
         "
@@ -262,7 +257,7 @@ KN Classifieds
           line-height: 1.6;
         "
       >
-        Hello ${safeName},
+        Hello ${displayName},
       </p>
 
       <p
@@ -283,13 +278,13 @@ KN Classifieds
           line-height: 1.6;
         "
       >
-        Click the button below to create a
-        new password:
+        Click the button below to create a new password:
       </p>
 
       <div
         style="
           margin: 30px 0;
+          text-align: center;
         "
       >
         <a
@@ -301,7 +296,7 @@ KN Classifieds
             color: #ffffff;
             text-decoration: none;
             border-radius: 8px;
-            font-weight: bold;
+            font-weight: 700;
             font-size: 15px;
           "
         >
@@ -311,7 +306,7 @@ KN Classifieds
 
       <p
         style="
-          color: #374151;
+          color: #4b5563;
           font-size: 14px;
           line-height: 1.6;
         "
@@ -322,18 +317,18 @@ KN Classifieds
 
       <p
         style="
-          color: #6b7280;
+          color: #4b5563;
           font-size: 14px;
           line-height: 1.6;
         "
       >
-        If you did not request this password
-        reset, you can safely ignore this email.
+        If you did not request this password reset,
+        you can safely ignore this email.
       </p>
 
       <hr
         style="
-          border: none;
+          border: 0;
           border-top: 1px solid #e5e7eb;
           margin: 30px 0;
         "
@@ -353,61 +348,53 @@ KN Classifieds
   </div>
 </body>
 </html>
-    `.trim(),
+    `,
   };
 
   // ----------------------------------------------------------
-  // Send email
+  // Send
   // ----------------------------------------------------------
 
   try {
-    console.log(
-      `📧 Sending password reset email to: ${to}`
-    );
-
     const info =
       await transporter.sendMail(
         mailOptions
       );
 
     console.log(
-      "✅ Password reset email sent successfully."
-    );
-
-    console.log(
-      "📨 Message ID:",
-      info.messageId
+      "✅ Password reset email sent:",
+      info?.messageId || "message sent"
     );
 
     return info;
   } catch (error) {
     console.error(
-      "❌ Failed to send password reset email:"
+      "❌ Password reset email failed:"
     );
 
     console.error(
-      "   Code:",
-      error.code || "N/A"
+      "Message:",
+      error?.message || error
     );
 
     console.error(
-      "   Command:",
-      error.command || "N/A"
+      "Code:",
+      error?.code || "N/A"
     );
 
     console.error(
-      "   Response:",
-      error.response || "N/A"
+      "Command:",
+      error?.command || "N/A"
     );
 
     console.error(
-      "   Message:",
-      error.message
+      "Response:",
+      error?.response || "N/A"
     );
 
     throw error;
   }
-};
+}
 
 // ============================================================
 // EXPORTS
