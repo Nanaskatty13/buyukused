@@ -1,3 +1,4 @@
+// frontend/src/pages/ProductDetails.jsx
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 
@@ -1554,7 +1555,7 @@ const ProductDetails = () => {
                 "No description provided."}
             </div>
 
-            {/* ─── SELLER CARD – UPDATED ─── */}
+            {/* ─── SELLER CARD – MODIFIED: PHONE HIDDEN FOR NON‑USERS ─── */}
             <div
               className="seller"
               style={{
@@ -1647,15 +1648,38 @@ const ProductDetails = () => {
                   })()}
                 </div>
 
-                {product.sellerPhone && (
+                {/* ── PHONE NUMBER – SHOW ONLY IF LOGGED IN ── */}
+                {user ? (
+                  product.sellerPhone && (
+                    <div
+                      style={{
+                        fontSize: '14px',
+                        color: 'var(--gray-600)',
+                      }}
+                    >
+                      <i className="fas fa-phone" style={{ marginRight: '6px' }} />
+                      {product.sellerPhone}
+                    </div>
+                  )
+                ) : (
                   <div
                     style={{
                       fontSize: '14px',
                       color: 'var(--gray-600)',
                     }}
                   >
-                    <i className="fas fa-phone" style={{ marginRight: '6px' }} />
-                    {product.sellerPhone}
+                    <i className="fas fa-lock" style={{ marginRight: '6px' }} />
+                    <span
+                      style={{
+                        color: 'var(--primary)',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                      }}
+                      onClick={() => navigate('/login')}
+                    >
+                      Sign up
+                    </span>
+                    {' to view seller\'s phone number'}
                   </div>
                 )}
 
@@ -1694,7 +1718,7 @@ const ProductDetails = () => {
                   "wrap",
               }}
             >
-              {/* CONTACT SELLER */}
+              {/* CONTACT SELLER – MODIFIED FOR NON‑USERS */}
 
               {isSold ? (
                 <button
@@ -1729,43 +1753,54 @@ const ProductDetails = () => {
                   Sold Out
                 </button>
               ) : (
-                <button
-                  type="button"
-                  onClick={
-                    handleContact
-                  }
-                  className="btn-secondary"
-                  style={{
-                    padding:
-                      "12px 32px",
-                    background:
-                      "var(--secondary)",
-                    color:
-                      "white",
-                    border:
-                      "none",
-                    borderRadius:
-                      "var(--radius-full)",
-                    fontWeight:
-                      700,
-                    fontSize:
-                      "16px",
-                    cursor:
-                      "pointer",
-                    display:
-                      "flex",
-                    alignItems:
-                      "center",
-                    justifyContent:
-                      "center",
-                    gap: "8px",
-                    touchAction:
-                      "manipulation",
-                  }}
-                >
-                  <i className="fab fa-whatsapp" />
-                  Contact Seller
-                </button>
+                user ? (
+                  <button
+                    type="button"
+                    onClick={handleContact}
+                    className="btn-secondary"
+                    style={{
+                      padding: "12px 32px",
+                      background: "var(--secondary)",
+                      color: "white",
+                      border: "none",
+                      borderRadius: "var(--radius-full)",
+                      fontWeight: 700,
+                      fontSize: "16px",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "8px",
+                      touchAction: "manipulation",
+                    }}
+                  >
+                    <i className="fab fa-whatsapp" />
+                    Contact Seller
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => navigate('/login')}
+                    className="btn-secondary"
+                    style={{
+                      padding: "12px 32px",
+                      background: "#0055a5",  // primary blue
+                      color: "white",
+                      border: "none",
+                      borderRadius: "var(--radius-full)",
+                      fontWeight: 700,
+                      fontSize: "16px",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "8px",
+                    }}
+                  >
+                    <i className="fas fa-sign-in-alt" />
+                    Sign up to contact seller
+                  </button>
+                )
               )}
 
               {/* ── NEW: BOOK A BIKE RIDER BUTTON ── */}
@@ -2010,7 +2045,7 @@ const ProductDetails = () => {
         </div>
 
         {/* ============================================================
-            EDIT MODAL – with all categories and ALL_COLORS
+            EDIT MODAL – FULLY INCLUDED
         ============================================================ */}
 
         {showEditModal && (
