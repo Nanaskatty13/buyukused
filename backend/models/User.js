@@ -58,6 +58,22 @@ const userSchema = new mongoose.Schema(
     },
 
     // ==========================================================
+    // PASSWORD RESET
+    // ==========================================================
+
+    resetPasswordToken: {
+      type: String,
+      default: undefined,
+      select: false,
+    },
+
+    resetPasswordExpires: {
+      type: Date,
+      default: undefined,
+      select: false,
+    },
+
+    // ==========================================================
     // CONTACT INFORMATION
     // ==========================================================
 
@@ -95,11 +111,13 @@ const userSchema = new mongoose.Schema(
 
     provider: {
       type: String,
+
       enum: [
         "local",
         "google",
         "facebook",
       ],
+
       default: "local",
     },
 
@@ -131,19 +149,16 @@ const userSchema = new mongoose.Schema(
     // ==========================================================
 
     riderProfile: {
-      // Whether the rider is currently available
       isAvailable: {
         type: Boolean,
         default: false,
       },
 
-      // Whether the rider account has been approved
       isApproved: {
         type: Boolean,
         default: false,
       },
 
-      // Motorcycle information
       bikeType: {
         type: String,
         default: "",
@@ -156,21 +171,18 @@ const userSchema = new mongoose.Schema(
         trim: true,
       },
 
-      // Rider's service area
       serviceArea: {
         type: String,
         default: "",
         trim: true,
       },
 
-      // Optional rider photo / ID
       identificationNumber: {
         type: String,
         default: "",
         trim: true,
       },
 
-      // Rating
       rating: {
         type: Number,
         default: 5,
@@ -213,15 +225,17 @@ const userSchema = new mongoose.Schema(
 userSchema.pre(
   "save",
   async function (next) {
-    if (!this.isModified("password")) {
-      return next();
-    }
-
-    if (!this.password) {
-      return next();
-    }
-
     try {
+      // Password was not changed.
+      if (!this.isModified("password")) {
+        return next();
+      }
+
+      // No password.
+      if (!this.password) {
+        return next();
+      }
+
       this.password =
         await bcrypt.hash(
           this.password,
@@ -287,15 +301,13 @@ userSchema.methods.canAcceptDeliveries =
     return (
       this.role === "rider" &&
       this.isActive !== false &&
-      this.riderProfile?.isApproved ===
-        true &&
-      this.riderProfile?.isAvailable ===
-        true
+      this.riderProfile?.isApproved === true &&
+      this.riderProfile?.isAvailable === true
     );
   };
 
 // ============================================================
-// REMOVE PASSWORD FROM JSON
+// REMOVE SENSITIVE INFORMATION FROM JSON
 // ============================================================
 
 userSchema.set(
@@ -306,6 +318,8 @@ userSchema.set(
       ret
     ) {
       delete ret.password;
+      delete ret.resetPasswordToken;
+      delete ret.resetPasswordExpires;
       delete ret.__v;
 
       return ret;

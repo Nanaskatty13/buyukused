@@ -1,9 +1,13 @@
-import React, { useState } from "react";
+import React, {
+  useState,
+} from "react";
+
 import {
   useParams,
   useNavigate,
   Link,
 } from "react-router-dom";
+
 import axios from "axios";
 
 const API_URL = (
@@ -12,63 +16,126 @@ const API_URL = (
 ).replace(/\/+$/, "");
 
 const ResetPassword = () => {
-  const { token } = useParams();
-  const navigate = useNavigate();
+  const { token } =
+    useParams();
 
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] =
-    useState("");
+  const navigate =
+    useNavigate();
 
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [
+    password,
+    setPassword,
+  ] = useState("");
 
-  const handleSubmit = async (e) => {
+  const [
+    confirmPassword,
+    setConfirmPassword,
+  ] = useState("");
+
+  const [
+    message,
+    setMessage,
+  ] = useState("");
+
+  const [
+    error,
+    setError,
+  ] = useState("");
+
+  const [
+    loading,
+    setLoading,
+  ] = useState(false);
+
+  // ==========================================================
+  // SUBMIT
+  // ==========================================================
+
+  const handleSubmit = async (
+    e
+  ) => {
     e.preventDefault();
 
     setError("");
     setMessage("");
 
+    // --------------------------------------------------------
+    // CHECK TOKEN
+    // --------------------------------------------------------
+
     if (!token) {
       setError(
-        "This password reset link is invalid."
+        "This password reset link is invalid or missing."
       );
+
       return;
     }
 
-    if (password.length < 6) {
+    // --------------------------------------------------------
+    // PASSWORD LENGTH
+    // --------------------------------------------------------
+
+    if (
+      password.length < 6
+    ) {
       setError(
         "Password must be at least 6 characters."
       );
+
       return;
     }
 
-    if (password !== confirmPassword) {
+    // --------------------------------------------------------
+    // PASSWORD MATCH
+    // --------------------------------------------------------
+
+    if (
+      password !==
+      confirmPassword
+    ) {
       setError(
         "Passwords do not match."
       );
+
       return;
     }
+
+    // --------------------------------------------------------
+    // LOADING
+    // --------------------------------------------------------
 
     setLoading(true);
 
     try {
-      const res = await axios.post(
-        `${API_URL}/api/password/reset/${encodeURIComponent(
-          token
-        )}`,
-        {
-          password,
-          confirmPassword,
-        },
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Accept: "application/json",
+      // ------------------------------------------------------
+      // SEND RESET REQUEST
+      // ------------------------------------------------------
+
+      const res =
+        await axios.post(
+          `${API_URL}/api/password/reset/${encodeURIComponent(
+            token
+          )}`,
+          {
+            password,
+            confirmPassword,
           },
-          timeout: 30000,
-        }
-      );
+          {
+            headers: {
+              "Content-Type":
+                "application/json",
+
+              Accept:
+                "application/json",
+            },
+
+            timeout: 30000,
+          }
+        );
+
+      // ------------------------------------------------------
+      // SUCCESS
+      // ------------------------------------------------------
 
       setMessage(
         res.data?.message ||
@@ -78,37 +145,73 @@ const ResetPassword = () => {
       setPassword("");
       setConfirmPassword("");
 
+      // ------------------------------------------------------
+      // REDIRECT TO LOGIN
+      // ------------------------------------------------------
+
       setTimeout(() => {
         navigate("/login");
       }, 1500);
     } catch (err) {
       console.error(
-        "Reset password error:",
-        err.response?.data || err.message
+        "❌ Reset password error:",
+        err.response?.data ||
+          err.message
       );
+
+      // ------------------------------------------------------
+      // SERVER RESPONSE
+      // ------------------------------------------------------
 
       if (err.response) {
         setError(
-          err.response.data?.message ||
+          err.response.data
+            ?.message ||
             "Unable to reset your password."
         );
-      } else if (err.code === "ECONNABORTED") {
+
+        return;
+      }
+
+      // ------------------------------------------------------
+      // TIMEOUT
+      // ------------------------------------------------------
+
+      if (
+        err.code ===
+        "ECONNABORTED"
+      ) {
         setError(
           "The server took too long to respond. Please try again."
         );
-      } else {
-        setError(
-          "Unable to connect to the server. Please try again."
-        );
+
+        return;
       }
+
+      // ------------------------------------------------------
+      // CONNECTION ERROR
+      // ------------------------------------------------------
+
+      setError(
+        "Unable to connect to the server. Please try again."
+      );
     } finally {
       setLoading(false);
     }
   };
 
+  // ==========================================================
+  // PAGE
+  // ==========================================================
+
   return (
     <div className="reset-password-page">
       <div className="reset-password-container">
+
+        {/* ================================================== */}
+        {/* TITLE */}
+        {/* ================================================== */}
+
         <h2 className="reset-password-title">
           Set New Password
         </h2>
@@ -116,6 +219,10 @@ const ResetPassword = () => {
         <p className="reset-password-subtitle">
           Enter your new password below.
         </p>
+
+        {/* ================================================== */}
+        {/* ERROR */}
+        {/* ================================================== */}
 
         {error && (
           <div
@@ -126,6 +233,10 @@ const ResetPassword = () => {
           </div>
         )}
 
+        {/* ================================================== */}
+        {/* SUCCESS */}
+        {/* ================================================== */}
+
         {message && (
           <div
             className="reset-password-message success"
@@ -135,66 +246,105 @@ const ResetPassword = () => {
           </div>
         )}
 
-        <form
-          className="reset-password-form"
-          onSubmit={handleSubmit}
-        >
-          <div className="reset-password-field">
-            <label htmlFor="new-password">
-              New Password
-            </label>
+        {/* ================================================== */}
+        {/* FORM */}
+        {/* ================================================== */}
 
-            <input
-              id="new-password"
-              type="password"
-              placeholder="New Password"
-              value={password}
-              onChange={(e) =>
-                setPassword(e.target.value)
-              }
-              autoComplete="new-password"
-              required
-              minLength={6}
-              disabled={loading}
-            />
-          </div>
-
-          <div className="reset-password-field">
-            <label htmlFor="confirm-password">
-              Confirm New Password
-            </label>
-
-            <input
-              id="confirm-password"
-              type="password"
-              placeholder="Confirm New Password"
-              value={confirmPassword}
-              onChange={(e) =>
-                setConfirmPassword(e.target.value)
-              }
-              autoComplete="new-password"
-              required
-              minLength={6}
-              disabled={loading}
-            />
-          </div>
-
-          <button
-            className="reset-password-submit"
-            type="submit"
-            disabled={loading}
+        {!message && (
+          <form
+            className="reset-password-form"
+            onSubmit={
+              handleSubmit
+            }
           >
-            {loading
-              ? "Updating..."
-              : "Update Password"}
-          </button>
-        </form>
+            {/* ============================================== */}
+            {/* NEW PASSWORD */}
+            {/* ============================================== */}
+
+            <div className="reset-password-field">
+
+              <label htmlFor="new-password">
+                New Password
+              </label>
+
+              <input
+                id="new-password"
+                type="password"
+                placeholder="New Password"
+                value={password}
+                onChange={(e) =>
+                  setPassword(
+                    e.target.value
+                  )
+                }
+                autoComplete="new-password"
+                required
+                minLength={6}
+                disabled={loading}
+              />
+
+            </div>
+
+            {/* ============================================== */}
+            {/* CONFIRM PASSWORD */}
+            {/* ============================================== */}
+
+            <div className="reset-password-field">
+
+              <label htmlFor="confirm-password">
+                Confirm New Password
+              </label>
+
+              <input
+                id="confirm-password"
+                type="password"
+                placeholder="Confirm New Password"
+                value={
+                  confirmPassword
+                }
+                onChange={(e) =>
+                  setConfirmPassword(
+                    e.target.value
+                  )
+                }
+                autoComplete="new-password"
+                required
+                minLength={6}
+                disabled={loading}
+              />
+
+            </div>
+
+            {/* ============================================== */}
+            {/* SUBMIT */}
+            {/* ============================================== */}
+
+            <button
+              className="reset-password-submit"
+              type="submit"
+              disabled={
+                loading ||
+                !token
+              }
+            >
+              {loading
+                ? "Updating..."
+                : "Update Password"}
+            </button>
+
+          </form>
+        )}
+
+        {/* ================================================== */}
+        {/* BACK TO LOGIN */}
+        {/* ================================================== */}
 
         <div className="reset-password-back">
           <Link to="/login">
             Back to Login
           </Link>
         </div>
+
       </div>
     </div>
   );
