@@ -1,4 +1,3 @@
-
 // backend/controllers/deliveryController.js
 
 const Delivery = require("../models/Delivery");
@@ -6,16 +5,12 @@ const User = require("../models/User");
 const Product = require("../models/Product");
 
 // ============================================================
-// HELPER: GET AUTHENTICATED USER ID
+// HELPERS
 // ============================================================
 
 const getUserId = (req) => {
   return req.user?._id || req.user?.id || null;
 };
-
-// ============================================================
-// HELPER: CHECK USER
-// ============================================================
 
 const requireUser = (req, res) => {
   const userId = getUserId(req);
@@ -30,6 +25,30 @@ const requireUser = (req, res) => {
   }
 
   return userId;
+};
+
+const populateDelivery = (query) => {
+  return query
+    .populate(
+      "requester",
+      "name email phone role location avatar photoURL"
+    )
+    .populate(
+      "seller",
+      "name email phone location avatar photoURL"
+    )
+    .populate(
+      "buyer",
+      "name email phone location avatar photoURL"
+    )
+    .populate(
+      "rider",
+      "name email phone role location avatar photoURL riderProfile"
+    )
+    .populate(
+      "product",
+      "title price images image category location"
+    );
 };
 
 // ============================================================
@@ -64,10 +83,6 @@ exports.createDelivery = async (req, res) => {
       deliveryFee,
     } = req.body || {};
 
-    // ----------------------------------------------------------
-    // GET REQUESTER
-    // ----------------------------------------------------------
-
     const requester = await User.findById(userId);
 
     if (!requester) {
@@ -84,14 +99,11 @@ exports.createDelivery = async (req, res) => {
       });
     }
 
-    // ----------------------------------------------------------
-    // ONLY BUYERS AND SELLERS CAN REQUEST DELIVERY
-    // ----------------------------------------------------------
-
+    // Riders cannot request deliveries for themselves.
     if (
-      requester.role !== "buyer" &&
-      requester.role !== "seller" &&
-      requester.role !== "admin"
+      !["buyer", "seller", "admin"].includes(
+        requester.role
+      )
     ) {
       return res.status(403).json({
         success: false,
@@ -100,11 +112,10 @@ exports.createDelivery = async (req, res) => {
       });
     }
 
-    // ----------------------------------------------------------
-    // VALIDATE LOCATIONS
-    // ----------------------------------------------------------
-
-    if (!pickupLocation || !String(pickupLocation).trim()) {
+    if (
+      !pickupLocation ||
+      !String(pickupLocation).trim()
+    ) {
       return res.status(400).json({
         success: false,
         message: "Pickup location is required",
@@ -138,18 +149,13 @@ exports.createDelivery = async (req, res) => {
       }
     }
 
-    // ----------------------------------------------------------
-    // DETERMINE REQUESTER ROLE
-    // ----------------------------------------------------------
-
     const requesterRole =
       requester.role === "admin"
         ? "seller"
         : requester.role;
 
-    // ----------------------------------------------------------
-    // CREATE DELIVERY
-    // ----------------------------------------------------------
+    const parsedDeliveryFee =
+      Number(deliveryFee);
 
     const delivery = await Delivery.create({
       requester: requester._id,
@@ -157,7 +163,9 @@ exports.createDelivery = async (req, res) => {
       requesterRole,
 
       product:
-        productDocument?._id || product || null,
+        productDocument?._id ||
+        product ||
+        null,
 
       productTitle:
         productTitle ||
@@ -209,7 +217,8 @@ exports.createDelivery = async (req, res) => {
 
       pickupPhone:
         pickupPhone ||
-        requester.phone,
+        requester.phone ||
+        "",
 
       deliveryLocation:
         String(deliveryLocation).trim(),
@@ -220,47 +229,37 @@ exports.createDelivery = async (req, res) => {
 
       deliveryPhone:
         deliveryPhone ||
-        requester.phone,
+        requester.phone ||
+        "",
 
-      notes:
-        notes
-          ? String(notes).trim()
-          : "",
+      notes: notes
+        ? String(notes).trim()
+        : "",
 
       deliveryFee:
-        Number.isFinite(Number(deliveryFee))
-          ? Math.max(0, Number(deliveryFee))
+        Number.isFinite(parsedDeliveryFee)
+          ? Math.max(0, parsedDeliveryFee)
           : 0,
 
       currency: "GHS",
 
       status: "pending",
+
+      rider: null,
+
+      riderName: "",
+
+      riderPhone: "",
+
+      riderBikeType: "",
+
+      riderBikeNumber: "",
     });
 
-    // ----------------------------------------------------------
-    // POPULATE RESPONSE
-    // ----------------------------------------------------------
-
     const populatedDelivery =
-      await Delivery.findById(
-        delivery._id
-      )
-        .populate(
-          "requester",
-          "name email phone role location"
-        )
-        .populate(
-          "seller",
-          "name email phone location"
-        )
-        .populate(
-          "buyer",
-          "name email phone location"
-        )
-        .populate(
-          "product",
-          "title price images image"
-        );
+      await populateDelivery(
+        Delivery.findById(delivery._id)
+      );
 
     console.log(
       `🚴 Delivery request created: ${delivery._id}`
@@ -298,6 +297,105 @@ exports.createDelivery = async (req, res) => {
       success: false,
       message:
         "Unable to create delivery request",
+      error:
+        process.env.NODE_ENV === "development"
+          ? error.message
+          : undefined,
+    });
+  }
+};
+
+// ============================================================
+// GET CUSTOMER DELIVERIES
+// GET /api/deliveries/customer
+// ============================================================
+
+exports.getCustomerDeliveries = async (
+  req,
+  res
+) => {
+  try {
+    const userId = requireUser(req, res);
+
+    if (!userId) {
+      return;
+    }
+
+    const deliveries =
+      await populateDelivery(
+        Delivery.find({
+          $or: [
+            { requester: userId },
+            { buyer: userId },
+            { seller: userId },
+          ],
+        }).sort({
+          createdAt: -1,
+        })
+      );
+
+    return res.json({
+      success: true,
+      count: deliveries.length,
+      deliveries,
+    });
+  } catch (error) {
+    console.error(
+      "❌ Get customer deliveries error:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message:
+        "Unable to load customer deliveries",
+    });
+  }
+};
+
+// ============================================================
+// GET CUSTOMER REQUESTED DELIVERIES
+// GET /api/deliveries/my
+//
+// This function is kept for compatibility.
+// Riders should use getRiderDeliveries.
+// ============================================================
+
+exports.getMyDeliveries = async (
+  req,
+  res
+) => {
+  try {
+    const userId = requireUser(req, res);
+
+    if (!userId) {
+      return;
+    }
+
+    const deliveries =
+      await populateDelivery(
+        Delivery.find({
+          requester: userId,
+        }).sort({
+          createdAt: -1,
+        })
+      );
+
+    return res.json({
+      success: true,
+      count: deliveries.length,
+      deliveries,
+    });
+  } catch (error) {
+    console.error(
+      "❌ Get my deliveries error:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message:
+        "Unable to load your deliveries",
     });
   }
 };
@@ -327,10 +425,6 @@ exports.getAvailableDeliveries =
         });
       }
 
-      // --------------------------------------------------------
-      // RIDER ONLY
-      // --------------------------------------------------------
-
       if (rider.role !== "rider") {
         return res.status(403).json({
           success: false,
@@ -339,9 +433,13 @@ exports.getAvailableDeliveries =
         });
       }
 
-      // --------------------------------------------------------
-      // APPROVAL
-      // --------------------------------------------------------
+      if (rider.isActive === false) {
+        return res.status(403).json({
+          success: false,
+          message:
+            "Your rider account has been deactivated",
+        });
+      }
 
       if (
         !rider.riderProfile?.isApproved
@@ -353,35 +451,30 @@ exports.getAvailableDeliveries =
         });
       }
 
-      // --------------------------------------------------------
-      // GET PENDING REQUESTS
-      // --------------------------------------------------------
+      if (
+        !rider.riderProfile?.isAvailable
+      ) {
+        return res.status(403).json({
+          success: false,
+          message:
+            "Set your rider status to available to view delivery requests",
+        });
+      }
 
       const deliveries =
-        await Delivery.find({
-          status: "pending",
-          rider: null,
-        })
-          .populate(
-            "requester",
-            "name phone role location"
-          )
-          .populate(
-            "seller",
-            "name phone location"
-          )
-          .populate(
-            "buyer",
-            "name phone location"
-          )
-          .populate(
-            "product",
-            "title price images image"
-          )
-          .sort({
-            createdAt: -1,
+        await populateDelivery(
+          Delivery.find({
+            status: "pending",
+            $or: [
+              { rider: null },
+              { rider: { $exists: false } },
+            ],
           })
-          .limit(50);
+            .sort({
+              createdAt: -1,
+            })
+            .limit(50)
+        );
 
       return res.json({
         success: true,
@@ -403,8 +496,69 @@ exports.getAvailableDeliveries =
   };
 
 // ============================================================
+// GET RIDER DELIVERIES
+// GET /api/deliveries/my
+// ============================================================
+
+exports.getRiderDeliveries =
+  async (req, res) => {
+    try {
+      const userId =
+        requireUser(req, res);
+
+      if (!userId) {
+        return;
+      }
+
+      const rider =
+        await User.findById(userId);
+
+      if (!rider) {
+        return res.status(404).json({
+          success: false,
+          message: "Rider not found",
+        });
+      }
+
+      if (rider.role !== "rider") {
+        return res.status(403).json({
+          success: false,
+          message:
+            "Only riders can access rider deliveries",
+        });
+      }
+
+      const deliveries =
+        await populateDelivery(
+          Delivery.find({
+            rider: rider._id,
+          }).sort({
+            createdAt: -1,
+          })
+        );
+
+      return res.json({
+        success: true,
+        count: deliveries.length,
+        deliveries,
+      });
+    } catch (error) {
+      console.error(
+        "❌ Get rider deliveries error:",
+        error
+      );
+
+      return res.status(500).json({
+        success: false,
+        message:
+          "Unable to load rider deliveries",
+      });
+    }
+  };
+
+// ============================================================
 // ACCEPT DELIVERY
-// POST /api/deliveries/:id/accept
+// PATCH /api/deliveries/:id/accept
 // ============================================================
 
 exports.acceptDelivery =
@@ -435,9 +589,13 @@ exports.acceptDelivery =
         });
       }
 
-      // --------------------------------------------------------
-      // RIDER MUST BE APPROVED
-      // --------------------------------------------------------
+      if (rider.isActive === false) {
+        return res.status(403).json({
+          success: false,
+          message:
+            "Your rider account is inactive",
+        });
+      }
 
       if (
         !rider.riderProfile?.isApproved
@@ -449,10 +607,6 @@ exports.acceptDelivery =
         });
       }
 
-      // --------------------------------------------------------
-      // RIDER MUST BE AVAILABLE
-      // --------------------------------------------------------
-
       if (
         !rider.riderProfile?.isAvailable
       ) {
@@ -462,10 +616,6 @@ exports.acceptDelivery =
             "Please set your rider status to available first",
         });
       }
-
-      // --------------------------------------------------------
-      // FIND DELIVERY
-      // --------------------------------------------------------
 
       const delivery =
         await Delivery.findById(
@@ -479,10 +629,6 @@ exports.acceptDelivery =
             "Delivery request not found",
         });
       }
-
-      // --------------------------------------------------------
-      // PREVENT DOUBLE ACCEPTANCE
-      // --------------------------------------------------------
 
       if (
         delivery.status !== "pending" ||
@@ -499,7 +645,8 @@ exports.acceptDelivery =
       // ASSIGN RIDER
       // --------------------------------------------------------
 
-      delivery.rider = rider._id;
+      delivery.rider =
+        rider._id;
 
       delivery.riderName =
         rider.name;
@@ -523,34 +670,12 @@ exports.acceptDelivery =
 
       await delivery.save();
 
-      // --------------------------------------------------------
-      // POPULATE
-      // --------------------------------------------------------
-
       const populatedDelivery =
-        await Delivery.findById(
-          delivery._id
-        )
-          .populate(
-            "requester",
-            "name email phone role location"
+        await populateDelivery(
+          Delivery.findById(
+            delivery._id
           )
-          .populate(
-            "seller",
-            "name phone location"
-          )
-          .populate(
-            "buyer",
-            "name phone location"
-          )
-          .populate(
-            "rider",
-            "name phone role location riderProfile"
-          )
-          .populate(
-            "product",
-            "title price images image"
-          );
+        );
 
       console.log(
         `🚴 Rider ${rider.name} accepted delivery ${delivery._id}`
@@ -622,7 +747,9 @@ exports.updateDeliveryStatus =
       ];
 
       if (
-        !allowedStatuses.includes(status)
+        !allowedStatuses.includes(
+          status
+        )
       ) {
         return res.status(400).json({
           success: false,
@@ -644,10 +771,6 @@ exports.updateDeliveryStatus =
         });
       }
 
-      // --------------------------------------------------------
-      // ONLY ASSIGNED RIDER
-      // --------------------------------------------------------
-
       if (
         !delivery.rider ||
         delivery.rider.toString() !==
@@ -659,10 +782,6 @@ exports.updateDeliveryStatus =
             "You are not assigned to this delivery",
         });
       }
-
-      // --------------------------------------------------------
-      // STATUS TRANSITIONS
-      // --------------------------------------------------------
 
       const currentStatus =
         delivery.status;
@@ -702,83 +821,86 @@ exports.updateDeliveryStatus =
         });
       }
 
-      // --------------------------------------------------------
-      // UPDATE STATUS
-      // --------------------------------------------------------
-
-      delivery.status = status;
-
       const now = new Date();
 
-      if (status === "picked_up") {
-        delivery.pickedUpAt = now;
+      delivery.status =
+        status;
+
+      if (
+        status === "picked_up"
+      ) {
+        delivery.pickedUpAt =
+          now;
       }
 
-      if (status === "in_transit") {
-        delivery.inTransitAt = now;
+      if (
+        status === "in_transit"
+      ) {
+        delivery.inTransitAt =
+          now;
       }
 
-      if (status === "delivered") {
-        delivery.deliveredAt = now;
+      if (
+        status === "delivered"
+      ) {
+        delivery.deliveredAt =
+          now;
       }
 
-      if (status === "cancelled") {
-        delivery.cancelledAt = now;
+      if (
+        status === "cancelled"
+      ) {
+        delivery.cancelledAt =
+          now;
 
         delivery.cancelledBy =
           rider._id;
+
+        if (req.body?.reason) {
+          delivery.cancellationReason =
+            String(
+              req.body.reason
+            ).trim();
+        }
       }
 
       await delivery.save();
 
       // --------------------------------------------------------
-      // UPDATE RIDER STATS
+      // UPDATE RIDER COMPLETED DELIVERIES
       // --------------------------------------------------------
 
       if (
         status === "delivered"
       ) {
+        if (
+          !rider.riderProfile
+        ) {
+          rider.riderProfile = {};
+        }
+
         rider.riderProfile.completedDeliveries =
-          (rider.riderProfile
-            .completedDeliveries || 0) + 1;
+          Number(
+            rider.riderProfile
+              .completedDeliveries || 0
+          ) + 1;
 
         await rider.save();
       }
 
-      // --------------------------------------------------------
-      // RESPONSE
-      // --------------------------------------------------------
-
       const updatedDelivery =
-        await Delivery.findById(
-          delivery._id
-        )
-          .populate(
-            "requester",
-            "name email phone role location"
+        await populateDelivery(
+          Delivery.findById(
+            delivery._id
           )
-          .populate(
-            "seller",
-            "name phone location"
-          )
-          .populate(
-            "buyer",
-            "name phone location"
-          )
-          .populate(
-            "rider",
-            "name phone role location riderProfile"
-          )
-          .populate(
-            "product",
-            "title price images image"
-          );
+        );
 
       return res.json({
         success: true,
         message:
           "Delivery status updated successfully",
-        delivery: updatedDelivery,
+        delivery:
+          updatedDelivery,
       });
     } catch (error) {
       console.error(
@@ -795,69 +917,11 @@ exports.updateDeliveryStatus =
   };
 
 // ============================================================
-// GET MY REQUESTED DELIVERIES
-// GET /api/deliveries/my
+// UPDATE RIDER LOCATION
+// PATCH /api/deliveries/:id/location
 // ============================================================
 
-exports.getMyDeliveries =
-  async (req, res) => {
-    try {
-      const userId =
-        requireUser(req, res);
-
-      if (!userId) {
-        return;
-      }
-
-      const deliveries =
-        await Delivery.find({
-          requester: userId,
-        })
-          .populate(
-            "seller",
-            "name phone location"
-          )
-          .populate(
-            "buyer",
-            "name phone location"
-          )
-          .populate(
-            "rider",
-            "name phone role location riderProfile"
-          )
-          .populate(
-            "product",
-            "title price images image"
-          )
-          .sort({
-            createdAt: -1,
-          });
-
-      return res.json({
-        success: true,
-        count: deliveries.length,
-        deliveries,
-      });
-    } catch (error) {
-      console.error(
-        "❌ Get my deliveries error:",
-        error
-      );
-
-      return res.status(500).json({
-        success: false,
-        message:
-          "Unable to load your deliveries",
-      });
-    }
-  };
-
-// ============================================================
-// GET RIDER DELIVERIES
-// GET /api/deliveries/rider
-// ============================================================
-
-exports.getRiderDeliveries =
+exports.updateRiderLocation =
   async (req, res) => {
     try {
       const userId =
@@ -881,92 +945,14 @@ exports.getRiderDeliveries =
         return res.status(403).json({
           success: false,
           message:
-            "Only riders can access rider deliveries",
+            "Only riders can update location",
         });
-      }
-
-      const deliveries =
-        await Delivery.find({
-          rider: rider._id,
-        })
-          .populate(
-            "requester",
-            "name email phone role location"
-          )
-          .populate(
-            "seller",
-            "name phone location"
-          )
-          .populate(
-            "buyer",
-            "name phone location"
-          )
-          .populate(
-            "product",
-            "title price images image"
-          )
-          .sort({
-            createdAt: -1,
-          });
-
-      return res.json({
-        success: true,
-        count: deliveries.length,
-        deliveries,
-      });
-    } catch (error) {
-      console.error(
-        "❌ Get rider deliveries error:",
-        error
-      );
-
-      return res.status(500).json({
-        success: false,
-        message:
-          "Unable to load rider deliveries",
-      });
-    }
-  };
-
-// ============================================================
-// GET SINGLE DELIVERY
-// GET /api/deliveries/:id
-// ============================================================
-
-exports.getDelivery =
-  async (req, res) => {
-    try {
-      const userId =
-        requireUser(req, res);
-
-      if (!userId) {
-        return;
       }
 
       const delivery =
         await Delivery.findById(
           req.params.id
-        )
-          .populate(
-            "requester",
-            "name email phone role location"
-          )
-          .populate(
-            "seller",
-            "name phone location"
-          )
-          .populate(
-            "buyer",
-            "name phone location"
-          )
-          .populate(
-            "rider",
-            "name phone role location riderProfile"
-          )
-          .populate(
-            "product",
-            "title price images image"
-          );
+        );
 
       if (!delivery) {
         return res.status(404).json({
@@ -976,65 +962,110 @@ exports.getDelivery =
         });
       }
 
-      // --------------------------------------------------------
-      // ACCESS CONTROL
-      // --------------------------------------------------------
-
-      const currentUserId =
-        userId.toString();
-
-      const isRequester =
-        delivery.requester?._id?.toString() ===
-        currentUserId;
-
-      const isRider =
-        delivery.rider?._id?.toString() ===
-        currentUserId;
-
-      const isSeller =
-        delivery.seller?._id?.toString() ===
-        currentUserId;
-
-      const isBuyer =
-        delivery.buyer?._id?.toString() ===
-        currentUserId;
-
-      const user =
-        await User.findById(
-          userId
-        );
-
-      const isAdmin =
-        user?.role === "admin";
-
       if (
-        !isRequester &&
-        !isRider &&
-        !isSeller &&
-        !isBuyer &&
-        !isAdmin
+        !delivery.rider ||
+        delivery.rider.toString() !==
+          userId.toString()
       ) {
         return res.status(403).json({
           success: false,
           message:
-            "You do not have access to this delivery",
+            "You are not assigned to this delivery",
         });
       }
 
+      const {
+        latitude,
+        longitude,
+        location,
+      } = req.body || {};
+
+      if (
+        latitude === undefined ||
+        longitude === undefined
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Latitude and longitude are required",
+        });
+      }
+
+      const lat =
+        Number(latitude);
+
+      const lng =
+        Number(longitude);
+
+      if (
+        !Number.isFinite(lat) ||
+        !Number.isFinite(lng)
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Invalid latitude or longitude",
+        });
+      }
+
+      if (
+        lat < -90 ||
+        lat > 90
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Invalid latitude",
+        });
+      }
+
+      if (
+        lng < -180 ||
+        lng > 180
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Invalid longitude",
+        });
+      }
+
+      /*
+       * riderLocation must exist in Delivery schema.
+       *
+       * If your Delivery model does not yet contain this field,
+       * add it there.
+       */
+
+      delivery.riderLocation = {
+        latitude: lat,
+        longitude: lng,
+        address: location
+          ? String(location).trim()
+          : "",
+        updatedAt:
+          new Date(),
+      };
+
+      await delivery.save();
+
       return res.json({
         success: true,
-        delivery,
+        message:
+          "Rider location updated successfully",
+        location:
+          delivery.riderLocation,
       });
     } catch (error) {
       console.error(
-        "❌ Get delivery error:",
+        "❌ Update rider location error:",
         error
       );
 
       return res.status(500).json({
         success: false,
         message:
-          "Unable to load delivery",
+          "Unable to update rider location",
       });
     }
   };
@@ -1072,6 +1103,14 @@ exports.toggleRiderAvailability =
         });
       }
 
+      if (rider.isActive === false) {
+        return res.status(403).json({
+          success: false,
+          message:
+            "Your rider account is inactive",
+        });
+      }
+
       if (
         !rider.riderProfile?.isApproved
       ) {
@@ -1082,23 +1121,34 @@ exports.toggleRiderAvailability =
         });
       }
 
-      const isAvailable =
-        Boolean(
-          req.body?.isAvailable
-        );
+      const requestedAvailability =
+        req.body?.isAvailable;
+
+      if (
+        typeof requestedAvailability !==
+        "boolean"
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "isAvailable must be true or false",
+        });
+      }
 
       rider.riderProfile.isAvailable =
-        isAvailable;
+        requestedAvailability;
 
       await rider.save();
 
       return res.json({
         success: true,
-        message: isAvailable
-          ? "You are now available for deliveries"
-          : "You are now offline",
+        message:
+          requestedAvailability
+            ? "You are now available for deliveries"
+            : "You are now offline",
         isAvailable:
-          rider.riderProfile.isAvailable,
+          rider.riderProfile
+            .isAvailable,
       });
     } catch (error) {
       console.error(
@@ -1110,6 +1160,251 @@ exports.toggleRiderAvailability =
         success: false,
         message:
           "Unable to update rider availability",
+      });
+    }
+  };
+
+// ============================================================
+// ALIAS
+// ============================================================
+// Allows older frontend code to call updateRiderAvailability.
+
+exports.updateRiderAvailability =
+  exports.toggleRiderAvailability;
+
+// ============================================================
+// GET SINGLE DELIVERY
+// GET /api/deliveries/:id
+// ============================================================
+
+exports.getDelivery =
+  async (req, res) => {
+    try {
+      const userId =
+        requireUser(req, res);
+
+      if (!userId) {
+        return;
+      }
+
+      const delivery =
+        await populateDelivery(
+          Delivery.findById(
+            req.params.id
+          )
+        );
+
+      if (!delivery) {
+        return res.status(404).json({
+          success: false,
+          message:
+            "Delivery not found",
+        });
+      }
+
+      const currentUserId =
+        userId.toString();
+
+      const isRequester =
+        delivery.requester?._id?.toString() ===
+        currentUserId;
+
+      const isRider =
+        delivery.rider?._id?.toString() ===
+        currentUserId;
+
+      const isSeller =
+        delivery.seller?._id?.toString() ===
+        currentUserId;
+
+      const isBuyer =
+        delivery.buyer?._id?.toString() ===
+        currentUserId;
+
+      const currentUser =
+        await User.findById(
+          userId
+        ).select("role");
+
+      const isAdmin =
+        currentUser?.role ===
+        "admin";
+
+      if (
+        !isRequester &&
+        !isRider &&
+        !isSeller &&
+        !isBuyer &&
+        !isAdmin
+      ) {
+        return res.status(403).json({
+          success: false,
+          message:
+            "You do not have access to this delivery",
+        });
+      }
+
+      return res.json({
+        success: true,
+        delivery,
+      });
+    } catch (error) {
+      console.error(
+        "❌ Get delivery error:",
+        error
+      );
+
+      return res.status(500).json({
+        success: false,
+        message:
+          "Unable to load delivery",
+      });
+    }
+  };
+
+// ============================================================
+// CANCEL DELIVERY
+// PATCH /api/deliveries/:id/cancel
+// ============================================================
+
+exports.cancelDelivery =
+  async (req, res) => {
+    try {
+      const userId =
+        requireUser(req, res);
+
+      if (!userId) {
+        return;
+      }
+
+      const delivery =
+        await Delivery.findById(
+          req.params.id
+        );
+
+      if (!delivery) {
+        return res.status(404).json({
+          success: false,
+          message:
+            "Delivery not found",
+        });
+      }
+
+      const currentUser =
+        await User.findById(
+          userId
+        );
+
+      if (!currentUser) {
+        return res.status(404).json({
+          success: false,
+          message:
+            "User not found",
+        });
+      }
+
+      const currentUserId =
+        userId.toString();
+
+      const isRequester =
+        delivery.requester &&
+        delivery.requester.toString() ===
+          currentUserId;
+
+      const isBuyer =
+        delivery.buyer &&
+        delivery.buyer.toString() ===
+          currentUserId;
+
+      const isSeller =
+        delivery.seller &&
+        delivery.seller.toString() ===
+          currentUserId;
+
+      const isRider =
+        delivery.rider &&
+        delivery.rider.toString() ===
+          currentUserId;
+
+      const isAdmin =
+        currentUser.role ===
+        "admin";
+
+      if (
+        !isRequester &&
+        !isBuyer &&
+        !isSeller &&
+        !isRider &&
+        !isAdmin
+      ) {
+        return res.status(403).json({
+          success: false,
+          message:
+            "You do not have permission to cancel this delivery",
+        });
+      }
+
+      const cancellableStatuses = [
+        "pending",
+        "accepted",
+        "picked_up",
+        "in_transit",
+      ];
+
+      if (
+        !cancellableStatuses.includes(
+          delivery.status
+        )
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            `Delivery cannot be cancelled when status is "${delivery.status}"`,
+        });
+      }
+
+      delivery.status =
+        "cancelled";
+
+      delivery.cancelledAt =
+        new Date();
+
+      delivery.cancelledBy =
+        userId;
+
+      if (req.body?.reason) {
+        delivery.cancellationReason =
+          String(
+            req.body.reason
+          ).trim();
+      }
+
+      await delivery.save();
+
+      const updatedDelivery =
+        await populateDelivery(
+          Delivery.findById(
+            delivery._id
+          )
+        );
+
+      return res.json({
+        success: true,
+        message:
+          "Delivery cancelled successfully",
+        delivery:
+          updatedDelivery,
+      });
+    } catch (error) {
+      console.error(
+        "❌ Cancel delivery error:",
+        error
+      );
+
+      return res.status(500).json({
+        success: false,
+        message:
+          "Unable to cancel delivery",
       });
     }
   };

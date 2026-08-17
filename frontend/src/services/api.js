@@ -13,19 +13,16 @@ const RAW_API_URL =
   import.meta.env.VITE_API_URL ||
   "http://localhost:5000";
 
-export const API_URL = RAW_API_URL.replace(/\/+$/, "");
+export const API_URL = String(RAW_API_URL).replace(/\/+$/, "");
 
 console.log("🔗 API_URL:", API_URL);
 
 // ================================================================
-// REQUEST CONFIG – IMPROVED FOR RENDER COLD START
+// REQUEST CONFIG
 // ================================================================
 
-// Allow up to 30 seconds for the server to respond (Render cold start ~20s)
-const REQUEST_TIMEOUT = 30000;
-
-// Retry up to 2 times (total 3 attempts) to handle transient failures
-const MAX_RETRIES = 2;
+const REQUEST_TIMEOUT = 15000;
+const MAX_RETRIES = 1;
 
 // ================================================================
 // HEADERS
@@ -42,9 +39,7 @@ const getHeaders = (token = getToken()) => ({
 });
 
 // IMPORTANT:
-// Do NOT set Content-Type for FormData.
-// The browser automatically adds:
-// multipart/form-data; boundary=...
+// Do not set Content-Type manually for FormData.
 const getFileHeaders = (token = getToken()) => ({
   ...(token
     ? {
@@ -106,7 +101,7 @@ const sleep = (ms) =>
   new Promise((resolve) => setTimeout(resolve, ms));
 
 // ================================================================
-// REQUEST HELPER – WITH RETRY ON TIMEOUT
+// REQUEST HELPER
 // ================================================================
 
 const request = async (
@@ -125,7 +120,6 @@ const request = async (
       credentials: "include",
       ...options,
 
-      // Respect an externally supplied signal.
       signal:
         options.signal || controller.signal,
     });
@@ -143,21 +137,9 @@ const request = async (
       error?.name === "TypeError" ||
       error?.message === "Failed to fetch";
 
-    // ------------------------------------------------------------
-    // TIMEOUT – RETRY IF ATTEMPTS REMAIN
-    // ------------------------------------------------------------
-
     if (isAbortError) {
-      if (retries > 0) {
-        console.warn(
-          `⏳ Request timeout (server cold start?) – retrying... ${retries} attempt(s) left`
-        );
-        await sleep(1500); // give the server a bit more time to wake
-        return request(url, options, retries - 1);
-      }
-
       const timeoutError = new Error(
-        "The server is taking too long to respond. Please try again in a moment."
+        "The server took too long to respond."
       );
 
       timeoutError.code = "REQUEST_TIMEOUT";
@@ -166,16 +148,12 @@ const request = async (
       throw timeoutError;
     }
 
-    // ------------------------------------------------------------
-    // NETWORK ERRORS – RETRY IF ATTEMPTS REMAIN
-    // ------------------------------------------------------------
-
     if (
       isNetworkError &&
       retries > 0
     ) {
       console.warn(
-        `🔄 Network error – retrying... ${retries} attempt(s) left`
+        `🔄 Retrying API request... ${retries} attempt left`
       );
 
       await sleep(800);
@@ -206,7 +184,6 @@ const buildQuery = (params = {}) => {
 
   Object.entries(params).forEach(
     ([key, value]) => {
-      // Ignore undefined/null/empty values.
       if (
         value === undefined ||
         value === null ||
@@ -215,7 +192,6 @@ const buildQuery = (params = {}) => {
         return;
       }
 
-      // Don't send "all" filters to backend.
       if (
         (key === "category" ||
           key === "location") &&
@@ -231,9 +207,12 @@ const buildQuery = (params = {}) => {
     }
   );
 
-  const query = searchParams.toString();
+  const query =
+    searchParams.toString();
 
-  return query ? `?${query}` : "";
+  return query
+    ? `?${query}`
+    : "";
 };
 
 // ================================================================
@@ -255,19 +234,14 @@ export const getImageUrl = (path) => {
     return "/placeholder.png";
   }
 
-  // --------------------------------------------------------------
   // External URL
-  // --------------------------------------------------------------
-
   if (
     cleanPath.startsWith("http://") ||
     cleanPath.startsWith("https://")
   ) {
-    // Cloudinary optimization.
+    // Cloudinary optimization
     if (
-      cleanPath.includes(
-        "res.cloudinary.com"
-      ) &&
+      cleanPath.includes("res.cloudinary.com") &&
       cleanPath.includes("/image/upload/")
     ) {
       return cleanPath.replace(
@@ -279,30 +253,21 @@ export const getImageUrl = (path) => {
     return cleanPath;
   }
 
-  // --------------------------------------------------------------
   // Base64
-  // --------------------------------------------------------------
-
   if (
     cleanPath.startsWith("data:")
   ) {
     return cleanPath;
   }
 
-  // --------------------------------------------------------------
   // Blob
-  // --------------------------------------------------------------
-
   if (
     cleanPath.startsWith("blob:")
   ) {
     return cleanPath;
   }
 
-  // --------------------------------------------------------------
-  // Relative backend path
-  // --------------------------------------------------------------
-
+  // Backend relative path
   return `${API_URL}${
     cleanPath.startsWith("/")
       ? cleanPath
@@ -311,27 +276,10 @@ export const getImageUrl = (path) => {
 };
 
 // ================================================================
-// KEEP ALIVE – Ping the server every 10 minutes to prevent sleep
-// ================================================================
-
-export const startKeepAlive = (intervalMs = 10 * 60 * 1000) => {
-  const ping = () => {
-    fetch(`${API_URL}/api/health`, { method: "HEAD" })
-      .catch(() => {});
-  };
-  ping(); // ping immediately
-  return setInterval(ping, intervalMs);
-};
-
-// ================================================================
 // AUTH
 // ================================================================
 
 export const auth = {
-  // --------------------------------------------------------------
-  // LOGIN
-  // --------------------------------------------------------------
-
   login: async (
     email,
     password
@@ -358,10 +306,6 @@ export const auth = {
       }
     );
   },
-
-  // --------------------------------------------------------------
-  // REGISTER
-  // --------------------------------------------------------------
 
   register: async (
     userData = {}
@@ -397,16 +341,12 @@ export const auth = {
       {
         name:
           registrationData.name,
-
         email:
           registrationData.email,
-
         phone:
           registrationData.phone,
-
         role:
           registrationData.role,
-
         passwordProvided:
           Boolean(
             registrationData.password
@@ -431,10 +371,6 @@ export const auth = {
     );
   },
 
-  // --------------------------------------------------------------
-  // CURRENT USER
-  // --------------------------------------------------------------
-
   getMe: async (
     token = getToken()
   ) => {
@@ -446,10 +382,6 @@ export const auth = {
       }
     );
   },
-
-  // --------------------------------------------------------------
-  // LOGOUT
-  // --------------------------------------------------------------
 
   logout: async (
     token = getToken()
@@ -469,10 +401,6 @@ export const auth = {
 // ================================================================
 
 export const products = {
-  // --------------------------------------------------------------
-  // GET PRODUCTS
-  // --------------------------------------------------------------
-
   getAll: async (
     params = {}
   ) => {
@@ -483,6 +411,7 @@ export const products = {
       `${API_URL}/api/products${query}`,
       {
         method: "GET",
+
         headers: {
           Accept:
             "application/json",
@@ -490,10 +419,6 @@ export const products = {
       }
     );
   },
-
-  // --------------------------------------------------------------
-  // GET PRODUCT BY ID
-  // --------------------------------------------------------------
 
   getById: async (
     id
@@ -510,6 +435,7 @@ export const products = {
       )}`,
       {
         method: "GET",
+
         headers: {
           Accept:
             "application/json",
@@ -517,10 +443,6 @@ export const products = {
       }
     );
   },
-
-  // --------------------------------------------------------------
-  // CREATE PRODUCT
-  // --------------------------------------------------------------
 
   create: async (
     productData,
@@ -541,10 +463,6 @@ export const products = {
     );
   },
 
-  // --------------------------------------------------------------
-  // CREATE PRODUCT WITH FILES
-  // --------------------------------------------------------------
-
   createWithFiles: async (
     formData,
     token = getToken()
@@ -561,10 +479,6 @@ export const products = {
       }
     );
   },
-
-  // --------------------------------------------------------------
-  // UPDATE PRODUCT
-  // --------------------------------------------------------------
 
   update: async (
     id,
@@ -588,10 +502,6 @@ export const products = {
     );
   },
 
-  // --------------------------------------------------------------
-  // UPDATE PRODUCT WITH FILES
-  // --------------------------------------------------------------
-
   updateWithFiles: async (
     id,
     formData,
@@ -612,10 +522,6 @@ export const products = {
     );
   },
 
-  // --------------------------------------------------------------
-  // DELETE PRODUCT
-  // --------------------------------------------------------------
-
   delete: async (
     id,
     token = getToken()
@@ -626,16 +532,10 @@ export const products = {
       )}`,
       {
         method: "DELETE",
-
-        headers:
-          getHeaders(token),
+        headers: getHeaders(token),
       }
     );
   },
-
-  // --------------------------------------------------------------
-  // UPDATE PRODUCT STATUS
-  // --------------------------------------------------------------
 
   updateStatus: async (
     productId,
@@ -707,7 +607,10 @@ export const users = {
       )}`,
       {
         method: "PUT",
-        headers: getHeaders(token),
+
+        headers:
+          getHeaders(token),
+
         body: JSON.stringify(
           userData
         ),
@@ -726,8 +629,10 @@ export const users = {
       )}`,
       {
         method: "PUT",
+
         headers:
           getFileHeaders(token),
+
         body: formData,
       }
     );
@@ -784,12 +689,6 @@ export const notifications = {
   getForAdmin: async (
     token = getToken()
   ) => {
-    if (!token) {
-      throw new Error(
-        "Authentication token is missing"
-      );
-    }
-
     return request(
       `${API_URL}/api/notifications/admin`,
       {
@@ -807,7 +706,10 @@ export const notifications = {
       `${API_URL}/api/notifications`,
       {
         method: "POST",
-        headers: getHeaders(token),
+
+        headers:
+          getHeaders(token),
+
         body: JSON.stringify(data),
       }
     );
@@ -888,7 +790,10 @@ export const orders = {
       `${API_URL}/api/orders`,
       {
         method: "POST",
-        headers: getHeaders(token),
+
+        headers:
+          getHeaders(token),
+
         body: JSON.stringify(
           orderData
         ),
@@ -907,7 +812,10 @@ export const orders = {
       )}`,
       {
         method: "PUT",
-        headers: getHeaders(token),
+
+        headers:
+          getHeaders(token),
+
         body: JSON.stringify(
           updates
         ),
@@ -988,7 +896,10 @@ export const messages = {
       `${API_URL}/api/messages`,
       {
         method: "POST",
-        headers: getHeaders(token),
+
+        headers:
+          getHeaders(token),
+
         body: JSON.stringify({
           receiver,
           message,
@@ -1054,7 +965,10 @@ export const favorites = {
       `${API_URL}/api/favorites`,
       {
         method: "POST",
-        headers: getHeaders(token),
+
+        headers:
+          getHeaders(token),
+
         body: JSON.stringify({
           productId,
         }),
@@ -1072,6 +986,588 @@ export const favorites = {
       )}`,
       {
         method: "DELETE",
+        headers: getHeaders(token),
+      }
+    );
+  },
+};
+
+// ================================================================
+// ADMIN API
+// ================================================================
+
+export const admin = {
+  // --------------------------------------------------------------
+  // DASHBOARD
+  // --------------------------------------------------------------
+
+  getDashboardStats: async (
+    token = getToken()
+  ) => {
+    return request(
+      `${API_URL}/api/admin/dashboard`,
+      {
+        method: "GET",
+        headers: getHeaders(token),
+      }
+    );
+  },
+
+  // --------------------------------------------------------------
+  // USERS
+  // --------------------------------------------------------------
+
+  getUsers: async (
+    params = {},
+    token = getToken()
+  ) => {
+    const query =
+      buildQuery(params);
+
+    return request(
+      `${API_URL}/api/admin/users${query}`,
+      {
+        method: "GET",
+        headers: getHeaders(token),
+      }
+    );
+  },
+
+  getUserById: async (
+    id,
+    token = getToken()
+  ) => {
+    return request(
+      `${API_URL}/api/admin/users/${encodeURIComponent(
+        id
+      )}`,
+      {
+        method: "GET",
+        headers: getHeaders(token),
+      }
+    );
+  },
+
+  updateUserRole: async (
+    id,
+    role,
+    token = getToken()
+  ) => {
+    return request(
+      `${API_URL}/api/admin/users/${encodeURIComponent(
+        id
+      )}/role`,
+      {
+        method: "PUT",
+
+        headers:
+          getHeaders(token),
+
+        body: JSON.stringify({
+          role,
+        }),
+      }
+    );
+  },
+
+  deleteUser: async (
+    id,
+    token = getToken()
+  ) => {
+    return request(
+      `${API_URL}/api/admin/users/${encodeURIComponent(
+        id
+      )}`,
+      {
+        method: "DELETE",
+        headers: getHeaders(token),
+      }
+    );
+  },
+
+  // --------------------------------------------------------------
+  // PRODUCTS
+  // --------------------------------------------------------------
+
+  getProducts: async (
+    params = {},
+    token = getToken()
+  ) => {
+    const query =
+      buildQuery(params);
+
+    return request(
+      `${API_URL}/api/admin/products${query}`,
+      {
+        method: "GET",
+        headers: getHeaders(token),
+      }
+    );
+  },
+
+  deleteProduct: async (
+    id,
+    token = getToken()
+  ) => {
+    return request(
+      `${API_URL}/api/admin/products/${encodeURIComponent(
+        id
+      )}`,
+      {
+        method: "DELETE",
+        headers: getHeaders(token),
+      }
+    );
+  },
+
+  // --------------------------------------------------------------
+  // ORDERS
+  // --------------------------------------------------------------
+
+  getOrders: async (
+    params = {},
+    token = getToken()
+  ) => {
+    const query =
+      buildQuery(params);
+
+    return request(
+      `${API_URL}/api/admin/orders${query}`,
+      {
+        method: "GET",
+        headers: getHeaders(token),
+      }
+    );
+  },
+
+  updateOrderStatus: async (
+    id,
+    status,
+    token = getToken()
+  ) => {
+    return request(
+      `${API_URL}/api/admin/orders/${encodeURIComponent(
+        id
+      )}/status`,
+      {
+        method: "PUT",
+
+        headers:
+          getHeaders(token),
+
+        body: JSON.stringify({
+          status,
+        }),
+      }
+    );
+  },
+
+  // --------------------------------------------------------------
+  // RIDERS
+  // --------------------------------------------------------------
+
+  getRiders: async (
+    params = {},
+    token = getToken()
+  ) => {
+    const query =
+      buildQuery(params);
+
+    return request(
+      `${API_URL}/api/admin/riders${query}`,
+      {
+        method: "GET",
+        headers: getHeaders(token),
+      }
+    );
+  },
+
+  getRiderById: async (
+    id,
+    token = getToken()
+  ) => {
+    return request(
+      `${API_URL}/api/admin/riders/${encodeURIComponent(
+        id
+      )}`,
+      {
+        method: "GET",
+        headers: getHeaders(token),
+      }
+    );
+  },
+
+  approveRider: async (
+    id,
+    token = getToken()
+  ) => {
+    return request(
+      `${API_URL}/api/admin/riders/${encodeURIComponent(
+        id
+      )}/approve`,
+      {
+        method: "PUT",
+
+        headers:
+          getHeaders(token),
+      }
+    );
+  },
+
+  rejectRider: async (
+    id,
+    token = getToken()
+  ) => {
+    return request(
+      `${API_URL}/api/admin/riders/${encodeURIComponent(
+        id
+      )}/reject`,
+      {
+        method: "PUT",
+
+        headers:
+          getHeaders(token),
+      }
+    );
+  },
+
+  updateRiderApproval: async (
+    id,
+    isApproved,
+    token = getToken()
+  ) => {
+    return request(
+      `${API_URL}/api/admin/riders/${encodeURIComponent(
+        id
+      )}/approval`,
+      {
+        method: "PUT",
+
+        headers:
+          getHeaders(token),
+
+        body: JSON.stringify({
+          isApproved:
+            Boolean(isApproved),
+        }),
+      }
+    );
+  },
+
+  deleteRider: async (
+    id,
+    token = getToken()
+  ) => {
+    return request(
+      `${API_URL}/api/admin/riders/${encodeURIComponent(
+        id
+      )}`,
+      {
+        method: "DELETE",
+        headers: getHeaders(token),
+      }
+    );
+  },
+
+  // --------------------------------------------------------------
+  // DELIVERIES
+  // --------------------------------------------------------------
+
+  getDeliveries: async (
+    params = {},
+    token = getToken()
+  ) => {
+    const query =
+      buildQuery(params);
+
+    return request(
+      `${API_URL}/api/admin/deliveries${query}`,
+      {
+        method: "GET",
+        headers: getHeaders(token),
+      }
+    );
+  },
+
+  getDeliveryById: async (
+    id,
+    token = getToken()
+  ) => {
+    return request(
+      `${API_URL}/api/admin/deliveries/${encodeURIComponent(
+        id
+      )}`,
+      {
+        method: "GET",
+        headers: getHeaders(token),
+      }
+    );
+  },
+
+  updateDeliveryStatus: async (
+    id,
+    status,
+    token = getToken()
+  ) => {
+    return request(
+      `${API_URL}/api/admin/deliveries/${encodeURIComponent(
+        id
+      )}/status`,
+      {
+        method: "PUT",
+
+        headers:
+          getHeaders(token),
+
+        body: JSON.stringify({
+          status,
+        }),
+      }
+    );
+  },
+};
+
+// ================================================================
+// DELIVERY API
+// ================================================================
+
+export const deliveries = {
+  // --------------------------------------------------------------
+  // CREATE DELIVERY
+  // --------------------------------------------------------------
+
+  create: async (
+    deliveryData,
+    token = getToken()
+  ) => {
+    return request(
+      `${API_URL}/api/deliveries`,
+      {
+        method: "POST",
+
+        headers:
+          getHeaders(token),
+
+        body: JSON.stringify(
+          deliveryData
+        ),
+      }
+    );
+  },
+
+  // --------------------------------------------------------------
+  // CUSTOMER DELIVERIES
+  // --------------------------------------------------------------
+
+  getCustomerDeliveries: async (
+    token = getToken()
+  ) => {
+    return request(
+      `${API_URL}/api/deliveries/customer`,
+      {
+        method: "GET",
+        headers: getHeaders(token),
+      }
+    );
+  },
+
+  // --------------------------------------------------------------
+  // AVAILABLE DELIVERIES
+  // --------------------------------------------------------------
+
+  getAvailable: async (
+    token = getToken()
+  ) => {
+    return request(
+      `${API_URL}/api/deliveries/available`,
+      {
+        method: "GET",
+        headers: getHeaders(token),
+      }
+    );
+  },
+
+  // --------------------------------------------------------------
+  // MY DELIVERIES
+  // --------------------------------------------------------------
+
+  getMy: async (
+    token = getToken()
+  ) => {
+    return request(
+      `${API_URL}/api/deliveries/my`,
+      {
+        method: "GET",
+        headers: getHeaders(token),
+      }
+    );
+  },
+
+  // --------------------------------------------------------------
+  // RIDER DELIVERIES
+  // --------------------------------------------------------------
+
+  getRiderDeliveries: async (
+    token = getToken()
+  ) => {
+    return request(
+      `${API_URL}/api/deliveries/rider`,
+      {
+        method: "GET",
+        headers: getHeaders(token),
+      }
+    );
+  },
+
+  // --------------------------------------------------------------
+  // RIDER AVAILABILITY
+  // --------------------------------------------------------------
+
+  updateAvailability: async (
+    isAvailable,
+    token = getToken()
+  ) => {
+    return request(
+      `${API_URL}/api/deliveries/rider/availability`,
+      {
+        method: "PATCH",
+
+        headers:
+          getHeaders(token),
+
+        body: JSON.stringify({
+          isAvailable:
+            Boolean(isAvailable),
+        }),
+      }
+    );
+  },
+
+  // Alias
+  toggleAvailability: async (
+    isAvailable,
+    token = getToken()
+  ) => {
+    return request(
+      `${API_URL}/api/deliveries/rider/availability`,
+      {
+        method: "PATCH",
+
+        headers:
+          getHeaders(token),
+
+        body: JSON.stringify({
+          isAvailable:
+            Boolean(isAvailable),
+        }),
+      }
+    );
+  },
+
+  // --------------------------------------------------------------
+  // ACCEPT DELIVERY
+  // --------------------------------------------------------------
+
+  accept: async (
+    id,
+    token = getToken()
+  ) => {
+    return request(
+      `${API_URL}/api/deliveries/${encodeURIComponent(
+        id
+      )}/accept`,
+      {
+        method: "PATCH",
+        headers: getHeaders(token),
+      }
+    );
+  },
+
+  // --------------------------------------------------------------
+  // UPDATE STATUS
+  // --------------------------------------------------------------
+
+  updateStatus: async (
+    id,
+    status,
+    token = getToken()
+  ) => {
+    return request(
+      `${API_URL}/api/deliveries/${encodeURIComponent(
+        id
+      )}/status`,
+      {
+        method: "PATCH",
+
+        headers:
+          getHeaders(token),
+
+        body: JSON.stringify({
+          status,
+        }),
+      }
+    );
+  },
+
+  // --------------------------------------------------------------
+  // UPDATE LOCATION
+  // --------------------------------------------------------------
+
+  updateLocation: async (
+    id,
+    location,
+    token = getToken()
+  ) => {
+    return request(
+      `${API_URL}/api/deliveries/${encodeURIComponent(
+        id
+      )}/location`,
+      {
+        method: "PATCH",
+
+        headers:
+          getHeaders(token),
+
+        body: JSON.stringify(
+          location
+        ),
+      }
+    );
+  },
+
+  // --------------------------------------------------------------
+  // GET DELIVERY
+  // --------------------------------------------------------------
+
+  getById: async (
+    id,
+    token = getToken()
+  ) => {
+    return request(
+      `${API_URL}/api/deliveries/${encodeURIComponent(
+        id
+      )}`,
+      {
+        method: "GET",
+        headers: getHeaders(token),
+      }
+    );
+  },
+
+  // --------------------------------------------------------------
+  // CANCEL
+  // --------------------------------------------------------------
+
+  cancel: async (
+    id,
+    token = getToken()
+  ) => {
+    return request(
+      `${API_URL}/api/deliveries/${encodeURIComponent(
+        id
+      )}/cancel`,
+      {
+        method: "PATCH",
         headers: getHeaders(token),
       }
     );
@@ -1214,12 +1710,119 @@ export const removeFavorite =
   favorites.remove;
 
 // ================================================================
+// ADMIN NAMED EXPORTS
+// ================================================================
+
+// Dashboard
+export const getAdminDashboardStats =
+  admin.getDashboardStats;
+
+// Users
+export const getAdminUsers =
+  admin.getUsers;
+
+export const getAdminUserById =
+  admin.getUserById;
+
+export const updateAdminUserRole =
+  admin.updateUserRole;
+
+export const deleteAdminUser =
+  admin.deleteUser;
+
+// Products
+// IMPORTANT:
+// There is ONLY ONE declaration of getAdminProducts.
+export const getAdminProducts =
+  admin.getProducts;
+
+export const deleteAdminProduct =
+  admin.deleteProduct;
+
+// Orders
+export const getAdminOrders =
+  admin.getOrders;
+
+export const updateAdminOrderStatus =
+  admin.updateOrderStatus;
+
+// Riders
+export const getRiders =
+  admin.getRiders;
+
+export const getRiderById =
+  admin.getRiderById;
+
+export const approveRider =
+  admin.approveRider;
+
+export const rejectRider =
+  admin.rejectRider;
+
+export const updateRiderApproval =
+  admin.updateRiderApproval;
+
+export const deleteRider =
+  admin.deleteRider;
+
+// Admin deliveries
+export const getAdminDeliveries =
+  admin.getDeliveries;
+
+export const getAdminDeliveryById =
+  admin.getDeliveryById;
+
+export const updateAdminDeliveryStatus =
+  admin.updateDeliveryStatus;
+
+// ================================================================
+// DELIVERY NAMED EXPORTS
+// ================================================================
+
+export const createDelivery =
+  deliveries.create;
+
+export const getCustomerDeliveries =
+  deliveries.getCustomerDeliveries;
+
+export const getAvailableDeliveries =
+  deliveries.getAvailable;
+
+export const getMyDeliveries =
+  deliveries.getMy;
+
+export const getRiderDeliveries =
+  deliveries.getRiderDeliveries;
+
+export const updateRiderAvailability =
+  deliveries.updateAvailability;
+
+export const toggleRiderAvailability =
+  deliveries.toggleAvailability;
+
+export const acceptDelivery =
+  deliveries.accept;
+
+export const updateDeliveryStatus =
+  deliveries.updateStatus;
+
+export const updateDeliveryLocation =
+  deliveries.updateLocation;
+
+export const getDelivery =
+  deliveries.getById;
+
+export const cancelDelivery =
+  deliveries.cancel;
+
+// ================================================================
 // DEFAULT API OBJECT
 // ================================================================
 
 const api = {
   API_URL,
 
+  // Main API groups
   auth,
   products,
   users,
@@ -1227,12 +1830,16 @@ const api = {
   orders,
   messages,
   favorites,
+  admin,
+  deliveries,
 
+  // Auth
   login,
   register,
   getMe,
   logout,
 
+  // Products
   getProducts,
   getProduct,
   createProduct,
@@ -1242,6 +1849,7 @@ const api = {
   deleteProduct,
   updateProductStatus,
 
+  // Users
   getUsers,
   getUser,
   updateUser,
@@ -1249,19 +1857,22 @@ const api = {
   deleteUser,
   getUserStats,
 
+  // Notifications
   getNotifications,
-  getUserNotifications,
   getAdminNotifications,
+  getUserNotifications,
   createNotification,
   markNotificationRead,
   deleteNotification,
 
+  // Orders
   getOrders,
   getOrder,
   createOrder,
   updateOrder,
   deleteOrder,
 
+  // Messages
   getMessages,
   getConversations,
   getConversation,
@@ -1269,16 +1880,53 @@ const api = {
   markMessageRead,
   deleteMessage,
 
+  // Favorites
   getFavorites,
   addFavorite,
   removeFavorite,
 
+  // Admin
+  getAdminDashboardStats,
+  getAdminUsers,
+  getAdminUserById,
+  updateAdminUserRole,
+  deleteAdminUser,
+
+  getAdminProducts,
+  deleteAdminProduct,
+
+  getAdminOrders,
+  updateAdminOrderStatus,
+
+  getRiders,
+  getRiderById,
+  approveRider,
+  rejectRider,
+  updateRiderApproval,
+  deleteRider,
+
+  getAdminDeliveries,
+  getAdminDeliveryById,
+  updateAdminDeliveryStatus,
+
+  // Deliveries
+  createDelivery,
+  getCustomerDeliveries,
+  getAvailableDeliveries,
+  getMyDeliveries,
+  getRiderDeliveries,
+  updateRiderAvailability,
+  toggleRiderAvailability,
+  acceptDelivery,
+  updateDeliveryStatus,
+  updateDeliveryLocation,
+  getDelivery,
+  cancelDelivery,
+
+  // Utilities
   getImageUrl,
   getToken,
   clearAuthData,
-
-  // Keep‑alive utility
-  startKeepAlive,
 };
 
 export default api;

@@ -113,7 +113,8 @@ const corsOptions = {
       origin
     );
 
-    // Server-to-server / Render health checks / curl
+    // Requests without an Origin header:
+    // curl, Render health checks, server-to-server requests, etc.
     if (!origin) {
       return callback(null, true);
     }
@@ -199,9 +200,7 @@ const uploadsDirectory = path.join(
 
 app.use(
   "/uploads",
-  express.static(
-    uploadsDirectory
-  )
+  express.static(uploadsDirectory)
 );
 
 console.log(
@@ -319,7 +318,7 @@ app.get(
     res.status(200).json({
       success: true,
       message:
-        "Sell Platform API is running",
+        "BuyUKUsed API is running",
       environment:
         process.env.NODE_ENV ||
         "development",
@@ -354,22 +353,11 @@ app.get(
 );
 
 // ============================================================
-// PASSWORD RESET
+// LOAD ROUTES
 // ============================================================
 
 const passwordRoutes =
-  require(
-    "./routes/passwordRoutes"
-  );
-
-app.use(
-  "/api/password",
-  passwordRoutes
-);
-
-// ============================================================
-// APPLICATION ROUTES
-// ============================================================
+  require("./routes/passwordRoutes");
 
 const authRoutes =
   require("./routes/auth");
@@ -389,15 +377,20 @@ const messageRoutes =
 const adminRoutes =
   require("./routes/admin");
 
-// ============================================================
-// DELIVERY ROUTES
-// ============================================================
-
 const deliveryRoutes =
   require("./routes/deliveryRoutes");
 
 console.log(
-  "✅ Routes loaded"
+  "✅ Routes loaded successfully"
+);
+
+// ============================================================
+// PASSWORD RESET
+// ============================================================
+
+app.use(
+  "/api/password",
+  passwordRoutes
 );
 
 // ============================================================
@@ -455,20 +448,7 @@ app.use(
 );
 
 // ============================================================
-// DELIVERY / RIDER SYSTEM
-// ============================================================
-//
-// Endpoints:
-//
-// POST   /api/deliveries
-// GET    /api/deliveries
-// GET    /api/deliveries/my
-// GET    /api/deliveries/available
-// GET    /api/deliveries/:id
-// PUT    /api/deliveries/:id/accept
-// PUT    /api/deliveries/:id/status
-// PUT    /api/deliveries/:id/cancel
-//
+// DELIVERY / RIDER
 // ============================================================
 
 app.use(
@@ -477,23 +457,36 @@ app.use(
 );
 
 // ============================================================
+// ROUTE DEBUG
+// ============================================================
+
+console.log(
+  "🔐 Admin API mounted at: /api/admin"
+);
+
+console.log(
+  "🚴 Delivery API mounted at: /api/deliveries"
+);
+
+// ============================================================
 // 404 HANDLER
 // ============================================================
 
 app.use(
   (req, res) => {
+    console.log(
+      `❌ 404: ${req.method} ${req.originalUrl}`
+    );
+
     if (
-      req.path.startsWith(
-        "/api"
-      ) ||
-      req.path.startsWith(
-        "/auth"
-      )
+      req.path.startsWith("/api") ||
+      req.path.startsWith("/auth")
     ) {
       return res.status(404).json({
         success: false,
         message:
           "API endpoint not found",
+        path: req.originalUrl,
       });
     }
 
@@ -577,15 +570,15 @@ app.use(
     ) {
       const field =
         Object.keys(
-          err.keyPattern ||
-            {}
+          err.keyPattern || {}
         )[0] || "field";
 
       return res
         .status(409)
         .json({
           success: false,
-          message: `${field} already exists`,
+          message:
+            `${field} already exists`,
         });
     }
 
@@ -682,9 +675,7 @@ const createDefaultAdmin =
   async () => {
     try {
       const User =
-        require(
-          "./models/User"
-        );
+        require("./models/User");
 
       const adminEmail =
         process.env.ADMIN_EMAIL;
@@ -733,8 +724,7 @@ const createDefaultAdmin =
           `✅ Default admin created: ${normalizedEmail}`
         );
       } else if (
-        user.role !==
-        "admin"
+        user.role !== "admin"
       ) {
         user.role =
           "admin";
@@ -800,12 +790,15 @@ const start =
             );
 
             console.log(
+              "🔐 Admin API: /api/admin"
+            );
+
+            console.log(
               "🚴 Delivery/Rider API: /api/deliveries"
             );
           }
         );
 
-      // Allow long-running requests
       server.timeout =
         120000;
 

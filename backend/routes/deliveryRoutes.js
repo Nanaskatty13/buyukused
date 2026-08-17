@@ -2,24 +2,25 @@
 
 const express = require("express");
 
-const router =
-  express.Router();
+const router = express.Router();
 
-const deliveryController =
-  require("../controllers/deliveryController");
+const deliveryController = require("../controllers/deliveryController");
 
 const {
   authenticate,
   requireRider,
   requireCustomer,
-} =
-  require("../middleware/authMiddleware");
+} = require("../middleware/authMiddleware");
 
 // ============================================================
 // CUSTOMER ROUTES
 // ============================================================
 
+// ------------------------------------------------------------
 // Create delivery request
+// POST /api/deliveries
+// ------------------------------------------------------------
+
 router.post(
   "/",
   authenticate,
@@ -27,7 +28,11 @@ router.post(
   deliveryController.createDelivery
 );
 
+// ------------------------------------------------------------
 // Customer's delivery history
+// GET /api/deliveries/customer
+// ------------------------------------------------------------
+
 router.get(
   "/customer",
   authenticate,
@@ -39,7 +44,11 @@ router.get(
 // RIDER ROUTES
 // ============================================================
 
+// ------------------------------------------------------------
 // Available delivery requests
+// GET /api/deliveries/available
+// ------------------------------------------------------------
+
 router.get(
   "/available",
   authenticate,
@@ -47,23 +56,35 @@ router.get(
   deliveryController.getAvailableDeliveries
 );
 
-// Rider's deliveries
+// ------------------------------------------------------------
+// Rider's assigned deliveries
+// GET /api/deliveries/my
+// ------------------------------------------------------------
+
 router.get(
   "/my",
   authenticate,
   requireRider,
-  deliveryController.getMyDeliveries
+  deliveryController.getRiderDeliveries
 );
 
+// ------------------------------------------------------------
 // Rider availability
+// PATCH /api/deliveries/rider/availability
+// ------------------------------------------------------------
+
 router.patch(
   "/rider/availability",
   authenticate,
   requireRider,
-  deliveryController.updateRiderAvailability
+  deliveryController.toggleRiderAvailability
 );
 
+// ------------------------------------------------------------
 // Accept delivery
+// PATCH /api/deliveries/:id/accept
+// ------------------------------------------------------------
+
 router.patch(
   "/:id/accept",
   authenticate,
@@ -71,7 +92,11 @@ router.patch(
   deliveryController.acceptDelivery
 );
 
+// ------------------------------------------------------------
 // Update delivery status
+// PATCH /api/deliveries/:id/status
+// ------------------------------------------------------------
+
 router.patch(
   "/:id/status",
   authenticate,
@@ -79,7 +104,11 @@ router.patch(
   deliveryController.updateDeliveryStatus
 );
 
+// ------------------------------------------------------------
 // Update rider location
+// PATCH /api/deliveries/:id/location
+// ------------------------------------------------------------
+
 router.patch(
   "/:id/location",
   authenticate,
@@ -91,19 +120,26 @@ router.patch(
 // SHARED ROUTES
 // ============================================================
 
+// ------------------------------------------------------------
 // Get specific delivery
+// GET /api/deliveries/:id
+// ------------------------------------------------------------
+
 router.get(
   "/:id",
   authenticate,
   deliveryController.getDelivery
 );
 
+// ------------------------------------------------------------
 // Cancel delivery
+// PATCH /api/deliveries/:id/cancel
+// ------------------------------------------------------------
+
 router.patch(
   "/:id/cancel",
   authenticate,
   deliveryController.cancelDelivery
 );
 
-module.exports =
-  router;
+module.exports = router;

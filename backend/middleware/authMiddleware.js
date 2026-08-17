@@ -13,27 +13,9 @@ const authenticate = async (
   next
 ) => {
   try {
-    const authHeader =
-      req.headers.authorization || "";
-
-    if (
-      !authHeader.startsWith("Bearer ")
-    ) {
-      return res.status(401).json({
-        success: false,
-        message: "Authentication required",
-      });
-    }
-
-    const token =
-      authHeader.substring(7).trim();
-
-    if (!token) {
-      return res.status(401).json({
-        success: false,
-        message: "Authentication token missing",
-      });
-    }
+    // ----------------------------------------------------------
+    // JWT configuration
+    // ----------------------------------------------------------
 
     if (!process.env.JWT_SECRET) {
       console.error(
@@ -42,9 +24,48 @@ const authenticate = async (
 
       return res.status(500).json({
         success: false,
-        message: "Server authentication is not configured",
+        message:
+          "Server authentication is not configured",
       });
     }
+
+    // ----------------------------------------------------------
+    // Authorization header
+    // ----------------------------------------------------------
+
+    const authHeader =
+      req.headers.authorization || "";
+
+    if (
+      !authHeader.startsWith("Bearer ")
+    ) {
+      return res.status(401).json({
+        success: false,
+        message:
+          "Authentication required",
+      });
+    }
+
+    // ----------------------------------------------------------
+    // Token
+    // ----------------------------------------------------------
+
+    const token =
+      authHeader
+        .substring(7)
+        .trim();
+
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        message:
+          "Authentication token missing",
+      });
+    }
+
+    // ----------------------------------------------------------
+    // Verify JWT
+    // ----------------------------------------------------------
 
     const decoded =
       jwt.verify(
@@ -52,26 +73,57 @@ const authenticate = async (
         process.env.JWT_SECRET
       );
 
+    const userId =
+      decoded.id ||
+      decoded._id ||
+      decoded.userId;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message:
+          "Invalid token payload",
+      });
+    }
+
+    // ----------------------------------------------------------
+    // Find user
+    // ----------------------------------------------------------
+
     const user =
-      await User.findById(
-        decoded.id
-      ).select("-password");
+      await User.findById(userId)
+        .select("-password");
 
     if (!user) {
       return res.status(401).json({
         success: false,
-        message: "User not found",
+        message:
+          "User not found",
       });
     }
+
+    // ----------------------------------------------------------
+    // Account status
+    // ----------------------------------------------------------
 
     if (user.isActive === false) {
       return res.status(403).json({
         success: false,
-        message: "Your account has been deactivated",
+        message:
+          "Your account has been deactivated",
       });
     }
 
+    // ----------------------------------------------------------
+    // Attach authentication data
+    // ----------------------------------------------------------
+
     req.user = user;
+
+    req.userId =
+      user._id.toString();
+
+    req.auth = decoded;
 
     next();
   } catch (error) {
@@ -81,17 +133,31 @@ const authenticate = async (
     );
 
     if (
-      error.name === "TokenExpiredError"
+      error.name ===
+      "TokenExpiredError"
     ) {
       return res.status(401).json({
         success: false,
-        message: "Authentication token has expired",
+        message:
+          "Authentication token has expired",
+      });
+    }
+
+    if (
+      error.name ===
+      "JsonWebTokenError"
+    ) {
+      return res.status(401).json({
+        success: false,
+        message:
+          "Invalid authentication token",
       });
     }
 
     return res.status(401).json({
       success: false,
-      message: "Invalid authentication token",
+      message:
+        "Authentication failed",
     });
   }
 };
@@ -120,7 +186,7 @@ const requireRider = (
 };
 
 // ============================================================
-// REQUIRE BUYER OR SELLER
+// REQUIRE CUSTOMER
 // ============================================================
 
 const requireCustomer = (
@@ -130,9 +196,10 @@ const requireCustomer = (
 ) => {
   if (
     !req.user ||
-    !["buyer", "seller"].includes(
-      req.user.role
-    )
+    ![
+      "buyer",
+      "seller",
+    ].includes(req.user.role)
   ) {
     return res.status(403).json({
       success: false,
@@ -159,7 +226,34 @@ const requireAdmin = (
   ) {
     return res.status(403).json({
       success: false,
-      message: "Admin access is required",
+      message:
+        "Admin access is required",
+    });
+  }
+
+  next();
+};
+
+// ============================================================
+// REQUIRE SELLER
+// ============================================================
+
+const requireSeller = (
+  req,
+  res,
+  next
+) => {
+  if (
+    !req.user ||
+    ![
+      "seller",
+      "admin",
+    ].includes(req.user.role)
+  ) {
+    return res.status(403).json({
+      success: false,
+      message:
+        "Seller access is required",
     });
   }
 
@@ -175,4 +269,5 @@ module.exports = {
   requireRider,
   requireCustomer,
   requireAdmin,
+  requireSeller,
 };
