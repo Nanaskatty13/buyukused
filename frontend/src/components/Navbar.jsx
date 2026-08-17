@@ -8,13 +8,27 @@ const Navbar = () => {
   const { user, logout } = useAuth();
   const { favorites } = useCart();
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [mobileDropdownOpen, setMobileDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
+  const mobileDropdownRef = useRef(null);
   const navigate = useNavigate();
 
+  // Close logged-in dropdown on outside click
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Close non-logged-in dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (mobileDropdownRef.current && !mobileDropdownRef.current.contains(event.target)) {
+        setMobileDropdownOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -28,6 +42,7 @@ const Navbar = () => {
   };
 
   const toggleDropdown = () => setDropdownOpen(!dropdownOpen);
+  const toggleMobileDropdown = () => setMobileDropdownOpen(!mobileDropdownOpen);
 
   const userInitial = user?.name?.charAt(0)?.toUpperCase() || 'U';
 
@@ -44,9 +59,9 @@ const Navbar = () => {
   return (
     <header
       style={{
-        background: 'rgba(255, 255, 255, 0.85)', // transparent with slight white
-        backdropFilter: 'blur(10px)',              // blur effect
-        WebkitBackdropFilter: 'blur(10px)',        // Safari support
+        background: 'rgba(255, 255, 255, 0.85)',
+        backdropFilter: 'blur(10px)',
+        WebkitBackdropFilter: 'blur(10px)',
         borderBottom: '1px solid rgba(229, 231, 235, 0.5)',
         position: 'sticky',
         top: 0,
@@ -58,18 +73,18 @@ const Navbar = () => {
         style={{
           maxWidth: '1280px',
           margin: '0 auto',
-          padding: '8px 16px', // reduced padding for smaller height
+          padding: '8px 16px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
           gap: '16px',
         }}
       >
-        {/* Logo - Left */}
+        {/* Logo */}
         <Link
           to="/"
           style={{
-            fontSize: '20px', // reduced font size
+            fontSize: '20px',
             fontWeight: 800,
             color: '#0055a5',
             textDecoration: 'none',
@@ -83,14 +98,14 @@ const Navbar = () => {
           BuyUk <span style={{ color: '#2ecc71' }}>Used</span>
         </Link>
 
-        {/* CENTER: Post Ad Button */}
+        {/* Post Ad Button */}
         <div style={{ display: 'flex', alignItems: 'center' }}>
           <Link
             to="/post-ad"
             style={{
               background: '#2ecc71',
               color: 'white',
-              padding: '6px 16px', // reduced padding
+              padding: '6px 16px',
               borderRadius: '9999px',
               fontWeight: 700,
               fontSize: '13px',
@@ -114,11 +129,12 @@ const Navbar = () => {
           </Link>
         </div>
 
-        {/* Right Side Actions */}
+        {/* Right side */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          {/* Wishlist */}
+          {/* Standalone heart – hidden on mobile */}
           <Link
             to="/wishlist"
+            className="desktop-only"
             style={{
               position: 'relative',
               fontSize: '18px',
@@ -146,8 +162,8 @@ const Navbar = () => {
             )}
           </Link>
 
-          {/* User or Auth buttons */}
           {user ? (
+            // ---------- LOGGED IN ----------
             <div ref={dropdownRef} style={{ position: 'relative' }}>
               <div
                 onClick={toggleDropdown}
@@ -173,7 +189,7 @@ const Navbar = () => {
               >
                 <div
                   style={{
-                    width: '28px', // reduced size
+                    width: '28px',
                     height: '28px',
                     borderRadius: '50%',
                     background: '#0055a5',
@@ -224,7 +240,7 @@ const Navbar = () => {
                     </span>
                   )}
                 </div>
-                <span style={{ fontSize: '13px', color: '#334155', fontWeight: 500 }}>
+                <span className="desktop-only" style={{ fontSize: '13px', color: '#334155', fontWeight: 500 }}>
                   {user.name}
                 </span>
                 <i
@@ -343,13 +359,7 @@ const Navbar = () => {
                     </Link>
                   )}
 
-                  <hr
-                    style={{
-                      margin: '4px 0',
-                      border: 'none',
-                      borderTop: '1px solid #e5e7eb',
-                    }}
-                  />
+                  <hr style={{ margin: '4px 0', border: 'none', borderTop: '1px solid #e5e7eb' }} />
 
                   <button
                     onClick={handleLogout}
@@ -375,9 +385,12 @@ const Navbar = () => {
               )}
             </div>
           ) : (
+            // ---------- NOT LOGGED IN ----------
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              {/* Standalone Login / Signup – hidden on mobile */}
               <Link
                 to="/login"
+                className="desktop-only"
                 style={{
                   border: '1px solid #0055a5',
                   color: '#0055a5',
@@ -395,6 +408,7 @@ const Navbar = () => {
               </Link>
               <Link
                 to="/register"
+                className="desktop-only"
                 style={{
                   background: '#0055a5',
                   color: 'white',
@@ -410,6 +424,138 @@ const Navbar = () => {
               >
                 Sign Up
               </Link>
+
+              {/* Mobile dropdown toggle – always visible */}
+              <div ref={mobileDropdownRef} style={{ position: 'relative' }}>
+                <div
+                  onClick={toggleMobileDropdown}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    cursor: 'pointer',
+                    padding: '4px',
+                    borderRadius: '9999px',
+                    background: 'rgba(241, 245, 249, 0.8)',
+                    border: '1px solid transparent',
+                    transition: 'all 0.2s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = '#f1f5f9';
+                    e.currentTarget.style.borderColor = '#e2e8f0';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'rgba(241, 245, 249, 0.8)';
+                    e.currentTarget.style.borderColor = 'transparent';
+                  }}
+                >
+                  <div
+                    style={{
+                      width: '28px',
+                      height: '28px',
+                      borderRadius: '50%',
+                      background: '#0055a5',
+                      color: 'white',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontWeight: 700,
+                      fontSize: '14px',
+                    }}
+                  >
+                    <i className="fas fa-user"></i>
+                  </div>
+                </div>
+
+                {mobileDropdownOpen && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: 'calc(100% + 6px)',
+                      right: 0,
+                      minWidth: '180px',
+                      background: 'rgba(255, 255, 255, 0.95)',
+                      backdropFilter: 'blur(10px)',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '12px',
+                      boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
+                      padding: '4px 0',
+                      zIndex: 1000,
+                      animation: 'dropdownFade 0.2s ease',
+                    }}
+                  >
+                    {/* Favorites */}
+                    <Link
+                      to="/wishlist"
+                      onClick={() => setMobileDropdownOpen(false)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        padding: '8px 14px',
+                        color: '#334155',
+                        fontSize: '13px',
+                        textDecoration: 'none',
+                        position: 'relative',
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = '#f1f5f9')}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                    >
+                      <i className="fas fa-heart"></i> Favorites
+                      {favorites.length > 0 && (
+                        <span
+                          style={{
+                            marginLeft: 'auto',
+                            background: '#e74c3c',
+                            color: 'white',
+                            borderRadius: '50%',
+                            padding: '1px 6px',
+                            fontSize: '10px',
+                            fontWeight: 700,
+                          }}
+                        >
+                          {favorites.length}
+                        </span>
+                      )}
+                    </Link>
+
+                    <Link
+                      to="/login"
+                      onClick={() => setMobileDropdownOpen(false)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        padding: '8px 14px',
+                        color: '#0055a5',
+                        fontSize: '13px',
+                        textDecoration: 'none',
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = '#f1f5f9')}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                    >
+                      <i className="fas fa-sign-in-alt"></i> Log In
+                    </Link>
+
+                    <Link
+                      to="/register"
+                      onClick={() => setMobileDropdownOpen(false)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        padding: '8px 14px',
+                        color: '#0055a5',
+                        fontSize: '13px',
+                        textDecoration: 'none',
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = '#f1f5f9')}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                    >
+                      <i className="fas fa-user-plus"></i> Sign Up
+                    </Link>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>

@@ -14,18 +14,54 @@ const API_URL = (
 console.log("🚴 Delivery API URL:", API_URL);
 
 // ============================================================
-// TOKEN
+// AUTH TOKEN
+// ============================================================
+//
+// IMPORTANT:
+//
+// The application can have multiple old token keys in
+// localStorage from previous versions.
+//
+// We use the current token first and remove stale duplicates
+// when possible.
+//
 // ============================================================
 
 const getToken = () => {
   try {
-    const token =
-      localStorage.getItem("token") ||
-      localStorage.getItem("authToken") ||
-      localStorage.getItem("accessToken") ||
-      "";
+    const authToken =
+      localStorage.getItem("authToken");
 
-    return token.trim();
+    const token =
+      localStorage.getItem("token");
+
+    const accessToken =
+      localStorage.getItem("accessToken");
+
+    // Prefer authToken because this is the dedicated
+    // authentication key.
+    if (
+      authToken &&
+      authToken.trim()
+    ) {
+      return authToken.trim();
+    }
+
+    if (
+      token &&
+      token.trim()
+    ) {
+      return token.trim();
+    }
+
+    if (
+      accessToken &&
+      accessToken.trim()
+    ) {
+      return accessToken.trim();
+    }
+
+    return "";
   } catch (error) {
     console.error(
       "❌ Could not read authentication token:",
@@ -37,74 +73,199 @@ const getToken = () => {
 };
 
 // ============================================================
-// AUTH CONFIG
+// AUTH HEADERS
 // ============================================================
 
-const authConfig = () => {
+const getAuthHeaders = () => {
   const token = getToken();
 
   if (!token) {
     console.warn(
-      "⚠️ No authentication token found for delivery request."
+      "⚠️ No authentication token available."
     );
+
+    return {
+      "Content-Type": "application/json",
+    };
   }
 
   return {
-    headers: {
-      "Content-Type": "application/json",
-
-      ...(token
-        ? {
-            Authorization: `Bearer ${token}`,
-          }
-        : {}),
-    },
-
-    // Safe even though the application primarily uses JWT.
-    withCredentials: true,
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`,
   };
 };
 
 // ============================================================
-// ERROR HANDLER
+// AXIOS INSTANCE
 // ============================================================
 
-const handleDeliveryError = (error, operation) => {
+const deliveryApi = axios.create({
+  baseURL: API_URL,
+  headers: {
+    "Content-Type": "application/json",
+  },
+  withCredentials: true,
+  timeout: 30000,
+});
+
+// ============================================================
+// REQUEST INTERCEPTOR
+// ============================================================
+//
+// Every request gets the CURRENT token immediately before
+// the request is sent.
+//
+// This prevents a token captured earlier from becoming stale.
+//
+// ============================================================
+
+deliveryApi.interceptors.request.use(
+  (config) => {
+    const token = getToken();
+
+    config.headers =
+      config.headers || {};
+
+    config.headers[
+      "Content-Type"
+    ] = "application/json";
+
+    if (token) {
+      config.headers.Authorization =
+        `Bearer ${token}`;
+    } else {
+      delete config.headers.Authorization;
+    }
+
+    console.log(
+      "🚴 Delivery request:",
+      config.method?.toUpperCase(),
+      config.url,
+      token
+        ? "🔐 authenticated"
+        : "⚠️ no token"
+    );
+
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// ============================================================
+// RESPONSE INTERCEPTOR
+// ============================================================
+
+deliveryApi.interceptors.response.use(
+  (response) => {
+    return response;
+  },
+
+  (error) => {
+    const status =
+      error?.response?.status;
+
+    const message =
+      error?.response?.data?.message;
+
+    console.error(
+      "❌ Delivery API error:",
+      {
+        status,
+        message,
+        url: error?.config?.url,
+      }
+    );
+
+    // --------------------------------------------------------
+    // AUTHENTICATION FAILURE
+    // --------------------------------------------------------
+
+    if (status === 401) {
+      console.warn(
+        "🔐 Delivery API rejected authentication."
+      );
+
+      console.warn(
+        "🔐 Current token exists:",
+        Boolean(getToken())
+      );
+
+      // Do NOT automatically delete the token here.
+      //
+      // AuthContext owns the application's login state.
+      // Automatically deleting tokens here could log the user
+      // out unexpectedly.
+    }
+
+    return Promise.reject(error);
+  }
+);
+
+// ============================================================
+// ERROR NORMALIZER
+// ============================================================
+
+const handleDeliveryError = (
+  error,
+  operation
+) => {
   console.error(
     `❌ Delivery ${operation} failed:`,
     error
   );
 
   if (error?.response) {
+    const status =
+      error.response.status;
+
+    const data =
+      error.response.data;
+
     console.error(
       `❌ Delivery ${operation} status:`,
-      error.response.status
+      status
     );
 
     console.error(
       `❌ Delivery ${operation} response:`,
-      error.response.data
+      data
     );
 
-    const message =
-      error.response.data?.message ||
-      `Delivery request failed with status ${error.response.status}`;
+    let message =
+      data?.message ||
+      `Delivery request failed with status ${status}.`;
 
-    const enhancedError = new Error(message);
+    if (status === 401) {
+      message =
+        data?.message ||
+        "Your login session is no longer valid. Please log in again.";
+    }
+
+    if (status === 403) {
+      message =
+        data?.message ||
+        "You do not have permission to perform this delivery action.";
+    }
+
+    const enhancedError =
+      new Error(message);
 
     enhancedError.status =
-      error.response.status;
+      status;
 
     enhancedError.data =
-      error.response.data;
+      data;
 
     throw enhancedError;
   }
 
   if (error?.request) {
-    const enhancedError = new Error(
-      "Could not connect to the delivery server."
-    );
+    const enhancedError =
+      new Error(
+        "Could not connect to the delivery server."
+      );
 
     enhancedError.status = 0;
 
@@ -118,67 +279,57 @@ const handleDeliveryError = (error, operation) => {
 // CREATE DELIVERY
 // ============================================================
 //
-// Buyers AND sellers can create delivery requests.
+// Buyers and sellers can book delivery.
 //
 // POST /api/deliveries
 //
 // ============================================================
 
-export const createDelivery = async (
-  deliveryData
-) => {
-  const token = getToken();
-
-  if (!token) {
-    throw new Error(
-      "You must be logged in before booking a rider."
-    );
-  }
-
-  try {
-    const response = await axios.post(
-      `${API_URL}/api/deliveries`,
-      deliveryData,
-      authConfig()
-    );
-
-    console.log(
-      "✅ Delivery created:",
-      response.data
-    );
-
-    return response.data;
-  } catch (error) {
-    return handleDeliveryError(
-      error,
-      "creation"
-    );
-  }
-};
-
-// ============================================================
-// CUSTOMER DELIVERY HISTORY
-// ============================================================
-//
-// GET /api/deliveries/customer
-//
-// ============================================================
-
-export const getCustomerDeliveries =
-  async () => {
+export const createDelivery =
+  async (deliveryData) => {
     const token = getToken();
 
     if (!token) {
       throw new Error(
-        "You must be logged in to view your deliveries."
+        "You must be logged in before booking a rider."
       );
     }
 
     try {
+      console.log(
+        "🚴 Creating delivery..."
+      );
+
       const response =
-        await axios.get(
-          `${API_URL}/api/deliveries/customer`,
-          authConfig()
+        await deliveryApi.post(
+          "/api/deliveries",
+          deliveryData
+        );
+
+      console.log(
+        "✅ Delivery created:",
+        response.data
+      );
+
+      return response.data;
+    } catch (error) {
+      return handleDeliveryError(
+        error,
+        "creation"
+      );
+    }
+  };
+
+// ============================================================
+// CUSTOMER DELIVERY HISTORY
+// ============================================================
+
+export const getCustomerDeliveries =
+  async () => {
+    try {
+      const response =
+        await deliveryApi.get(
+          "/api/deliveries/customer"
         );
 
       return response.data;
@@ -194,27 +345,16 @@ export const getCustomerDeliveries =
 // AVAILABLE DELIVERIES
 // ============================================================
 //
-// Rider only.
-//
-// GET /api/deliveries/available
+// RIDER ONLY
 //
 // ============================================================
 
 export const getAvailableDeliveries =
   async () => {
-    const token = getToken();
-
-    if (!token) {
-      throw new Error(
-        "You must be logged in as a rider."
-      );
-    }
-
     try {
       const response =
-        await axios.get(
-          `${API_URL}/api/deliveries/available`,
-          authConfig()
+        await deliveryApi.get(
+          "/api/deliveries/available"
         );
 
       return response.data;
@@ -230,27 +370,16 @@ export const getAvailableDeliveries =
 // RIDER DELIVERIES
 // ============================================================
 //
-// GET /api/deliveries/my
-//
-// Rider only.
+// RIDER ONLY
 //
 // ============================================================
 
 export const getRiderDeliveries =
   async () => {
-    const token = getToken();
-
-    if (!token) {
-      throw new Error(
-        "You must be logged in as a rider."
-      );
-    }
-
     try {
       const response =
-        await axios.get(
-          `${API_URL}/api/deliveries/my`,
-          authConfig()
+        await deliveryApi.get(
+          "/api/deliveries/my"
         );
 
       return response.data;
@@ -265,10 +394,6 @@ export const getRiderDeliveries =
 // ============================================================
 // GET SINGLE DELIVERY
 // ============================================================
-//
-// GET /api/deliveries/:id
-//
-// ============================================================
 
 export const getDelivery =
   async (deliveryId) => {
@@ -280,9 +405,8 @@ export const getDelivery =
 
     try {
       const response =
-        await axios.get(
-          `${API_URL}/api/deliveries/${deliveryId}`,
-          authConfig()
+        await deliveryApi.get(
+          `/api/deliveries/${deliveryId}`
         );
 
       return response.data;
@@ -298,9 +422,7 @@ export const getDelivery =
 // ACCEPT DELIVERY
 // ============================================================
 //
-// PATCH /api/deliveries/:id/accept
-//
-// Rider only.
+// RIDER ONLY
 //
 // ============================================================
 
@@ -314,10 +436,9 @@ export const acceptDelivery =
 
     try {
       const response =
-        await axios.patch(
-          `${API_URL}/api/deliveries/${deliveryId}/accept`,
-          {},
-          authConfig()
+        await deliveryApi.patch(
+          `/api/deliveries/${deliveryId}/accept`,
+          {}
         );
 
       return response.data;
@@ -333,9 +454,7 @@ export const acceptDelivery =
 // UPDATE DELIVERY STATUS
 // ============================================================
 //
-// PATCH /api/deliveries/:id/status
-//
-// Rider only.
+// RIDER ONLY
 //
 // ============================================================
 
@@ -358,12 +477,11 @@ export const updateDeliveryStatus =
 
     try {
       const response =
-        await axios.patch(
-          `${API_URL}/api/deliveries/${deliveryId}/status`,
+        await deliveryApi.patch(
+          `/api/deliveries/${deliveryId}/status`,
           {
             status,
-          },
-          authConfig()
+          }
         );
 
       return response.data;
@@ -379,25 +497,20 @@ export const updateDeliveryStatus =
 // TOGGLE RIDER AVAILABILITY
 // ============================================================
 //
-// PATCH /api/deliveries/rider/availability
-//
-// Rider only.
+// RIDER ONLY
 //
 // ============================================================
 
 export const toggleRiderAvailability =
-  async (
-    isAvailable
-  ) => {
+  async (isAvailable) => {
     try {
       const response =
-        await axios.patch(
-          `${API_URL}/api/deliveries/rider/availability`,
+        await deliveryApi.patch(
+          "/api/deliveries/rider/availability",
           {
             isAvailable:
               Boolean(isAvailable),
-          },
-          authConfig()
+          }
         );
 
       return response.data;
@@ -413,9 +526,7 @@ export const toggleRiderAvailability =
 // UPDATE RIDER LOCATION
 // ============================================================
 //
-// PATCH /api/deliveries/:id/location
-//
-// Rider only.
+// RIDER ONLY
 //
 // ============================================================
 
@@ -438,10 +549,9 @@ export const updateRiderLocation =
 
     try {
       const response =
-        await axios.patch(
-          `${API_URL}/api/deliveries/${deliveryId}/location`,
-          location,
-          authConfig()
+        await deliveryApi.patch(
+          `/api/deliveries/${deliveryId}/location`,
+          location
         );
 
       return response.data;
@@ -455,10 +565,6 @@ export const updateRiderLocation =
 
 // ============================================================
 // CANCEL DELIVERY
-// ============================================================
-//
-// PATCH /api/deliveries/:id/cancel
-//
 // ============================================================
 
 export const cancelDelivery =
@@ -474,12 +580,11 @@ export const cancelDelivery =
 
     try {
       const response =
-        await axios.patch(
-          `${API_URL}/api/deliveries/${deliveryId}/cancel`,
+        await deliveryApi.patch(
+          `/api/deliveries/${deliveryId}/cancel`,
           {
             reason,
-          },
-          authConfig()
+          }
         );
 
       return response.data;

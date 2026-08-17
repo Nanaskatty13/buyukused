@@ -159,7 +159,7 @@ const Register = () => {
       <div className="container" style={{ maxWidth: '440px', width: '100%', padding: '0', margin: '0 auto' }}>
         <div className="card" style={{ padding: '32px', backgroundColor: '#ffffff', boxShadow: '0 8px 32px rgba(0,0,0,0.2)' }}>
           <h2 style={{ fontSize: '24px', fontWeight: 800, textAlign: 'center', marginBottom: '8px' }}>
-            Join KN Classifieds 🚀
+            Join BuyUk Used 🚀
           </h2>
           <p style={{ textAlign: 'center', color: 'var(--gray-500)', marginBottom: '24px' }}>
             {from !== '/' ? 'Create an account to post your ad' : 'Start posting and replying today'}
