@@ -4092,3 +4092,9 @@ img {
       repeat(2, 1fr);
   }
 }
+/* Hide filter sidebar on mobile (≤ 767px) */
+@media (max-width: 767px) {
+  .filter-sidebar-wrapper {
+    display: none !important;
+  }
+}

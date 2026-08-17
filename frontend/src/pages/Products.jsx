@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useLocation, Link } from "react-router-dom";
 import SearchBar from "../components/SearchBar";
 import FilterSidebar from "../components/FilterSidebar";
-import Footer from "../components/Footer"; // <-- ADDED
+import Footer from "../components/Footer";
 
 // API
 import { getProducts, getImageUrl } from "../services/api";
@@ -525,7 +525,7 @@ const Products = () => {
   // Sort & pagination
   const [sortOption, setSortOption] = useState("recommended");
   const [currentPage, setCurrentPage] = useState(1);
-  const ITEMS_PER_PAGE = 6; // Changed to 6 products per page
+  const ITEMS_PER_PAGE = 6;
 
   // --------------------------------------------------------------
   // KEEP FILTERS IN SYNC WITH URL
@@ -599,7 +599,7 @@ const Products = () => {
       }));
 
       setProducts(processedProducts);
-      setCurrentPage(1); // reset to first page on new fetch
+      setCurrentPage(1);
     } catch (err) {
       if (cancelled) return;
 
@@ -709,21 +709,23 @@ const Products = () => {
           padding: "20px 16px",
         }}
       >
-        {/* ========== SIDEBAR (FILTERS) ========== */}
-        <FilterSidebar
-          filters={filters}
-          setFilters={setFilters}
-          priceMin={priceMin}
-          setPriceMin={setPriceMin}
-          priceMax={priceMax}
-          setPriceMax={setPriceMax}
-          verifiedOnly={verifiedOnly}
-          setVerifiedOnly={setVerifiedOnly}
-          discountOnly={discountOnly}
-          setDiscountOnly={setDiscountOnly}
-          onClearFilters={handleClearFilters}
-          activeCategory={filters.category}
-        />
+        {/* ========== SIDEBAR (FILTERS) – WRAPPED FOR MOBILE HIDE ========== */}
+        <div className="filter-sidebar-wrapper">
+          <FilterSidebar
+            filters={filters}
+            setFilters={setFilters}
+            priceMin={priceMin}
+            setPriceMin={setPriceMin}
+            priceMax={priceMax}
+            setPriceMax={setPriceMax}
+            verifiedOnly={verifiedOnly}
+            setVerifiedOnly={setVerifiedOnly}
+            discountOnly={discountOnly}
+            setDiscountOnly={setDiscountOnly}
+            onClearFilters={handleClearFilters}
+            activeCategory={filters.category}
+          />
+        </div>
 
         {/* ========== MAIN CONTENT ========== */}
         <main
@@ -961,7 +963,7 @@ const Products = () => {
           )}
         </main>
       </div>
-      <Footer /> {/* <-- FOOTER ADDED HERE */}
+      <Footer />
     </>
   );
 };
