@@ -1,5 +1,5 @@
 // frontend/src/pages/ProductDetails.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 
 import { FaMotorcycle } from "react-icons/fa";
@@ -127,6 +127,21 @@ const ProductDetails = () => {
   // ================================================================
 
   const [isUpdating, setIsUpdating] = useState(false);
+
+  // ================================================================
+  // MESSAGING STATE
+  // ================================================================
+
+  const [showChatModal, setShowChatModal] = useState(false);
+  const [messages, setMessages] = useState([]);
+  const [newMessage, setNewMessage] = useState("");
+  const [sending, setSending] = useState(false);
+  const [chatLoading, setChatLoading] = useState(false);
+  const [chatError, setChatError] = useState("");
+  const [messagingAvailable, setMessagingAvailable] = useState(true);
+
+  // Polling interval reference
+  const pollInterval = useRef(null);
 
   // ================================================================
   // FETCH PRODUCT
@@ -756,6 +771,153 @@ const ProductDetails = () => {
   };
 
   // ================================================================
+  // MESSAGING – FETCH MESSAGES
+  // ================================================================
+
+  const fetchMessages = async () => {
+    if (!user || !product) return;
+
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL || 'https://buyukused.onrender.com'}/api/messages/${user._id}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (response.status === 403 || response.status === 404) {
+        setMessagingAvailable(false);
+        setChatError('Messaging is not yet available. Please contact the seller via WhatsApp.');
+        setMessages([]);
+        return;
+      }
+
+      if (!response.ok) throw new Error('Failed to fetch messages');
+
+      const data = await response.json();
+      
+      if (data.success) {
+        // Filter messages for this product only
+        const productMessages = data.messages.filter(
+          msg => msg.productId && msg.productId._id === product._id
+        );
+        setMessages(productMessages);
+        setChatError('');
+        setMessagingAvailable(true);
+      } else {
+        setChatError(data.message || 'Could not load messages');
+      }
+    } catch (err) {
+      console.error('Error fetching messages:', err);
+      setChatError('Could not load messages');
+    }
+  };
+
+  // ================================================================
+  // MESSAGING – SEND MESSAGE
+  // ================================================================
+
+  const sendMessage = async (e) => {
+    e.preventDefault();
+
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+
+    if (!newMessage.trim()) return;
+
+    // Get seller ID from product
+    const sellerId = product?.sellerId?._id || product?.sellerId;
+    if (!sellerId) {
+      alert('Seller information not available.');
+      return;
+    }
+
+    setSending(true);
+    setChatError('');
+
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL || 'https://buyukused.onrender.com'}/api/messages`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            receiver: sellerId,
+            productId: product._id,
+            message: newMessage.trim(),
+          }),
+        }
+      );
+
+      if (!response.ok) throw new Error('Failed to send message');
+
+      const data = await response.json();
+      if (data.success) {
+        setMessages(prev => [...prev, data.message]);
+        setNewMessage('');
+      } else {
+        setChatError(data.message || 'Could not send message');
+      }
+    } catch (err) {
+      console.error('Error sending message:', err);
+      setChatError('Could not send message');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  // ================================================================
+  // MESSAGING – OPEN CHAT MODAL
+  // ================================================================
+
+  const openChat = () => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+
+    setShowChatModal(true);
+    setChatLoading(true);
+    fetchMessages().finally(() => setChatLoading(false));
+
+    // Start polling for new messages every 5 seconds
+    if (pollInterval.current) clearInterval(pollInterval.current);
+    pollInterval.current = setInterval(() => {
+      if (messagingAvailable) {
+        fetchMessages();
+      }
+    }, 5000);
+  };
+
+  // ================================================================
+  // MESSAGING – CLOSE CHAT MODAL
+  // ================================================================
+
+  const closeChat = () => {
+    setShowChatModal(false);
+    if (pollInterval.current) {
+      clearInterval(pollInterval.current);
+      pollInterval.current = null;
+    }
+  };
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      if (pollInterval.current) {
+        clearInterval(pollInterval.current);
+      }
+    };
+  }, []);
+
+  // ================================================================
   // LOADING / ERROR
   // ================================================================
 
@@ -806,11 +968,8 @@ const ProductDetails = () => {
   // DERIVED VALUES
   // ================================================================
 
-  const liked =
-    isFavorite(product._id);
-
-  const isSold =
-    product.status === "sold";
+  const liked = isFavorite(product._id);
+  const isSold = product.status === "sold";
 
   const isLaptop = product.category === "Laptops";
   const isTablet = product.category === "Tablets";
@@ -841,6 +1000,19 @@ const ProductDetails = () => {
 
     return fields.some(f => f);
   };
+
+  // ── Determine if the current user is the seller ──
+  const isSeller = user && (
+    product?.sellerId?._id === user._id ||
+    product?.sellerId === user._id ||
+    product?.sellerId?.toString() === user._id?.toString()
+  );
+
+  // ── Seller name – reused in seller card and chat modal ──
+  const sellerName = (() => {
+    const seller = product.seller || product.sellerId || {};
+    return seller.name || product.sellerName || 'Seller';
+  })();
 
   // ================================================================
   // RENDER
@@ -1555,7 +1727,7 @@ const ProductDetails = () => {
                 "No description provided."}
             </div>
 
-            {/* ─── SELLER CARD – MODIFIED: PHONE HIDDEN FOR NON‑USERS ─── */}
+            {/* ─── SELLER CARD – using sellerName ─── */}
             <div
               className="seller"
               style={{
@@ -1642,10 +1814,7 @@ const ProductDetails = () => {
                   }}
                 >
                   <i className="fas fa-user" style={{ marginRight: '6px' }} />
-                  {(() => {
-                    const seller = product.seller || product.sellerId || {};
-                    return seller.name || product.sellerName || 'KN Seller';
-                  })()}
+                  {sellerName}
                 </div>
 
                 {/* ── PHONE NUMBER – SHOW ONLY IF LOGGED IN ── */}
@@ -1718,7 +1887,7 @@ const ProductDetails = () => {
                   "wrap",
               }}
             >
-              {/* CONTACT SELLER – MODIFIED FOR NON‑USERS */}
+              {/* CONTACT SELLER (WhatsApp) */}
 
               {isSold ? (
                 <button
@@ -1784,7 +1953,7 @@ const ProductDetails = () => {
                     className="btn-secondary"
                     style={{
                       padding: "12px 32px",
-                      background: "#0055a5",  // primary blue
+                      background: "#0055a5",
                       color: "white",
                       border: "none",
                       borderRadius: "var(--radius-full)",
@@ -1803,7 +1972,33 @@ const ProductDetails = () => {
                 )
               )}
 
-              {/* ── NEW: BOOK A BIKE RIDER BUTTON ── */}
+              {/* ─── MESSAGE SELLER BUTTON ─── */}
+              {!isSold && user && !isSeller && messagingAvailable && (
+                <button
+                  type="button"
+                  onClick={openChat}
+                  style={{
+                    padding: "12px 32px",
+                    background: "#0055a5",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "var(--radius-full)",
+                    fontWeight: 700,
+                    fontSize: "16px",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "8px",
+                    touchAction: "manipulation",
+                  }}
+                >
+                  <i className="fas fa-comment-dots" />
+                  Message Seller
+                </button>
+              )}
+
+              {/* ─── BOOK A BIKE RIDER ─── */}
               <button
                 type="button"
                 onClick={() =>
@@ -4756,6 +4951,184 @@ const ProductDetails = () => {
                   {editLoading
                     ? "Saving..."
                     : "Save Changes"}
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* ============================================================
+            CHAT MODAL – with seller name in header
+        ============================================================ */}
+
+        {showChatModal && (
+          <div
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              width: "100%",
+              height: "100%",
+              backgroundColor: "rgba(0,0,0,0.5)",
+              backdropFilter: "blur(4px)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 10000,
+              padding: "20px",
+            }}
+            onClick={closeChat}
+          >
+            <div
+              style={{
+                background: "white",
+                borderRadius: "var(--radius-xl)",
+                maxWidth: "500px",
+                width: "100%",
+                height: "500px",
+                display: "flex",
+                flexDirection: "column",
+                position: "relative",
+                boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header – now shows seller name */}
+              <div
+                style={{
+                  padding: "16px 20px",
+                  borderBottom: "1px solid var(--gray-200)",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  background: "var(--primary)",
+                  color: "white",
+                  borderRadius: "var(--radius-xl) var(--radius-xl) 0 0",
+                }}
+              >
+                <div>
+                  <h3 style={{ margin: 0, fontSize: "18px" }}>
+                    <i className="fas fa-comment-dots" style={{ marginRight: "8px" }} />
+                    Messages with {sellerName}
+                  </h3>
+                  <div style={{ fontSize: "12px", opacity: 0.8 }}>
+                    {product.title}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={closeChat}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: "white",
+                    fontSize: "24px",
+                    cursor: "pointer",
+                  }}
+                >
+                  &times;
+                </button>
+              </div>
+
+              {/* Messages list */}
+              <div
+                style={{
+                  flex: 1,
+                  overflowY: "auto",
+                  padding: "16px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "8px",
+                }}
+              >
+                {chatLoading ? (
+                  <div style={{ textAlign: "center", color: "var(--gray-400)", padding: "20px" }}>
+                    Loading messages...
+                  </div>
+                ) : messages.length === 0 ? (
+                  <div style={{ textAlign: "center", color: "var(--gray-400)", padding: "20px" }}>
+                    No messages yet. Start the conversation with {sellerName}!
+                  </div>
+                ) : (
+                  messages.map((msg) => {
+                    const isMine = msg.sender && msg.sender.toString() === user._id.toString();
+                    return (
+                      <div
+                        key={msg._id || msg.id}
+                        style={{
+                          alignSelf: isMine ? "flex-end" : "flex-start",
+                          maxWidth: "70%",
+                          background: isMine ? "var(--primary)" : "var(--gray-100)",
+                          color: isMine ? "white" : "var(--gray-800)",
+                          padding: "8px 14px",
+                          borderRadius: "12px",
+                          borderBottomRightRadius: isMine ? "4px" : "12px",
+                          borderBottomLeftRadius: isMine ? "12px" : "4px",
+                          wordBreak: "break-word",
+                        }}
+                      >
+                        <div>{msg.message}</div>
+                        <div
+                          style={{
+                            fontSize: "10px",
+                            opacity: 0.7,
+                            marginTop: "4px",
+                            textAlign: "right",
+                          }}
+                        >
+                          {new Date(msg.createdAt).toLocaleTimeString()}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+                {chatError && (
+                  <div style={{ color: "#dc2626", fontSize: "13px", textAlign: "center" }}>
+                    {chatError}
+                  </div>
+                )}
+              </div>
+
+              {/* Input area */}
+              <form
+                onSubmit={sendMessage}
+                style={{
+                  padding: "12px",
+                  borderTop: "1px solid var(--gray-200)",
+                  display: "flex",
+                  gap: "8px",
+                }}
+              >
+                <input
+                  type="text"
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  placeholder={user ? `Message ${sellerName}...` : "Please login to message"}
+                  disabled={!user || sending}
+                  style={{
+                    flex: 1,
+                    padding: "10px 14px",
+                    border: "1.5px solid var(--gray-200)",
+                    borderRadius: "var(--radius-md)",
+                    fontSize: "14px",
+                    outline: "none",
+                  }}
+                />
+                <button
+                  type="submit"
+                  disabled={!user || sending || !newMessage.trim()}
+                  style={{
+                    padding: "10px 20px",
+                    background: "var(--primary)",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "var(--radius-md)",
+                    fontWeight: 700,
+                    cursor: sending ? "not-allowed" : "pointer",
+                    opacity: sending ? 0.7 : 1,
+                  }}
+                >
+                  {sending ? "Sending..." : "Send"}
                 </button>
               </form>
             </div>

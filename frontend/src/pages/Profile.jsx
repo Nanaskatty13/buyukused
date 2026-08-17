@@ -1,5 +1,5 @@
 // frontend/src/pages/Profile.jsx
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import '../styles/global.css';
@@ -47,6 +47,10 @@ const Profile = () => {
   const [selectedConversation, setSelectedConversation] = useState(null);
   const [replyMessage, setReplyMessage] = useState('');
   const [sendingReply, setSendingReply] = useState(false);
+  const [uploading, setUploading] = useState(false);
+
+  // Polling ref
+  const pollInterval = useRef(null);
 
   // ================================================================
   // KEEP EDIT FIELDS IN SYNC WITH USER
@@ -84,7 +88,6 @@ const Profile = () => {
       console.log('👤 Fetching data for user:', userId);
 
       // ─── PRODUCTS ──────────────────────────────────────────────
-      // We request all products by this seller (limit 100 to avoid pagination issues)
       let userProducts = [];
       try {
         const productResponse = await getProducts({ sellerId: userId, limit: 100 });
@@ -93,7 +96,6 @@ const Profile = () => {
           : productResponse?.products || [];
       } catch (productError) {
         console.error('❌ Error fetching user products:', productError);
-        // Fallback: try the /api/users/me/products endpoint if it exists
         try {
           const response = await fetch(`${API_URL}/api/users/me/products`, {
             headers: { Authorization: `Bearer ${token}` },
@@ -309,10 +311,62 @@ const Profile = () => {
         console.error('❌ Error marking message as read:', error);
       }
     }
+
+    // Start polling
+    startPolling(otherUserId);
   };
 
   // ================================================================
-  // SEND REPLY
+  // POLLING – FETCH NEW MESSAGES
+  // ================================================================
+
+  const startPolling = (otherUserId) => {
+    // Clear any existing interval
+    if (pollInterval.current) clearInterval(pollInterval.current);
+
+    // Poll every 5 seconds
+    pollInterval.current = setInterval(async () => {
+      if (!selectedConversation || !user?._id) return;
+      try {
+        const response = await fetch(`${API_URL}/api/messages/${user._id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!response.ok) return;
+        const data = await response.json();
+        if (data.success) {
+          // Filter messages for this conversation
+          const newMessages = data.messages.filter((msg) => {
+            const senderId = typeof msg.sender === 'string' ? msg.sender : msg.sender?._id;
+            const receiverId = typeof msg.receiver === 'string' ? msg.receiver : msg.receiver?._id;
+            return (
+              (senderId === otherUserId || receiverId === otherUserId) &&
+              (senderId === user._id || receiverId === user._id)
+            );
+          });
+          // Update messagesList and selectedConversation
+          setMessagesList((prev) => {
+            const existingIds = new Set(prev.map(m => m._id));
+            const newMessagesOnly = newMessages.filter(m => !existingIds.has(m._id));
+            return [...prev, ...newMessagesOnly];
+          });
+          setSelectedConversation((prev) => {
+            if (!prev) return prev;
+            const existingIds = new Set(prev.messages.map(m => m._id));
+            const newMessagesOnly = newMessages.filter(m => !existingIds.has(m._id));
+            return {
+              ...prev,
+              messages: [...prev.messages, ...newMessagesOnly],
+            };
+          });
+        }
+      } catch (error) {
+        console.error('Polling error:', error);
+      }
+    }, 5000);
+  };
+
+  // ================================================================
+  // SEND REPLY (TEXT) – FIXED
   // ================================================================
 
   const handleSendReply = async (event) => {
@@ -321,17 +375,35 @@ const Profile = () => {
 
     setSendingReply(true);
     try {
-      const newMessage = await messages.send(
-        selectedConversation.userId,
-        replyMessage.trim(),
-        null,
-        token
-      );
-      const normalized = newMessage?.message || newMessage?.data || newMessage;
-      setMessagesList((prev) => [normalized, ...prev]);
+      const response = await fetch(`${API_URL}/api/messages`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          receiver: selectedConversation.userId,
+          message: replyMessage.trim(),
+          productId: null,
+        }),
+      });
+
+      if (!response.ok) {
+        let errorData = {};
+        try { errorData = await response.json(); } catch {}
+        throw new Error(errorData.message || `Failed to send reply (${response.status})`);
+      }
+
+      const data = await response.json();
+      const newMessage = data.message || data.data || data;
+
+      if (!newMessage?._id) throw new Error('Invalid response from server');
+
+      // Append to UI
+      setMessagesList((prev) => [newMessage, ...prev]);
       setSelectedConversation((prev) => ({
         ...prev,
-        messages: [normalized, ...prev.messages],
+        messages: [newMessage, ...prev.messages],
       }));
       setReplyMessage('');
     } catch (error) {
@@ -339,6 +411,73 @@ const Profile = () => {
       alert(error?.message || 'Failed to send reply.');
     } finally {
       setSendingReply(false);
+    }
+  };
+
+  // ================================================================
+  // SEND FILE ATTACHMENT (image/video/contact)
+  // ================================================================
+
+  const handleFileAttachment = async (file) => {
+    if (!selectedConversation?.userId || !token) return;
+
+    setUploading(true);
+    try {
+      // Upload file to server
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const uploadRes = await fetch(`${API_URL}/api/upload`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+
+      if (!uploadRes.ok) throw new Error('File upload failed');
+      const uploadData = await uploadRes.json();
+      const fileUrl = uploadData.url || uploadData.secure_url || uploadData.data?.url;
+
+      if (!fileUrl) throw new Error('No URL returned from upload');
+
+      // Determine type
+      let label = '📎 File';
+      if (file.type.startsWith('image/')) label = '📷 Image';
+      else if (file.type.startsWith('video/')) label = '🎥 Video';
+      else if (file.type === 'text/vcard') label = '📇 Contact';
+
+      // Send message with URL
+      const messageText = `${label}: ${fileUrl}`;
+
+      const response = await fetch(`${API_URL}/api/messages`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          receiver: selectedConversation.userId,
+          message: messageText,
+          productId: null,
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to send file message');
+
+      const data = await response.json();
+      const newMessage = data.message || data.data || data;
+
+      if (!newMessage?._id) throw new Error('Invalid response');
+
+      setMessagesList((prev) => [newMessage, ...prev]);
+      setSelectedConversation((prev) => ({
+        ...prev,
+        messages: [newMessage, ...prev.messages],
+      }));
+    } catch (error) {
+      console.error('❌ File attachment error:', error);
+      alert(error?.message || 'Failed to send file.');
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -384,6 +523,16 @@ const Profile = () => {
       })
       .sort((a, b) => new Date(b.last?.createdAt || 0) - new Date(a.last?.createdAt || 0));
   };
+
+  // ================================================================
+  // CLEANUP POLLING ON UNMOUNT
+  // ================================================================
+
+  useEffect(() => {
+    return () => {
+      if (pollInterval.current) clearInterval(pollInterval.current);
+    };
+  }, []);
 
   // ================================================================
   // NOT LOGGED IN
@@ -664,7 +813,10 @@ const Profile = () => {
                       : first.receiver?.name || 'User';
                   })()}
                 </strong>
-                <button onClick={() => setSelectedConversation(null)} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer' }}>
+                <button onClick={() => {
+                  setSelectedConversation(null);
+                  if (pollInterval.current) clearInterval(pollInterval.current);
+                }} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer' }}>
                   &times;
                 </button>
               </div>
@@ -697,30 +849,73 @@ const Profile = () => {
                   })}
               </div>
 
-              <form onSubmit={handleSendReply} style={{ display: 'flex', gap: '8px', padding: '12px', borderTop: '1px solid var(--gray-200)' }}>
-                <input
-                  type="text"
-                  value={replyMessage}
-                  onChange={(e) => setReplyMessage(e.target.value)}
-                  placeholder="Type a reply..."
-                  style={{ flex: 1, padding: '8px 14px', border: '1.5px solid var(--gray-200)', borderRadius: 'var(--radius-md)', fontSize: '14px' }}
-                />
-                <button
-                  type="submit"
-                  disabled={sendingReply}
-                  style={{
-                    padding: '8px 20px',
-                    background: 'var(--secondary)',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: 'var(--radius-full)',
-                    fontWeight: 600,
-                    cursor: sendingReply ? 'not-allowed' : 'pointer',
-                    opacity: sendingReply ? 0.7 : 1,
-                  }}
-                >
-                  {sendingReply ? 'Sending...' : 'Reply'}
-                </button>
+              <form onSubmit={handleSendReply} style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '12px', borderTop: '1px solid var(--gray-200)' }}>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <input
+                    type="text"
+                    value={replyMessage}
+                    onChange={(e) => setReplyMessage(e.target.value)}
+                    placeholder="Type a reply..."
+                    style={{ flex: 1, padding: '8px 14px', border: '1.5px solid var(--gray-200)', borderRadius: 'var(--radius-md)', fontSize: '14px' }}
+                  />
+                  <button
+                    type="submit"
+                    disabled={sendingReply || uploading}
+                    style={{
+                      padding: '8px 20px',
+                      background: 'var(--secondary)',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: 'var(--radius-full)',
+                      fontWeight: 600,
+                      cursor: (sendingReply || uploading) ? 'not-allowed' : 'pointer',
+                      opacity: (sendingReply || uploading) ? 0.7 : 1,
+                    }}
+                  >
+                    {sendingReply ? 'Sending...' : 'Reply'}
+                  </button>
+                </div>
+
+                {/* Attachment buttons */}
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  <label style={{ cursor: 'pointer', background: '#f1f5f9', padding: '6px 12px', borderRadius: 'var(--radius-sm)', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <i className="fas fa-image"></i> Image
+                    <input
+                      type="file"
+                      accept="image/*"
+                      style={{ display: 'none' }}
+                      onChange={(e) => {
+                        if (e.target.files?.[0]) handleFileAttachment(e.target.files[0]);
+                        e.target.value = '';
+                      }}
+                    />
+                  </label>
+                  <label style={{ cursor: 'pointer', background: '#f1f5f9', padding: '6px 12px', borderRadius: 'var(--radius-sm)', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <i className="fas fa-video"></i> Video
+                    <input
+                      type="file"
+                      accept="video/*"
+                      style={{ display: 'none' }}
+                      onChange={(e) => {
+                        if (e.target.files?.[0]) handleFileAttachment(e.target.files[0]);
+                        e.target.value = '';
+                      }}
+                    />
+                  </label>
+                  <label style={{ cursor: 'pointer', background: '#f1f5f9', padding: '6px 12px', borderRadius: 'var(--radius-sm)', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <i className="fas fa-address-card"></i> Contact
+                    <input
+                      type="file"
+                      accept=".vcf,.vcard"
+                      style={{ display: 'none' }}
+                      onChange={(e) => {
+                        if (e.target.files?.[0]) handleFileAttachment(e.target.files[0]);
+                        e.target.value = '';
+                      }}
+                    />
+                  </label>
+                  {uploading && <span style={{ fontSize: '13px', color: 'var(--gray-500)' }}>Uploading...</span>}
+                </div>
               </form>
             </div>
           ) : (
