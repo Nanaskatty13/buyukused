@@ -4,7 +4,14 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 
 // ============================================================
-// AUTHENTICATE USER
+// AUTHENTICATE
+// ============================================================
+//
+// Verifies the JWT and loads the current user.
+//
+// This middleware does NOT decide whether the user is a
+// buyer, seller, rider, or admin.
+//
 // ============================================================
 
 const authenticate = async (
@@ -13,261 +20,258 @@ const authenticate = async (
   next
 ) => {
   try {
-    // ----------------------------------------------------------
-    // JWT configuration
-    // ----------------------------------------------------------
-
-    if (!process.env.JWT_SECRET) {
-      console.error(
-        "❌ JWT_SECRET is not configured"
-      );
-
-      return res.status(500).json({
-        success: false,
-        message:
-          "Server authentication is not configured",
-      });
-    }
-
-    // ----------------------------------------------------------
-    // Authorization header
-    // ----------------------------------------------------------
-
     const authHeader =
-      req.headers.authorization || "";
+      req.headers.authorization;
 
     if (
+      !authHeader ||
       !authHeader.startsWith("Bearer ")
     ) {
       return res.status(401).json({
         success: false,
         message:
-          "Authentication required",
+          "Authentication required. Please log in.",
       });
     }
 
-    // ----------------------------------------------------------
-    // Token
-    // ----------------------------------------------------------
-
     const token =
-      authHeader
-        .substring(7)
-        .trim();
+      authHeader.substring(7).trim();
 
     if (!token) {
       return res.status(401).json({
         success: false,
         message:
-          "Authentication token missing",
+          "Authentication token is missing.",
       });
     }
 
-    // ----------------------------------------------------------
-    // Verify JWT
-    // ----------------------------------------------------------
+    if (!process.env.JWT_SECRET) {
+      console.error(
+        "❌ JWT_SECRET is not configured."
+      );
 
-    const decoded =
-      jwt.verify(
+      return res.status(500).json({
+        success: false,
+        message:
+          "Server authentication configuration error.",
+      });
+    }
+
+    let decoded;
+
+    try {
+      decoded = jwt.verify(
         token,
         process.env.JWT_SECRET
       );
+    } catch (error) {
+      console.error(
+        "❌ JWT verification failed:",
+        error.message
+      );
 
-    const userId =
-      decoded.id ||
-      decoded._id ||
-      decoded.userId;
-
-    if (!userId) {
       return res.status(401).json({
         success: false,
         message:
-          "Invalid token payload",
+          "Invalid or expired authentication token.",
       });
     }
 
-    // ----------------------------------------------------------
-    // Find user
-    // ----------------------------------------------------------
+    if (!decoded || !decoded.id) {
+      return res.status(401).json({
+        success: false,
+        message:
+          "Invalid authentication token.",
+      });
+    }
 
     const user =
-      await User.findById(userId)
-        .select("-password");
+      await User.findById(
+        decoded.id
+      ).select("-password");
 
     if (!user) {
       return res.status(401).json({
         success: false,
         message:
-          "User not found",
+          "User account no longer exists.",
       });
     }
-
-    // ----------------------------------------------------------
-    // Account status
-    // ----------------------------------------------------------
 
     if (user.isActive === false) {
       return res.status(403).json({
         success: false,
         message:
-          "Your account has been deactivated",
+          "Your account has been deactivated.",
       });
     }
 
-    // ----------------------------------------------------------
-    // Attach authentication data
-    // ----------------------------------------------------------
-
+    // Attach complete current user.
     req.user = user;
 
+    // Useful compatibility fields.
     req.userId =
       user._id.toString();
 
-    req.auth = decoded;
+    req.userRole =
+      user.role;
 
     next();
   } catch (error) {
     console.error(
-      "❌ Authentication error:",
-      error.message
+      "❌ Authentication middleware error:",
+      error
     );
 
-    if (
-      error.name ===
-      "TokenExpiredError"
-    ) {
-      return res.status(401).json({
-        success: false,
-        message:
-          "Authentication token has expired",
-      });
+    return res.status(500).json({
+      success: false,
+      message:
+        "Authentication error.",
+    });
+  }
+};
+
+// ============================================================
+// OPTIONAL AUTHENTICATION
+// ============================================================
+
+const optionalAuthenticate =
+  async (
+    req,
+    res,
+    next
+  ) => {
+    try {
+      const authHeader =
+        req.headers.authorization;
+
+      if (
+        !authHeader ||
+        !authHeader.startsWith(
+          "Bearer "
+        )
+      ) {
+        return next();
+      }
+
+      const token =
+        authHeader.substring(7).trim();
+
+      if (!token) {
+        return next();
+      }
+
+      const decoded =
+        jwt.verify(
+          token,
+          process.env.JWT_SECRET
+        );
+
+      if (!decoded?.id) {
+        return next();
+      }
+
+      const user =
+        await User.findById(
+          decoded.id
+        ).select("-password");
+
+      if (user) {
+        req.user = user;
+        req.userId =
+          user._id.toString();
+        req.userRole =
+          user.role;
+      }
+
+      next();
+    } catch (error) {
+      next();
     }
-
-    if (
-      error.name ===
-      "JsonWebTokenError"
-    ) {
-      return res.status(401).json({
-        success: false,
-        message:
-          "Invalid authentication token",
-      });
-    }
-
-    return res.status(401).json({
-      success: false,
-      message:
-        "Authentication failed",
-    });
-  }
-};
+  };
 
 // ============================================================
-// REQUIRE RIDER
+// ROLE CHECKER
 // ============================================================
 
-const requireRider = (
-  req,
-  res,
-  next
-) => {
-  if (
-    !req.user ||
-    req.user.role !== "rider"
-  ) {
-    return res.status(403).json({
-      success: false,
-      message:
-        "Rider access is required",
-    });
-  }
+const requireRoles =
+  (...roles) => {
+    return (
+      req,
+      res,
+      next
+    ) => {
+      if (!req.user) {
+        return res.status(401).json({
+          success: false,
+          message:
+            "Authentication required.",
+        });
+      }
 
-  next();
-};
+      if (
+        !roles.includes(
+          req.user.role
+        )
+      ) {
+        return res.status(403).json({
+          success: false,
+          message:
+            "You do not have permission to perform this action.",
+          requiredRoles: roles,
+          currentRole:
+            req.user.role,
+        });
+      }
 
-// ============================================================
-// REQUIRE CUSTOMER
-// ============================================================
-
-const requireCustomer = (
-  req,
-  res,
-  next
-) => {
-  if (
-    !req.user ||
-    ![
-      "buyer",
-      "seller",
-    ].includes(req.user.role)
-  ) {
-    return res.status(403).json({
-      success: false,
-      message:
-        "Buyer or seller access is required",
-    });
-  }
-
-  next();
-};
+      next();
+    };
+  };
 
 // ============================================================
-// REQUIRE ADMIN
+// CUSTOMER
+// ============================================================
+//
+// Buyers and sellers can act as delivery customers.
+//
+// This is intentional because a seller may need to book
+// delivery for an item they sold.
+//
 // ============================================================
 
-const requireAdmin = (
-  req,
-  res,
-  next
-) => {
-  if (
-    !req.user ||
-    req.user.role !== "admin"
-  ) {
-    return res.status(403).json({
-      success: false,
-      message:
-        "Admin access is required",
-    });
-  }
-
-  next();
-};
+const requireCustomer =
+  requireRoles(
+    "buyer",
+    "seller"
+  );
 
 // ============================================================
-// REQUIRE SELLER
+// RIDER
 // ============================================================
 
-const requireSeller = (
-  req,
-  res,
-  next
-) => {
-  if (
-    !req.user ||
-    ![
-      "seller",
-      "admin",
-    ].includes(req.user.role)
-  ) {
-    return res.status(403).json({
-      success: false,
-      message:
-        "Seller access is required",
-    });
-  }
-
-  next();
-};
+const requireRider =
+  requireRoles(
+    "rider"
+  );
 
 // ============================================================
-// EXPORTS
+// ADMIN
+// ============================================================
+
+const requireAdmin =
+  requireRoles(
+    "admin"
+  );
+
+// ============================================================
+// EXPORT
 // ============================================================
 
 module.exports = {
   authenticate,
-  requireRider,
+  optionalAuthenticate,
+  requireRoles,
   requireCustomer,
+  requireRider,
   requireAdmin,
-  requireSeller,
 };

@@ -9,43 +9,61 @@ const deliveryController = require("../controllers/deliveryController");
 const {
   authenticate,
   requireRider,
-  requireCustomer,
 } = require("../middleware/authMiddleware");
 
 // ============================================================
-// CUSTOMER ROUTES
+// AUTHENTICATED CUSTOMER / SELLER ACCESS
+// ============================================================
+//
+// Buyers and sellers are both allowed to create delivery
+// requests. A seller may need delivery after selling a product.
+//
+// Authentication is still required.
+//
 // ============================================================
 
 // ------------------------------------------------------------
-// Create delivery request
+// CREATE DELIVERY
 // POST /api/deliveries
 // ------------------------------------------------------------
 
 router.post(
   "/",
   authenticate,
-  requireCustomer,
   deliveryController.createDelivery
 );
 
 // ------------------------------------------------------------
-// Customer's delivery history
+// CUSTOMER DELIVERY HISTORY
 // GET /api/deliveries/customer
 // ------------------------------------------------------------
 
 router.get(
   "/customer",
   authenticate,
-  requireCustomer,
+  deliveryController.getCustomerDeliveries
+);
+
+// ------------------------------------------------------------
+// BACKWARD-COMPATIBILITY ALIAS
+// GET /api/deliveries/my
+//
+// For customers/sellers this returns their own deliveries.
+// Rider users should use the rider route below.
+// ------------------------------------------------------------
+
+router.get(
+  "/customer/my",
+  authenticate,
   deliveryController.getCustomerDeliveries
 );
 
 // ============================================================
-// RIDER ROUTES
+// RIDER-ONLY ROUTES
 // ============================================================
 
 // ------------------------------------------------------------
-// Available delivery requests
+// AVAILABLE DELIVERY REQUESTS
 // GET /api/deliveries/available
 // ------------------------------------------------------------
 
@@ -57,8 +75,13 @@ router.get(
 );
 
 // ------------------------------------------------------------
-// Rider's assigned deliveries
+// RIDER'S ASSIGNED DELIVERIES
 // GET /api/deliveries/my
+// ------------------------------------------------------------
+//
+// IMPORTANT:
+// This route is rider-only.
+//
 // ------------------------------------------------------------
 
 router.get(
@@ -69,7 +92,7 @@ router.get(
 );
 
 // ------------------------------------------------------------
-// Rider availability
+// RIDER AVAILABILITY
 // PATCH /api/deliveries/rider/availability
 // ------------------------------------------------------------
 
@@ -81,7 +104,7 @@ router.patch(
 );
 
 // ------------------------------------------------------------
-// Accept delivery
+// ACCEPT DELIVERY
 // PATCH /api/deliveries/:id/accept
 // ------------------------------------------------------------
 
@@ -93,7 +116,7 @@ router.patch(
 );
 
 // ------------------------------------------------------------
-// Update delivery status
+// UPDATE DELIVERY STATUS
 // PATCH /api/deliveries/:id/status
 // ------------------------------------------------------------
 
@@ -105,7 +128,7 @@ router.patch(
 );
 
 // ------------------------------------------------------------
-// Update rider location
+// UPDATE RIDER LOCATION
 // PATCH /api/deliveries/:id/location
 // ------------------------------------------------------------
 
@@ -117,11 +140,11 @@ router.patch(
 );
 
 // ============================================================
-// SHARED ROUTES
+// SHARED AUTHENTICATED ROUTES
 // ============================================================
 
 // ------------------------------------------------------------
-// Get specific delivery
+// GET SINGLE DELIVERY
 // GET /api/deliveries/:id
 // ------------------------------------------------------------
 
@@ -132,7 +155,7 @@ router.get(
 );
 
 // ------------------------------------------------------------
-// Cancel delivery
+// CANCEL DELIVERY
 // PATCH /api/deliveries/:id/cancel
 // ------------------------------------------------------------
 
@@ -141,5 +164,9 @@ router.patch(
   authenticate,
   deliveryController.cancelDelivery
 );
+
+// ============================================================
+// EXPORT
+// ============================================================
 
 module.exports = router;
