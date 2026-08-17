@@ -404,7 +404,6 @@ const Navbar = () => {
                 onMouseEnter={(e) => (e.currentTarget.style.background = '#e8f0fe')}
                 onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
               >
-                Log In
               </Link>
               <Link
                 to="/register"
@@ -422,7 +421,6 @@ const Navbar = () => {
                 onMouseEnter={(e) => (e.currentTarget.style.background = '#003f7a')}
                 onMouseLeave={(e) => (e.currentTarget.style.background = '#0055a5')}
               >
-                Sign Up
               </Link>
 
               {/* Mobile dropdown toggle – always visible */}
