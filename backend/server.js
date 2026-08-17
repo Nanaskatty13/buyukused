@@ -1,5 +1,3 @@
-// backend/server.js
-
 const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
@@ -380,6 +378,9 @@ const adminRoutes =
 const deliveryRoutes =
   require("./routes/deliveryRoutes");
 
+// ─── ADD THIS ───
+const uploadRoutes = require("./routes/upload");
+
 console.log(
   "✅ Routes loaded successfully"
 );
@@ -454,6 +455,19 @@ app.use(
 app.use(
   "/api/deliveries",
   deliveryRoutes
+);
+
+// ============================================================
+// UPLOAD – CORRECTLY MOUNTED AFTER `app` EXISTS
+// ============================================================
+
+app.use(
+  "/api/upload",
+  uploadRoutes
+);
+
+console.log(
+  "📤 Upload API mounted at: /api/upload"
 );
 
 // ============================================================
@@ -795,6 +809,10 @@ const start =
 
             console.log(
               "🚴 Delivery/Rider API: /api/deliveries"
+            );
+
+            console.log(
+              "📤 Upload API: /api/upload"
             );
           }
         );

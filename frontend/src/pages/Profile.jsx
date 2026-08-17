@@ -1,5 +1,5 @@
 // frontend/src/pages/Profile.jsx
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import '../styles/global.css';
@@ -43,15 +43,6 @@ const Profile = () => {
   const [editError, setEditError] = useState('');
   const [removePhoto, setRemovePhoto] = useState(false);
 
-  // Messaging
-  const [selectedConversation, setSelectedConversation] = useState(null);
-  const [replyMessage, setReplyMessage] = useState('');
-  const [sendingReply, setSendingReply] = useState(false);
-  const [uploading, setUploading] = useState(false);
-
-  // Polling ref
-  const pollInterval = useRef(null);
-
   // ================================================================
   // KEEP EDIT FIELDS IN SYNC WITH USER
   // ================================================================
@@ -67,7 +58,7 @@ const Profile = () => {
   }, [user]);
 
   // ================================================================
-  // LOAD PROFILE DATA – IMPROVED
+  // LOAD PROFILE DATA
   // ================================================================
 
   const loadUserData = useCallback(async () => {
@@ -170,7 +161,7 @@ const Profile = () => {
   }, [loadUserData]);
 
   // ================================================================
-  // DELETE PRODUCT
+  // DELETE PRODUCT (kept for potential future use)
   // ================================================================
 
   const handleDeleteProduct = async (productId) => {
@@ -274,265 +265,15 @@ const Profile = () => {
   };
 
   // ================================================================
-  // OPEN CONVERSATION
+  // NAVIGATION HELPERS (with fallback if route doesn't exist)
   // ================================================================
 
-  const openConversation = async (otherUserId) => {
-    if (!user?._id) return;
-    const currentUserId = user._id;
-
-    const conversationMessages = messagesList.filter((message) => {
-      const senderId = typeof message.sender === 'string' ? message.sender : message.sender?._id;
-      const receiverId = typeof message.receiver === 'string' ? message.receiver : message.receiver?._id;
-      return (
-        (senderId === otherUserId || receiverId === otherUserId) &&
-        (senderId === currentUserId || receiverId === currentUserId)
-      );
-    });
-
-    setSelectedConversation({ userId: otherUserId, messages: conversationMessages });
-
-    // Mark unread messages as read
-    const unread = conversationMessages.filter((msg) => {
-      const receiverId = typeof msg.receiver === 'string' ? msg.receiver : msg.receiver?._id;
-      return receiverId === currentUserId && !msg.read;
-    });
-
-    for (const msg of unread) {
-      try {
-        await messages.markRead(msg._id, token);
-        setMessagesList((prev) => prev.map((m) => (m._id === msg._id ? { ...m, read: true } : m)));
-        setSelectedConversation((prev) => ({
-          ...prev,
-          messages: prev.messages.map((m) => (m._id === msg._id ? { ...m, read: true } : m)),
-        }));
-        setStats((prev) => ({ ...prev, unreadMessages: Math.max(0, prev.unreadMessages - 1) }));
-      } catch (error) {
-        console.error('❌ Error marking message as read:', error);
-      }
-    }
-
-    // Start polling
-    startPolling(otherUserId);
+  const navigateTo = (path) => {
+    // You can add a check here if the route exists, but for now we just navigate.
+    // If the route doesn't exist, React Router will show a 404 – 
+    // you need to define these routes in your router.
+    navigate(path);
   };
-
-  // ================================================================
-  // POLLING – FETCH NEW MESSAGES
-  // ================================================================
-
-  const startPolling = (otherUserId) => {
-    // Clear any existing interval
-    if (pollInterval.current) clearInterval(pollInterval.current);
-
-    // Poll every 5 seconds
-    pollInterval.current = setInterval(async () => {
-      if (!selectedConversation || !user?._id) return;
-      try {
-        const response = await fetch(`${API_URL}/api/messages/${user._id}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!response.ok) return;
-        const data = await response.json();
-        if (data.success) {
-          // Filter messages for this conversation
-          const newMessages = data.messages.filter((msg) => {
-            const senderId = typeof msg.sender === 'string' ? msg.sender : msg.sender?._id;
-            const receiverId = typeof msg.receiver === 'string' ? msg.receiver : msg.receiver?._id;
-            return (
-              (senderId === otherUserId || receiverId === otherUserId) &&
-              (senderId === user._id || receiverId === user._id)
-            );
-          });
-          // Update messagesList and selectedConversation
-          setMessagesList((prev) => {
-            const existingIds = new Set(prev.map(m => m._id));
-            const newMessagesOnly = newMessages.filter(m => !existingIds.has(m._id));
-            return [...prev, ...newMessagesOnly];
-          });
-          setSelectedConversation((prev) => {
-            if (!prev) return prev;
-            const existingIds = new Set(prev.messages.map(m => m._id));
-            const newMessagesOnly = newMessages.filter(m => !existingIds.has(m._id));
-            return {
-              ...prev,
-              messages: [...prev.messages, ...newMessagesOnly],
-            };
-          });
-        }
-      } catch (error) {
-        console.error('Polling error:', error);
-      }
-    }, 5000);
-  };
-
-  // ================================================================
-  // SEND REPLY (TEXT) – FIXED
-  // ================================================================
-
-  const handleSendReply = async (event) => {
-    event.preventDefault();
-    if (!replyMessage.trim() || !selectedConversation?.userId || !token) return;
-
-    setSendingReply(true);
-    try {
-      const response = await fetch(`${API_URL}/api/messages`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          receiver: selectedConversation.userId,
-          message: replyMessage.trim(),
-          productId: null,
-        }),
-      });
-
-      if (!response.ok) {
-        let errorData = {};
-        try { errorData = await response.json(); } catch {}
-        throw new Error(errorData.message || `Failed to send reply (${response.status})`);
-      }
-
-      const data = await response.json();
-      const newMessage = data.message || data.data || data;
-
-      if (!newMessage?._id) throw new Error('Invalid response from server');
-
-      // Append to UI
-      setMessagesList((prev) => [newMessage, ...prev]);
-      setSelectedConversation((prev) => ({
-        ...prev,
-        messages: [newMessage, ...prev.messages],
-      }));
-      setReplyMessage('');
-    } catch (error) {
-      console.error('❌ Failed to send reply:', error);
-      alert(error?.message || 'Failed to send reply.');
-    } finally {
-      setSendingReply(false);
-    }
-  };
-
-  // ================================================================
-  // SEND FILE ATTACHMENT (image/video/contact)
-  // ================================================================
-
-  const handleFileAttachment = async (file) => {
-    if (!selectedConversation?.userId || !token) return;
-
-    setUploading(true);
-    try {
-      // Upload file to server
-      const formData = new FormData();
-      formData.append('file', file);
-
-      const uploadRes = await fetch(`${API_URL}/api/upload`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData,
-      });
-
-      if (!uploadRes.ok) throw new Error('File upload failed');
-      const uploadData = await uploadRes.json();
-      const fileUrl = uploadData.url || uploadData.secure_url || uploadData.data?.url;
-
-      if (!fileUrl) throw new Error('No URL returned from upload');
-
-      // Determine type
-      let label = '📎 File';
-      if (file.type.startsWith('image/')) label = '📷 Image';
-      else if (file.type.startsWith('video/')) label = '🎥 Video';
-      else if (file.type === 'text/vcard') label = '📇 Contact';
-
-      // Send message with URL
-      const messageText = `${label}: ${fileUrl}`;
-
-      const response = await fetch(`${API_URL}/api/messages`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          receiver: selectedConversation.userId,
-          message: messageText,
-          productId: null,
-        }),
-      });
-
-      if (!response.ok) throw new Error('Failed to send file message');
-
-      const data = await response.json();
-      const newMessage = data.message || data.data || data;
-
-      if (!newMessage?._id) throw new Error('Invalid response');
-
-      setMessagesList((prev) => [newMessage, ...prev]);
-      setSelectedConversation((prev) => ({
-        ...prev,
-        messages: [newMessage, ...prev.messages],
-      }));
-    } catch (error) {
-      console.error('❌ File attachment error:', error);
-      alert(error?.message || 'Failed to send file.');
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  // ================================================================
-  // GET CONVERSATIONS
-  // ================================================================
-
-  const getConversations = () => {
-    if (!user?._id) return [];
-    const currentUserId = user._id;
-    const partners = new Set();
-
-    messagesList.forEach((message) => {
-      const senderId = typeof message.sender === 'string' ? message.sender : message.sender?._id;
-      const receiverId = typeof message.receiver === 'string' ? message.receiver : message.receiver?._id;
-      if (senderId === currentUserId && receiverId) partners.add(receiverId);
-      if (receiverId === currentUserId && senderId) partners.add(senderId);
-    });
-
-    return Array.from(partners)
-      .map((partnerId) => {
-        const conversationMessages = messagesList.filter((msg) => {
-          const s = typeof msg.sender === 'string' ? msg.sender : msg.sender?._id;
-          const r = typeof msg.receiver === 'string' ? msg.receiver : msg.receiver?._id;
-          return (s === partnerId || r === partnerId) && (s === currentUserId || r === currentUserId);
-        });
-        const sorted = [...conversationMessages].sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
-        const last = sorted[0] || null;
-        const unread = conversationMessages.filter((msg) => {
-          const r = typeof msg.receiver === 'string' ? msg.receiver : msg.receiver?._id;
-          return r === currentUserId && !msg.read;
-        }).length;
-
-        let partner = null;
-        for (const msg of sorted) {
-          const s = typeof msg.sender === 'string' ? msg.sender : msg.sender?._id;
-          const r = typeof msg.receiver === 'string' ? msg.receiver : msg.receiver?._id;
-          if (s === partnerId) { partner = msg.sender; break; }
-          if (r === partnerId) { partner = msg.receiver; break; }
-        }
-
-        return { userId: partnerId, partner, last, unread };
-      })
-      .sort((a, b) => new Date(b.last?.createdAt || 0) - new Date(a.last?.createdAt || 0));
-  };
-
-  // ================================================================
-  // CLEANUP POLLING ON UNMOUNT
-  // ================================================================
-
-  useEffect(() => {
-    return () => {
-      if (pollInterval.current) clearInterval(pollInterval.current);
-    };
-  }, []);
 
   // ================================================================
   // NOT LOGGED IN
@@ -651,310 +392,105 @@ const Profile = () => {
         </div>
       </div>
 
-      {/* Stats */}
+      {/* ─── STATS CARDS – CLICKABLE ─── */}
       <div
         style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
           gap: '16px',
-          marginBottom: '24px',
         }}
       >
-        <div style={{ background: 'white', padding: '16px 20px', borderRadius: 'var(--radius-md)', border: '1px solid var(--gray-200)', textAlign: 'center' }}>
+        {/* TOTAL ADS */}
+        <div
+          onClick={() => navigateTo('/my-ads')}
+          style={{
+            background: 'white',
+            padding: '16px 20px',
+            borderRadius: 'var(--radius-md)',
+            border: '1px solid var(--gray-200)',
+            textAlign: 'center',
+            cursor: 'pointer',
+            transition: 'background 0.2s, transform 0.1s',
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.background = 'var(--gray-50)'}
+          onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+          onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.98)'}
+          onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
+        >
           <div style={{ fontSize: '28px', fontWeight: 800, color: 'var(--primary)' }}>{stats.totalAds}</div>
-          <div style={{ fontSize: '13px', color: 'var(--gray-500)' }}>Total Ads</div>
+          <div style={{ fontSize: '13px', color: 'var(--gray-500)' }}>TOTAL ADS</div>
         </div>
-        <div style={{ background: 'white', padding: '16px 20px', borderRadius: 'var(--radius-md)', border: '1px solid var(--gray-200)', textAlign: 'center' }}>
+
+        {/* TOTAL VIEWS */}
+        <div
+          onClick={() => navigateTo('/analytics')}
+          style={{
+            background: 'white',
+            padding: '16px 20px',
+            borderRadius: 'var(--radius-md)',
+            border: '1px solid var(--gray-200)',
+            textAlign: 'center',
+            cursor: 'pointer',
+            transition: 'background 0.2s, transform 0.1s',
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.background = 'var(--gray-50)'}
+          onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+          onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.98)'}
+          onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
+        >
           <div style={{ fontSize: '28px', fontWeight: 800, color: '#8b5cf6' }}>{stats.totalViews}</div>
-          <div style={{ fontSize: '13px', color: 'var(--gray-500)' }}>Total Views</div>
+          <div style={{ fontSize: '13px', color: 'var(--gray-500)' }}>TOTAL VIEWS</div>
         </div>
-        <div style={{ background: 'white', padding: '16px 20px', borderRadius: 'var(--radius-md)', border: '1px solid var(--gray-200)', textAlign: 'center' }}>
+
+        {/* NOTIFICATIONS */}
+        <div
+          onClick={() => navigateTo('/notifications')}
+          style={{
+            background: 'white',
+            padding: '16px 20px',
+            borderRadius: 'var(--radius-md)',
+            border: '1px solid var(--gray-200)',
+            textAlign: 'center',
+            cursor: 'pointer',
+            transition: 'background 0.2s, transform 0.1s',
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.background = 'var(--gray-50)'}
+          onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+          onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.98)'}
+          onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
+        >
           <div style={{ fontSize: '28px', fontWeight: 800, color: '#f59e0b' }}>{stats.totalNotifications}</div>
-          <div style={{ fontSize: '13px', color: 'var(--gray-500)' }}>Notifications</div>
+          <div style={{ fontSize: '13px', color: 'var(--gray-500)' }}>NOTIFICATIONS</div>
           {stats.unreadNotifications > 0 && (
             <span style={{ background: '#e74c3c', color: 'white', fontSize: '11px', padding: '1px 10px', borderRadius: 'var(--radius-full)', display: 'inline-block', marginTop: '4px' }}>
               {stats.unreadNotifications} unread
             </span>
           )}
         </div>
-        <div style={{ background: 'white', padding: '16px 20px', borderRadius: 'var(--radius-md)', border: '1px solid var(--gray-200)', textAlign: 'center' }}>
+
+        {/* MESSAGES */}
+        <div
+          onClick={() => navigateTo('/messages')}
+          style={{
+            background: 'white',
+            padding: '16px 20px',
+            borderRadius: 'var(--radius-md)',
+            border: '1px solid var(--gray-200)',
+            textAlign: 'center',
+            cursor: 'pointer',
+            transition: 'background 0.2s, transform 0.1s',
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.background = 'var(--gray-50)'}
+          onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+          onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.98)'}
+          onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
+        >
           <div style={{ fontSize: '28px', fontWeight: 800, color: '#0ea5e9' }}>{messagesList.length}</div>
-          <div style={{ fontSize: '13px', color: 'var(--gray-500)' }}>Messages</div>
+          <div style={{ fontSize: '13px', color: 'var(--gray-500)' }}>MESSAGES</div>
           {stats.unreadMessages > 0 && (
             <span style={{ background: '#e74c3c', color: 'white', fontSize: '11px', padding: '1px 10px', borderRadius: 'var(--radius-full)', display: 'inline-block', marginTop: '4px' }}>
               {stats.unreadMessages} unread
             </span>
-          )}
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(300px, 1fr)', gap: '24px' }}>
-        {/* My Ads */}
-        <div>
-          <h2 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <i className="fas fa-box" style={{ color: 'var(--primary)' }}></i> My Ads
-            <span style={{ fontSize: '13px', color: 'var(--gray-500)', fontWeight: 400 }}>({stats.totalAds})</span>
-          </h2>
-
-          {loading ? (
-            <p>Loading...</p>
-          ) : products.length === 0 ? (
-            <div style={{ background: 'white', padding: '40px', borderRadius: 'var(--radius-md)', border: '1px solid var(--gray-200)', textAlign: 'center' }}>
-              <p style={{ color: 'var(--gray-500)' }}>You haven't posted any ads yet.</p>
-              <Link to="/post-ad" className="btn-primary" style={{ display: 'inline-block', marginTop: '12px' }}>
-                Post Your First Ad
-              </Link>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {products.map((product) => {
-                const imageUrl = product.images?.length > 0 ? getImageUrl(product.images[0]) : null;
-                return (
-                  <div
-                    key={product._id}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '16px',
-                      padding: '12px 16px',
-                      background: 'white',
-                      borderRadius: 'var(--radius-md)',
-                      border: '1px solid var(--gray-200)',
-                      transition: 'var(--transition)',
-                      position: 'relative',
-                      flexWrap: 'wrap',
-                    }}
-                  >
-                    {imageUrl && (
-                      <div style={{ width: '60px', height: '60px', flexShrink: 0, borderRadius: 'var(--radius-sm)', overflow: 'hidden' }}>
-                        <img src={imageUrl} alt={product.title || 'Product'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                      </div>
-                    )}
-                    <div style={{ flex: 1, minWidth: '150px' }}>
-                      <div style={{ fontWeight: 600, color: 'var(--gray-800)' }}>
-                        <Link to={`/product/${product._id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                          {product.title}
-                        </Link>
-                      </div>
-                      <div style={{ fontSize: '13px', color: 'var(--gray-500)' }}>
-                        {product.category} • {product.location} • <i className="fas fa-eye"></i> {product.views || 0}
-                      </div>
-                    </div>
-                    <div style={{ fontWeight: 700, color: 'var(--primary)' }}>₵{Number(product.price || 0).toLocaleString()}</div>
-                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                      <button
-                        onClick={() => navigate(`/edit-product/${product._id}`)}
-                        style={{
-                          padding: '6px 12px',
-                          background: 'var(--primary)',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: 'var(--radius-sm)',
-                          cursor: 'pointer',
-                          fontSize: '13px',
-                          fontWeight: 600,
-                        }}
-                      >
-                        <i className="fas fa-pen"></i> Edit
-                      </button>
-                      <button
-                        onClick={() => handleDeleteProduct(product._id)}
-                        disabled={deletingProductId === product._id}
-                        style={{
-                          padding: '6px 12px',
-                          background: '#dc2626',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: 'var(--radius-sm)',
-                          cursor: deletingProductId === product._id ? 'not-allowed' : 'pointer',
-                          fontSize: '13px',
-                          fontWeight: 600,
-                          opacity: deletingProductId === product._id ? 0.6 : 1,
-                        }}
-                      >
-                        {deletingProductId === product._id ? 'Deleting...' : <><i className="fas fa-trash"></i> Delete</>}
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* Messages */}
-        <div>
-          <h2 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <i className="fas fa-envelope" style={{ color: 'var(--primary)' }}></i> Messages
-            {stats.unreadMessages > 0 && (
-              <span style={{ background: '#e74c3c', color: 'white', fontSize: '11px', padding: '1px 10px', borderRadius: 'var(--radius-full)', fontWeight: 600 }}>
-                {stats.unreadMessages} new
-              </span>
-            )}
-          </h2>
-
-          {loading ? (
-            <p>Loading...</p>
-          ) : messagesList.length === 0 ? (
-            <div style={{ background: 'white', padding: '30px', borderRadius: 'var(--radius-md)', border: '1px solid var(--gray-200)', textAlign: 'center' }}>
-              <p style={{ color: 'var(--gray-500)' }}>No messages yet.</p>
-            </div>
-          ) : selectedConversation ? (
-            <div style={{ background: 'white', borderRadius: 'var(--radius-md)', border: '1px solid var(--gray-200)', overflow: 'hidden' }}>
-              <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--gray-200)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <strong>
-                  {(() => {
-                    const first = selectedConversation.messages[0];
-                    if (!first) return 'User';
-                    const senderId = typeof first.sender === 'string' ? first.sender : first.sender?._id;
-                    return senderId === selectedConversation.userId
-                      ? first.sender?.name || 'User'
-                      : first.receiver?.name || 'User';
-                  })()}
-                </strong>
-                <button onClick={() => {
-                  setSelectedConversation(null);
-                  if (pollInterval.current) clearInterval(pollInterval.current);
-                }} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer' }}>
-                  &times;
-                </button>
-              </div>
-
-              <div style={{ maxHeight: '300px', overflowY: 'auto', padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {[...selectedConversation.messages]
-                  .sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0))
-                  .map((message) => {
-                    const senderId = typeof message.sender === 'string' ? message.sender : message.sender?._id;
-                    const isMine = senderId === user._id;
-                    return (
-                      <div
-                        key={message._id}
-                        style={{
-                          alignSelf: isMine ? 'flex-end' : 'flex-start',
-                          maxWidth: '80%',
-                          background: isMine ? 'var(--primary)' : 'var(--gray-100)',
-                          color: isMine ? 'white' : 'var(--gray-800)',
-                          padding: '8px 14px',
-                          borderRadius: 'var(--radius-md)',
-                          fontSize: '14px',
-                        }}
-                      >
-                        {message.message}
-                        <div style={{ fontSize: '10px', opacity: 0.7, marginTop: '4px' }}>
-                          {message.createdAt ? new Date(message.createdAt).toLocaleTimeString() : ''}
-                        </div>
-                      </div>
-                    );
-                  })}
-              </div>
-
-              <form onSubmit={handleSendReply} style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '12px', borderTop: '1px solid var(--gray-200)' }}>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <input
-                    type="text"
-                    value={replyMessage}
-                    onChange={(e) => setReplyMessage(e.target.value)}
-                    placeholder="Type a reply..."
-                    style={{ flex: 1, padding: '8px 14px', border: '1.5px solid var(--gray-200)', borderRadius: 'var(--radius-md)', fontSize: '14px' }}
-                  />
-                  <button
-                    type="submit"
-                    disabled={sendingReply || uploading}
-                    style={{
-                      padding: '8px 20px',
-                      background: 'var(--secondary)',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: 'var(--radius-full)',
-                      fontWeight: 600,
-                      cursor: (sendingReply || uploading) ? 'not-allowed' : 'pointer',
-                      opacity: (sendingReply || uploading) ? 0.7 : 1,
-                    }}
-                  >
-                    {sendingReply ? 'Sending...' : 'Reply'}
-                  </button>
-                </div>
-
-                {/* Attachment buttons */}
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                  <label style={{ cursor: 'pointer', background: '#f1f5f9', padding: '6px 12px', borderRadius: 'var(--radius-sm)', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <i className="fas fa-image"></i> Image
-                    <input
-                      type="file"
-                      accept="image/*"
-                      style={{ display: 'none' }}
-                      onChange={(e) => {
-                        if (e.target.files?.[0]) handleFileAttachment(e.target.files[0]);
-                        e.target.value = '';
-                      }}
-                    />
-                  </label>
-                  <label style={{ cursor: 'pointer', background: '#f1f5f9', padding: '6px 12px', borderRadius: 'var(--radius-sm)', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <i className="fas fa-video"></i> Video
-                    <input
-                      type="file"
-                      accept="video/*"
-                      style={{ display: 'none' }}
-                      onChange={(e) => {
-                        if (e.target.files?.[0]) handleFileAttachment(e.target.files[0]);
-                        e.target.value = '';
-                      }}
-                    />
-                  </label>
-                  <label style={{ cursor: 'pointer', background: '#f1f5f9', padding: '6px 12px', borderRadius: 'var(--radius-sm)', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <i className="fas fa-address-card"></i> Contact
-                    <input
-                      type="file"
-                      accept=".vcf,.vcard"
-                      style={{ display: 'none' }}
-                      onChange={(e) => {
-                        if (e.target.files?.[0]) handleFileAttachment(e.target.files[0]);
-                        e.target.value = '';
-                      }}
-                    />
-                  </label>
-                  {uploading && <span style={{ fontSize: '13px', color: 'var(--gray-500)' }}>Uploading...</span>}
-                </div>
-              </form>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {getConversations().map((conversation) => (
-                <div
-                  key={conversation.userId}
-                  onClick={() => openConversation(conversation.userId)}
-                  style={{
-                    background: 'white',
-                    padding: '12px 16px',
-                    borderRadius: 'var(--radius-md)',
-                    border: '1px solid var(--gray-200)',
-                    cursor: 'pointer',
-                    transition: 'var(--transition)',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                  }}
-                >
-                  <div>
-                    <div style={{ fontWeight: 600 }}>
-                      {conversation.partner?.name || 'User'}
-                      {conversation.unread > 0 && (
-                        <span style={{ background: '#e74c3c', color: 'white', fontSize: '10px', padding: '1px 8px', borderRadius: 'var(--radius-full)', marginLeft: '8px' }}>
-                          {conversation.unread}
-                        </span>
-                      )}
-                    </div>
-                    <div style={{ fontSize: '13px', color: 'var(--gray-500)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '150px' }}>
-                      {conversation.last?.message || 'No messages'}
-                    </div>
-                  </div>
-                  <div style={{ fontSize: '11px', color: 'var(--gray-400)' }}>
-                    {conversation.last?.createdAt ? new Date(conversation.last.createdAt).toLocaleDateString() : ''}
-                  </div>
-                </div>
-              ))}
-            </div>
           )}
         </div>
       </div>

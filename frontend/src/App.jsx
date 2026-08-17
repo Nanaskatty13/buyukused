@@ -1,5 +1,4 @@
 // frontend/src/App.jsx
-
 import React from "react";
 import { Routes, Route } from "react-router-dom";
 
@@ -69,6 +68,15 @@ import BookRider from "./pages/BookRider";
 import RiderDashboard from "./pages/RiderDashboard";
 
 // ============================================================
+// NEW PAGES FOR STATS CARDS
+// ============================================================
+
+import MyAds from "./pages/MyAds";
+import Notifications from "./pages/Notifications";
+import Messages from "./pages/Messages";
+import Analytics from "./pages/Analytics";
+
+// ============================================================
 // APP
 // ============================================================
 
@@ -79,189 +87,84 @@ function App() {
         <Navbar />
 
         <Routes>
-
           {/* ==================================================
               PUBLIC
           ================================================== */}
 
-          <Route
-            path="/"
-            element={<Home />}
-          />
-
-          <Route
-            path="/login"
-            element={<Login />}
-          />
-
-          <Route
-            path="/register"
-            element={<Register />}
-          />
-
-          <Route
-            path="/forgot-password"
-            element={<ForgotPassword />}
-          />
-
-          <Route
-            path="/reset-password/:token"
-            element={<ResetPassword />}
-          />
+          <Route path="/" element={<Home />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password/:token" element={<ResetPassword />} />
 
           {/* ==================================================
               PRODUCTS
           ================================================== */}
 
-          <Route
-            path="/products"
-            element={<Products />}
-          />
-
-          <Route
-            path="/product/:id"
-            element={<ProductDetails />}
-          />
-
-          <Route
-            path="/profile"
-            element={<Profile />}
-          />
-
-          <Route
-            path="/wishlist"
-            element={<Wishlist />}
-          />
-
-          <Route
-            path="/cart"
-            element={<Cart />}
-          />
+          <Route path="/products" element={<Products />} />
+          <Route path="/product/:id" element={<ProductDetails />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/wishlist" element={<Wishlist />} />
+          <Route path="/cart" element={<Cart />} />
 
           {/* ==================================================
               SEARCH
           ================================================== */}
 
-          <Route
-            path="/search-results"
-            element={<SearchResultsPage />}
-          />
+          <Route path="/search-results" element={<SearchResultsPage />} />
 
           {/* ==================================================
               INFORMATION
           ================================================== */}
 
-          <Route
-            path="/about"
-            element={<About />}
-          />
-
-          <Route
-            path="/how-it-works"
-            element={<HowItWorks />}
-          />
-
-          <Route
-            path="/contact"
-            element={<Contact />}
-          />
-
-          <Route
-            path="/for-sellers"
-            element={<Buyers />}
-          />
-
-          <Route
-            path="/for-sellers/pricing"
-            element={<Pricing />}
-          />
-
-          <Route
-            path="/for-sellers/tips"
-            element={<Tips />}
-          />
-
-          <Route
-            path="/for-buyers"
-            element={<Buyers />}
-          />
-
-          <Route
-            path="/for-buyers/safety-tips"
-            element={<SafetyTips />}
-          />
-
-          <Route
-            path="/for-buyers/report-ad"
-            element={<ReportAd />}
-          />
-
-          <Route
-            path="/support"
-            element={<Support />}
-          />
-
-          <Route
-            path="/legal/terms"
-            element={<Terms />}
-          />
-
-          <Route
-            path="/legal/privacy"
-            element={<Privacy />}
-          />
-
-          <Route
-            path="/legal/cookies"
-            element={<Cookies />}
-          />
-
-          <Route
-            path="/info"
-            element={<InfoPage />}
-          />
+          <Route path="/about" element={<About />} />
+          <Route path="/how-it-works" element={<HowItWorks />} />
+          <Route path="/contact" element={<Contact />} />
+          <Route path="/for-sellers" element={<Buyers />} />
+          <Route path="/for-sellers/pricing" element={<Pricing />} />
+          <Route path="/for-sellers/tips" element={<Tips />} />
+          <Route path="/for-buyers" element={<Buyers />} />
+          <Route path="/for-buyers/safety-tips" element={<SafetyTips />} />
+          <Route path="/for-buyers/report-ad" element={<ReportAd />} />
+          <Route path="/support" element={<Support />} />
+          <Route path="/legal/terms" element={<Terms />} />
+          <Route path="/legal/privacy" element={<Privacy />} />
+          <Route path="/legal/cookies" element={<Cookies />} />
+          <Route path="/info" element={<InfoPage />} />
 
           {/* ==================================================
               SELLER
           ================================================== */}
 
-          <Route
-            path="/post-ad"
-            element={<PostAd />}
-          />
-
-          <Route
-            path="/edit-product/:id"
-            element={<EditProduct />}
-          />
+          <Route path="/post-ad" element={<PostAd />} />
+          <Route path="/edit-product/:id" element={<EditProduct />} />
 
           {/* ==================================================
               DELIVERY / BOOK A RIDER
           ================================================== */}
 
-          <Route
-            path="/book-rider"
-            element={<BookRider />}
-          />
+          <Route path="/book-rider" element={<BookRider />} />
 
           {/* ==================================================
               RIDER DASHBOARD
           ================================================== */}
 
-          <Route
-            path="/rider/dashboard"
-            element={<RiderDashboard />}
-          />
+          <Route path="/rider/dashboard" element={<RiderDashboard />} />
 
           {/* ==================================================
               ADMIN
           ================================================== */}
 
-          <Route
-            path="/admin"
-            element={<AdminDashboard />}
-          />
+          <Route path="/admin" element={<AdminDashboard />} />
 
+          {/* ==================================================
+              STATS PAGES (NEW)
+          ================================================== */}
+
+          <Route path="/my-ads" element={<MyAds />} />
+          <Route path="/analytics" element={<Analytics />} />
+          <Route path="/notifications" element={<Notifications />} />
+          <Route path="/messages" element={<Messages />} />
         </Routes>
 
         <FloatingPhone />
