@@ -1,7 +1,31 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { messages } from '../services/messages';
-import { API_URL, getImageUrl } from '../services/api';
+import { API_URL } from '../services/api';
+
+// ─── Helpers for image messages ──────────────────────────────────
+
+const isImageMessage = (text) => {
+  if (!text) return false;
+  const imagePatterns = [
+    /^📷 Image:/,
+    /^🎥 Video:/,
+    /\.(jpg|jpeg|png|gif|webp|svg|bmp|ico)/i,
+    /^https?:\/\/.*\.(jpg|jpeg|png|gif|webp|svg|bmp|ico)/i,
+    /res\.cloudinary\.com\/.*image\/upload/,
+  ];
+  return imagePatterns.some(pattern => pattern.test(text));
+};
+
+const extractImageUrl = (text) => {
+  const match = text.match(/^(?:📷 Image|🎥 Video):\s*(.+)/);
+  if (match) return match[1].trim();
+  const urlMatch = text.match(/https?:\/\/[^\s]+/);
+  if (urlMatch) return urlMatch[0];
+  return null;
+};
+
+// ─── Component ──────────────────────────────────────────────────
 
 const Messages = () => {
   const { user, token } = useAuth();
@@ -11,6 +35,7 @@ const Messages = () => {
   const [replyMessage, setReplyMessage] = useState('');
   const [sendingReply, setSendingReply] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [viewingImage, setViewingImage] = useState(null);
   const pollInterval = useRef(null);
 
   useEffect(() => {
@@ -243,12 +268,56 @@ const Messages = () => {
             {[...selectedConversation.messages].sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0)).map(msg => {
               const s = typeof msg.sender === 'string' ? msg.sender : msg.sender?._id;
               const isMine = s === user._id;
+              const isImage = isImageMessage(msg.message);
+              const imageUrl = isImage ? extractImageUrl(msg.message) : null;
+
               return (
-                <div key={msg._id} style={{ alignSelf: isMine ? 'flex-end' : 'flex-start', maxWidth: '70%', background: isMine ? 'var(--primary)' : 'var(--gray-100)', color: isMine ? 'white' : 'var(--gray-800)', padding: '8px 14px', borderRadius: '12px', fontSize: '14px' }}>
-                  {msg.message}
-                  <div style={{ fontSize: '10px', opacity: 0.7, marginTop: '4px', textAlign: 'right' }}>
-                    {msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString() : ''}
-                  </div>
+                <div
+                  key={msg._id}
+                  style={{
+                    alignSelf: isMine ? 'flex-end' : 'flex-start',
+                    maxWidth: '70%',
+                    background: isMine ? 'var(--primary)' : 'var(--gray-100)',
+                    color: isMine ? 'white' : 'var(--gray-800)',
+                    padding: isImage ? '4px' : '8px 14px',
+                    borderRadius: '12px',
+                    borderBottomRightRadius: isMine ? '4px' : '12px',
+                    borderBottomLeftRadius: isMine ? '12px' : '4px',
+                    overflow: 'hidden',
+                  }}
+                >
+                  {isImage ? (
+                    <>
+                      <img
+                        src={imageUrl}
+                        alt="Shared image"
+                        style={{
+                          maxWidth: '100%',
+                          maxHeight: '300px',
+                          borderRadius: '8px',
+                          display: 'block',
+                          cursor: 'pointer',
+                        }}
+                        onClick={() => setViewingImage(imageUrl)}
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          const parent = e.currentTarget.parentElement;
+                          parent.style.padding = '8px 14px';
+                          parent.textContent = '📷 Image (failed to load)';
+                        }}
+                      />
+                      <div style={{ fontSize: '10px', opacity: 0.7, marginTop: '4px', textAlign: 'right' }}>
+                        {msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString() : ''}
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div>{msg.message}</div>
+                      <div style={{ fontSize: '10px', opacity: 0.7, marginTop: '4px', textAlign: 'right' }}>
+                        {msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString() : ''}
+                      </div>
+                    </>
+                  )}
                 </div>
               );
             })}
@@ -291,6 +360,36 @@ const Messages = () => {
               <div style={{ fontSize: '11px', color: 'var(--gray-400)' }}>{conv.last?.createdAt ? new Date(conv.last.createdAt).toLocaleDateString() : ''}</div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Lightbox */}
+      {viewingImage && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            background: 'rgba(0,0,0,0.9)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 10000,
+            cursor: 'pointer',
+          }}
+          onClick={() => setViewingImage(null)}
+        >
+          <img
+            src={viewingImage}
+            alt="Full screen"
+            style={{
+              maxWidth: '90%',
+              maxHeight: '90%',
+              objectFit: 'contain',
+            }}
+          />
         </div>
       )}
     </div>
