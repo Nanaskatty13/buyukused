@@ -7,13 +7,14 @@ import Loader from '../../components/Loader';
 const Products = () => {
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // Filter states
+  // Filter states – added simStatus
   const [filters, setFilters] = useState({
     category: searchParams.get('category') || '',
     location: searchParams.get('location') || '',
     search: searchParams.get('search') || '',
     minPrice: searchParams.get('minPrice') || '',
     maxPrice: searchParams.get('maxPrice') || '',
+    simStatus: searchParams.get('simStatus') || '',   // ✅ NEW
     page: parseInt(searchParams.get('page')) || 1,
     limit: 12,
   });
@@ -27,6 +28,9 @@ const Products = () => {
   // Available categories (hardcoded – can be fetched from API later)
   const categories = ['Phones', 'Laptops', 'Tablets', 'Electronics', 'Accessories', 'TV & Game Consoles', 'Other'];
   const locations = ['Ghana', 'Accra', 'Kumasi', 'Takoradi', 'Tamale', 'Tema', 'Cape Coast'];
+
+  // SIM status options
+  const simStatusOptions = ['eSIM Unlocked', 'SIM Unlocked', 'Locked', 'Bypass'];
 
   // Fetch products
   const fetchProducts = useCallback(async () => {
@@ -84,6 +88,7 @@ const Products = () => {
       search: '',
       minPrice: '',
       maxPrice: '',
+      simStatus: '',    // ✅ also cleared
       page: 1,
       limit: 12,
     });
@@ -163,6 +168,26 @@ const Products = () => {
               <option key={loc} value={loc}>{loc}</option>
             ))}
           </select>
+
+          {/* ✅ NEW: SIM Status filter */}
+          <select
+            name="simStatus"
+            value={filters.simStatus}
+            onChange={handleFilterChange}
+            style={{
+              padding: '10px 14px',
+              border: '1.5px solid var(--gray-200)',
+              borderRadius: 'var(--radius-md)',
+              fontSize: '14px',
+              background: 'white',
+            }}
+          >
+            <option value="">All SIM Status</option>
+            {simStatusOptions.map(status => (
+              <option key={status} value={status}>{status}</option>
+            ))}
+          </select>
+
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
             <input
               type="number"

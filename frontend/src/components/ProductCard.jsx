@@ -71,13 +71,13 @@ const ProductCard = ({ product, onStatusToggle, appleStyle = false, videoPreview
       if (product.model) specs.push({ icon: '📟', label: product.model });
       if (product.connectivity) specs.push({ icon: '📶', label: product.connectivity });
     }
-    // Phones (keep existing + additional)
+    // Phones – SIM STATUS INCLUDED HERE
     else if (category === 'Phones') {
       if (product.brand) specs.push({ icon: '🏷️', label: product.brand });
       if (product.model) specs.push({ icon: '📟', label: product.model });
       if (product.batteryHealth) specs.push({ icon: '🔋', label: `${product.batteryHealth}%` });
       if (product.faceId) specs.push({ icon: '😊', label: product.faceId });
-      if (product.simStatus) specs.push({ icon: '📶', label: product.simStatus });
+      if (product.simStatus) specs.push({ icon: '📶', label: product.simStatus }); // ✅ SIM status here
     }
 
     // Common: storage (if not already present via category)

@@ -99,7 +99,7 @@ const ProductDetails = () => {
     sellerPhone: "",
     batteryHealth: "",
     faceId: "",
-    simStatus: "",
+    simStatus: "",       // ✅ SIM status field
     negotiation: false,
     swapAccepted: false,
     warranty: "",
@@ -176,7 +176,7 @@ const ProductDetails = () => {
                 ? p.batteryHealth
                 : "",
             faceId: p.faceId || "",
-            simStatus: p.simStatus || "",
+            simStatus: p.simStatus || "",   // ✅ Set simStatus
             negotiation: Boolean(p.negotiation),
             swapAccepted: Boolean(p.swapAccepted),
             warranty: p.warranty || "",
@@ -995,7 +995,7 @@ const ProductDetails = () => {
     ];
 
     if (product.category === "Phones") {
-      fields.push(product.faceId, product.simStatus);
+      fields.push(product.faceId, product.simStatus);   // ✅ SIM status included
     }
 
     return fields.some(f => f);
@@ -1680,6 +1680,7 @@ const ProductDetails = () => {
                           {product.faceId}
                         </div>
                       )}
+                      {/* ✅ SIM Status displayed here */}
                       {product.simStatus && (
                         <div>
                           <strong>SIM Status:</strong>{" "}
