@@ -1,4 +1,6 @@
+// ============================================================
 // backend/models/Product.js
+// ============================================================
 
 const mongoose = require("mongoose");
 
@@ -136,7 +138,6 @@ const productSchema = new mongoose.Schema(
       trim: true,
     },
 
-    // ✅ NEW: Tablet-specific fields
     year: {
       type: String,
       default: "",
@@ -171,16 +172,19 @@ const productSchema = new mongoose.Schema(
     storage: {
       type: String,
       default: "",
+      trim: true,
     },
 
     ram: {
       type: String,
       default: "",
+      trim: true,
     },
 
     color: {
       type: String,
       default: "",
+      trim: true,
     },
 
     // ========================================================
@@ -256,7 +260,16 @@ const productSchema = new mongoose.Schema(
 
     simStatus: {
       type: String,
+      enum: [
+        "eSIM Unlocked",
+        "SIM Unlocked",
+        "Locked",
+        "Bypass",
+        "Not Available",
+        "",
+      ],
       default: "",
+      trim: true,
     },
 
     // ========================================================
@@ -267,6 +280,7 @@ const productSchema = new mongoose.Schema(
       type: String,
       unique: true,
       sparse: true,
+      trim: true,
     },
   },
 
@@ -321,12 +335,23 @@ productSchema.index({
   createdAt: -1,
 });
 
+productSchema.index({
+  simStatus: 1,
+});
+
+productSchema.index({
+  batteryHealth: 1,
+});
+
 // ============================================================
 // MODEL
 // ============================================================
 
 const Product =
   mongoose.models.Product ||
-  mongoose.model("Product", productSchema);
+  mongoose.model(
+    "Product",
+    productSchema
+  );
 
 module.exports = Product;

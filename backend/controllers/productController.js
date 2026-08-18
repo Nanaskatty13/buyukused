@@ -12,11 +12,6 @@ const cloudinaryConfig = require("../config/cloudinary");
 // CLOUDINARY
 // ============================================================
 
-// Supports either:
-// module.exports = cloudinary
-// OR
-// module.exports = { cloudinary }
-
 const cloudinary =
   cloudinaryConfig?.cloudinary ||
   cloudinaryConfig;
@@ -38,6 +33,9 @@ const VALID_STATUSES = [
 const VALID_CATEGORIES = [
   "Cars",
   "Phones",
+  "Laptops",
+  "Tablets",
+  "Accessories",
   "Real Estate",
   "Jobs",
   "Electronics",
@@ -62,6 +60,15 @@ const VALID_FACE_ID = [
   "",
 ];
 
+const VALID_SIM_STATUS = [
+  "eSIM Unlocked",
+  "SIM Unlocked",
+  "Locked",
+  "Bypass",
+  "Not Available",
+  "",
+];
+
 // ============================================================
 // HELPERS
 // ============================================================
@@ -80,7 +87,9 @@ const getUserRole = (req) => {
     req.user?.role ||
     req.userRole ||
     ""
-  ).toString().toLowerCase();
+  )
+    .toString()
+    .toLowerCase();
 };
 
 const isAdmin = (req) => {
@@ -111,8 +120,14 @@ const isOwnerOrAdmin = (product, req) => {
 // BOOLEAN PARSER
 // ============================================================
 
-const parseBoolean = (value, defaultValue = false) => {
-  if (value === undefined || value === null) {
+const parseBoolean = (
+  value,
+  defaultValue = false
+) => {
+  if (
+    value === undefined ||
+    value === null
+  ) {
     return defaultValue;
   }
 
@@ -141,6 +156,10 @@ const parseBoolean = (value, defaultValue = false) => {
     }
   }
 
+  if (typeof value === "number") {
+    return value === 1;
+  }
+
   return Boolean(value);
 };
 
@@ -162,6 +181,173 @@ const parseNumber = (value) => {
   return Number.isFinite(number)
     ? number
     : null;
+};
+
+// ============================================================
+// SIM STATUS NORMALIZER
+//
+// This is intentionally strict so the frontend receives
+// exactly the same values stored in MongoDB.
+// ============================================================
+
+const normalizeSimStatus = (value) => {
+  if (
+    value === undefined ||
+    value === null
+  ) {
+    return "";
+  }
+
+  const normalized =
+    String(value).trim();
+
+  if (
+    VALID_SIM_STATUS.includes(
+      normalized
+    )
+  ) {
+    return normalized;
+  }
+
+  // Handle common older/alternate values.
+  const lower =
+    normalized.toLowerCase();
+
+  if (
+    lower === "esim unlocked" ||
+    lower === "esim"
+  ) {
+    return "eSIM Unlocked";
+  }
+
+  if (
+    lower === "sim unlocked" ||
+    lower === "unlocked"
+  ) {
+    return "SIM Unlocked";
+  }
+
+  if (
+    lower === "locked"
+  ) {
+    return "Locked";
+  }
+
+  if (
+    lower === "bypass"
+  ) {
+    return "Bypass";
+  }
+
+  if (
+    lower === "not available" ||
+    lower === "n/a" ||
+    lower === "na"
+  ) {
+    return "Not Available";
+  }
+
+  return "";
+};
+
+// ============================================================
+// PRODUCT RESPONSE FORMATTER
+//
+// IMPORTANT:
+// Every endpoint uses this formatter so Products and
+// Product Details receive the same fields.
+// ============================================================
+
+const formatProduct = (product) => {
+  if (!product) {
+    return null;
+  }
+
+  const data =
+    typeof product.toObject ===
+    "function"
+      ? product.toObject()
+      : { ...product };
+
+  const formattedImages =
+    Array.isArray(data.images)
+      ? data.images.filter(
+          (item) =>
+            typeof item === "string" &&
+            item.trim()
+        )
+      : data.image
+      ? [data.image]
+      : [];
+
+  const formattedVideos =
+    Array.isArray(data.videos)
+      ? data.videos.filter(
+          (item) =>
+            typeof item === "string" &&
+            item.trim()
+        )
+      : [];
+
+  return {
+    ...data,
+
+    // ========================================================
+    // PHONE DETAILS
+    // ========================================================
+
+    batteryHealth:
+      data.batteryHealth !==
+        undefined &&
+      data.batteryHealth !== null
+        ? Number(data.batteryHealth)
+        : null,
+
+    faceId:
+      data.faceId !== undefined &&
+      data.faceId !== null
+        ? String(data.faceId).trim()
+        : "",
+
+    // ========================================================
+    // SIM STATUS
+    //
+    // ALWAYS included in API response.
+    // ========================================================
+
+    simStatus:
+      normalizeSimStatus(
+        data.simStatus
+      ),
+
+    // ========================================================
+    // OTHER DETAILS
+    // ========================================================
+
+    storage:
+      data.storage !== undefined &&
+      data.storage !== null
+        ? String(data.storage).trim()
+        : "",
+
+    condition:
+      data.condition ||
+      "Good",
+
+    swapAccepted:
+      data.swapAccepted === true,
+
+    images:
+      formattedImages,
+
+    videos:
+      formattedVideos,
+
+    image:
+      data.image ||
+      formattedImages[0] ||
+      "",
+  };
 };
 
 // ============================================================
@@ -193,10 +379,10 @@ const uploadToCloudinary = (
         cloudinary.uploader.upload_stream(
           {
             folder,
-            resource_type:
-              isVideo
-                ? "video"
-                : "image",
+
+            resource_type: isVideo
+              ? "video"
+              : "image",
 
             public_id: `${Date.now()}-${Math.round(
               Math.random() * 1e9
@@ -258,18 +444,11 @@ const getCloudinaryPublicId = (
       uploadIndex + 8
     );
 
-  // Remove version
   publicId = publicId.replace(
     /^v\d+\//,
     ""
   );
 
-  // Remove transformations.
-  //
-  // Example:
-  // /upload/c_fill,w_500/v123/folder/image.jpg
-  //
-  // We keep everything after the version.
   const parts =
     publicId.split("/");
 
@@ -303,16 +482,13 @@ const getCloudinaryPublicId = (
     startIndex++;
   }
 
-  if (
-    startIndex > 0
-  ) {
+  if (startIndex > 0) {
     publicId =
       parts
         .slice(startIndex)
         .join("/");
   }
 
-  // Remove file extension
   publicId = publicId.replace(
     /\.[^/.]+$/,
     ""
@@ -325,107 +501,105 @@ const getCloudinaryPublicId = (
 // CLOUDINARY DELETE
 // ============================================================
 
-const deleteFromCloudinary = async (
-  fileUrl,
-  resourceType = "image"
-) => {
-  try {
-    const publicId =
-      getCloudinaryPublicId(
-        fileUrl
+const deleteFromCloudinary =
+  async (
+    fileUrl,
+    resourceType = "image"
+  ) => {
+    try {
+      const publicId =
+        getCloudinaryPublicId(
+          fileUrl
+        );
+
+      if (!publicId) {
+        return;
+      }
+
+      await cloudinary.uploader.destroy(
+        publicId,
+        {
+          resource_type:
+            resourceType,
+        }
       );
 
-    if (!publicId) {
-      return;
+      console.log(
+        `🗑️ Deleted Cloudinary ${resourceType}: ${publicId}`
+      );
+    } catch (error) {
+      console.error(
+        "⚠️ Cloudinary delete error:",
+        error.message
+      );
     }
-
-    await cloudinary.uploader.destroy(
-      publicId,
-      {
-        resource_type:
-          resourceType,
-      }
-    );
-
-    console.log(
-      `🗑️ Deleted Cloudinary ${resourceType}: ${publicId}`
-    );
-  } catch (error) {
-    console.error(
-      "⚠️ Cloudinary delete error:",
-      error.message
-    );
-  }
-};
+  };
 
 // ============================================================
 // FILE UPLOAD PROCESSOR
 // ============================================================
 
-const uploadProductFiles = async (
-  files = []
-) => {
-  const imageFiles = files
-    .filter(
-      (file) =>
-        file?.buffer &&
-        file?.mimetype?.startsWith(
-          "image/"
-        )
-    )
-    .slice(0, MAX_IMAGES);
+const uploadProductFiles =
+  async (files = []) => {
+    const imageFiles = files
+      .filter(
+        (file) =>
+          file?.buffer &&
+          file?.mimetype?.startsWith(
+            "image/"
+          )
+      )
+      .slice(0, MAX_IMAGES);
 
-  const videoFiles = files
-    .filter(
-      (file) =>
-        file?.buffer &&
-        file?.mimetype?.startsWith(
-          "video/"
-        )
-    )
-    .slice(0, MAX_VIDEOS);
+    const videoFiles = files
+      .filter(
+        (file) =>
+          file?.buffer &&
+          file?.mimetype?.startsWith(
+            "video/"
+          )
+      )
+      .slice(0, MAX_VIDEOS);
 
-  const imageUrls = [];
-  const videoUrls = [];
+    const imageUrls = [];
+    const videoUrls = [];
 
-  // Images
-  for (const file of imageFiles) {
-    const result =
-      await uploadToCloudinary(
-        file.buffer,
-        "image"
-      );
+    for (const file of imageFiles) {
+      const result =
+        await uploadToCloudinary(
+          file.buffer,
+          "image"
+        );
 
-    if (result?.secure_url) {
-      imageUrls.push(
-        result.secure_url
-      );
+      if (result?.secure_url) {
+        imageUrls.push(
+          result.secure_url
+        );
+      }
     }
-  }
 
-  // Videos
-  for (const file of videoFiles) {
-    const result =
-      await uploadToCloudinary(
-        file.buffer,
-        "video"
-      );
+    for (const file of videoFiles) {
+      const result =
+        await uploadToCloudinary(
+          file.buffer,
+          "video"
+        );
 
-    if (result?.secure_url) {
-      videoUrls.push(
-        result.secure_url
-      );
+      if (result?.secure_url) {
+        videoUrls.push(
+          result.secure_url
+        );
+      }
     }
-  }
 
-  return {
-    imageUrls,
-    videoUrls,
+    return {
+      imageUrls,
+      videoUrls,
+    };
   };
-};
 
 // ============================================================
-// PARSE ARRAY FROM FORM DATA
+// PARSE ARRAY
 // ============================================================
 
 const parseArrayField = (
@@ -474,174 +648,244 @@ const parseArrayField = (
 // GET ALL PRODUCTS
 // ============================================================
 
-exports.getProducts = async (
-  req,
-  res
-) => {
-  try {
-    const {
-      search,
-      category,
-      location,
-      sellerId,
-      status,
-      page = 1,
-      limit = 20,
-    } = req.query;
+exports.getProducts =
+  async (req, res) => {
+    try {
+      const {
+        search,
+        category,
+        location,
+        sellerId,
+        status,
+        simStatus,
+        page = 1,
+        limit = 20,
+      } = req.query;
 
-    const pageNumber = Math.max(
-      parseInt(page, 10) || 1,
-      1
-    );
+      const pageNumber =
+        Math.max(
+          parseInt(page, 10) || 1,
+          1
+        );
 
-    const limitNumber = Math.min(
-      Math.max(
-        parseInt(limit, 10) || 20,
-        1
-      ),
-      100
-    );
+      const limitNumber =
+        Math.min(
+          Math.max(
+            parseInt(limit, 10) ||
+              20,
+            1
+          ),
+          100
+        );
 
-    const query = {};
+      const query = {};
 
-    // Category
-    if (
-      category &&
-      category !== "all"
-    ) {
-      query.category =
-        category;
-    }
+      // ======================================================
+      // CATEGORY
+      // ======================================================
 
-    // Location
-    if (
-      location &&
-      location !== "all"
-    ) {
-      query.location =
-        location;
-    }
-
-    // Seller
-    if (sellerId) {
       if (
-        !mongoose.Types.ObjectId.isValid(
-          sellerId
-        )
+        category &&
+        category !== "all"
       ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Invalid seller ID",
-        });
+        if (
+          !VALID_CATEGORIES.includes(
+            category
+          )
+        ) {
+          return res.status(400).json({
+            success: false,
+            message:
+              "Invalid product category",
+          });
+        }
+
+        query.category =
+          category;
       }
 
-      query.sellerId =
-        sellerId;
-    }
+      // ======================================================
+      // LOCATION
+      // ======================================================
 
-    // Status
-    if (status) {
       if (
-        !VALID_STATUSES.includes(
-          status
-        )
+        location &&
+        location !== "all"
       ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Invalid product status",
-        });
+        query.location =
+          location;
       }
 
-      query.status = status;
-    }
+      // ======================================================
+      // SELLER
+      // ======================================================
 
-    // Search
-    if (
-      search &&
-      search.trim()
-    ) {
-      const safeSearch =
-        search
-          .trim()
-          .replace(
-            /[.*+?^${}()|[\]\\]/g,
-            "\\$&"
+      if (sellerId) {
+        if (
+          !mongoose.Types.ObjectId.isValid(
+            sellerId
+          )
+        ) {
+          return res.status(400).json({
+            success: false,
+            message:
+              "Invalid seller ID",
+          });
+        }
+
+        query.sellerId =
+          sellerId;
+      }
+
+      // ======================================================
+      // STATUS
+      // ======================================================
+
+      if (status) {
+        if (
+          !VALID_STATUSES.includes(
+            status
+          )
+        ) {
+          return res.status(400).json({
+            success: false,
+            message:
+              "Invalid product status",
+          });
+        }
+
+        query.status =
+          status;
+      }
+
+      // ======================================================
+      // SIM STATUS FILTER
+      // ======================================================
+
+      if (
+        simStatus &&
+        simStatus !== "all"
+      ) {
+        const normalizedSimStatus =
+          normalizeSimStatus(
+            simStatus
           );
 
-      query.$or = [
-        {
-          title: {
-            $regex:
-              safeSearch,
-            $options: "i",
-          },
-        },
-        {
-          description: {
-            $regex:
-              safeSearch,
-            $options: "i",
-          },
-        },
-        {
-          brand: {
-            $regex:
-              safeSearch,
-            $options: "i",
-          },
-        },
-        {
-          model: {
-            $regex:
-              safeSearch,
-            $options: "i",
-          },
-        },
-      ];
-    }
+        if (
+          !VALID_SIM_STATUS.includes(
+            normalizedSimStatus
+          )
+        ) {
+          return res.status(400).json({
+            success: false,
+            message:
+              "Invalid SIM status",
+          });
+        }
 
-    const skip =
-      (pageNumber - 1) *
-      limitNumber;
+        query.simStatus =
+          normalizedSimStatus;
+      }
 
-    const [
-      products,
-      total,
-    ] = await Promise.all([
-      Product.find(query)
-        .populate(
-          "sellerId",
-          "name email phone location avatar role"
-        )
-        .sort({
-          createdAt: -1,
-        })
-        .skip(skip)
-        .limit(limitNumber)
-        .lean(),
+      // ======================================================
+      // SEARCH
+      // ======================================================
 
-      Product.countDocuments(
-        query
-      ),
-    ]);
+      if (
+        search &&
+        search.trim()
+      ) {
+        const safeSearch =
+          search
+            .trim()
+            .replace(
+              /[.*+?^${}()|[\]\\]/g,
+              "\\$&"
+            );
 
-    res.json({
-      success: true,
-      products,
-      total,
-      page: pageNumber,
-      limit: limitNumber,
-      totalPages:
-        Math.ceil(
-          total /
-            limitNumber
+        query.$or = [
+          {
+            title: {
+              $regex:
+                safeSearch,
+              $options: "i",
+            },
+          },
+          {
+            description: {
+              $regex:
+                safeSearch,
+              $options: "i",
+            },
+          },
+          {
+            brand: {
+              $regex:
+                safeSearch,
+              $options: "i",
+            },
+          },
+          {
+            model: {
+              $regex:
+                safeSearch,
+              $options: "i",
+            },
+          },
+        ];
+      }
+
+      // ======================================================
+      // DATABASE QUERY
+      // ======================================================
+
+      const skip =
+        (pageNumber - 1) *
+        limitNumber;
+
+      const [
+        products,
+        total,
+      ] = await Promise.all([
+        Product.find(query)
+          .populate(
+            "sellerId",
+            "name email phone location avatar role"
+          )
+          .sort({
+            createdAt: -1,
+          })
+          .skip(skip)
+          .limit(limitNumber)
+          .lean(),
+
+        Product.countDocuments(
+          query
         ),
+      ]);
 
-      pagination: {
-        currentPage:
+      // ======================================================
+      // FORMAT
+      // ======================================================
+
+      const formattedProducts =
+        products.map(
+          formatProduct
+        );
+
+      res.json({
+        success: true,
+
+        products:
+          formattedProducts,
+
+        total,
+
+        page:
           pageNumber,
+
+        limit:
+          limitNumber,
 
         totalPages:
           Math.ceil(
@@ -649,24 +893,34 @@ exports.getProducts = async (
               limitNumber
           ),
 
-        totalProducts:
-          total,
-      },
-    });
-  } catch (error) {
-    console.error(
-      "❌ Get products error:",
-      error
-    );
+        pagination: {
+          currentPage:
+            pageNumber,
 
-    res.status(500).json({
-      success: false,
-      message:
-        error.message ||
-        "Failed to fetch products",
-    });
-  }
-};
+          totalPages:
+            Math.ceil(
+              total /
+                limitNumber
+            ),
+
+          totalProducts:
+            total,
+        },
+      });
+    } catch (error) {
+      console.error(
+        "❌ Get products error:",
+        error
+      );
+
+      res.status(500).json({
+        success: false,
+        message:
+          error.message ||
+          "Failed to fetch products",
+      });
+    }
+  };
 
 // ============================================================
 // GET SINGLE PRODUCT
@@ -706,7 +960,10 @@ exports.getProductById =
         });
       }
 
-      // Increment views
+      // ======================================================
+      // INCREMENT VIEWS WITHOUT CHANGING PRODUCT DETAILS
+      // ======================================================
+
       product.views =
         (product.views || 0) +
         1;
@@ -715,7 +972,9 @@ exports.getProductById =
 
       res.json({
         success: true,
-        product,
+
+        product:
+          formatProduct(product),
       });
     } catch (error) {
       console.error(
@@ -773,11 +1032,17 @@ exports.createProduct =
         model,
         ram,
         oldPrice,
+        processor,
+        screenSize,
+        graphics,
+        year,
+        connectivity,
+        warranty,
       } = req.body;
 
-      // --------------------------------------------------------
+      // ======================================================
       // TITLE
-      // --------------------------------------------------------
+      // ======================================================
 
       if (
         !title ||
@@ -790,9 +1055,9 @@ exports.createProduct =
         });
       }
 
-      // --------------------------------------------------------
+      // ======================================================
       // PRICE
-      // --------------------------------------------------------
+      // ======================================================
 
       const numericPrice =
         parseNumber(price);
@@ -808,9 +1073,9 @@ exports.createProduct =
         });
       }
 
-      // --------------------------------------------------------
+      // ======================================================
       // SELLER PHONE
-      // --------------------------------------------------------
+      // ======================================================
 
       if (
         !sellerPhone ||
@@ -823,9 +1088,9 @@ exports.createProduct =
         });
       }
 
-      // --------------------------------------------------------
+      // ======================================================
       // CATEGORY
-      // --------------------------------------------------------
+      // ======================================================
 
       const selectedCategory =
         category || "Other";
@@ -842,9 +1107,9 @@ exports.createProduct =
         });
       }
 
-      // --------------------------------------------------------
+      // ======================================================
       // CONDITION
-      // --------------------------------------------------------
+      // ======================================================
 
       const selectedCondition =
         condition || "Good";
@@ -861,9 +1126,9 @@ exports.createProduct =
         });
       }
 
-      // --------------------------------------------------------
-      // BATTERY HEALTH
-      // --------------------------------------------------------
+      // ======================================================
+      // BATTERY
+      // ======================================================
 
       let parsedBatteryHealth =
         null;
@@ -881,10 +1146,8 @@ exports.createProduct =
         if (
           parsedBatteryHealth ===
             null ||
-          parsedBatteryHealth <
-            0 ||
-          parsedBatteryHealth >
-            100
+          parsedBatteryHealth < 0 ||
+          parsedBatteryHealth > 100
         ) {
           return res.status(400).json({
             success: false,
@@ -894,9 +1157,9 @@ exports.createProduct =
         }
       }
 
-      // --------------------------------------------------------
+      // ======================================================
       // FACE ID
-      // --------------------------------------------------------
+      // ======================================================
 
       const selectedFaceId =
         faceId || "";
@@ -904,7 +1167,7 @@ exports.createProduct =
       if (
         !VALID_FACE_ID.includes(
           selectedFaceId
-        )
+        ) 
       ) {
         return res.status(400).json({
           success: false,
@@ -913,16 +1176,36 @@ exports.createProduct =
         });
       }
 
-      // --------------------------------------------------------
+      // ======================================================
+      // SIM STATUS
+      // ======================================================
+
+      const selectedSimStatus =
+        normalizeSimStatus(
+          simStatus
+        );
+
+      if (
+        !VALID_SIM_STATUS.includes(
+          selectedSimStatus
+        )
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Invalid SIM status",
+        });
+      }
+
+      // ======================================================
       // OLD PRICE
-      // --------------------------------------------------------
+      // ======================================================
 
       let parsedOldPrice =
         null;
 
       if (
-        oldPrice !==
-          undefined &&
+        oldPrice !== undefined &&
         oldPrice !== ""
       ) {
         parsedOldPrice =
@@ -941,9 +1224,9 @@ exports.createProduct =
         }
       }
 
-      // --------------------------------------------------------
+      // ======================================================
       // FILES
-      // --------------------------------------------------------
+      // ======================================================
 
       const files =
         req.files || [];
@@ -962,9 +1245,9 @@ exports.createProduct =
       uploadedVideos =
         videoUrls;
 
-      // --------------------------------------------------------
+      // ======================================================
       // PRODUCT DATA
-      // --------------------------------------------------------
+      // ======================================================
 
       const productData = {
         title:
@@ -1006,6 +1289,30 @@ exports.createProduct =
           model?.trim() ||
           "",
 
+        processor:
+          processor?.trim() ||
+          "",
+
+        screenSize:
+          screenSize?.trim() ||
+          "",
+
+        graphics:
+          graphics?.trim() ||
+          "",
+
+        year:
+          year?.trim() ||
+          "",
+
+        connectivity:
+          connectivity?.trim() ||
+          "",
+
+        warranty:
+          warranty?.trim() ||
+          "",
+
         ram:
           ram?.trim() ||
           "",
@@ -1031,9 +1338,12 @@ exports.createProduct =
             swapAccepted
           ),
 
+        // ====================================================
+        // SIM STATUS
+        // ====================================================
+
         simStatus:
-          simStatus?.trim() ||
-          "",
+          selectedSimStatus,
 
         batteryHealth:
           parsedBatteryHealth,
@@ -1056,9 +1366,9 @@ exports.createProduct =
           "active",
       };
 
-      // --------------------------------------------------------
-      // SAVE
-      // --------------------------------------------------------
+      // ======================================================
+      // CREATE
+      // ======================================================
 
       const product =
         await Product.create(
@@ -1066,14 +1376,23 @@ exports.createProduct =
         );
 
       console.log(
-        `✅ Product created: ${product._id}`
+        "✅ Product created:",
+        product._id
+      );
+
+      console.log(
+        "📱 Saved SIM status:",
+        product.simStatus
       );
 
       res.status(201).json({
         success: true,
+
         message:
           "Product created successfully",
-        product,
+
+        product:
+          formatProduct(product),
       });
     } catch (error) {
       console.error(
@@ -1081,10 +1400,9 @@ exports.createProduct =
         error
       );
 
-      // --------------------------------------------------------
-      // CLEAN UP CLOUDINARY FILES
-      // IF DATABASE SAVE FAILS
-      // --------------------------------------------------------
+      // ======================================================
+      // CLEAN CLOUDINARY FILES
+      // ======================================================
 
       for (const image of
         uploadedImages) {
@@ -1108,8 +1426,10 @@ exports.createProduct =
       ) {
         return res.status(400).json({
           success: false,
+
           message:
             "Product validation failed",
+
           errors:
             Object.values(
               error.errors
@@ -1125,6 +1445,7 @@ exports.createProduct =
       ) {
         return res.status(409).json({
           success: false,
+
           message:
             "Duplicate product entry",
         });
@@ -1132,6 +1453,7 @@ exports.createProduct =
 
       res.status(500).json({
         success: false,
+
         message:
           error.message ||
           "Failed to create product",
@@ -1178,9 +1500,9 @@ exports.updateProduct =
         });
       }
 
-      // --------------------------------------------------------
+      // ======================================================
       // AUTHORIZATION
-      // --------------------------------------------------------
+      // ======================================================
 
       if (
         !isOwnerOrAdmin(
@@ -1194,10 +1516,6 @@ exports.updateProduct =
             "You are not authorized to update this product",
         });
       }
-
-      // --------------------------------------------------------
-      // TEXT FIELDS
-      // --------------------------------------------------------
 
       const {
         title,
@@ -1220,9 +1538,18 @@ exports.updateProduct =
         model,
         ram,
         status,
+        processor,
+        screenSize,
+        graphics,
+        year,
+        connectivity,
+        warranty,
       } = req.body;
 
-      // Title
+      // ======================================================
+      // BASIC FIELDS
+      // ======================================================
+
       if (
         title !== undefined
       ) {
@@ -1241,7 +1568,6 @@ exports.updateProduct =
           title.trim();
       }
 
-      // Price
       if (
         price !== undefined &&
         price !== ""
@@ -1265,7 +1591,6 @@ exports.updateProduct =
           numericPrice;
       }
 
-      // Old price
       if (
         oldPrice !== undefined
       ) {
@@ -1297,7 +1622,10 @@ exports.updateProduct =
         }
       }
 
-      // Category
+      // ======================================================
+      // CATEGORY
+      // ======================================================
+
       if (
         category !== undefined
       ) {
@@ -1317,37 +1645,51 @@ exports.updateProduct =
           category;
       }
 
-      // Location
+      // ======================================================
+      // LOCATION
+      // ======================================================
+
       if (
         location !== undefined
       ) {
         product.location =
-          location.trim();
+          String(location).trim();
       }
 
-      // Description
+      // ======================================================
+      // DESCRIPTION
+      // ======================================================
+
       if (
         description !==
         undefined
       ) {
         product.description =
-          description.trim();
+          String(
+            description
+          ).trim();
       }
 
-      // Seller name
+      // ======================================================
+      // SELLER
+      // ======================================================
+
       if (
         sellerName !== undefined
       ) {
         product.sellerName =
-          sellerName.trim();
+          String(
+            sellerName
+          ).trim();
       }
 
-      // Seller phone
       if (
         sellerPhone !== undefined
       ) {
         if (
-          !sellerPhone.trim()
+          !String(
+            sellerPhone
+          ).trim()
         ) {
           return res.status(400).json({
             success: false,
@@ -1357,50 +1699,119 @@ exports.updateProduct =
         }
 
         product.sellerPhone =
-          sellerPhone.trim();
+          String(
+            sellerPhone
+          ).trim();
       }
 
-      // Brand
+      // ======================================================
+      // PRODUCT SPECS
+      // ======================================================
+
       if (
         brand !== undefined
       ) {
         product.brand =
-          brand.trim();
+          String(
+            brand
+          ).trim();
       }
 
-      // Model
       if (
         model !== undefined
       ) {
         product.model =
-          model.trim();
+          String(
+            model
+          ).trim();
       }
 
-      // RAM
+      if (
+        processor !== undefined
+      ) {
+        product.processor =
+          String(
+            processor
+          ).trim();
+      }
+
+      if (
+        screenSize !== undefined
+      ) {
+        product.screenSize =
+          String(
+            screenSize
+          ).trim();
+      }
+
+      if (
+        graphics !== undefined
+      ) {
+        product.graphics =
+          String(
+            graphics
+          ).trim();
+      }
+
+      if (
+        year !== undefined
+      ) {
+        product.year =
+          String(
+            year
+          ).trim();
+      }
+
+      if (
+        connectivity !==
+        undefined
+      ) {
+        product.connectivity =
+          String(
+            connectivity
+          ).trim();
+      }
+
+      if (
+        warranty !== undefined
+      ) {
+        product.warranty =
+          String(
+            warranty
+          ).trim();
+      }
+
       if (
         ram !== undefined
       ) {
         product.ram =
-          ram.trim();
+          String(
+            ram
+          ).trim();
       }
 
-      // Storage
       if (
         storage !== undefined
       ) {
         product.storage =
-          storage.trim();
+          String(
+            storage
+          ).trim();
       }
 
-      // Color
       if (
         color !== undefined
       ) {
         product.color =
-          color.trim();
+          String(
+            color
+          ).trim();
       }
 
-      // Condition
+      // ======================================================
+      // CONDITION
+      // ======================================================
+
       if (
         condition !== undefined
       ) {
@@ -1420,7 +1831,10 @@ exports.updateProduct =
           condition;
       }
 
-      // Negotiation
+      // ======================================================
+      // NEGOTIATION
+      // ======================================================
+
       if (
         negotiation !== undefined
       ) {
@@ -1430,7 +1844,10 @@ exports.updateProduct =
           );
       }
 
-      // Swap
+      // ======================================================
+      // SWAP
+      // ======================================================
+
       if (
         swapAccepted !==
         undefined
@@ -1441,15 +1858,47 @@ exports.updateProduct =
           );
       }
 
-      // SIM
+      // ======================================================
+      // SIM STATUS
+      //
+      // IMPORTANT:
+      // Only change simStatus when the frontend actually
+      // sends the field.
+      // ======================================================
+
       if (
         simStatus !== undefined
       ) {
+        const cleanSimStatus =
+          normalizeSimStatus(
+            simStatus
+          );
+
+        if (
+          !VALID_SIM_STATUS.includes(
+            cleanSimStatus
+          )
+        ) {
+          return res.status(400).json({
+            success: false,
+            message:
+              "Invalid SIM status",
+          });
+        }
+
         product.simStatus =
-          simStatus.trim();
+          cleanSimStatus;
+
+        console.log(
+          "📱 Updated SIM status:",
+          cleanSimStatus
+        );
       }
 
-      // Battery health
+      // ======================================================
+      // BATTERY HEALTH
+      // ======================================================
+
       if (
         batteryHealth !==
         undefined
@@ -1483,7 +1932,10 @@ exports.updateProduct =
         }
       }
 
-      // Face ID
+      // ======================================================
+      // FACE ID
+      // ======================================================
+
       if (
         faceId !== undefined
       ) {
@@ -1503,7 +1955,10 @@ exports.updateProduct =
           faceId;
       }
 
-      // Status
+      // ======================================================
+      // STATUS
+      // ======================================================
+
       if (
         status !== undefined
       ) {
@@ -1523,9 +1978,9 @@ exports.updateProduct =
           status;
       }
 
-      // --------------------------------------------------------
+      // ======================================================
       // EXISTING IMAGES
-      // --------------------------------------------------------
+      // ======================================================
 
       const imagesToKeep =
         parseArrayField(
@@ -1539,10 +1994,8 @@ exports.updateProduct =
         )
       ) {
         const oldImages =
-          product.images ||
-          [];
+          product.images || [];
 
-        // Only keep actual existing image URLs
         const cleanImages =
           imagesToKeep
             .filter(
@@ -1556,7 +2009,6 @@ exports.updateProduct =
               MAX_IMAGES
             );
 
-        // Delete removed images
         for (const oldImage of
           oldImages) {
           if (
@@ -1575,9 +2027,9 @@ exports.updateProduct =
           cleanImages;
       }
 
-      // --------------------------------------------------------
+      // ======================================================
       // EXISTING VIDEOS
-      // --------------------------------------------------------
+      // ======================================================
 
       const videosToKeep =
         parseArrayField(
@@ -1591,8 +2043,7 @@ exports.updateProduct =
         )
       ) {
         const oldVideos =
-          product.videos ||
-          [];
+          product.videos || [];
 
         const cleanVideos =
           videosToKeep
@@ -1607,7 +2058,6 @@ exports.updateProduct =
               MAX_VIDEOS
             );
 
-        // Delete removed videos
         for (const oldVideo of
           oldVideos) {
           if (
@@ -1626,49 +2076,47 @@ exports.updateProduct =
           cleanVideos;
       }
 
-      // --------------------------------------------------------
+      // ======================================================
       // NEW FILES
-      // --------------------------------------------------------
+      // ======================================================
 
       const files =
         req.files || [];
 
       const newImageFiles =
-        files
-          .filter(
-            (file) =>
-              file?.buffer &&
-              file?.mimetype?.startsWith(
-                "image/"
-              )
-          );
+        files.filter(
+          (file) =>
+            file?.buffer &&
+            file?.mimetype?.startsWith(
+              "image/"
+            )
+        );
 
       const newVideoFiles =
-        files
-          .filter(
-            (file) =>
-              file?.buffer &&
-              file?.mimetype?.startsWith(
-                "video/"
-              )
-          );
+        files.filter(
+          (file) =>
+            file?.buffer &&
+            file?.mimetype?.startsWith(
+              "video/"
+            )
+        );
 
-      // Remaining image capacity
       const imageCapacity =
         Math.max(
           MAX_IMAGES -
-            product.images.length,
+            (product.images?.length ||
+              0),
           0
         );
 
       const videoCapacity =
         Math.max(
           MAX_VIDEOS -
-            product.videos.length,
+            (product.videos?.length ||
+              0),
           0
         );
 
-      // Upload images
       for (
         const file of
         newImageFiles.slice(
@@ -1695,7 +2143,6 @@ exports.updateProduct =
         }
       }
 
-      // Upload videos
       for (
         const file of
         newVideoFiles.slice(
@@ -1722,28 +2169,30 @@ exports.updateProduct =
         }
       }
 
-      // Enforce limits
       product.images =
-        product.images.slice(
+        (
+          product.images || []
+        ).slice(
           0,
           MAX_IMAGES
         );
 
       product.videos =
-        product.videos.slice(
+        (
+          product.videos || []
+        ).slice(
           0,
           MAX_VIDEOS
         );
 
-      // Legacy image field
       product.image =
         product.images.length
           ? product.images[0]
           : "";
 
-      // --------------------------------------------------------
+      // ======================================================
       // SAVE
-      // --------------------------------------------------------
+      // ======================================================
 
       await product.save();
 
@@ -1751,11 +2200,19 @@ exports.updateProduct =
         `✅ Product updated: ${product._id}`
       );
 
+      console.log(
+        "📱 Current SIM status:",
+        product.simStatus
+      );
+
       res.json({
         success: true,
+
         message:
           "Product updated successfully",
-        product,
+
+        product:
+          formatProduct(product),
       });
     } catch (error) {
       console.error(
@@ -1763,8 +2220,6 @@ exports.updateProduct =
         error
       );
 
-      // Delete newly uploaded files
-      // if database update fails
       for (const image of
         newlyUploadedImages) {
         await deleteFromCloudinary(
@@ -1787,8 +2242,10 @@ exports.updateProduct =
       ) {
         return res.status(400).json({
           success: false,
+
           message:
             "Product validation failed",
+
           errors:
             Object.values(
               error.errors
@@ -1801,6 +2258,7 @@ exports.updateProduct =
 
       res.status(500).json({
         success: false,
+
         message:
           error.message ||
           "Failed to update product",
@@ -1841,10 +2299,6 @@ exports.deleteProduct =
         });
       }
 
-      // --------------------------------------------------------
-      // AUTHORIZATION
-      // --------------------------------------------------------
-
       if (
         !isOwnerOrAdmin(
           product,
@@ -1857,10 +2311,6 @@ exports.deleteProduct =
             "You are not authorized to delete this product",
         });
       }
-
-      // --------------------------------------------------------
-      // CLOUDINARY
-      // --------------------------------------------------------
 
       for (const image of
         product.images || []) {
@@ -1878,10 +2328,6 @@ exports.deleteProduct =
         );
       }
 
-      // --------------------------------------------------------
-      // DATABASE
-      // --------------------------------------------------------
-
       await product.deleteOne();
 
       console.log(
@@ -1890,6 +2336,7 @@ exports.deleteProduct =
 
       res.json({
         success: true,
+
         message:
           "Product deleted successfully",
       });
@@ -1901,6 +2348,7 @@ exports.deleteProduct =
 
       res.status(500).json({
         success: false,
+
         message:
           error.message ||
           "Failed to delete product",
@@ -1940,7 +2388,12 @@ exports.getSellerProducts =
 
       res.json({
         success: true,
-        products,
+
+        products:
+          products.map(
+            formatProduct
+          ),
+
         total:
           products.length,
       });
@@ -1952,6 +2405,7 @@ exports.getSellerProducts =
 
       res.status(500).json({
         success: false,
+
         message:
           error.message ||
           "Failed to fetch seller products",
@@ -2008,10 +2462,6 @@ exports.updateProductStatus =
         });
       }
 
-      // --------------------------------------------------------
-      // AUTHORIZATION
-      // --------------------------------------------------------
-
       if (
         !isOwnerOrAdmin(
           product,
@@ -2030,15 +2480,14 @@ exports.updateProductStatus =
 
       await product.save();
 
-      console.log(
-        `✅ Product ${id} status changed to ${status}`
-      );
-
       res.json({
         success: true,
+
         message:
           `Product status updated to ${status}`,
-        product,
+
+        product:
+          formatProduct(product),
       });
     } catch (error) {
       console.error(
@@ -2048,6 +2497,7 @@ exports.updateProductStatus =
 
       res.status(500).json({
         success: false,
+
         message:
           error.message ||
           "Failed to update product status",
@@ -2058,17 +2508,12 @@ exports.updateProductStatus =
 // ============================================================
 // UPDATE STOCK
 // ============================================================
-//
-// NOTE:
-// Your current Product.js does NOT contain a `stock` field.
-// Therefore this endpoint is intentionally disabled instead
-// of pretending stock is being saved.
-//
 
 exports.updateStock =
   async (req, res) => {
     return res.status(400).json({
       success: false,
+
       message:
         "Stock is not supported by the current Product model",
     });
