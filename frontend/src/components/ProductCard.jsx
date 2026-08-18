@@ -354,7 +354,8 @@ const ProductCard = ({ product, onStatusToggle, appleStyle = false, videoPreview
             {swapLabel}
           </span>
 
-          {product.simStatus && (
+          {/* ─── SIM STATUS – hidden for laptops ─── */}
+          {product.simStatus && product.category !== 'Laptops' && (
             <span style={{ display: 'flex', alignItems: 'center', gap: '3px', color: '#0055a5', fontWeight: 600 }}>
               <i className="fas fa-sim-card"></i> SIM: {product.simStatus}
             </span>

@@ -1444,7 +1444,7 @@ const ProductDetails = () => {
               )}
             </div>
 
-            {/* ─── META (with SIM Status) ─── */}
+            {/* ─── META (with SIM Status hidden for laptops) ─── */}
             <div
               className="meta"
               style={{
@@ -1476,8 +1476,8 @@ const ProductDetails = () => {
                   : ""}
               </span>
 
-              {/* ─── SIM STATUS – show if present (any category) ─── */}
-              {product.simStatus && (
+              {/* ─── SIM STATUS – hidden for laptops ─── */}
+              {product.simStatus && product.category !== 'Laptops' && (
                 <span style={{ color: "#0055a5", fontWeight: 600 }}>
                   <i className="fas fa-sim-card" /> SIM: {product.simStatus}
                 </span>
@@ -1692,7 +1692,7 @@ const ProductDetails = () => {
                       </div>
                     )}
 
-                  {/* ── Phone‑only fields ── */}
+                  {/* ── Phone‑only fields (SIM shown only for Phones) ── */}
                   {product.category === "Phones" && (
                     <>
                       {product.faceId && (
@@ -1701,7 +1701,6 @@ const ProductDetails = () => {
                           {product.faceId}
                         </div>
                       )}
-                      {/* SIM Status also displayed here (if present) */}
                       {product.simStatus && (
                         <div>
                           <strong>SIM Status:</strong>{" "}

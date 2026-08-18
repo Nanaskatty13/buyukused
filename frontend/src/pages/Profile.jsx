@@ -37,6 +37,7 @@ const Profile = () => {
   const [editName, setEditName] = useState('');
   const [editEmail, setEditEmail] = useState('');
   const [editPhone, setEditPhone] = useState('');
+  const [editRole, setEditRole] = useState('buyer'); // ✅ new state
   const [editPhoto, setEditPhoto] = useState(null);
   const [editPhotoPreview, setEditPhotoPreview] = useState('');
   const [editLoading, setEditLoading] = useState(false);
@@ -52,6 +53,7 @@ const Profile = () => {
     setEditName(user.name || '');
     setEditEmail(user.email || '');
     setEditPhone(user.phone || '');
+    setEditRole(user.role || 'buyer'); // ✅ set role
     setEditPhotoPreview(user.photoURL || '');
     setEditPhoto(null);
     setRemovePhoto(false);
@@ -225,6 +227,7 @@ const Profile = () => {
       formData.append('name', editName.trim());
       formData.append('email', editEmail.trim().toLowerCase());
       formData.append('phone', editPhone.trim());
+      formData.append('role', editRole); // ✅ append role
       if (removePhoto) {
         formData.append('removePhoto', 'true');
       } else if (editPhoto) {
@@ -269,9 +272,6 @@ const Profile = () => {
   // ================================================================
 
   const navigateTo = (path) => {
-    // You can add a check here if the route exists, but for now we just navigate.
-    // If the route doesn't exist, React Router will show a 404 – 
-    // you need to define these routes in your router.
     navigate(path);
   };
 
@@ -342,6 +342,11 @@ const Profile = () => {
             {user.role === 'admin' && (
               <span style={{ background: '#f59e0b', color: 'white', fontSize: '12px', padding: '2px 12px', borderRadius: 'var(--radius-full)', fontWeight: 600 }}>
                 Admin
+              </span>
+            )}
+            {user.role && user.role !== 'admin' && (
+              <span style={{ background: '#e5e7eb', color: '#374151', fontSize: '12px', padding: '2px 12px', borderRadius: 'var(--radius-full)', fontWeight: 500 }}>
+                {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
               </span>
             )}
           </h1>
@@ -523,13 +528,28 @@ const Profile = () => {
                 <label>Full Name</label>
                 <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} required />
               </div>
+
               <div className="form-group">
                 <label>Email</label>
                 <input type="email" value={editEmail} onChange={(e) => setEditEmail(e.target.value)} required />
               </div>
+
               <div className="form-group">
                 <label>Phone</label>
                 <input type="tel" value={editPhone} onChange={(e) => setEditPhone(e.target.value)} />
+              </div>
+
+              {/* ✅ Account Type (Role) */}
+              <div className="form-group">
+                <label>Account Type</label>
+                <select value={editRole} onChange={(e) => setEditRole(e.target.value)}>
+                  <option value="buyer">Buyer</option>
+                  <option value="seller">Seller</option>
+                  <option value="rider">Rider</option>
+                </select>
+                <small style={{ display: 'block', marginTop: '4px', color: 'var(--gray-500)' }}>
+                  Your role determines what features you can access.
+                </small>
               </div>
 
               <button type="submit" className="save-btn" disabled={editLoading}>
