@@ -108,7 +108,7 @@ const ProductCard = ({ product }) => {
       if (model) specs.push({ icon: "📟", label: model });
       if (batteryHealth) specs.push({ icon: "🔋", label: `${batteryHealth}%` });
       if (faceId) specs.push({ icon: "😊", label: faceId });
-      if (simStatus) specs.push({ icon: "📶", label: simStatus });
+      // We now explicitly render simStatus below, so we don't need it here
     }
 
     // Common: storage
@@ -351,6 +351,13 @@ const ProductCard = ({ product }) => {
         >
           {renderCategorySpecs()}
 
+          {/* ─── EXPLICIT SIM STATUS FOR PHONES ─── */}
+          {category === "Phones" && simStatus && (
+            <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+              <i className="fas fa-sim-card"></i> SIM: {simStatus}
+            </span>
+          )}
+
           {warranty && (
             <span
               style={{
@@ -419,7 +426,7 @@ const ProductCard = ({ product }) => {
 };
 
 // ================================================================
-// PRODUCT SKELETON (Tonaton Style) – unchanged
+// PRODUCT SKELETON – unchanged
 // ================================================================
 
 const ProductSkeleton = () => {
@@ -487,91 +494,64 @@ const ProductSkeleton = () => {
 };
 
 // ================================================================
-// MAIN PRODUCTS PAGE (Tonaton Layout) – with Footer added
+// MAIN PRODUCTS PAGE – with simStatus in filters
 // ================================================================
 
 const Products = () => {
   const location = useLocation();
 
-  // --------------------------------------------------------------
-  // INITIAL URL FILTERS
-  // --------------------------------------------------------------
-
   const queryParams = new URLSearchParams(location.search);
   const initialCategory = queryParams.get("category") || "all";
   const initialSearch = queryParams.get("search") || "";
-
-  // --------------------------------------------------------------
-  // STATE
-  // --------------------------------------------------------------
+  const initialSimStatus = queryParams.get("simStatus") || "";
 
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // Main filters from URL / search
   const [filters, setFilters] = useState({
     search: initialSearch,
     category: initialCategory,
     location: "all",
+    simStatus: initialSimStatus,
   });
 
-  // Additional sidebar filters
   const [priceMin, setPriceMin] = useState("");
   const [priceMax, setPriceMax] = useState("");
   const [verifiedOnly, setVerifiedOnly] = useState(false);
   const [discountOnly, setDiscountOnly] = useState(false);
 
-  // Sort & pagination
   const [sortOption, setSortOption] = useState("recommended");
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 6;
 
-  // --------------------------------------------------------------
-  // KEEP FILTERS IN SYNC WITH URL
-  // --------------------------------------------------------------
-
+  // Keep filters in sync with URL
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const category = params.get("category") || "all";
     const search = params.get("search") || "";
+    const simStatus = params.get("simStatus") || "";
 
-    setFilters((previous) => {
-      if (
-        previous.category === category &&
-        previous.search === search
-      ) {
-        return previous;
-      }
-      return {
-        ...previous,
-        category,
-        search,
-      };
-    });
+    setFilters((prev) => ({
+      ...prev,
+      category,
+      search,
+      simStatus,
+    }));
   }, [location.search]);
 
-  // --------------------------------------------------------------
-  // FETCH PRODUCTS (using useCallback)
-  // --------------------------------------------------------------
-
+  // Fetch products
   const fetchProducts = useCallback(async () => {
     let cancelled = false;
-
     setLoading(true);
     setError("");
 
     try {
-      // Build clean filter object
       const cleanFilters = {
         ...(filters.search ? { search: filters.search } : {}),
-        ...(filters.category && filters.category !== "all"
-          ? { category: filters.category }
-          : {}),
-        ...(filters.location && filters.location !== "all"
-          ? { location: filters.location }
-          : {}),
-        // Additional filters from sidebar
+        ...(filters.category && filters.category !== "all" ? { category: filters.category } : {}),
+        ...(filters.location && filters.location !== "all" ? { location: filters.location } : {}),
+        ...(filters.simStatus ? { simStatus: filters.simStatus } : {}),
         ...(priceMin ? { priceMin } : {}),
         ...(priceMax ? { priceMax } : {}),
         ...(verifiedOnly ? { verified: true } : {}),
@@ -579,46 +559,32 @@ const Products = () => {
       };
 
       const data = await getProducts(cleanFilters);
-
       if (cancelled) return;
 
-      const productList = Array.isArray(data?.products)
-        ? data.products
-        : [];
-
+      const productList = Array.isArray(data?.products) ? data.products : [];
       const processedProducts = productList.map((product) => ({
         ...product,
-        images: Array.isArray(product.images)
-          ? product.images
-              .filter(Boolean)
-              .map((img) => getImageUrl(img))
-          : [],
-        image: product.image
-          ? getImageUrl(product.image)
-          : null,
+        images: Array.isArray(product.images) ? product.images.filter(Boolean).map((img) => getImageUrl(img)) : [],
+        image: product.image ? getImageUrl(product.image) : null,
       }));
 
       setProducts(processedProducts);
       setCurrentPage(1);
     } catch (err) {
       if (cancelled) return;
-
       console.error("❌ Error fetching products:", err);
       setError(err?.message || "Unable to load products. Please try again.");
       setProducts([]);
     } finally {
-      if (!cancelled) {
-        setLoading(false);
-      }
+      if (!cancelled) setLoading(false);
     }
 
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [
     filters.search,
     filters.category,
     filters.location,
+    filters.simStatus,
     priceMin,
     priceMax,
     verifiedOnly,
@@ -629,15 +595,9 @@ const Products = () => {
     fetchProducts();
   }, [fetchProducts]);
 
-  // --------------------------------------------------------------
   // HANDLERS
-  // --------------------------------------------------------------
-
   const handleSearch = useCallback((newFilters = {}) => {
-    setFilters((previous) => ({
-      ...previous,
-      ...newFilters,
-    }));
+    setFilters((prev) => ({ ...prev, ...newFilters }));
   }, []);
 
   const handleClearFilters = () => {
@@ -645,6 +605,7 @@ const Products = () => {
       search: "",
       category: "all",
       location: "all",
+      simStatus: "",
     });
     setPriceMin("");
     setPriceMax("");
@@ -652,15 +613,10 @@ const Products = () => {
     setDiscountOnly(false);
   };
 
-  // --------------------------------------------------------------
-  // DERIVED DATA: SORTED & PAGINATED PRODUCTS
-  // --------------------------------------------------------------
-
+  // Sort & pagination
   const sortedProducts = React.useMemo(() => {
     if (!products.length) return [];
-
     let sorted = [...products];
-
     switch (sortOption) {
       case "price-asc":
         sorted.sort((a, b) => (a.price || 0) - (b.price || 0));
@@ -669,15 +625,9 @@ const Products = () => {
         sorted.sort((a, b) => (b.price || 0) - (a.price || 0));
         break;
       case "newest":
-        sorted.sort(
-          (a, b) =>
-            new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
-        );
+        sorted.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
         break;
-      case "recommended":
-      default:
-        // keep original order
-        break;
+      default: break;
     }
     return sorted;
   }, [products, sortOption]);
@@ -693,10 +643,6 @@ const Products = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  // --------------------------------------------------------------
-  // RENDER
-  // --------------------------------------------------------------
-
   return (
     <>
       <div
@@ -709,7 +655,7 @@ const Products = () => {
           padding: "20px 16px",
         }}
       >
-        {/* ========== SIDEBAR (FILTERS) – WRAPPED FOR MOBILE HIDE ========== */}
+        {/* SIDEBAR */}
         <div className="filter-sidebar-wrapper">
           <FilterSidebar
             filters={filters}
@@ -724,30 +670,17 @@ const Products = () => {
             setDiscountOnly={setDiscountOnly}
             onClearFilters={handleClearFilters}
             activeCategory={filters.category}
+            simStatus={filters.simStatus}
+            setSimStatus={(value) => setFilters(prev => ({ ...prev, simStatus: value }))}
           />
         </div>
 
-        {/* ========== MAIN CONTENT ========== */}
-        <main
-          className="main-content"
-          style={{
-            flex: 1,
-            minWidth: 0,
-          }}
-        >
-          {/* SEARCH BAR (Tonaton style, integrated) */}
-          <div
-            style={{
-              marginBottom: "24px",
-            }}
-          >
-            <SearchBar
-              onSearch={handleSearch}
-              initialQuery={filters}
-            />
+        {/* MAIN CONTENT */}
+        <main className="main-content" style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ marginBottom: "24px" }}>
+            <SearchBar onSearch={handleSearch} initialQuery={filters} />
           </div>
 
-          {/* RESULTS HEADER */}
           <div
             style={{
               display: "flex",
@@ -758,24 +691,12 @@ const Products = () => {
               marginBottom: "20px",
             }}
           >
-            <h1
-              style={{
-                fontSize: "22px",
-                fontWeight: 700,
-                margin: 0,
-                color: "#333",
-              }}
-            >
-              {loading
-                ? "Loading..."
-                : `${sortedProducts.length} results`}
+            <h1 style={{ fontSize: "22px", fontWeight: 700, margin: 0, color: "#333" }}>
+              {loading ? "Loading..." : `${sortedProducts.length} results`}
               {filters.category !== "all" && (
                 <>
                   {" "}
-                  for{" "}
-                  <span style={{ color: "#0066cc" }}>
-                    {filters.category}
-                  </span>
+                  for <span style={{ color: "#0066cc" }}>{filters.category}</span>
                 </>
               )}
             </h1>
@@ -800,7 +721,6 @@ const Products = () => {
             </select>
           </div>
 
-          {/* ERROR */}
           {error && !loading && (
             <div
               style={{
@@ -832,14 +752,12 @@ const Products = () => {
             </div>
           )}
 
-          {/* LOADING SKELETON */}
           {loading ? (
             <div
               className="products-grid"
               style={{
                 display: "grid",
-                gridTemplateColumns:
-                  "repeat(auto-fill, minmax(220px, 1fr))",
+                gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
                 gap: "16px",
               }}
             >
@@ -848,13 +766,7 @@ const Products = () => {
               ))}
             </div>
           ) : currentProducts.length === 0 ? (
-            <div
-              style={{
-                textAlign: "center",
-                padding: "60px 0",
-                color: "#777",
-              }}
-            >
+            <div style={{ textAlign: "center", padding: "60px 0", color: "#777" }}>
               No ads found.
               <br />
               <Link
@@ -871,13 +783,11 @@ const Products = () => {
             </div>
           ) : (
             <>
-              {/* PRODUCTS GRID */}
               <div
                 className="products-grid"
                 style={{
                   display: "grid",
-                  gridTemplateColumns:
-                    "repeat(auto-fill, minmax(220px, 1fr))",
+                  gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
                   gap: "16px",
                 }}
               >
@@ -886,7 +796,6 @@ const Products = () => {
                 ))}
               </div>
 
-              {/* PAGINATION (Prev/Next) */}
               {totalPages > 1 && (
                 <div
                   style={{
@@ -898,9 +807,7 @@ const Products = () => {
                   }}
                 >
                   <button
-                    onClick={() =>
-                      handlePageChange(Math.max(1, currentPage - 1))
-                    }
+                    onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
                     disabled={currentPage === 1}
                     style={{
                       padding: "8px 12px",
@@ -915,42 +822,33 @@ const Products = () => {
                     Prev
                   </button>
 
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(
-                    (page) => (
-                      <button
-                        key={page}
-                        onClick={() => handlePageChange(page)}
-                        style={{
-                          padding: "8px 12px",
-                          border:
-                            page === currentPage
-                              ? "1px solid #0066cc"
-                              : "1px solid #e5e7eb",
-                          borderRadius: "4px",
-                          background:
-                            page === currentPage ? "#0066cc" : "#fff",
-                          color: page === currentPage ? "#fff" : "#333",
-                          cursor: "pointer",
-                          fontWeight: page === currentPage ? 700 : 400,
-                        }}
-                      >
-                        {page}
-                      </button>
-                    )
-                  )}
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                    <button
+                      key={page}
+                      onClick={() => handlePageChange(page)}
+                      style={{
+                        padding: "8px 12px",
+                        border: page === currentPage ? "1px solid #0066cc" : "1px solid #e5e7eb",
+                        borderRadius: "4px",
+                        background: page === currentPage ? "#0066cc" : "#fff",
+                        color: page === currentPage ? "#fff" : "#333",
+                        cursor: "pointer",
+                        fontWeight: page === currentPage ? 700 : 400,
+                      }}
+                    >
+                      {page}
+                    </button>
+                  ))}
 
                   <button
-                    onClick={() =>
-                      handlePageChange(Math.min(totalPages, currentPage + 1))
-                    }
+                    onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
                     disabled={currentPage === totalPages}
                     style={{
                       padding: "8px 12px",
                       border: "1px solid #e5e7eb",
                       borderRadius: "4px",
                       background: "#fff",
-                      cursor:
-                        currentPage === totalPages ? "default" : "pointer",
+                      cursor: currentPage === totalPages ? "default" : "pointer",
                       opacity: currentPage === totalPages ? 0.5 : 1,
                       fontWeight: 600,
                     }}

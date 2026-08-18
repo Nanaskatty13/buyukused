@@ -3,30 +3,6 @@ import { useAuth } from '../context/AuthContext';
 import { messages } from '../services/messages';
 import { API_URL } from '../services/api';
 
-// ─── Helpers for image messages ──────────────────────────────────
-
-const isImageMessage = (text) => {
-  if (!text) return false;
-  const imagePatterns = [
-    /^📷 Image:/,
-    /^🎥 Video:/,
-    /\.(jpg|jpeg|png|gif|webp|svg|bmp|ico)/i,
-    /^https?:\/\/.*\.(jpg|jpeg|png|gif|webp|svg|bmp|ico)/i,
-    /res\.cloudinary\.com\/.*image\/upload/,
-  ];
-  return imagePatterns.some(pattern => pattern.test(text));
-};
-
-const extractImageUrl = (text) => {
-  const match = text.match(/^(?:📷 Image|🎥 Video):\s*(.+)/);
-  if (match) return match[1].trim();
-  const urlMatch = text.match(/https?:\/\/[^\s]+/);
-  if (urlMatch) return urlMatch[0];
-  return null;
-};
-
-// ─── Component ──────────────────────────────────────────────────
-
 const Messages = () => {
   const { user, token } = useAuth();
   const [messagesList, setMessagesList] = useState([]);
@@ -35,9 +11,9 @@ const Messages = () => {
   const [replyMessage, setReplyMessage] = useState('');
   const [sendingReply, setSendingReply] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [viewingImage, setViewingImage] = useState(null);
   const pollInterval = useRef(null);
 
+  // ─── Fetch messages ──────────────────────────────────────────────
   useEffect(() => {
     const fetchMessages = async () => {
       if (!user || !token) return;
@@ -58,6 +34,7 @@ const Messages = () => {
     };
   }, [user, token]);
 
+  // ─── Open conversation ──────────────────────────────────────────
   const openConversation = (otherUserId) => {
     const conversationMessages = messagesList.filter(msg => {
       const s = typeof msg.sender === 'string' ? msg.sender : msg.sender?._id;
@@ -82,7 +59,7 @@ const Messages = () => {
       } catch (err) { console.error(err); }
     });
 
-    // Start polling
+    // Polling
     if (pollInterval.current) clearInterval(pollInterval.current);
     pollInterval.current = setInterval(async () => {
       if (!selectedConversation) return;
@@ -118,6 +95,7 @@ const Messages = () => {
     if (pollInterval.current) clearInterval(pollInterval.current);
   };
 
+  // ─── Send reply ──────────────────────────────────────────────────
   const handleSendReply = async (e) => {
     e.preventDefault();
     if (!replyMessage.trim() || !selectedConversation || !token) return;
@@ -155,6 +133,7 @@ const Messages = () => {
     }
   };
 
+  // ─── File attachment ─────────────────────────────────────────────
   const handleFileAttachment = async (file) => {
     if (!selectedConversation || !token) return;
     setUploading(true);
@@ -205,6 +184,7 @@ const Messages = () => {
     }
   };
 
+  // ─── Get conversations ──────────────────────────────────────────
   const getConversations = () => {
     if (!user) return [];
     const partners = new Set();
@@ -237,6 +217,7 @@ const Messages = () => {
     }).sort((a, b) => new Date(b.last?.createdAt || 0) - new Date(a.last?.createdAt || 0));
   };
 
+  // ─── Render ──────────────────────────────────────────────────────
   if (!user) {
     return <div className="container" style={{ padding: '40px 20px', textAlign: 'center' }}>Please login to view your messages.</div>;
   }
@@ -265,81 +246,96 @@ const Messages = () => {
             <button onClick={closeConversation} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer' }}>✕</button>
           </div>
           <div style={{ maxHeight: '400px', overflowY: 'auto', padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {[...selectedConversation.messages].sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0)).map(msg => {
-              const s = typeof msg.sender === 'string' ? msg.sender : msg.sender?._id;
-              const isMine = s === user._id;
-              const isImage = isImageMessage(msg.message);
-              const imageUrl = isImage ? extractImageUrl(msg.message) : null;
-
-              return (
-                <div
-                  key={msg._id}
-                  style={{
-                    alignSelf: isMine ? 'flex-end' : 'flex-start',
-                    maxWidth: '70%',
-                    background: isMine ? 'var(--primary)' : 'var(--gray-100)',
-                    color: isMine ? 'white' : 'var(--gray-800)',
-                    padding: isImage ? '4px' : '8px 14px',
-                    borderRadius: '12px',
-                    borderBottomRightRadius: isMine ? '4px' : '12px',
-                    borderBottomLeftRadius: isMine ? '12px' : '4px',
-                    overflow: 'hidden',
-                  }}
-                >
-                  {isImage ? (
-                    <>
-                      <img
-                        src={imageUrl}
-                        alt="Shared image"
-                        style={{
-                          maxWidth: '100%',
-                          maxHeight: '300px',
-                          borderRadius: '8px',
-                          display: 'block',
-                          cursor: 'pointer',
-                        }}
-                        onClick={() => setViewingImage(imageUrl)}
-                        onError={(e) => {
-                          e.currentTarget.style.display = 'none';
-                          const parent = e.currentTarget.parentElement;
-                          parent.style.padding = '8px 14px';
-                          parent.textContent = '📷 Image (failed to load)';
-                        }}
-                      />
-                      <div style={{ fontSize: '10px', opacity: 0.7, marginTop: '4px', textAlign: 'right' }}>
-                        {msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString() : ''}
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div>{msg.message}</div>
-                      <div style={{ fontSize: '10px', opacity: 0.7, marginTop: '4px', textAlign: 'right' }}>
-                        {msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString() : ''}
-                      </div>
-                    </>
-                  )}
-                </div>
-              );
-            })}
+            {[...selectedConversation.messages]
+              .sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0))
+              .map(msg => {
+                const s = typeof msg.sender === 'string' ? msg.sender : msg.sender?._id;
+                const isMine = s === user._id;
+                const messageText = msg.message || msg.content || msg.text || '';
+                return (
+                  <div
+                    key={msg._id}
+                    style={{
+                      alignSelf: isMine ? 'flex-end' : 'flex-start',
+                      maxWidth: '70%',
+                      background: isMine ? 'var(--primary)' : 'var(--gray-100)',
+                      color: isMine ? 'white' : 'var(--gray-800)',
+                      padding: '8px 14px',
+                      borderRadius: '12px',
+                      fontSize: '14px',
+                    }}
+                  >
+                    {messageText}
+                    <div style={{ fontSize: '10px', opacity: 0.7, marginTop: '4px', textAlign: 'right' }}>
+                      {msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString() : ''}
+                    </div>
+                  </div>
+                );
+              })}
           </div>
           <div style={{ borderTop: '1px solid var(--gray-200)', padding: '12px' }}>
             <form onSubmit={handleSendReply} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <div style={{ display: 'flex', gap: '8px' }}>
-                <input type="text" value={replyMessage} onChange={e => setReplyMessage(e.target.value)} placeholder="Type a reply..." style={{ flex: 1, padding: '8px 14px', border: '1.5px solid var(--gray-200)', borderRadius: 'var(--radius-md)', fontSize: '14px' }} />
-                <button type="submit" disabled={sendingReply || uploading} style={{ padding: '8px 20px', background: 'var(--secondary)', color: 'white', border: 'none', borderRadius: 'var(--radius-full)', fontWeight: 600, cursor: (sendingReply || uploading) ? 'not-allowed' : 'pointer', opacity: (sendingReply || uploading) ? 0.7 : 1 }}>{sendingReply ? 'Sending...' : 'Reply'}</button>
+                <input
+                  type="text"
+                  value={replyMessage}
+                  onChange={e => setReplyMessage(e.target.value)}
+                  placeholder="Type a reply..."
+                  style={{ flex: 1, padding: '8px 14px', border: '1.5px solid var(--gray-200)', borderRadius: 'var(--radius-md)', fontSize: '14px' }}
+                />
+                <button
+                  type="submit"
+                  disabled={sendingReply || uploading}
+                  style={{
+                    padding: '8px 20px',
+                    background: 'var(--secondary)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: 'var(--radius-full)',
+                    fontWeight: 600,
+                    cursor: (sendingReply || uploading) ? 'not-allowed' : 'pointer',
+                    opacity: (sendingReply || uploading) ? 0.7 : 1,
+                  }}
+                >
+                  {sendingReply ? 'Sending...' : 'Reply'}
+                </button>
               </div>
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 <label style={{ cursor: 'pointer', background: '#f1f5f9', padding: '6px 12px', borderRadius: 'var(--radius-sm)', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '4px' }}>
                   <i className="fas fa-image"></i> Image
-                  <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => { if (e.target.files?.[0]) handleFileAttachment(e.target.files[0]); e.target.value = ''; }} />
+                  <input
+                    type="file"
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                    onChange={(e) => {
+                      if (e.target.files?.[0]) handleFileAttachment(e.target.files[0]);
+                      e.target.value = '';
+                    }}
+                  />
                 </label>
                 <label style={{ cursor: 'pointer', background: '#f1f5f9', padding: '6px 12px', borderRadius: 'var(--radius-sm)', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '4px' }}>
                   <i className="fas fa-video"></i> Video
-                  <input type="file" accept="video/*" style={{ display: 'none' }} onChange={(e) => { if (e.target.files?.[0]) handleFileAttachment(e.target.files[0]); e.target.value = ''; }} />
+                  <input
+                    type="file"
+                    accept="video/*"
+                    style={{ display: 'none' }}
+                    onChange={(e) => {
+                      if (e.target.files?.[0]) handleFileAttachment(e.target.files[0]);
+                      e.target.value = '';
+                    }}
+                  />
                 </label>
                 <label style={{ cursor: 'pointer', background: '#f1f5f9', padding: '6px 12px', borderRadius: 'var(--radius-sm)', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '4px' }}>
                   <i className="fas fa-address-card"></i> Contact
-                  <input type="file" accept=".vcf,.vcard" style={{ display: 'none' }} onChange={(e) => { if (e.target.files?.[0]) handleFileAttachment(e.target.files[0]); e.target.value = ''; }} />
+                  <input
+                    type="file"
+                    accept=".vcf,.vcard"
+                    style={{ display: 'none' }}
+                    onChange={(e) => {
+                      if (e.target.files?.[0]) handleFileAttachment(e.target.files[0]);
+                      e.target.value = '';
+                    }}
+                  />
                 </label>
                 {uploading && <span style={{ fontSize: '13px', color: 'var(--gray-500)' }}>Uploading...</span>}
               </div>
@@ -349,47 +345,57 @@ const Messages = () => {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {getConversations().map(conv => (
-            <div key={conv.userId} onClick={() => openConversation(conv.userId)} style={{ background: 'white', padding: '12px 16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--gray-200)', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div
+              key={conv.userId}
+              onClick={() => openConversation(conv.userId)}
+              style={{
+                background: 'white',
+                padding: '12px 16px',
+                borderRadius: 'var(--radius-md)',
+                border: '1px solid var(--gray-200)',
+                cursor: 'pointer',
+                transition: 'var(--transition)',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}
+            >
               <div>
                 <div style={{ fontWeight: 600 }}>
                   {conv.partner?.name || 'User'}
-                  {conv.unread > 0 && <span style={{ background: '#e74c3c', color: 'white', fontSize: '10px', padding: '1px 8px', borderRadius: 'var(--radius-full)', marginLeft: '8px' }}>{conv.unread}</span>}
+                  {conv.unread > 0 && (
+                    <span
+                      style={{
+                        background: '#e74c3c',
+                        color: 'white',
+                        fontSize: '10px',
+                        padding: '1px 8px',
+                        borderRadius: 'var(--radius-full)',
+                        marginLeft: '8px',
+                      }}
+                    >
+                      {conv.unread}
+                    </span>
+                  )}
                 </div>
-                <div style={{ fontSize: '13px', color: 'var(--gray-500)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '150px' }}>{conv.last?.message || 'No messages'}</div>
+                <div
+                  style={{
+                    fontSize: '13px',
+                    color: 'var(--gray-500)',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    maxWidth: '150px',
+                  }}
+                >
+                  {conv.last?.message || 'No messages'}
+                </div>
               </div>
-              <div style={{ fontSize: '11px', color: 'var(--gray-400)' }}>{conv.last?.createdAt ? new Date(conv.last.createdAt).toLocaleDateString() : ''}</div>
+              <div style={{ fontSize: '11px', color: 'var(--gray-400)' }}>
+                {conv.last?.createdAt ? new Date(conv.last.createdAt).toLocaleDateString() : ''}
+              </div>
             </div>
           ))}
-        </div>
-      )}
-
-      {/* Lightbox */}
-      {viewingImage && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '100%',
-            background: 'rgba(0,0,0,0.9)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 10000,
-            cursor: 'pointer',
-          }}
-          onClick={() => setViewingImage(null)}
-        >
-          <img
-            src={viewingImage}
-            alt="Full screen"
-            style={{
-              maxWidth: '90%',
-              maxHeight: '90%',
-              objectFit: 'contain',
-            }}
-          />
         </div>
       )}
     </div>

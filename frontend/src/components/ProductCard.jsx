@@ -30,6 +30,13 @@ const ProductCard = ({ product, onStatusToggle, appleStyle = false, videoPreview
     product.sellerId === user._id
   );
 
+  // ─── Debug: log the simStatus ──────────────────────────────
+  console.log(`📱 Product ${product._id}:`, {
+    title: product.title,
+    simStatus: product.simStatus,
+    category: product.category,
+  });
+
   // ─── Helper: render category‑specific specs ──────────────────
   const renderCategorySpecs = () => {
     const specs = [];
@@ -71,21 +78,21 @@ const ProductCard = ({ product, onStatusToggle, appleStyle = false, videoPreview
       if (product.model) specs.push({ icon: '📟', label: product.model });
       if (product.connectivity) specs.push({ icon: '📶', label: product.connectivity });
     }
-    // Phones – SIM STATUS INCLUDED HERE
+    // Phones
     else if (category === 'Phones') {
       if (product.brand) specs.push({ icon: '🏷️', label: product.brand });
       if (product.model) specs.push({ icon: '📟', label: product.model });
       if (product.batteryHealth) specs.push({ icon: '🔋', label: `${product.batteryHealth}%` });
       if (product.faceId) specs.push({ icon: '😊', label: product.faceId });
-      if (product.simStatus) specs.push({ icon: '📶', label: product.simStatus }); // ✅ SIM status here
+      // simStatus is now displayed separately below, so we don't add it here
     }
 
-    // Common: storage (if not already present via category)
+    // Common: storage
     if (product.storage && !specs.some(s => s.label === product.storage)) {
       specs.push({ icon: '💾', label: product.storage });
     }
 
-    // Condition (if not already in specs)
+    // Condition
     if (product.condition && !specs.some(s => s.label === product.condition)) {
       specs.push({ icon: '📋', label: product.condition });
     }
@@ -364,8 +371,8 @@ const ProductCard = ({ product, onStatusToggle, appleStyle = false, videoPreview
             {swapLabel}
           </span>
 
-          {/* ─── SIM STATUS (always visible for phones) ─── */}
-          {product.category === 'Phones' && product.simStatus && (
+          {/* ─── SIM STATUS – NOW SHOWN FOR ANY PRODUCT WITH simStatus ─── */}
+          {product.simStatus && (
             <span style={{ display: 'flex', alignItems: 'center', gap: '3px', color: '#0055a5', fontWeight: 600 }}>
               <i className="fas fa-sim-card"></i> SIM: {product.simStatus}
             </span>

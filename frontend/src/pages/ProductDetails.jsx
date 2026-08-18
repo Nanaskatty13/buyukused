@@ -1440,50 +1440,44 @@ const ProductDetails = () => {
               )}
             </div>
 
-            {/* META */}
-
+            {/* ─── META (with SIM Status) ─── */}
             <div
               className="meta"
               style={{
-                display:
-                  "flex",
+                display: "flex",
                 gap: "16px",
-                flexWrap:
-                  "wrap",
-                fontSize:
-                  "14px",
-                color:
-                  "var(--gray-500)",
-                marginBottom:
-                  "16px",
+                flexWrap: "wrap",
+                fontSize: "14px",
+                color: "var(--gray-500)",
+                marginBottom: "16px",
               }}
             >
               <span>
                 <i className="fas fa-map-marker-alt" />{" "}
-                {product.location ||
-                  "Ghana"}
+                {product.location || "Ghana"}
               </span>
 
               <span>
-                <i className="fas fa-tag" />{" "}
-                {product.category}
+                <i className="fas fa-tag" /> {product.category}
               </span>
 
               <span>
-                <i className="fas fa-eye" />{" "}
-                {product.views ||
-                  0}{" "}
-                views
+                <i className="fas fa-eye" /> {product.views || 0} views
               </span>
 
               <span>
                 <i className="fas fa-clock" />{" "}
                 {product.createdAt
-                  ? new Date(
-                      product.createdAt
-                    ).toLocaleDateString()
+                  ? new Date(product.createdAt).toLocaleDateString()
                   : ""}
               </span>
+
+              {/* ─── SIM STATUS (only for phones) ─── */}
+              {product.category === "Phones" && product.simStatus && (
+                <span style={{ color: "#0055a5", fontWeight: 600 }}>
+                  <i className="fas fa-sim-card" /> SIM: {product.simStatus}
+                </span>
+              )}
             </div>
 
             {/* ======================================================
@@ -1703,6 +1697,7 @@ const ProductDetails = () => {
                           {product.faceId}
                         </div>
                       )}
+                      {/* SIM Status also displayed here */}
                       {product.simStatus && (
                         <div>
                           <strong>SIM Status:</strong>{" "}
