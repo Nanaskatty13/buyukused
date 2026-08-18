@@ -4,12 +4,14 @@ const User = require("../models/User");
 const jwt = require("jsonwebtoken");
 
 // ============================================================
-// GENERATE JWT TOKEN
+// GENERATE JWT
 // ============================================================
 
 const generateToken = (user) => {
   if (!process.env.JWT_SECRET) {
-    throw new Error("JWT_SECRET is not configured");
+    throw new Error(
+      "JWT_SECRET is not configured"
+    );
   }
 
   return jwt.sign(
@@ -25,66 +27,96 @@ const generateToken = (user) => {
 };
 
 // ============================================================
-// SAFE USER RESPONSE
+// SAFE USER
 // ============================================================
 
 const getSafeUser = (user) => {
   return {
+    _id: user._id,
+
     id: user._id,
-    name: user.name,
-    email: user.email,
+
+    name: user.name || "",
+
+    email: user.email || "",
+
     phone: user.phone || "",
-    role: user.role,
 
-    location: user.location || "Ghana",
+    role: user.role || "buyer",
 
-    avatar: user.avatar || user.photoURL || "",
+    location:
+      user.location || "Ghana",
 
-    photoURL: user.photoURL || "",
+    avatar:
+      user.avatar ||
+      user.photoURL ||
+      "",
 
-    provider: user.provider || "local",
+    photoURL:
+      user.photoURL ||
+      user.avatar ||
+      "",
 
-    isActive: user.isActive !== false,
+    provider:
+      user.provider || "local",
 
-    lastLogin: user.lastLogin || null,
+    providerId:
+      user.providerId || "",
 
-    createdAt: user.createdAt,
+    isActive:
+      user.isActive !== false,
 
-    updatedAt: user.updatedAt,
+    lastLogin:
+      user.lastLogin || null,
 
-    // ----------------------------------------------------------
-    // RIDER PROFILE
-    // ----------------------------------------------------------
+    createdAt:
+      user.createdAt || null,
+
+    updatedAt:
+      user.updatedAt || null,
 
     riderProfile:
       user.role === "rider"
         ? {
             isAvailable:
-              user.riderProfile?.isAvailable === true,
+              user.riderProfile
+                ?.isAvailable ===
+              true,
 
             isVerified:
-              user.riderProfile?.isVerified === true,
+              user.riderProfile
+                ?.isVerified ===
+              true,
 
             bikeType:
-              user.riderProfile?.bikeType || "",
+              user.riderProfile
+                ?.bikeType || "",
 
             bikeNumber:
-              user.riderProfile?.bikeNumber || "",
+              user.riderProfile
+                ?.bikeNumber || "",
 
             currentLocation:
-              user.riderProfile?.currentLocation || {
+              user.riderProfile
+                ?.currentLocation || {
                 address: "",
                 latitude: null,
                 longitude: null,
               },
 
             rating:
-              typeof user.riderProfile?.rating === "number"
-                ? user.riderProfile.rating
+              typeof user
+                .riderProfile
+                ?.rating ===
+              "number"
+                ? user.riderProfile
+                    .rating
                 : 5,
 
             totalDeliveries:
-              user.riderProfile?.totalDeliveries || 0,
+              user.riderProfile
+                ?.totalDeliveries ||
+              0,
           }
         : null,
   };
@@ -92,10 +124,12 @@ const getSafeUser = (user) => {
 
 // ============================================================
 // REGISTER
-// POST /auth/register
 // ============================================================
 
-exports.register = async (req, res) => {
+exports.register = async (
+  req,
+  res
+) => {
   try {
     const {
       name,
@@ -105,27 +139,27 @@ exports.register = async (req, res) => {
       role,
     } = req.body || {};
 
-    // ----------------------------------------------------------
-    // REQUIRED FIELDS
-    // ----------------------------------------------------------
-
-    if (!name || !email || !password || !role) {
+    if (
+      !name ||
+      !email ||
+      !password ||
+      !role
+    ) {
       return res.status(400).json({
         success: false,
+
         message:
           "Name, email, password, and role are required",
       });
     }
 
-    // ----------------------------------------------------------
-    // CLEAN INPUT
-    // ----------------------------------------------------------
+    const trimmedName =
+      String(name).trim();
 
-    const trimmedName = String(name).trim();
-
-    const trimmedEmail = String(email)
-      .trim()
-      .toLowerCase();
+    const trimmedEmail =
+      String(email)
+        .trim()
+        .toLowerCase();
 
     const trimmedPhone =
       phone !== undefined &&
@@ -133,107 +167,96 @@ exports.register = async (req, res) => {
         ? String(phone).trim()
         : "";
 
-    const selectedRole = String(role)
-      .trim()
-      .toLowerCase();
+    const selectedRole =
+      String(role)
+        .trim()
+        .toLowerCase();
 
-    // ----------------------------------------------------------
-    // PUBLIC REGISTRATION
-    //
-    // IMPORTANT:
-    // Riders are NOT created through the normal registration
-    // endpoint. Admin approval/application will be added later.
-    // ----------------------------------------------------------
-
-    if (!["buyer", "seller"].includes(selectedRole)) {
+    if (
+      !["buyer", "seller"].includes(
+        selectedRole
+      )
+    ) {
       return res.status(400).json({
         success: false,
+
         message:
           "Role must be either buyer or seller",
       });
     }
 
-    // ----------------------------------------------------------
-    // VALIDATE NAME
-    // ----------------------------------------------------------
-
-    if (trimmedName.length < 2) {
+    if (
+      trimmedName.length < 2
+    ) {
       return res.status(400).json({
         success: false,
+
         message:
           "Name must be at least 2 characters long",
       });
     }
 
-    // ----------------------------------------------------------
-    // VALIDATE EMAIL
-    // ----------------------------------------------------------
-
     const emailRegex =
       /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-    if (!emailRegex.test(trimmedEmail)) {
+    if (
+      !emailRegex.test(
+        trimmedEmail
+      )
+    ) {
       return res.status(400).json({
         success: false,
+
         message:
           "Please provide a valid email address",
       });
     }
 
-    // ----------------------------------------------------------
-    // VALIDATE PASSWORD
-    // ----------------------------------------------------------
-
-    if (String(password).length < 6) {
+    if (
+      String(password).length < 6
+    ) {
       return res.status(400).json({
         success: false,
+
         message:
           "Password must be at least 6 characters long",
       });
     }
 
-    // ----------------------------------------------------------
-    // CHECK EXISTING USER
-    // ----------------------------------------------------------
-
-    const existingUser = await User.findOne({
-      email: trimmedEmail,
-    });
+    const existingUser =
+      await User.findOne({
+        email: trimmedEmail,
+      });
 
     if (existingUser) {
       return res.status(409).json({
         success: false,
+
         message:
           "User with this email already exists",
       });
     }
 
-    // ----------------------------------------------------------
-    // CREATE USER
-    // ----------------------------------------------------------
+    const user =
+      await User.create({
+        name: trimmedName,
 
-    const user = await User.create({
-      name: trimmedName,
-      email: trimmedEmail,
-      password: String(password),
-      phone: trimmedPhone,
+        email: trimmedEmail,
 
-      role: selectedRole,
+        password:
+          String(password),
 
-      provider: "local",
+        phone: trimmedPhone,
 
-      isActive: true,
-    });
+        role: selectedRole,
 
-    // ----------------------------------------------------------
-    // GENERATE TOKEN
-    // ----------------------------------------------------------
+        provider: "local",
 
-    const token = generateToken(user);
+        isActive: true,
+      });
 
-    // ----------------------------------------------------------
-    // RESPONSE
-    // ----------------------------------------------------------
+    const token =
+      generateToken(user);
 
     return res.status(201).json({
       success: true,
@@ -243,7 +266,8 @@ exports.register = async (req, res) => {
 
       token,
 
-      user: getSafeUser(user),
+      user:
+        getSafeUser(user),
     });
   } catch (error) {
     console.error(
@@ -251,20 +275,27 @@ exports.register = async (req, res) => {
       error
     );
 
-    // Duplicate email
-    if (error.code === 11000) {
+    if (
+      error.code === 11000
+    ) {
       return res.status(409).json({
         success: false,
+
         message:
           "An account with this email already exists",
       });
     }
 
-    // Mongoose validation
-    if (error.name === "ValidationError") {
-      const errors = Object.values(
-        error.errors
-      ).map((err) => err.message);
+    if (
+      error.name ===
+      "ValidationError"
+    ) {
+      const errors =
+        Object.values(
+          error.errors
+        ).map(
+          (err) => err.message
+        );
 
       return res.status(400).json({
         success: false,
@@ -287,21 +318,22 @@ exports.register = async (req, res) => {
 
 // ============================================================
 // LOGIN
-// POST /auth/login
 // ============================================================
 
-exports.login = async (req, res) => {
+exports.login = async (
+  req,
+  res
+) => {
   try {
     const {
       email,
       password,
     } = req.body || {};
 
-    // ----------------------------------------------------------
-    // REQUIRED FIELDS
-    // ----------------------------------------------------------
-
-    if (!email || !password) {
+    if (
+      !email ||
+      !password
+    ) {
       return res.status(400).json({
         success: false,
 
@@ -310,21 +342,15 @@ exports.login = async (req, res) => {
       });
     }
 
-    // ----------------------------------------------------------
-    // CLEAN EMAIL
-    // ----------------------------------------------------------
+    const trimmedEmail =
+      String(email)
+        .trim()
+        .toLowerCase();
 
-    const trimmedEmail = String(email)
-      .trim()
-      .toLowerCase();
-
-    // ----------------------------------------------------------
-    // FIND USER
-    // ----------------------------------------------------------
-
-    const user = await User.findOne({
-      email: trimmedEmail,
-    }).select("+password");
+    const user =
+      await User.findOne({
+        email: trimmedEmail,
+      }).select("+password");
 
     if (!user) {
       return res.status(401).json({
@@ -335,11 +361,9 @@ exports.login = async (req, res) => {
       });
     }
 
-    // ----------------------------------------------------------
-    // CHECK ACCOUNT STATUS
-    // ----------------------------------------------------------
-
-    if (user.isActive === false) {
+    if (
+      user.isActive === false
+    ) {
       return res.status(403).json({
         success: false,
 
@@ -348,12 +372,10 @@ exports.login = async (req, res) => {
       });
     }
 
-    // ----------------------------------------------------------
-    // CHECK PASSWORD
-    // ----------------------------------------------------------
-
     const isMatch =
-      await user.comparePassword(password);
+      await user.comparePassword(
+        password
+      );
 
     if (!isMatch) {
       return res.status(401).json({
@@ -364,25 +386,15 @@ exports.login = async (req, res) => {
       });
     }
 
-    // ----------------------------------------------------------
-    // UPDATE LAST LOGIN
-    // ----------------------------------------------------------
-
-    user.lastLogin = new Date();
+    user.lastLogin =
+      new Date();
 
     await user.save({
       validateBeforeSave: false,
     });
 
-    // ----------------------------------------------------------
-    // GENERATE TOKEN
-    // ----------------------------------------------------------
-
-    const token = generateToken(user);
-
-    // ----------------------------------------------------------
-    // RESPONSE
-    // ----------------------------------------------------------
+    const token =
+      generateToken(user);
 
     return res.json({
       success: true,
@@ -392,7 +404,8 @@ exports.login = async (req, res) => {
 
       token,
 
-      user: getSafeUser(user),
+      user:
+        getSafeUser(user),
     });
   } catch (error) {
     console.error(
@@ -411,12 +424,17 @@ exports.login = async (req, res) => {
 
 // ============================================================
 // GET CURRENT USER
-// GET /auth/me
 // ============================================================
 
-exports.getMe = async (req, res) => {
+exports.getMe = async (
+  req,
+  res
+) => {
   try {
-    if (!req.user || !req.user._id) {
+    if (
+      !req.user ||
+      !req.user._id
+    ) {
       return res.status(401).json({
         success: false,
 
@@ -425,9 +443,10 @@ exports.getMe = async (req, res) => {
       });
     }
 
-    const user = await User.findById(
-      req.user._id
-    ).select("-password");
+    const user =
+      await User.findById(
+        req.user._id
+      ).select("-password");
 
     if (!user) {
       return res.status(404).json({
@@ -438,7 +457,9 @@ exports.getMe = async (req, res) => {
       });
     }
 
-    if (user.isActive === false) {
+    if (
+      user.isActive === false
+    ) {
       return res.status(403).json({
         success: false,
 
@@ -450,7 +471,8 @@ exports.getMe = async (req, res) => {
     return res.json({
       success: true,
 
-      user: getSafeUser(user),
+      user:
+        getSafeUser(user),
     });
   } catch (error) {
     console.error(
@@ -469,194 +491,180 @@ exports.getMe = async (req, res) => {
 
 // ============================================================
 // UPDATE PROFILE
-// PUT /auth/profile
 // ============================================================
 
-exports.updateProfile = async (
-  req,
-  res
-) => {
-  try {
-    if (!req.user || !req.user._id) {
-      return res.status(401).json({
-        success: false,
+exports.updateProfile =
+  async (req, res) => {
+    try {
+      if (
+        !req.user ||
+        !req.user._id
+      ) {
+        return res
+          .status(401)
+          .json({
+            success: false,
 
-        message:
-          "Authentication required",
-      });
-    }
-
-    const {
-      name,
-      phone,
-      location,
-      avatar,
-      photoURL,
-    } = req.body || {};
-
-    const updateFields = {};
-
-    // ----------------------------------------------------------
-    // NAME
-    // ----------------------------------------------------------
-
-    if (
-      name !== undefined &&
-      name !== null
-    ) {
-      const trimmedName =
-        String(name).trim();
-
-      if (trimmedName.length < 2) {
-        return res.status(400).json({
-          success: false,
-
-          message:
-            "Name must be at least 2 characters long",
-        });
+            message:
+              "Authentication required",
+          });
       }
 
-      updateFields.name =
-        trimmedName;
-    }
+      const {
+        name,
+        phone,
+        location,
+        avatar,
+        photoURL,
+      } = req.body || {};
 
-    // ----------------------------------------------------------
-    // PHONE
-    // ----------------------------------------------------------
+      const updateFields = {};
 
-    if (
-      phone !== undefined &&
-      phone !== null
-    ) {
-      updateFields.phone =
-        String(phone).trim();
-    }
+      if (
+        name !== undefined &&
+        name !== null
+      ) {
+        const trimmedName =
+          String(name).trim();
 
-    // ----------------------------------------------------------
-    // LOCATION
-    // ----------------------------------------------------------
+        if (
+          trimmedName.length < 2
+        ) {
+          return res
+            .status(400)
+            .json({
+              success: false,
 
-    if (
-      location !== undefined &&
-      location !== null
-    ) {
-      updateFields.location =
-        String(location).trim();
-    }
-
-    // ----------------------------------------------------------
-    // AVATAR
-    // ----------------------------------------------------------
-
-    if (
-      avatar !== undefined &&
-      avatar !== null
-    ) {
-      updateFields.avatar =
-        String(avatar).trim();
-    }
-
-    // ----------------------------------------------------------
-    // PHOTO URL
-    // ----------------------------------------------------------
-
-    if (
-      photoURL !== undefined &&
-      photoURL !== null
-    ) {
-      updateFields.photoURL =
-        String(photoURL).trim();
-    }
-
-    // ----------------------------------------------------------
-    // NOTHING TO UPDATE
-    // ----------------------------------------------------------
-
-    if (
-      Object.keys(updateFields).length === 0
-    ) {
-      return res.status(400).json({
-        success: false,
-
-        message:
-          "No fields to update",
-      });
-    }
-
-    // ----------------------------------------------------------
-    // UPDATE USER
-    // ----------------------------------------------------------
-
-    const user =
-      await User.findByIdAndUpdate(
-        req.user._id,
-
-        {
-          $set: updateFields,
-        },
-
-        {
-          new: true,
-
-          runValidators: true,
+              message:
+                "Name must be at least 2 characters long",
+            });
         }
-      ).select("-password");
 
-    if (!user) {
-      return res.status(404).json({
-        success: false,
+        updateFields.name =
+          trimmedName;
+      }
+
+      if (
+        phone !== undefined &&
+        phone !== null
+      ) {
+        updateFields.phone =
+          String(phone).trim();
+      }
+
+      if (
+        location !== undefined &&
+        location !== null
+      ) {
+        updateFields.location =
+          String(location).trim();
+      }
+
+      if (
+        avatar !== undefined &&
+        avatar !== null
+      ) {
+        updateFields.avatar =
+          String(avatar).trim();
+      }
+
+      if (
+        photoURL !== undefined &&
+        photoURL !== null
+      ) {
+        updateFields.photoURL =
+          String(photoURL).trim();
+      }
+
+      if (
+        Object.keys(
+          updateFields
+        ).length === 0
+      ) {
+        return res
+          .status(400)
+          .json({
+            success: false,
+
+            message:
+              "No fields to update",
+          });
+      }
+
+      const user =
+        await User.findByIdAndUpdate(
+          req.user._id,
+
+          {
+            $set: updateFields,
+          },
+
+          {
+            new: true,
+            runValidators: true,
+          }
+        ).select("-password");
+
+      if (!user) {
+        return res
+          .status(404)
+          .json({
+            success: false,
+
+            message:
+              "User not found",
+          });
+      }
+
+      return res.json({
+        success: true,
 
         message:
-          "User not found",
+          "Profile updated successfully",
+
+        user:
+          getSafeUser(user),
       });
-    }
-
-    return res.json({
-      success: true,
-
-      message:
-        "Profile updated successfully",
-
-      user: getSafeUser(user),
-    });
-  } catch (error) {
-    console.error(
-      "❌ UpdateProfile error:",
-      error
-    );
-
-    if (
-      error.name ===
-      "ValidationError"
-    ) {
-      const errors = Object.values(
-        error.errors
-      ).map(
-        (err) => err.message
+    } catch (error) {
+      console.error(
+        "❌ UpdateProfile error:",
+        error
       );
 
-      return res.status(400).json({
+      if (
+        error.name ===
+        "ValidationError"
+      ) {
+        const errors =
+          Object.values(
+            error.errors
+          ).map(
+            (err) => err.message
+          );
+
+        return res
+          .status(400)
+          .json({
+            success: false,
+
+            message:
+              "Validation error",
+
+            errors,
+          });
+      }
+
+      return res.status(500).json({
         success: false,
 
         message:
-          "Validation error",
-
-        errors,
+          "Server error. Please try again later.",
       });
     }
-
-    return res.status(500).json({
-      success: false,
-
-      message:
-        "Server error. Please try again later.",
-    });
-  }
-};
+  };
 
 // ============================================================
 // LOGOUT
-// POST /auth/logout
 // ============================================================
 
 exports.logout = async (

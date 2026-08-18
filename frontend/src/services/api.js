@@ -13,9 +13,10 @@ const RAW_API_URL =
   import.meta.env.VITE_API_URL ||
   "http://localhost:5000";
 
-export const API_URL = String(RAW_API_URL)
-  .trim()
-  .replace(/\/+$/, "");
+export const API_URL = String(RAW_API_URL).replace(
+  /\/+$/,
+  ""
+);
 
 console.log("🔗 API_URL:", API_URL);
 
@@ -23,15 +24,12 @@ console.log("🔗 API_URL:", API_URL);
 // REQUEST CONFIG
 // ================================================================
 
-// Normal API requests
+// Render services can take time to wake up.
+// Give the production API enough time to respond.
 const REQUEST_TIMEOUT = 30000;
 
-// Authentication requests can take longer when
-// Render is waking the backend.
-const AUTH_TIMEOUT = 45000;
-
-// Normal network retry
-const MAX_RETRIES = 1;
+// Retry temporary network/time-out failures.
+const MAX_RETRIES = 2;
 
 // ================================================================
 // HEADERS
@@ -76,7 +74,8 @@ const handleResponse = async (response) => {
       ) {
         data = await response.json();
       } else {
-        const text = await response.text();
+        const text =
+          await response.text();
 
         if (text) {
           data = {
@@ -84,7 +83,12 @@ const handleResponse = async (response) => {
           };
         }
       }
-    } catch {
+    } catch (parseError) {
+      console.warn(
+        "⚠️ Could not parse API response:",
+        parseError
+      );
+
       data = {};
     }
   }
@@ -96,9 +100,13 @@ const handleResponse = async (response) => {
         `HTTP ${response.status}`
     );
 
-    error.status = response.status;
+    error.status =
+      response.status;
+
     error.data = data;
-    error.url = response.url;
+
+    error.url =
+      response.url;
 
     throw error;
   }
@@ -124,43 +132,36 @@ const request = async (
   options = {},
   retries = MAX_RETRIES
 ) => {
-  // --------------------------------------------------------------
-  // Authentication requests get more time.
-  // This is useful when Render is waking the backend.
-  // --------------------------------------------------------------
-
-  const isAuthRequest =
-    url.includes("/auth/");
-
-  const timeout =
-    options.timeout ||
-    (isAuthRequest
-      ? AUTH_TIMEOUT
-      : REQUEST_TIMEOUT);
-
-  const controller =
-    new AbortController();
-
-  const timeoutId =
-    setTimeout(() => {
-      controller.abort();
-    }, timeout);
+  let controller;
+  let timeoutId;
 
   try {
-    const response = await fetch(url, {
-      credentials: "include",
-      ...options,
+    controller =
+      new AbortController();
 
-      signal:
-        options.signal ||
-        controller.signal,
-    });
+    timeoutId = setTimeout(() => {
+      controller.abort();
+    }, REQUEST_TIMEOUT);
+
+    const response =
+      await fetch(url, {
+        credentials: "include",
+        ...options,
+
+        signal:
+          options.signal ||
+          controller.signal,
+      });
 
     clearTimeout(timeoutId);
 
-    return await handleResponse(response);
+    return await handleResponse(
+      response
+    );
   } catch (error) {
-    clearTimeout(timeoutId);
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
 
     const isAbortError =
       error?.name === "AbortError";
@@ -175,25 +176,41 @@ const request = async (
     // ------------------------------------------------------------
 
     if (isAbortError) {
+      if (retries > 0) {
+        console.warn(
+          `⏳ API timeout. Retrying... ${retries} attempt(s) left`,
+          url
+        );
+
+        await sleep(1500);
+
+        return request(
+          url,
+          options,
+          retries - 1
+        );
+      }
+
       const timeoutError =
         new Error(
-          isAuthRequest
-            ? "Authentication server took too long to respond."
-            : "The server took too long to respond."
+          "The server took too long to respond."
         );
 
       timeoutError.code =
         "REQUEST_TIMEOUT";
 
-      timeoutError.status = 408;
-
       timeoutError.url = url;
+
+      console.error(
+        "❌ API timeout:",
+        url
+      );
 
       throw timeoutError;
     }
 
     // ------------------------------------------------------------
-    // RETRY NETWORK ERRORS
+    // NETWORK ERROR
     // ------------------------------------------------------------
 
     if (
@@ -201,7 +218,8 @@ const request = async (
       retries > 0
     ) {
       console.warn(
-        `🔄 Retrying API request... ${retries} attempt left`
+        `🔄 Network error. Retrying... ${retries} attempt(s) left`,
+        url
       );
 
       await sleep(1000);
@@ -212,6 +230,10 @@ const request = async (
         retries - 1
       );
     }
+
+    // ------------------------------------------------------------
+    // FINAL ERROR
+    // ------------------------------------------------------------
 
     console.error(
       "❌ API request failed:",
@@ -227,7 +249,9 @@ const request = async (
 // QUERY BUILDER
 // ================================================================
 
-const buildQuery = (params = {}) => {
+const buildQuery = (
+  params = {}
+) => {
   const searchParams =
     new URLSearchParams();
 
@@ -268,30 +292,38 @@ const buildQuery = (params = {}) => {
 // IMAGE URL
 // ================================================================
 
-export const getImageUrl = (path) => {
+export const getImageUrl = (
+  path
+) => {
   if (!path) {
     return "/placeholder.png";
   }
 
-  if (typeof path !== "string") {
+  if (
+    typeof path !== "string"
+  ) {
     return "/placeholder.png";
   }
 
-  const cleanPath = path.trim();
+  const cleanPath =
+    path.trim();
 
   if (!cleanPath) {
     return "/placeholder.png";
   }
 
   // --------------------------------------------------------------
-  // External URL
+  // EXTERNAL URL
   // --------------------------------------------------------------
 
   if (
-    cleanPath.startsWith("http://") ||
-    cleanPath.startsWith("https://")
+    cleanPath.startsWith(
+      "http://"
+    ) ||
+    cleanPath.startsWith(
+      "https://"
+    )
   ) {
-    // Cloudinary optimization
     if (
       cleanPath.includes(
         "res.cloudinary.com"
@@ -310,27 +342,31 @@ export const getImageUrl = (path) => {
   }
 
   // --------------------------------------------------------------
-  // Base64
+  // BASE64
   // --------------------------------------------------------------
 
   if (
-    cleanPath.startsWith("data:")
+    cleanPath.startsWith(
+      "data:"
+    )
   ) {
     return cleanPath;
   }
 
   // --------------------------------------------------------------
-  // Blob
+  // BLOB
   // --------------------------------------------------------------
 
   if (
-    cleanPath.startsWith("blob:")
+    cleanPath.startsWith(
+      "blob:"
+    )
   ) {
     return cleanPath;
   }
 
   // --------------------------------------------------------------
-  // Backend relative path
+  // BACKEND RELATIVE PATH
   // --------------------------------------------------------------
 
   return `${API_URL}${
@@ -341,21 +377,36 @@ export const getImageUrl = (path) => {
 };
 
 // ================================================================
+// HEALTH
+// ================================================================
+
+export const health = {
+  check: async () => {
+    return request(
+      `${API_URL}/health`,
+      {
+        method: "GET",
+        headers: {
+          Accept:
+            "application/json",
+        },
+      }
+    );
+  },
+};
+
+// ================================================================
 // AUTH
 // ================================================================
 
 export const auth = {
-  // --------------------------------------------------------------
-  // LOGIN
-  // --------------------------------------------------------------
-
   login: async (
     email,
     password
   ) => {
     console.log(
-      "🔐 Login API_URL:",
-      API_URL
+      "🔐 Login request:",
+      `${API_URL}/auth/login`
     );
 
     return request(
@@ -379,15 +430,9 @@ export const auth = {
             password || ""
           ),
         }),
-
-        timeout: AUTH_TIMEOUT,
       }
     );
   },
-
-  // --------------------------------------------------------------
-  // REGISTER
-  // --------------------------------------------------------------
 
   register: async (
     userData = {}
@@ -412,7 +457,8 @@ export const auth = {
       ).trim(),
 
       role: String(
-        userData.role || "buyer"
+        userData.role ||
+          "buyer"
       )
         .trim()
         .toLowerCase(),
@@ -453,21 +499,26 @@ export const auth = {
         body: JSON.stringify(
           registrationData
         ),
-
-        timeout: AUTH_TIMEOUT,
       }
     );
   },
 
-  // --------------------------------------------------------------
-  // GET CURRENT USER
-  // --------------------------------------------------------------
-
   getMe: async (
     token = getToken()
   ) => {
+    if (!token) {
+      const error =
+        new Error(
+          "Authentication token is missing."
+        );
+
+      error.status = 401;
+
+      throw error;
+    }
+
     console.log(
-      "🔐 Checking authentication:",
+      "🔎 Checking:",
       `${API_URL}/auth/me`
     );
 
@@ -476,34 +527,28 @@ export const auth = {
       {
         method: "GET",
 
-        headers: getHeaders(token),
-
-        // Render may need additional
-        // time when waking the server.
-        timeout: AUTH_TIMEOUT,
-      },
-
-      // Do not immediately retry /auth/me.
-      // Wait for Render to wake.
-      0
+        headers:
+          getHeaders(token),
+      }
     );
   },
-
-  // --------------------------------------------------------------
-  // LOGOUT
-  // --------------------------------------------------------------
 
   logout: async (
     token = getToken()
   ) => {
+    if (!token) {
+      return {
+        success: true,
+      };
+    }
+
     return request(
       `${API_URL}/auth/logout`,
       {
         method: "POST",
 
-        headers: getHeaders(token),
-
-        timeout: AUTH_TIMEOUT,
+        headers:
+          getHeaders(token),
       }
     );
   },
@@ -691,7 +736,9 @@ export const users = {
       `${API_URL}/api/users${query}`,
       {
         method: "GET",
-        headers: getHeaders(token),
+
+        headers:
+          getHeaders(token),
       }
     );
   },
@@ -706,7 +753,9 @@ export const users = {
       )}`,
       {
         method: "GET",
-        headers: getHeaders(token),
+
+        headers:
+          getHeaders(token),
       }
     );
   },
@@ -833,7 +882,9 @@ export const notifications = {
         headers:
           getHeaders(token),
 
-        body: JSON.stringify(data),
+        body: JSON.stringify(
+          data
+        ),
       }
     );
   },
@@ -1140,11 +1191,10 @@ export const favorites = {
 };
 
 // ================================================================
-// ADMIN API
+// ADMIN
 // ================================================================
 
 export const admin = {
-  // Dashboard
   getDashboardStats: async (
     token = getToken()
   ) => {
@@ -1152,14 +1202,12 @@ export const admin = {
       `${API_URL}/api/admin/dashboard`,
       {
         method: "GET",
-
         headers:
           getHeaders(token),
       }
     );
   },
 
-  // Users
   getUsers: async (
     params = {},
     token = getToken()
@@ -1171,7 +1219,6 @@ export const admin = {
       `${API_URL}/api/admin/users${query}`,
       {
         method: "GET",
-
         headers:
           getHeaders(token),
       }
@@ -1188,7 +1235,6 @@ export const admin = {
       )}`,
       {
         method: "GET",
-
         headers:
           getHeaders(token),
       }
@@ -1227,14 +1273,12 @@ export const admin = {
       )}`,
       {
         method: "DELETE",
-
         headers:
           getHeaders(token),
       }
     );
   },
 
-  // Products
   getProducts: async (
     params = {},
     token = getToken()
@@ -1246,7 +1290,6 @@ export const admin = {
       `${API_URL}/api/admin/products${query}`,
       {
         method: "GET",
-
         headers:
           getHeaders(token),
       }
@@ -1263,14 +1306,12 @@ export const admin = {
       )}`,
       {
         method: "DELETE",
-
         headers:
           getHeaders(token),
       }
     );
   },
 
-  // Orders
   getOrders: async (
     params = {},
     token = getToken()
@@ -1282,7 +1323,6 @@ export const admin = {
       `${API_URL}/api/admin/orders${query}`,
       {
         method: "GET",
-
         headers:
           getHeaders(token),
       }
@@ -1311,7 +1351,6 @@ export const admin = {
     );
   },
 
-  // Riders
   getRiders: async (
     params = {},
     token = getToken()
@@ -1323,7 +1362,6 @@ export const admin = {
       `${API_URL}/api/admin/riders${query}`,
       {
         method: "GET",
-
         headers:
           getHeaders(token),
       }
@@ -1340,7 +1378,6 @@ export const admin = {
       )}`,
       {
         method: "GET",
-
         headers:
           getHeaders(token),
       }
@@ -1357,7 +1394,6 @@ export const admin = {
       )}/approve`,
       {
         method: "PUT",
-
         headers:
           getHeaders(token),
       }
@@ -1374,7 +1410,6 @@ export const admin = {
       )}/reject`,
       {
         method: "PUT",
-
         headers:
           getHeaders(token),
       }
@@ -1414,14 +1449,12 @@ export const admin = {
       )}`,
       {
         method: "DELETE",
-
         headers:
           getHeaders(token),
       }
     );
   },
 
-  // Deliveries
   getDeliveries: async (
     params = {},
     token = getToken()
@@ -1433,7 +1466,6 @@ export const admin = {
       `${API_URL}/api/admin/deliveries${query}`,
       {
         method: "GET",
-
         headers:
           getHeaders(token),
       }
@@ -1450,7 +1482,6 @@ export const admin = {
       )}`,
       {
         method: "GET",
-
         headers:
           getHeaders(token),
       }
@@ -1481,7 +1512,7 @@ export const admin = {
 };
 
 // ================================================================
-// DELIVERY API
+// DELIVERY
 // ================================================================
 
 export const deliveries = {
@@ -1504,19 +1535,19 @@ export const deliveries = {
     );
   },
 
-  getCustomerDeliveries: async (
-    token = getToken()
-  ) => {
-    return request(
-      `${API_URL}/api/deliveries/customer`,
-      {
-        method: "GET",
-
-        headers:
-          getHeaders(token),
-      }
-    );
-  },
+  getCustomerDeliveries:
+    async (
+      token = getToken()
+    ) => {
+      return request(
+        `${API_URL}/api/deliveries/customer`,
+        {
+          method: "GET",
+          headers:
+            getHeaders(token),
+        }
+      );
+    },
 
   getAvailable: async (
     token = getToken()
@@ -1525,7 +1556,6 @@ export const deliveries = {
       `${API_URL}/api/deliveries/available`,
       {
         method: "GET",
-
         headers:
           getHeaders(token),
       }
@@ -1539,66 +1569,67 @@ export const deliveries = {
       `${API_URL}/api/deliveries/my`,
       {
         method: "GET",
-
         headers:
           getHeaders(token),
       }
     );
   },
 
-  getRiderDeliveries: async (
-    token = getToken()
-  ) => {
-    return request(
-      `${API_URL}/api/deliveries/rider`,
-      {
-        method: "GET",
+  getRiderDeliveries:
+    async (
+      token = getToken()
+    ) => {
+      return request(
+        `${API_URL}/api/deliveries/rider`,
+        {
+          method: "GET",
+          headers:
+            getHeaders(token),
+        }
+      );
+    },
 
-        headers:
-          getHeaders(token),
-      }
-    );
-  },
+  updateAvailability:
+    async (
+      isAvailable,
+      token = getToken()
+    ) => {
+      return request(
+        `${API_URL}/api/deliveries/rider/availability`,
+        {
+          method: "PATCH",
 
-  updateAvailability: async (
-    isAvailable,
-    token = getToken()
-  ) => {
-    return request(
-      `${API_URL}/api/deliveries/rider/availability`,
-      {
-        method: "PATCH",
+          headers:
+            getHeaders(token),
 
-        headers:
-          getHeaders(token),
+          body: JSON.stringify({
+            isAvailable:
+              Boolean(isAvailable),
+          }),
+        }
+      );
+    },
 
-        body: JSON.stringify({
-          isAvailable:
-            Boolean(isAvailable),
-        }),
-      }
-    );
-  },
+  toggleAvailability:
+    async (
+      isAvailable,
+      token = getToken()
+    ) => {
+      return request(
+        `${API_URL}/api/deliveries/rider/availability`,
+        {
+          method: "PATCH",
 
-  toggleAvailability: async (
-    isAvailable,
-    token = getToken()
-  ) => {
-    return request(
-      `${API_URL}/api/deliveries/rider/availability`,
-      {
-        method: "PATCH",
+          headers:
+            getHeaders(token),
 
-        headers:
-          getHeaders(token),
-
-        body: JSON.stringify({
-          isAvailable:
-            Boolean(isAvailable),
-        }),
-      }
-    );
-  },
+          body: JSON.stringify({
+            isAvailable:
+              Boolean(isAvailable),
+          }),
+        }
+      );
+    },
 
   accept: async (
     id,
@@ -1610,7 +1641,6 @@ export const deliveries = {
       )}/accept`,
       {
         method: "PATCH",
-
         headers:
           getHeaders(token),
       }
@@ -1826,7 +1856,7 @@ export const deleteMessage =
   messages.delete;
 
 // ================================================================
-// FAVORITE EXPORTS
+// FAVORITES
 // ================================================================
 
 export const getFavorites =
@@ -1839,7 +1869,7 @@ export const removeFavorite =
   favorites.remove;
 
 // ================================================================
-// ADMIN NAMED EXPORTS
+// ADMIN EXPORTS
 // ================================================================
 
 export const getAdminDashboardStats =
@@ -1897,7 +1927,7 @@ export const updateAdminDeliveryStatus =
   admin.updateDeliveryStatus;
 
 // ================================================================
-// DELIVERY NAMED EXPORTS
+// DELIVERY EXPORTS
 // ================================================================
 
 export const createDelivery =
@@ -1943,110 +1973,166 @@ export const cancelDelivery =
 const api = {
   API_URL,
 
-  // API groups
+  health,
+
   auth,
+
   products,
+
   users,
+
   notifications,
+
   orders,
+
   messages,
+
   favorites,
+
   admin,
+
   deliveries,
 
-  // Auth
   login,
+
   register,
+
   getMe,
+
   logout,
 
-  // Products
   getProducts,
+
   getProduct,
+
   createProduct,
+
   createProductWithFiles,
+
   updateProduct,
+
   updateProductWithFiles,
+
   deleteProduct,
+
   updateProductStatus,
 
-  // Users
   getUsers,
+
   getUser,
+
   updateUser,
+
   updateUserWithFiles,
+
   deleteUser,
+
   getUserStats,
 
-  // Notifications
   getNotifications,
+
   getAdminNotifications,
+
   getUserNotifications,
+
   createNotification,
+
   markNotificationRead,
+
   deleteNotification,
 
-  // Orders
   getOrders,
+
   getOrder,
+
   createOrder,
+
   updateOrder,
+
   deleteOrder,
 
-  // Messages
   getMessages,
+
   getConversations,
+
   getConversation,
+
   sendMessage,
+
   markMessageRead,
+
   deleteMessage,
 
-  // Favorites
   getFavorites,
+
   addFavorite,
+
   removeFavorite,
 
-  // Admin
   getAdminDashboardStats,
+
   getAdminUsers,
+
   getAdminUserById,
+
   updateAdminUserRole,
+
   deleteAdminUser,
 
   getAdminProducts,
+
   deleteAdminProduct,
 
   getAdminOrders,
+
   updateAdminOrderStatus,
 
   getRiders,
+
   getRiderById,
+
   approveRider,
+
   rejectRider,
+
   updateRiderApproval,
+
   deleteRider,
 
   getAdminDeliveries,
+
   getAdminDeliveryById,
+
   updateAdminDeliveryStatus,
 
-  // Deliveries
   createDelivery,
+
   getCustomerDeliveries,
+
   getAvailableDeliveries,
+
   getMyDeliveries,
+
   getRiderDeliveries,
+
   updateRiderAvailability,
+
   toggleRiderAvailability,
+
   acceptDelivery,
+
   updateDeliveryStatus,
+
   updateDeliveryLocation,
+
   getDelivery,
+
   cancelDelivery,
 
-  // Utilities
   getImageUrl,
+
   getToken,
+
   clearAuthData,
 };
 

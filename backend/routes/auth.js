@@ -21,21 +21,31 @@ const {
 // POST /auth/register
 // ============================================================
 
-router.post("/register", register);
+router.post(
+  "/register",
+  register
+);
 
 // ============================================================
 // LOGIN
 // POST /auth/login
 // ============================================================
 
-router.post("/login", login);
+router.post(
+  "/login",
+  login
+);
 
 // ============================================================
-// GET CURRENT USER
+// CURRENT USER
 // GET /auth/me
 // ============================================================
 
-router.get("/me", verifyToken, getMe);
+router.get(
+  "/me",
+  verifyToken,
+  getMe
+);
 
 // ============================================================
 // UPDATE PROFILE
