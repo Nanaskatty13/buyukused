@@ -1,4 +1,5 @@
 // frontend/src/App.jsx
+
 import React from "react";
 import { Routes, Route } from "react-router-dom";
 
@@ -68,13 +69,26 @@ import BookRider from "./pages/BookRider";
 import RiderDashboard from "./pages/RiderDashboard";
 
 // ============================================================
-// NEW PAGES FOR STATS CARDS
+// USER DASHBOARD
 // ============================================================
 
 import MyAds from "./pages/MyAds";
 import Notifications from "./pages/Notifications";
-import Messages from "./pages/Messages";
 import Analytics from "./pages/Analytics";
+
+// ============================================================
+// CHAT
+// ============================================================
+//
+// IMPORTANT:
+// Your Chat component is located at:
+//
+// src/components/chat/Chat.jsx
+//
+// So the import MUST point there.
+// ============================================================
+
+import Chat from "./components/chat/Chat";
 
 // ============================================================
 // APP
@@ -87,84 +101,269 @@ function App() {
         <Navbar />
 
         <Routes>
+
           {/* ==================================================
-              PUBLIC
+              PUBLIC / AUTH
           ================================================== */}
 
-          <Route path="/" element={<Home />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/reset-password/:token" element={<ResetPassword />} />
+          <Route
+            path="/"
+            element={<Home />}
+          />
+
+          <Route
+            path="/login"
+            element={<Login />}
+          />
+
+          <Route
+            path="/register"
+            element={<Register />}
+          />
+
+          <Route
+            path="/forgot-password"
+            element={<ForgotPassword />}
+          />
+
+          <Route
+            path="/reset-password/:token"
+            element={<ResetPassword />}
+          />
 
           {/* ==================================================
               PRODUCTS
           ================================================== */}
 
-          <Route path="/products" element={<Products />} />
-          <Route path="/product/:id" element={<ProductDetails />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/wishlist" element={<Wishlist />} />
-          <Route path="/cart" element={<Cart />} />
+          <Route
+            path="/products"
+            element={<Products />}
+          />
+
+          <Route
+            path="/product/:id"
+            element={<ProductDetails />}
+          />
+
+          <Route
+            path="/profile"
+            element={<Profile />}
+          />
+
+          <Route
+            path="/wishlist"
+            element={<Wishlist />}
+          />
+
+          <Route
+            path="/cart"
+            element={<Cart />}
+          />
 
           {/* ==================================================
               SEARCH
           ================================================== */}
 
-          <Route path="/search-results" element={<SearchResultsPage />} />
+          <Route
+            path="/search-results"
+            element={<SearchResultsPage />}
+          />
 
           {/* ==================================================
               INFORMATION
           ================================================== */}
 
-          <Route path="/about" element={<About />} />
-          <Route path="/how-it-works" element={<HowItWorks />} />
-          <Route path="/contact" element={<Contact />} />
-          <Route path="/for-sellers" element={<Buyers />} />
-          <Route path="/for-sellers/pricing" element={<Pricing />} />
-          <Route path="/for-sellers/tips" element={<Tips />} />
-          <Route path="/for-buyers" element={<Buyers />} />
-          <Route path="/for-buyers/safety-tips" element={<SafetyTips />} />
-          <Route path="/for-buyers/report-ad" element={<ReportAd />} />
-          <Route path="/support" element={<Support />} />
-          <Route path="/legal/terms" element={<Terms />} />
-          <Route path="/legal/privacy" element={<Privacy />} />
-          <Route path="/legal/cookies" element={<Cookies />} />
-          <Route path="/info" element={<InfoPage />} />
+          <Route
+            path="/about"
+            element={<About />}
+          />
+
+          <Route
+            path="/how-it-works"
+            element={<HowItWorks />}
+          />
+
+          <Route
+            path="/contact"
+            element={<Contact />}
+          />
+
+          <Route
+            path="/for-sellers"
+            element={<Buyers />}
+          />
+
+          <Route
+            path="/for-sellers/pricing"
+            element={<Pricing />}
+          />
+
+          <Route
+            path="/for-sellers/tips"
+            element={<Tips />}
+          />
+
+          <Route
+            path="/for-buyers"
+            element={<Buyers />}
+          />
+
+          <Route
+            path="/for-buyers/safety-tips"
+            element={<SafetyTips />}
+          />
+
+          <Route
+            path="/for-buyers/report-ad"
+            element={<ReportAd />}
+          />
+
+          <Route
+            path="/support"
+            element={<Support />}
+          />
+
+          <Route
+            path="/legal/terms"
+            element={<Terms />}
+          />
+
+          <Route
+            path="/legal/privacy"
+            element={<Privacy />}
+          />
+
+          <Route
+            path="/legal/cookies"
+            element={<Cookies />}
+          />
+
+          <Route
+            path="/info"
+            element={<InfoPage />}
+          />
 
           {/* ==================================================
               SELLER
           ================================================== */}
 
-          <Route path="/post-ad" element={<PostAd />} />
-          <Route path="/edit-product/:id" element={<EditProduct />} />
+          <Route
+            path="/post-ad"
+            element={<PostAd />}
+          />
+
+          <Route
+            path="/edit-product/:id"
+            element={<EditProduct />}
+          />
 
           {/* ==================================================
-              DELIVERY / BOOK A RIDER
+              DELIVERY
           ================================================== */}
 
-          <Route path="/book-rider" element={<BookRider />} />
+          <Route
+            path="/book-rider"
+            element={<BookRider />}
+          />
 
           {/* ==================================================
               RIDER DASHBOARD
           ================================================== */}
 
-          <Route path="/rider/dashboard" element={<RiderDashboard />} />
+          <Route
+            path="/rider/dashboard"
+            element={<RiderDashboard />}
+          />
 
           {/* ==================================================
               ADMIN
           ================================================== */}
 
-          <Route path="/admin" element={<AdminDashboard />} />
+          <Route
+            path="/admin"
+            element={<AdminDashboard />}
+          />
 
           {/* ==================================================
-              STATS PAGES (NEW)
+              USER DASHBOARD
           ================================================== */}
 
-          <Route path="/my-ads" element={<MyAds />} />
-          <Route path="/analytics" element={<Analytics />} />
-          <Route path="/notifications" element={<Notifications />} />
-          <Route path="/messages" element={<Messages />} />
+          <Route
+            path="/my-ads"
+            element={<MyAds />}
+          />
+
+          <Route
+            path="/analytics"
+            element={<Analytics />}
+          />
+
+          <Route
+            path="/notifications"
+            element={<Notifications />}
+          />
+
+          {/* ==================================================
+              MESSAGES / CHAT
+          ==================================================
+          
+          Your Chat.jsx reads:
+
+              /messages?user=USER_ID
+
+          Therefore /messages is now the main messaging page.
+          
+          Examples:
+
+              /messages
+              /messages?user=64abc123
+          
+          ================================================== */}
+
+          <Route
+            path="/messages"
+            element={<Chat />}
+          />
+
+          {/* ==================================================
+              OPTIONAL CHAT ROUTES
+          ==================================================
+          
+          These are kept for compatibility if other parts
+          of your website already link to /chat.
+
+          NOTE:
+          Your current Chat.jsx uses the query parameter
+          "?user=" rather than useParams(), so these routes
+          will simply open the Chat component without selecting
+          a user automatically.
+          
+          ================================================== */}
+
+          <Route
+            path="/chat"
+            element={<Chat />}
+          />
+
+          <Route
+            path="/chat/:userId"
+            element={<Chat />}
+          />
+
+          <Route
+            path="/chat/:userId/:productId"
+            element={<Chat />}
+          />
+
+          {/* ==================================================
+              FALLBACK
+          ================================================== */}
+
+          <Route
+            path="*"
+            element={<Home />}
+          />
+
         </Routes>
 
         <FloatingPhone />
