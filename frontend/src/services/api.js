@@ -13,7 +13,9 @@ const RAW_API_URL =
   import.meta.env.VITE_API_URL ||
   "http://localhost:5000";
 
-export const API_URL = String(RAW_API_URL).replace(/\/+$/, "");
+export const API_URL = String(RAW_API_URL)
+  .trim()
+  .replace(/\/+$/, "");
 
 console.log("🔗 API_URL:", API_URL);
 
@@ -21,7 +23,14 @@ console.log("🔗 API_URL:", API_URL);
 // REQUEST CONFIG
 // ================================================================
 
-const REQUEST_TIMEOUT = 15000;
+// Normal API requests
+const REQUEST_TIMEOUT = 30000;
+
+// Authentication requests can take longer when
+// Render is waking the backend.
+const AUTH_TIMEOUT = 45000;
+
+// Normal network retry
 const MAX_RETRIES = 1;
 
 // ================================================================
@@ -39,7 +48,7 @@ const getHeaders = (token = getToken()) => ({
 });
 
 // IMPORTANT:
-// Do not set Content-Type manually for FormData.
+// Never manually set Content-Type for FormData.
 const getFileHeaders = (token = getToken()) => ({
   ...(token
     ? {
@@ -60,7 +69,11 @@ const handleResponse = async (response) => {
       response.headers.get("content-type") || "";
 
     try {
-      if (contentType.includes("application/json")) {
+      if (
+        contentType.includes(
+          "application/json"
+        )
+      ) {
         data = await response.json();
       } else {
         const text = await response.text();
@@ -98,7 +111,9 @@ const handleResponse = async (response) => {
 // ================================================================
 
 const sleep = (ms) =>
-  new Promise((resolve) => setTimeout(resolve, ms));
+  new Promise((resolve) =>
+    setTimeout(resolve, ms)
+  );
 
 // ================================================================
 // REQUEST HELPER
@@ -109,11 +124,27 @@ const request = async (
   options = {},
   retries = MAX_RETRIES
 ) => {
-  const controller = new AbortController();
+  // --------------------------------------------------------------
+  // Authentication requests get more time.
+  // This is useful when Render is waking the backend.
+  // --------------------------------------------------------------
 
-  const timeoutId = setTimeout(() => {
-    controller.abort();
-  }, REQUEST_TIMEOUT);
+  const isAuthRequest =
+    url.includes("/auth/");
+
+  const timeout =
+    options.timeout ||
+    (isAuthRequest
+      ? AUTH_TIMEOUT
+      : REQUEST_TIMEOUT);
+
+  const controller =
+    new AbortController();
+
+  const timeoutId =
+    setTimeout(() => {
+      controller.abort();
+    }, timeout);
 
   try {
     const response = await fetch(url, {
@@ -121,7 +152,8 @@ const request = async (
       ...options,
 
       signal:
-        options.signal || controller.signal,
+        options.signal ||
+        controller.signal,
     });
 
     clearTimeout(timeoutId);
@@ -135,18 +167,34 @@ const request = async (
 
     const isNetworkError =
       error?.name === "TypeError" ||
-      error?.message === "Failed to fetch";
+      error?.message ===
+        "Failed to fetch";
+
+    // ------------------------------------------------------------
+    // TIMEOUT
+    // ------------------------------------------------------------
 
     if (isAbortError) {
-      const timeoutError = new Error(
-        "The server took too long to respond."
-      );
+      const timeoutError =
+        new Error(
+          isAuthRequest
+            ? "Authentication server took too long to respond."
+            : "The server took too long to respond."
+        );
 
-      timeoutError.code = "REQUEST_TIMEOUT";
+      timeoutError.code =
+        "REQUEST_TIMEOUT";
+
+      timeoutError.status = 408;
+
       timeoutError.url = url;
 
       throw timeoutError;
     }
+
+    // ------------------------------------------------------------
+    // RETRY NETWORK ERRORS
+    // ------------------------------------------------------------
 
     if (
       isNetworkError &&
@@ -156,7 +204,7 @@ const request = async (
         `🔄 Retrying API request... ${retries} attempt left`
       );
 
-      await sleep(800);
+      await sleep(1000);
 
       return request(
         url,
@@ -180,7 +228,8 @@ const request = async (
 // ================================================================
 
 const buildQuery = (params = {}) => {
-  const searchParams = new URLSearchParams();
+  const searchParams =
+    new URLSearchParams();
 
   Object.entries(params).forEach(
     ([key, value]) => {
@@ -234,15 +283,22 @@ export const getImageUrl = (path) => {
     return "/placeholder.png";
   }
 
+  // --------------------------------------------------------------
   // External URL
+  // --------------------------------------------------------------
+
   if (
     cleanPath.startsWith("http://") ||
     cleanPath.startsWith("https://")
   ) {
     // Cloudinary optimization
     if (
-      cleanPath.includes("res.cloudinary.com") &&
-      cleanPath.includes("/image/upload/")
+      cleanPath.includes(
+        "res.cloudinary.com"
+      ) &&
+      cleanPath.includes(
+        "/image/upload/"
+      )
     ) {
       return cleanPath.replace(
         "/image/upload/",
@@ -253,21 +309,30 @@ export const getImageUrl = (path) => {
     return cleanPath;
   }
 
+  // --------------------------------------------------------------
   // Base64
+  // --------------------------------------------------------------
+
   if (
     cleanPath.startsWith("data:")
   ) {
     return cleanPath;
   }
 
+  // --------------------------------------------------------------
   // Blob
+  // --------------------------------------------------------------
+
   if (
     cleanPath.startsWith("blob:")
   ) {
     return cleanPath;
   }
 
+  // --------------------------------------------------------------
   // Backend relative path
+  // --------------------------------------------------------------
+
   return `${API_URL}${
     cleanPath.startsWith("/")
       ? cleanPath
@@ -280,10 +345,19 @@ export const getImageUrl = (path) => {
 // ================================================================
 
 export const auth = {
+  // --------------------------------------------------------------
+  // LOGIN
+  // --------------------------------------------------------------
+
   login: async (
     email,
     password
   ) => {
+    console.log(
+      "🔐 Login API_URL:",
+      API_URL
+    );
+
     return request(
       `${API_URL}/auth/login`,
       {
@@ -295,7 +369,9 @@ export const auth = {
         },
 
         body: JSON.stringify({
-          email: String(email || "")
+          email: String(
+            email || ""
+          )
             .trim()
             .toLowerCase(),
 
@@ -303,9 +379,15 @@ export const auth = {
             password || ""
           ),
         }),
+
+        timeout: AUTH_TIMEOUT,
       }
     );
   },
+
+  // --------------------------------------------------------------
+  // REGISTER
+  // --------------------------------------------------------------
 
   register: async (
     userData = {}
@@ -341,12 +423,16 @@ export const auth = {
       {
         name:
           registrationData.name,
+
         email:
           registrationData.email,
+
         phone:
           registrationData.phone,
+
         role:
           registrationData.role,
+
         passwordProvided:
           Boolean(
             registrationData.password
@@ -367,21 +453,45 @@ export const auth = {
         body: JSON.stringify(
           registrationData
         ),
+
+        timeout: AUTH_TIMEOUT,
       }
     );
   },
 
+  // --------------------------------------------------------------
+  // GET CURRENT USER
+  // --------------------------------------------------------------
+
   getMe: async (
     token = getToken()
   ) => {
+    console.log(
+      "🔐 Checking authentication:",
+      `${API_URL}/auth/me`
+    );
+
     return request(
       `${API_URL}/auth/me`,
       {
         method: "GET",
+
         headers: getHeaders(token),
-      }
+
+        // Render may need additional
+        // time when waking the server.
+        timeout: AUTH_TIMEOUT,
+      },
+
+      // Do not immediately retry /auth/me.
+      // Wait for Render to wake.
+      0
     );
   },
+
+  // --------------------------------------------------------------
+  // LOGOUT
+  // --------------------------------------------------------------
 
   logout: async (
     token = getToken()
@@ -390,7 +500,10 @@ export const auth = {
       `${API_URL}/auth/logout`,
       {
         method: "POST",
+
         headers: getHeaders(token),
+
+        timeout: AUTH_TIMEOUT,
       }
     );
   },
@@ -532,7 +645,9 @@ export const products = {
       )}`,
       {
         method: "DELETE",
-        headers: getHeaders(token),
+
+        headers:
+          getHeaders(token),
       }
     );
   },
@@ -648,7 +763,9 @@ export const users = {
       )}`,
       {
         method: "DELETE",
-        headers: getHeaders(token),
+
+        headers:
+          getHeaders(token),
       }
     );
   },
@@ -660,7 +777,9 @@ export const users = {
       `${API_URL}/api/users/stats`,
       {
         method: "GET",
-        headers: getHeaders(token),
+
+        headers:
+          getHeaders(token),
       }
     );
   },
@@ -681,7 +800,9 @@ export const notifications = {
       )}`,
       {
         method: "GET",
-        headers: getHeaders(token),
+
+        headers:
+          getHeaders(token),
       }
     );
   },
@@ -693,7 +814,9 @@ export const notifications = {
       `${API_URL}/api/notifications/admin`,
       {
         method: "GET",
-        headers: getHeaders(token),
+
+        headers:
+          getHeaders(token),
       }
     );
   },
@@ -725,7 +848,9 @@ export const notifications = {
       )}/read`,
       {
         method: "PUT",
-        headers: getHeaders(token),
+
+        headers:
+          getHeaders(token),
       }
     );
   },
@@ -740,7 +865,9 @@ export const notifications = {
       )}`,
       {
         method: "DELETE",
-        headers: getHeaders(token),
+
+        headers:
+          getHeaders(token),
       }
     );
   },
@@ -762,7 +889,9 @@ export const orders = {
       `${API_URL}/api/orders${query}`,
       {
         method: "GET",
-        headers: getHeaders(token),
+
+        headers:
+          getHeaders(token),
       }
     );
   },
@@ -777,7 +906,9 @@ export const orders = {
       )}`,
       {
         method: "GET",
-        headers: getHeaders(token),
+
+        headers:
+          getHeaders(token),
       }
     );
   },
@@ -833,7 +964,9 @@ export const orders = {
       )}`,
       {
         method: "DELETE",
-        headers: getHeaders(token),
+
+        headers:
+          getHeaders(token),
       }
     );
   },
@@ -854,7 +987,9 @@ export const messages = {
       )}`,
       {
         method: "GET",
-        headers: getHeaders(token),
+
+        headers:
+          getHeaders(token),
       }
     );
   },
@@ -866,7 +1001,9 @@ export const messages = {
       `${API_URL}/api/messages/conversations`,
       {
         method: "GET",
-        headers: getHeaders(token),
+
+        headers:
+          getHeaders(token),
       }
     );
   },
@@ -881,7 +1018,9 @@ export const messages = {
       )}`,
       {
         method: "GET",
-        headers: getHeaders(token),
+
+        headers:
+          getHeaders(token),
       }
     );
   },
@@ -919,7 +1058,9 @@ export const messages = {
       )}/read`,
       {
         method: "PUT",
-        headers: getHeaders(token),
+
+        headers:
+          getHeaders(token),
       }
     );
   },
@@ -934,7 +1075,9 @@ export const messages = {
       )}`,
       {
         method: "DELETE",
-        headers: getHeaders(token),
+
+        headers:
+          getHeaders(token),
       }
     );
   },
@@ -952,7 +1095,9 @@ export const favorites = {
       `${API_URL}/api/favorites`,
       {
         method: "GET",
-        headers: getHeaders(token),
+
+        headers:
+          getHeaders(token),
       }
     );
   },
@@ -986,7 +1131,9 @@ export const favorites = {
       )}`,
       {
         method: "DELETE",
-        headers: getHeaders(token),
+
+        headers:
+          getHeaders(token),
       }
     );
   },
@@ -997,10 +1144,7 @@ export const favorites = {
 // ================================================================
 
 export const admin = {
-  // --------------------------------------------------------------
-  // DASHBOARD
-  // --------------------------------------------------------------
-
+  // Dashboard
   getDashboardStats: async (
     token = getToken()
   ) => {
@@ -1008,15 +1152,14 @@ export const admin = {
       `${API_URL}/api/admin/dashboard`,
       {
         method: "GET",
-        headers: getHeaders(token),
+
+        headers:
+          getHeaders(token),
       }
     );
   },
 
-  // --------------------------------------------------------------
-  // USERS
-  // --------------------------------------------------------------
-
+  // Users
   getUsers: async (
     params = {},
     token = getToken()
@@ -1028,7 +1171,9 @@ export const admin = {
       `${API_URL}/api/admin/users${query}`,
       {
         method: "GET",
-        headers: getHeaders(token),
+
+        headers:
+          getHeaders(token),
       }
     );
   },
@@ -1043,7 +1188,9 @@ export const admin = {
       )}`,
       {
         method: "GET",
-        headers: getHeaders(token),
+
+        headers:
+          getHeaders(token),
       }
     );
   },
@@ -1080,15 +1227,14 @@ export const admin = {
       )}`,
       {
         method: "DELETE",
-        headers: getHeaders(token),
+
+        headers:
+          getHeaders(token),
       }
     );
   },
 
-  // --------------------------------------------------------------
-  // PRODUCTS
-  // --------------------------------------------------------------
-
+  // Products
   getProducts: async (
     params = {},
     token = getToken()
@@ -1100,7 +1246,9 @@ export const admin = {
       `${API_URL}/api/admin/products${query}`,
       {
         method: "GET",
-        headers: getHeaders(token),
+
+        headers:
+          getHeaders(token),
       }
     );
   },
@@ -1115,15 +1263,14 @@ export const admin = {
       )}`,
       {
         method: "DELETE",
-        headers: getHeaders(token),
+
+        headers:
+          getHeaders(token),
       }
     );
   },
 
-  // --------------------------------------------------------------
-  // ORDERS
-  // --------------------------------------------------------------
-
+  // Orders
   getOrders: async (
     params = {},
     token = getToken()
@@ -1135,7 +1282,9 @@ export const admin = {
       `${API_URL}/api/admin/orders${query}`,
       {
         method: "GET",
-        headers: getHeaders(token),
+
+        headers:
+          getHeaders(token),
       }
     );
   },
@@ -1162,10 +1311,7 @@ export const admin = {
     );
   },
 
-  // --------------------------------------------------------------
-  // RIDERS
-  // --------------------------------------------------------------
-
+  // Riders
   getRiders: async (
     params = {},
     token = getToken()
@@ -1177,7 +1323,9 @@ export const admin = {
       `${API_URL}/api/admin/riders${query}`,
       {
         method: "GET",
-        headers: getHeaders(token),
+
+        headers:
+          getHeaders(token),
       }
     );
   },
@@ -1192,7 +1340,9 @@ export const admin = {
       )}`,
       {
         method: "GET",
-        headers: getHeaders(token),
+
+        headers:
+          getHeaders(token),
       }
     );
   },
@@ -1264,15 +1414,14 @@ export const admin = {
       )}`,
       {
         method: "DELETE",
-        headers: getHeaders(token),
+
+        headers:
+          getHeaders(token),
       }
     );
   },
 
-  // --------------------------------------------------------------
-  // DELIVERIES
-  // --------------------------------------------------------------
-
+  // Deliveries
   getDeliveries: async (
     params = {},
     token = getToken()
@@ -1284,7 +1433,9 @@ export const admin = {
       `${API_URL}/api/admin/deliveries${query}`,
       {
         method: "GET",
-        headers: getHeaders(token),
+
+        headers:
+          getHeaders(token),
       }
     );
   },
@@ -1299,7 +1450,9 @@ export const admin = {
       )}`,
       {
         method: "GET",
-        headers: getHeaders(token),
+
+        headers:
+          getHeaders(token),
       }
     );
   },
@@ -1332,10 +1485,6 @@ export const admin = {
 // ================================================================
 
 export const deliveries = {
-  // --------------------------------------------------------------
-  // CREATE DELIVERY
-  // --------------------------------------------------------------
-
   create: async (
     deliveryData,
     token = getToken()
@@ -1355,10 +1504,6 @@ export const deliveries = {
     );
   },
 
-  // --------------------------------------------------------------
-  // CUSTOMER DELIVERIES
-  // --------------------------------------------------------------
-
   getCustomerDeliveries: async (
     token = getToken()
   ) => {
@@ -1366,14 +1511,12 @@ export const deliveries = {
       `${API_URL}/api/deliveries/customer`,
       {
         method: "GET",
-        headers: getHeaders(token),
+
+        headers:
+          getHeaders(token),
       }
     );
   },
-
-  // --------------------------------------------------------------
-  // AVAILABLE DELIVERIES
-  // --------------------------------------------------------------
 
   getAvailable: async (
     token = getToken()
@@ -1382,14 +1525,12 @@ export const deliveries = {
       `${API_URL}/api/deliveries/available`,
       {
         method: "GET",
-        headers: getHeaders(token),
+
+        headers:
+          getHeaders(token),
       }
     );
   },
-
-  // --------------------------------------------------------------
-  // MY DELIVERIES
-  // --------------------------------------------------------------
 
   getMy: async (
     token = getToken()
@@ -1398,14 +1539,12 @@ export const deliveries = {
       `${API_URL}/api/deliveries/my`,
       {
         method: "GET",
-        headers: getHeaders(token),
+
+        headers:
+          getHeaders(token),
       }
     );
   },
-
-  // --------------------------------------------------------------
-  // RIDER DELIVERIES
-  // --------------------------------------------------------------
 
   getRiderDeliveries: async (
     token = getToken()
@@ -1414,14 +1553,12 @@ export const deliveries = {
       `${API_URL}/api/deliveries/rider`,
       {
         method: "GET",
-        headers: getHeaders(token),
+
+        headers:
+          getHeaders(token),
       }
     );
   },
-
-  // --------------------------------------------------------------
-  // RIDER AVAILABILITY
-  // --------------------------------------------------------------
 
   updateAvailability: async (
     isAvailable,
@@ -1443,7 +1580,6 @@ export const deliveries = {
     );
   },
 
-  // Alias
   toggleAvailability: async (
     isAvailable,
     token = getToken()
@@ -1464,10 +1600,6 @@ export const deliveries = {
     );
   },
 
-  // --------------------------------------------------------------
-  // ACCEPT DELIVERY
-  // --------------------------------------------------------------
-
   accept: async (
     id,
     token = getToken()
@@ -1478,14 +1610,12 @@ export const deliveries = {
       )}/accept`,
       {
         method: "PATCH",
-        headers: getHeaders(token),
+
+        headers:
+          getHeaders(token),
       }
     );
   },
-
-  // --------------------------------------------------------------
-  // UPDATE STATUS
-  // --------------------------------------------------------------
 
   updateStatus: async (
     id,
@@ -1509,10 +1639,6 @@ export const deliveries = {
     );
   },
 
-  // --------------------------------------------------------------
-  // UPDATE LOCATION
-  // --------------------------------------------------------------
-
   updateLocation: async (
     id,
     location,
@@ -1535,10 +1661,6 @@ export const deliveries = {
     );
   },
 
-  // --------------------------------------------------------------
-  // GET DELIVERY
-  // --------------------------------------------------------------
-
   getById: async (
     id,
     token = getToken()
@@ -1549,14 +1671,12 @@ export const deliveries = {
       )}`,
       {
         method: "GET",
-        headers: getHeaders(token),
+
+        headers:
+          getHeaders(token),
       }
     );
   },
-
-  // --------------------------------------------------------------
-  // CANCEL
-  // --------------------------------------------------------------
 
   cancel: async (
     id,
@@ -1568,7 +1688,9 @@ export const deliveries = {
       )}/cancel`,
       {
         method: "PATCH",
-        headers: getHeaders(token),
+
+        headers:
+          getHeaders(token),
       }
     );
   },
@@ -1578,10 +1700,17 @@ export const deliveries = {
 // NAMED AUTH EXPORTS
 // ================================================================
 
-export const login = auth.login;
-export const register = auth.register;
-export const getMe = auth.getMe;
-export const logout = auth.logout;
+export const login =
+  auth.login;
+
+export const register =
+  auth.register;
+
+export const getMe =
+  auth.getMe;
+
+export const logout =
+  auth.logout;
 
 // ================================================================
 // PRODUCT EXPORTS
@@ -1713,11 +1842,9 @@ export const removeFavorite =
 // ADMIN NAMED EXPORTS
 // ================================================================
 
-// Dashboard
 export const getAdminDashboardStats =
   admin.getDashboardStats;
 
-// Users
 export const getAdminUsers =
   admin.getUsers;
 
@@ -1730,23 +1857,18 @@ export const updateAdminUserRole =
 export const deleteAdminUser =
   admin.deleteUser;
 
-// Products
-// IMPORTANT:
-// There is ONLY ONE declaration of getAdminProducts.
 export const getAdminProducts =
   admin.getProducts;
 
 export const deleteAdminProduct =
   admin.deleteProduct;
 
-// Orders
 export const getAdminOrders =
   admin.getOrders;
 
 export const updateAdminOrderStatus =
   admin.updateOrderStatus;
 
-// Riders
 export const getRiders =
   admin.getRiders;
 
@@ -1765,7 +1887,6 @@ export const updateRiderApproval =
 export const deleteRider =
   admin.deleteRider;
 
-// Admin deliveries
 export const getAdminDeliveries =
   admin.getDeliveries;
 
@@ -1822,7 +1943,7 @@ export const cancelDelivery =
 const api = {
   API_URL,
 
-  // Main API groups
+  // API groups
   auth,
   products,
   users,
