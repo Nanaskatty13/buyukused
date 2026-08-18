@@ -1,7 +1,6 @@
-// frontend/src/components/LaptopForm.jsx
 import React from 'react';
 
-// Laptop Brands
+// ─── Laptop Brands ────────────────────────────────────────────────
 export const LAPTOP_BRANDS = [
   'Apple',
   'Dell',
@@ -18,10 +17,11 @@ export const LAPTOP_BRANDS = [
   'LG',
   'Huawei',
   'Xiaomi',
+  'MacBook Neo',   // ✅ Added
   'Other',
 ];
 
-// Apple Models
+// ─── Apple Models ─────────────────────────────────────────────────
 const APPLE_MODELS = [
   'MacBook Air (M1)',
   'MacBook Air (M2)',
@@ -41,7 +41,7 @@ const APPLE_MODELS = [
   'MacBook Air (Intel)',
 ];
 
-// Dell Models
+// ─── Dell Models ──────────────────────────────────────────────────
 const DELL_MODELS = [
   'XPS 13',
   'XPS 15',
@@ -62,7 +62,7 @@ const DELL_MODELS = [
   'Alienware x16',
 ];
 
-// HP Models
+// ─── HP Models ────────────────────────────────────────────────────
 const HP_MODELS = [
   'Spectre x360 14',
   'Spectre x360 16',
@@ -83,7 +83,7 @@ const HP_MODELS = [
   'ZBook Fury 16 G9',
 ];
 
-// Lenovo Models
+// ─── Lenovo Models ────────────────────────────────────────────────
 const LENOVO_MODELS = [
   'ThinkPad X1 Carbon Gen 10',
   'ThinkPad X1 Carbon Gen 11',
@@ -103,7 +103,7 @@ const LENOVO_MODELS = [
   'IdeaPad Duet',
 ];
 
-// Acer Models
+// ─── Acer Models ──────────────────────────────────────────────────
 const ACER_MODELS = [
   'Aspire 3',
   'Aspire 5',
@@ -120,7 +120,7 @@ const ACER_MODELS = [
   'ConceptD 5',
 ];
 
-// Asus Models
+// ─── Asus Models ──────────────────────────────────────────────────
 const ASUS_MODELS = [
   'ZenBook 13 OLED',
   'ZenBook 14 OLED',
@@ -141,7 +141,7 @@ const ASUS_MODELS = [
   'ExpertBook B9',
 ];
 
-// Samsung Models
+// ─── Samsung Models ──────────────────────────────────────────────
 const SAMSUNG_MODELS = [
   'Galaxy Book 3 Ultra',
   'Galaxy Book 3 Pro 360',
@@ -154,7 +154,7 @@ const SAMSUNG_MODELS = [
   'Galaxy Book Go',
 ];
 
-// Microsoft Models
+// ─── Microsoft Models ────────────────────────────────────────────
 const MICROSOFT_MODELS = [
   'Surface Laptop 5',
   'Surface Laptop 4',
@@ -167,7 +167,19 @@ const MICROSOFT_MODELS = [
   'Surface Laptop Studio',
 ];
 
-// Get models based on brand
+// ─── MacBook Neo Models ──────────────────────────────────────────
+const MACBOOK_NEO_MODELS = [
+  'MacBook Neo (M3)',
+  'MacBook Neo (M3 Pro)',
+  'MacBook Neo (M3 Max)',
+  'MacBook Neo (M4)',
+  'MacBook Neo (M4 Pro)',
+  'MacBook Neo (M4 Max)',
+  'MacBook Neo (Intel Core i7)',
+  'MacBook Neo (Intel Core i9)',
+];
+
+// ─── Get models based on brand ──────────────────────────────────
 export const getModelsByBrand = (brand) => {
   switch (brand) {
     case 'Apple':
@@ -186,12 +198,14 @@ export const getModelsByBrand = (brand) => {
       return SAMSUNG_MODELS;
     case 'Microsoft':
       return MICROSOFT_MODELS;
+    case 'MacBook Neo':
+      return MACBOOK_NEO_MODELS;
     default:
       return [];
   }
 };
 
-// Processor options
+// ─── Processor options ───────────────────────────────────────────
 export const PROCESSOR_OPTIONS = [
   'Intel Core i3',
   'Intel Core i5',
@@ -213,16 +227,19 @@ export const PROCESSOR_OPTIONS = [
   'Apple M2 Max',
   'Apple M3 Pro',
   'Apple M3 Max',
+  'Apple M4',          // ✅ Added for MacBook Neo
+  'Apple M4 Pro',
+  'Apple M4 Max',
   'Other',
 ];
 
-// RAM options
+// ─── RAM options ─────────────────────────────────────────────────
 export const RAM_OPTIONS = ['4GB', '8GB', '16GB', '32GB', '64GB', '128GB'];
 
-// Storage options
+// ─── Storage options ─────────────────────────────────────────────
 export const STORAGE_OPTIONS = ['128GB', '256GB', '512GB', '1TB', '2TB', '4TB'];
 
-// Screen size options
+// ─── Screen size options ─────────────────────────────────────────
 export const SCREEN_SIZE_OPTIONS = [
   '11"',
   '12"',
@@ -234,7 +251,7 @@ export const SCREEN_SIZE_OPTIONS = [
   '18"',
 ];
 
-// Graphics options
+// ─── Graphics options ────────────────────────────────────────────
 export const GRAPHICS_OPTIONS = [
   'Integrated Graphics',
   'Intel Iris Xe',
@@ -266,10 +283,13 @@ export const GRAPHICS_OPTIONS = [
   'Apple M3 Pro 18-core GPU',
   'Apple M3 Max 30-core GPU',
   'Apple M3 Max 40-core GPU',
+  'Apple M4 10-core GPU',     // ✅ Added for MacBook Neo
+  'Apple M4 Pro 16-core GPU',
+  'Apple M4 Max 32-core GPU',
   'Other',
 ];
 
-// Condition options
+// ─── Condition options ───────────────────────────────────────────
 export const CONDITION_OPTIONS = [
   'Brand New',
   'Like New',
@@ -279,7 +299,7 @@ export const CONDITION_OPTIONS = [
   'Poor',
 ];
 
-// Warranty options
+// ─── Warranty options ────────────────────────────────────────────
 export const WARRANTY_OPTIONS = [
   'No warranty',
   '1 month',
@@ -292,6 +312,7 @@ export const WARRANTY_OPTIONS = [
   'Other',
 ];
 
+// ─── Component ────────────────────────────────────────────────────
 const LaptopForm = ({
   formData,
   handleChange,

@@ -36,6 +36,9 @@ const VALID_CATEGORIES = [
   "Fashion",
   "Home",
   "Other",
+  "Laptops",      // ✅ Added
+  "Tablets",      // ✅ Added
+  "Accessories",  // ✅ Added
 ];
 
 const VALID_CONDITIONS = [
