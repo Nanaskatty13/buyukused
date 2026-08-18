@@ -1,6 +1,7 @@
 // frontend/src/App.jsx
 import React from "react";
 import { Routes, Route } from "react-router-dom";
+import { Analytics as VercelAnalytics } from "@vercel/analytics/react";
 
 import { AuthProvider } from "./context/AuthContext";
 import { CartProvider } from "./context/CartContext";
@@ -100,6 +101,7 @@ function App() {
         </Routes>
 
         <FloatingPhone />
+        <VercelAnalytics />
       </CartProvider>
     </AuthProvider>
   );
