@@ -35,7 +35,6 @@ const ProductCard = ({ product }) => {
     condition,
     category,
     warranty,
-    // ── Laptop / Tablet / TV / Console / Accessory fields ──
     brand,
     model,
     processor,
@@ -46,16 +45,13 @@ const ProductCard = ({ product }) => {
     connectivity,
     batteryHealth,
     faceId,
-    // ── Seller fields ──
     sellerId,
     seller,
     sellerName: sellerNameProp,
     sellerProfileImage: sellerProfileImageProp,
-    // ── Status field ──
     status,
   } = product;
 
-  // Determine seller info from possible shapes
   const sellerObj = sellerId && typeof sellerId === 'object' ? sellerId : (seller && typeof seller === 'object' ? seller : null);
   const sellerName = sellerObj?.name || sellerNameProp || 'Unknown Seller';
   const sellerImage = sellerObj?.profileImage || sellerObj?.avatar || sellerObj?.photo || sellerObj?.picture || sellerProfileImageProp || null;
@@ -69,11 +65,9 @@ const ProductCard = ({ product }) => {
     minimumFractionDigits: 0,
   }).format(price || 0);
 
-  // ─── Helper: render category‑specific specs ──────────────────
   const renderCategorySpecs = () => {
     const specs = [];
 
-    // Laptops
     if (category === "Laptops") {
       if (brand) specs.push({ icon: "🏷️", label: brand });
       if (model) specs.push({ icon: "📟", label: model });
@@ -82,7 +76,6 @@ const ProductCard = ({ product }) => {
       if (graphics) specs.push({ icon: "🖥️", label: graphics });
       if (screenSize) specs.push({ icon: "📐", label: screenSize });
     }
-    // Tablets
     else if (category === "Tablets") {
       if (brand) specs.push({ icon: "🏷️", label: brand });
       if (model) specs.push({ icon: "📟", label: model });
@@ -90,26 +83,22 @@ const ProductCard = ({ product }) => {
       if (connectivity) specs.push({ icon: "📶", label: connectivity });
       if (screenSize) specs.push({ icon: "📐", label: screenSize });
     }
-    // TVs
     else if (category === "TVs" || category === "TV") {
       if (brand) specs.push({ icon: "🏷️", label: brand });
       if (model) specs.push({ icon: "📟", label: model });
       if (screenSize) specs.push({ icon: "📐", label: screenSize });
       if (connectivity) specs.push({ icon: "📶", label: connectivity });
     }
-    // Game Consoles
     else if (category === "Game Consoles" || category === "Consoles") {
       if (brand) specs.push({ icon: "🏷️", label: brand });
       if (model) specs.push({ icon: "📟", label: model });
       if (connectivity) specs.push({ icon: "📶", label: connectivity });
     }
-    // Accessories
     else if (category === "Accessories") {
       if (brand) specs.push({ icon: "🏷️", label: brand });
       if (model) specs.push({ icon: "📟", label: model });
       if (connectivity) specs.push({ icon: "📶", label: connectivity });
     }
-    // Phones – we now show simStatus separately (see below)
     else if (category === "Phones") {
       if (brand) specs.push({ icon: "🏷️", label: brand });
       if (model) specs.push({ icon: "📟", label: model });
@@ -117,247 +106,70 @@ const ProductCard = ({ product }) => {
       if (faceId) specs.push({ icon: "😊", label: faceId });
     }
 
-    // Common: storage
-    if (storage) {
-      specs.push({ icon: "💾", label: storage });
-    }
-
-    // Condition
+    if (storage) specs.push({ icon: "💾", label: storage });
     if (condition && !specs.some(s => s.label === condition)) {
       specs.push({ icon: "📋", label: condition });
     }
 
-    const maxSpecs = 4;
-    const displayed = specs.slice(0, maxSpecs);
-
-    return displayed.map((spec, index) => (
-      <span
-        key={index}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "4px",
-          fontSize: "12px",
-          color: "#666",
-        }}
-      >
+    return specs.slice(0, 4).map((spec, index) => (
+      <span key={index} style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "12px", color: "#666" }}>
         {spec.icon} {spec.label}
       </span>
     ));
   };
 
   return (
-    <div
-      className="product-card"
-      style={{
-        background: "#fff",
-        borderRadius: "8px",
-        overflow: "hidden",
-        border: "1px solid #e5e7eb",
-        boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
-        transition: "all 0.2s ease",
-        height: "100%",
-        display: "flex",
-        flexDirection: "column",
-      }}
-    >
-      {/* IMAGE */}
-      <Link
-        to={`/product/${_id}`}
-        style={{
-          display: "block",
-          overflow: "hidden",
-          background: "#f4f5f7",
-          position: "relative",
-          paddingTop: "75%",
-        }}
-      >
+    <div className="product-card" style={{
+      background: "#fff",
+      borderRadius: "8px",
+      overflow: "hidden",
+      border: "1px solid #e5e7eb",
+      boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+      transition: "all 0.2s ease",
+      height: "100%",
+      display: "flex",
+      flexDirection: "column",
+    }}>
+      <Link to={`/product/${_id}`} style={{ display: "block", overflow: "hidden", background: "#f4f5f7", position: "relative", paddingTop: "75%" }}>
         <img
           src={imageUrl}
           alt={title || "Product"}
           loading="lazy"
           decoding="async"
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            width: "100%",
-            height: "100%",
-            objectFit: "contain",
-            display: "block",
-            transition: "transform 0.3s ease",
-          }}
-          onError={(e) => {
-            if (e.currentTarget.src !== "/placeholder.png") {
-              e.currentTarget.src = "/placeholder.png";
-            }
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.transform = "scale(1.03)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = "scale(1)";
-          }}
+          style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "contain", display: "block", transition: "transform 0.3s ease" }}
+          onError={(e) => { if (e.currentTarget.src !== "/placeholder.png") e.currentTarget.src = "/placeholder.png"; }}
+          onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.03)"}
+          onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
         />
 
-        {/* ─── SELLER INFO OVERLAY (top‑left) ─── */}
-        <div
-          style={{
-            position: "absolute",
-            top: "10px",
-            left: "10px",
-            display: "flex",
-            alignItems: "center",
-            gap: "6px",
-            background: "rgba(0, 0, 0, 0.65)",
-            padding: "4px 10px",
-            borderRadius: "20px",
-            color: "white",
-            fontSize: "12px",
-            fontWeight: 600,
-            zIndex: 2,
-            pointerEvents: "none",
-            maxWidth: "80%",
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-          }}
-        >
-          {sellerImageUrl ? (
-            <img
-              src={sellerImageUrl}
-              alt={sellerName}
-              style={{
-                width: "20px",
-                height: "20px",
-                borderRadius: "50%",
-                objectFit: "cover",
-                flexShrink: 0,
-              }}
-              onError={(e) => {
-                e.currentTarget.style.display = "none";
-              }}
-            />
-          ) : (
-            <i
-              className="fas fa-user-circle"
-              style={{
-                fontSize: "18px",
-                color: "#ccc",
-                flexShrink: 0,
-              }}
-            ></i>
-          )}
-          <span
-            style={{
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {sellerName}
-          </span>
+        <div style={{ position: "absolute", top: "10px", left: "10px", display: "flex", alignItems: "center", gap: "6px", background: "rgba(0,0,0,0.65)", padding: "4px 10px", borderRadius: "20px", color: "white", fontSize: "12px", fontWeight: 600, zIndex: 2, pointerEvents: "none", maxWidth: "80%", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+          {sellerImageUrl ? <img src={sellerImageUrl} alt={sellerName} style={{ width: "20px", height: "20px", borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} onError={(e) => e.currentTarget.style.display = "none"} /> : <i className="fas fa-user-circle" style={{ fontSize: "18px", color: "#ccc", flexShrink: 0 }}></i>}
+          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sellerName}</span>
         </div>
 
-        {/* ─── SOLD BADGE (top‑right) ─── */}
         {status === 'sold' && (
-          <div
-            style={{
-              position: "absolute",
-              top: "10px",
-              right: "10px",
-              background: "#dc2626",
-              color: "white",
-              padding: "4px 12px",
-              borderRadius: "20px",
-              fontSize: "12px",
-              fontWeight: 700,
-              textTransform: "uppercase",
-              letterSpacing: "0.5px",
-              boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
-              zIndex: 2,
-              pointerEvents: "none",
-            }}
-          >
+          <div style={{ position: "absolute", top: "10px", right: "10px", background: "#dc2626", color: "white", padding: "4px 12px", borderRadius: "20px", fontSize: "12px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", boxShadow: "0 2px 4px rgba(0,0,0,0.2)", zIndex: 2, pointerEvents: "none" }}>
             SOLD
           </div>
         )}
       </Link>
 
-      {/* CONTENT */}
-      <div
-        style={{
-          padding: "12px 14px",
-          flex: 1,
-          display: "flex",
-          flexDirection: "column",
-        }}
-      >
-        <Link
-          to={`/product/${_id}`}
-          style={{
-            textDecoration: "none",
-            color: "inherit",
-          }}
-        >
-          <h3
-            style={{
-              fontSize: "15px",
-              fontWeight: 600,
-              margin: "0 0 4px 0",
-              display: "-webkit-box",
-              WebkitLineClamp: 2,
-              WebkitBoxOrient: "vertical",
-              overflow: "hidden",
-              lineHeight: 1.3,
-              color: "#333",
-            }}
-          >
+      <div style={{ padding: "12px 14px", flex: 1, display: "flex", flexDirection: "column" }}>
+        <Link to={`/product/${_id}`} style={{ textDecoration: "none", color: "inherit" }}>
+          <h3 style={{ fontSize: "15px", fontWeight: 600, margin: "0 0 4px 0", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", lineHeight: 1.3, color: "#333" }}>
             {title || "Untitled Product"}
           </h3>
         </Link>
 
-        {/* PRICE */}
-        <div
-          style={{
-            fontSize: "16px",
-            fontWeight: 700,
-            color: "#0066cc",
-            margin: "4px 0",
-          }}
-        >
-          {formattedPrice}
+        <div style={{ fontSize: "16px", fontWeight: 700, color: "#0066cc", margin: "4px 0" }}>{formattedPrice}</div>
+
+        <div style={{ fontSize: "12px", color: "#777", marginBottom: "8px" }}>
+          <i className="fas fa-map-marker-alt" style={{ marginRight: "4px" }}></i> {location || "Ghana"}
         </div>
 
-        {/* LOCATION */}
-        <div
-          style={{
-            fontSize: "12px",
-            color: "#777",
-            marginBottom: "8px",
-          }}
-        >
-          <i
-            className="fas fa-map-marker-alt"
-            style={{ marginRight: "4px" }}
-          ></i>
-          {location || "Ghana"}
-        </div>
-
-        {/* DETAILS / SPECS */}
-        <div
-          style={{
-            display: "flex",
-            flexWrap: "wrap",
-            gap: "6px 12px",
-            margin: "6px 0 10px 0",
-            fontSize: "12px",
-            color: "#666",
-          }}
-        >
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 12px", margin: "6px 0 10px 0", fontSize: "12px", color: "#666" }}>
           {renderCategorySpecs()}
 
-          {/* ─── SIM STATUS – show if present (any category) ─── */}
           {simStatus && (
             <span style={{ display: "flex", alignItems: "center", gap: "4px", color: "#0055a5", fontWeight: 600 }}>
               <i className="fas fa-sim-card"></i> SIM: {simStatus}
@@ -365,65 +177,21 @@ const ProductCard = ({ product }) => {
           )}
 
           {warranty && (
-            <span
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "4px",
-              }}
-            >
-              <i className="fas fa-shield-alt"></i>
-              {warranty}
+            <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+              <i className="fas fa-shield-alt"></i> {warranty}
             </span>
           )}
 
           {swapAccepted !== undefined && (
-            <span
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "4px",
-              }}
-            >
-              {swapAccepted ? (
-                <span style={{ color: "#22c55e" }}>
-                  🔄 Swap OK
-                </span>
-              ) : (
-                <span style={{ color: "#94a3b8" }}>
-                  🚫 No swap
-                </span>
-              )}
+            <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+              {swapAccepted ? <span style={{ color: "#22c55e" }}>🔄 Swap OK</span> : <span style={{ color: "#94a3b8" }}>🚫 No swap</span>}
             </span>
           )}
         </div>
 
-        {/* VIEW DETAILS */}
-        <Link
-          to={`/product/${_id}`}
-          style={{
-            marginTop: "auto",
-            padding: "8px 16px",
-            background: "#0066cc",
-            color: "white",
-            border: "none",
-            borderRadius: "4px",
-            fontWeight: 600,
-            fontSize: "13px",
-            textAlign: "center",
-            textDecoration: "none",
-            transition: "all 0.2s ease",
-            display: "block",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = "#005bb5";
-            e.currentTarget.style.transform = "translateY(-1px)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = "#0066cc";
-            e.currentTarget.style.transform = "translateY(0)";
-          }}
-        >
+        <Link to={`/product/${_id}`} style={{ marginTop: "auto", padding: "8px 16px", background: "#0066cc", color: "white", border: "none", borderRadius: "4px", fontWeight: 600, fontSize: "13px", textAlign: "center", textDecoration: "none", transition: "all 0.2s ease", display: "block" }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = "#005bb5"; e.currentTarget.style.transform = "translateY(-1px)"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = "#0066cc"; e.currentTarget.style.transform = "translateY(0)"; }}>
           View Details →
         </Link>
       </div>
@@ -437,63 +205,13 @@ const ProductCard = ({ product }) => {
 
 const ProductSkeleton = () => {
   return (
-    <div
-      className="product-card"
-      style={{
-        background: "#fff",
-        borderRadius: "8px",
-        overflow: "hidden",
-        border: "1px solid #e5e7eb",
-        boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
-      }}
-    >
-      <div
-        style={{
-          width: "100%",
-          height: "200px",
-          background: "#f4f5f7",
-        }}
-      />
-
+    <div className="product-card" style={{ background: "#fff", borderRadius: "8px", overflow: "hidden", border: "1px solid #e5e7eb", boxShadow: "0 1px 2px rgba(0,0,0,0.05)" }}>
+      <div style={{ width: "100%", height: "200px", background: "#f4f5f7" }} />
       <div style={{ padding: "14px" }}>
-        <div
-          style={{
-            width: "80%",
-            height: "18px",
-            background: "#e5e7eb",
-            borderRadius: "4px",
-            marginBottom: "10px",
-          }}
-        />
-
-        <div
-          style={{
-            width: "45%",
-            height: "20px",
-            background: "#e5e7eb",
-            borderRadius: "4px",
-            marginBottom: "10px",
-          }}
-        />
-
-        <div
-          style={{
-            width: "60%",
-            height: "14px",
-            background: "#e5e7eb",
-            borderRadius: "4px",
-            marginBottom: "18px",
-          }}
-        />
-
-        <div
-          style={{
-            width: "100%",
-            height: "34px",
-            background: "#e5e7eb",
-            borderRadius: "4px",
-          }}
-        />
+        <div style={{ width: "80%", height: "18px", background: "#e5e7eb", borderRadius: "4px", marginBottom: "10px" }} />
+        <div style={{ width: "45%", height: "20px", background: "#e5e7eb", borderRadius: "4px", marginBottom: "10px" }} />
+        <div style={{ width: "60%", height: "14px", background: "#e5e7eb", borderRadius: "4px", marginBottom: "18px" }} />
+        <div style={{ width: "100%", height: "34px", background: "#e5e7eb", borderRadius: "4px" }} />
       </div>
     </div>
   );
@@ -531,6 +249,10 @@ const Products = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 6;
 
+  // ✅ Store total product count and total pages from API
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+
   // Keep filters in sync with URL
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -562,6 +284,8 @@ const Products = () => {
         ...(priceMax ? { priceMax } : {}),
         ...(verifiedOnly ? { verified: true } : {}),
         ...(discountOnly ? { discount: true } : {}),
+        page: currentPage,
+        limit: ITEMS_PER_PAGE,
       };
 
       const data = await getProducts(cleanFilters);
@@ -575,12 +299,15 @@ const Products = () => {
       }));
 
       setProducts(processedProducts);
-      setCurrentPage(1);
+      setTotal(data.total || 0);
+      setTotalPages(data.totalPages || 1);
     } catch (err) {
       if (cancelled) return;
       console.error("❌ Error fetching products:", err);
       setError(err?.message || "Unable to load products. Please try again.");
       setProducts([]);
+      setTotal(0);
+      setTotalPages(1);
     } finally {
       if (!cancelled) setLoading(false);
     }
@@ -595,6 +322,8 @@ const Products = () => {
     priceMax,
     verifiedOnly,
     discountOnly,
+    currentPage,
+    ITEMS_PER_PAGE,
   ]);
 
   useEffect(() => {
@@ -604,6 +333,7 @@ const Products = () => {
   // HANDLERS
   const handleSearch = useCallback((newFilters = {}) => {
     setFilters((prev) => ({ ...prev, ...newFilters }));
+    setCurrentPage(1);
   }, []);
 
   const handleClearFilters = () => {
@@ -617,9 +347,16 @@ const Products = () => {
     setPriceMax("");
     setVerifiedOnly(false);
     setDiscountOnly(false);
+    setCurrentPage(1);
   };
 
-  // Sort & pagination
+  const handlePageChange = (page) => {
+    if (page < 1 || page > totalPages) return;
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  // Sort the current page's products (client‑side sorting)
   const sortedProducts = React.useMemo(() => {
     if (!products.length) return [];
     let sorted = [...products];
@@ -638,29 +375,13 @@ const Products = () => {
     return sorted;
   }, [products, sortOption]);
 
-  const totalPages = Math.ceil(sortedProducts.length / ITEMS_PER_PAGE);
-  const currentProducts = sortedProducts.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
-  );
-
-  const handlePageChange = (page) => {
-    setCurrentPage(page);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
+  // --------------------------------------------------------------
+  // RENDER
+  // --------------------------------------------------------------
 
   return (
     <>
-      <div
-        className="products-page"
-        style={{
-          display: "flex",
-          gap: "24px",
-          maxWidth: "1200px",
-          margin: "0 auto",
-          padding: "20px 16px",
-        }}
-      >
+      <div className="products-page" style={{ display: "flex", gap: "24px", maxWidth: "1200px", margin: "0 auto", padding: "20px 16px" }}>
         {/* SIDEBAR */}
         <div className="filter-sidebar-wrapper">
           <FilterSidebar
@@ -687,38 +408,18 @@ const Products = () => {
             <SearchBar onSearch={handleSearch} initialQuery={filters} />
           </div>
 
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              flexWrap: "wrap",
-              gap: "12px",
-              marginBottom: "20px",
-            }}
-          >
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px", marginBottom: "20px" }}>
             <h1 style={{ fontSize: "22px", fontWeight: 700, margin: 0, color: "#333" }}>
-              {loading ? "Loading..." : `${sortedProducts.length} results`}
+              {loading ? "Loading..." : `${total} results`}
               {filters.category !== "all" && (
-                <>
-                  {" "}
-                  for <span style={{ color: "#0066cc" }}>{filters.category}</span>
-                </>
+                <> for <span style={{ color: "#0066cc" }}>{filters.category}</span></>
               )}
             </h1>
 
             <select
               value={sortOption}
               onChange={(e) => setSortOption(e.target.value)}
-              style={{
-                padding: "8px 12px",
-                border: "1px solid #e5e7eb",
-                borderRadius: "4px",
-                fontSize: "14px",
-                outline: "none",
-                background: "#fff",
-                cursor: "pointer",
-              }}
+              style={{ padding: "8px 12px", border: "1px solid #e5e7eb", borderRadius: "4px", fontSize: "14px", outline: "none", background: "#fff", cursor: "pointer" }}
             >
               <option value="recommended">Recommended</option>
               <option value="price-asc">Price: Low to High</option>
@@ -728,102 +429,34 @@ const Products = () => {
           </div>
 
           {error && !loading && (
-            <div
-              style={{
-                textAlign: "center",
-                padding: "30px 20px",
-                marginBottom: "24px",
-                color: "#dc2626",
-                background: "#fef2f2",
-                border: "1px solid #fecaca",
-                borderRadius: "8px",
-              }}
-            >
+            <div style={{ textAlign: "center", padding: "30px 20px", marginBottom: "24px", color: "#dc2626", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: "8px" }}>
               <p style={{ marginBottom: "12px" }}>{error}</p>
-              <button
-                type="button"
-                onClick={() => fetchProducts()}
-                style={{
-                  border: "none",
-                  borderRadius: "4px",
-                  padding: "8px 18px",
-                  cursor: "pointer",
-                  fontWeight: 600,
-                  background: "#0066cc",
-                  color: "white",
-                }}
-              >
-                Try Again
-              </button>
+              <button type="button" onClick={() => fetchProducts()} style={{ border: "none", borderRadius: "4px", padding: "8px 18px", cursor: "pointer", fontWeight: 600, background: "#0066cc", color: "white" }}>Try Again</button>
             </div>
           )}
 
           {loading ? (
-            <div
-              className="products-grid"
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
-                gap: "16px",
-              }}
-            >
-              {Array.from({ length: 6 }).map((_, index) => (
-                <ProductSkeleton key={index} />
-              ))}
+            <div className="products-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "16px" }}>
+              {Array.from({ length: 6 }).map((_, index) => <ProductSkeleton key={index} />)}
             </div>
-          ) : currentProducts.length === 0 ? (
+          ) : sortedProducts.length === 0 ? (
             <div style={{ textAlign: "center", padding: "60px 0", color: "#777" }}>
               No ads found.
               <br />
-              <Link
-                to="/post-ad"
-                style={{
-                  display: "inline-block",
-                  marginTop: "10px",
-                  color: "#0066cc",
-                  fontWeight: 600,
-                }}
-              >
-                Post your ad now!
-              </Link>
+              <Link to="/post-ad" style={{ display: "inline-block", marginTop: "10px", color: "#0066cc", fontWeight: 600 }}>Post your ad now!</Link>
             </div>
           ) : (
             <>
-              <div
-                className="products-grid"
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
-                  gap: "16px",
-                }}
-              >
-                {currentProducts.map((product) => (
-                  <ProductCard key={product._id} product={product} />
-                ))}
+              <div className="products-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "16px" }}>
+                {sortedProducts.map((product) => <ProductCard key={product._id} product={product} />)}
               </div>
 
               {totalPages > 1 && (
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "center",
-                    gap: "8px",
-                    marginTop: "32px",
-                    flexWrap: "wrap",
-                  }}
-                >
+                <div style={{ display: "flex", justifyContent: "center", gap: "8px", marginTop: "32px", flexWrap: "wrap" }}>
                   <button
                     onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
                     disabled={currentPage === 1}
-                    style={{
-                      padding: "8px 12px",
-                      border: "1px solid #e5e7eb",
-                      borderRadius: "4px",
-                      background: "#fff",
-                      cursor: currentPage === 1 ? "default" : "pointer",
-                      opacity: currentPage === 1 ? 0.5 : 1,
-                      fontWeight: 600,
-                    }}
+                    style={{ padding: "8px 12px", border: "1px solid #e5e7eb", borderRadius: "4px", background: "#fff", cursor: currentPage === 1 ? "default" : "pointer", opacity: currentPage === 1 ? 0.5 : 1, fontWeight: 600 }}
                   >
                     Prev
                   </button>
@@ -849,15 +482,7 @@ const Products = () => {
                   <button
                     onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
                     disabled={currentPage === totalPages}
-                    style={{
-                      padding: "8px 12px",
-                      border: "1px solid #e5e7eb",
-                      borderRadius: "4px",
-                      background: "#fff",
-                      cursor: currentPage === totalPages ? "default" : "pointer",
-                      opacity: currentPage === totalPages ? 0.5 : 1,
-                      fontWeight: 600,
-                    }}
+                    style={{ padding: "8px 12px", border: "1px solid #e5e7eb", borderRadius: "4px", background: "#fff", cursor: currentPage === totalPages ? "default" : "pointer", opacity: currentPage === totalPages ? 0.5 : 1, fontWeight: 600 }}
                   >
                     Next
                   </button>

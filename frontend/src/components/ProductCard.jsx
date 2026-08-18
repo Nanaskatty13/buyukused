@@ -1,6 +1,6 @@
 // frontend/src/components/ProductCard.jsx
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { getImageUrl, updateProductStatus } from '../services/api';
@@ -9,15 +9,17 @@ import SoldBadge from './SoldBadge';
 const ProductCard = ({ product, onStatusToggle, appleStyle = false, videoPreview = false }) => {
   const { toggleFavorite, isFavorite } = useCart();
   const { user, token } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [isUpdating, setIsUpdating] = useState(false);
 
   if (!product) return null;
 
-  // ─── DEBUG: log simStatus ──────────────────────────────────
+  // ─── DEBUG: log product ──────────────────────────────────────
   console.log(`📱 Product ${product._id}:`, {
     title: product.title,
-    simStatus: product.simStatus,
     category: product.category,
+    simStatus: product.simStatus,
   });
 
   const liked = isFavorite(product._id);
@@ -48,6 +50,8 @@ const ProductCard = ({ product, onStatusToggle, appleStyle = false, videoPreview
       if (product.ram) specs.push({ icon: '🧠', label: product.ram });
       if (product.graphics) specs.push({ icon: '🖥️', label: product.graphics });
       if (product.screenSize) specs.push({ icon: '📐', label: product.screenSize });
+      if (product.storage) specs.push({ icon: '💾', label: product.storage });
+      if (product.condition) specs.push({ icon: '📋', label: product.condition });
     }
     else if (category === 'Tablets') {
       if (product.brand) specs.push({ icon: '🏷️', label: product.brand });
@@ -55,40 +59,29 @@ const ProductCard = ({ product, onStatusToggle, appleStyle = false, videoPreview
       if (product.year) specs.push({ icon: '📅', label: product.year });
       if (product.connectivity) specs.push({ icon: '📶', label: product.connectivity });
       if (product.screenSize) specs.push({ icon: '📐', label: product.screenSize });
-    }
-    else if (category === 'TVs' || category === 'TV') {
-      if (product.brand) specs.push({ icon: '🏷️', label: product.brand });
-      if (product.model) specs.push({ icon: '📟', label: product.model });
-      if (product.screenSize) specs.push({ icon: '📐', label: product.screenSize });
-      if (product.connectivity) specs.push({ icon: '📶', label: product.connectivity });
-    }
-    else if (category === 'Game Consoles' || category === 'Consoles') {
-      if (product.brand) specs.push({ icon: '🏷️', label: product.brand });
-      if (product.model) specs.push({ icon: '📟', label: product.model });
-      if (product.connectivity) specs.push({ icon: '📶', label: product.connectivity });
-    }
-    else if (category === 'Accessories') {
-      if (product.brand) specs.push({ icon: '🏷️', label: product.brand });
-      if (product.model) specs.push({ icon: '📟', label: product.model });
-      if (product.connectivity) specs.push({ icon: '📶', label: product.connectivity });
+      if (product.storage) specs.push({ icon: '💾', label: product.storage });
+      if (product.condition) specs.push({ icon: '📋', label: product.condition });
     }
     else if (category === 'Phones') {
       if (product.brand) specs.push({ icon: '🏷️', label: product.brand });
       if (product.model) specs.push({ icon: '📟', label: product.model });
       if (product.batteryHealth) specs.push({ icon: '🔋', label: `${product.batteryHealth}%` });
       if (product.faceId) specs.push({ icon: '😊', label: product.faceId });
-      // simStatus is now shown separately (see below)
+      if (product.storage) specs.push({ icon: '💾', label: product.storage });
+      if (product.condition) specs.push({ icon: '📋', label: product.condition });
+    }
+    else {
+      if (product.brand) specs.push({ icon: '🏷️', label: product.brand });
+      if (product.model) specs.push({ icon: '📟', label: product.model });
+      if (product.storage) specs.push({ icon: '💾', label: product.storage });
+      if (product.condition) specs.push({ icon: '📋', label: product.condition });
     }
 
-    if (product.storage && !specs.some(s => s.label === product.storage)) {
-      specs.push({ icon: '💾', label: product.storage });
-    }
-
-    if (product.condition && !specs.some(s => s.label === product.condition)) {
-      specs.push({ icon: '📋', label: product.condition });
-    }
-
-    return specs.slice(0, 4);
+    return specs.slice(0, 4).map((spec, index) => (
+      <span key={index} style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: '#666' }}>
+        {spec.icon} {spec.label}
+      </span>
+    ));
   };
 
   // ─── Handle "Mark as Sold" ─────────────────────────────────────
@@ -225,12 +218,17 @@ const ProductCard = ({ product, onStatusToggle, appleStyle = false, videoPreview
           </div>
         )}
 
+        {/* ─── FAVOURITE BUTTON (with auth check) ─── */}
         <button
           type="button"
           className="fav-btn"
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
+            if (!user) {
+              navigate('/login', { state: { from: location.pathname } });
+              return;
+            }
             toggleFavorite(product._id);
           }}
           style={{
@@ -333,11 +331,7 @@ const ProductCard = ({ product, onStatusToggle, appleStyle = false, videoPreview
             marginBottom: '6px',
           }}
         >
-          {renderCategorySpecs().map((spec, idx) => (
-            <span key={idx} style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
-              {spec.icon} {spec.label}
-            </span>
-          ))}
+          {renderCategorySpecs()}
         </div>
 
         {/* ─── Common extra fields ─── */}
@@ -360,7 +354,6 @@ const ProductCard = ({ product, onStatusToggle, appleStyle = false, videoPreview
             {swapLabel}
           </span>
 
-          {/* ─── SIM STATUS – show if present (any category) ─── */}
           {product.simStatus && (
             <span style={{ display: 'flex', alignItems: 'center', gap: '3px', color: '#0055a5', fontWeight: 600 }}>
               <i className="fas fa-sim-card"></i> SIM: {product.simStatus}

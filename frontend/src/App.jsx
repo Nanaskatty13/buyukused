@@ -7,6 +7,7 @@ import { CartProvider } from "./context/CartContext";
 
 import Navbar from "./components/Navbar";
 import FloatingPhone from "./components/FloatingPhone";
+import BackToTop from "./components/BackToTop";   // ✅ fixed path
 
 // Pages
 import Home from "./pages/Home";
@@ -105,7 +106,10 @@ function App() {
           <Route path="*" element={<Home />} />
         </Routes>
 
+        {/* Floating elements - placed after the main content */}
         <FloatingPhone />
+        <BackToTop />   {/* ✅ now it's rendered */}
+
       </CartProvider>
     </AuthProvider>
   );
