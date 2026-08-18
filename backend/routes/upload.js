@@ -3,9 +3,6 @@
 const express = require("express");
 const multer = require("multer");
 const cloudinary = require("cloudinary").v2;
-const {
-  CloudinaryStorage,
-} = require("multer-storage-cloudinary");
 
 const { verifyToken } = require("../middleware/auth");
 
@@ -15,67 +12,163 @@ const router = express.Router();
 // CLOUDINARY CONFIGURATION
 // ============================================================
 
-const cloudName = String(
-  process.env.CLOUDINARY_CLOUD_NAME || ""
-).trim();
-
-const apiKey = String(
-  process.env.CLOUDINARY_API_KEY || ""
-).trim();
-
-const apiSecret = String(
-  process.env.CLOUDINARY_API_SECRET || ""
-).trim();
-
-if (!cloudName || !apiKey || !apiSecret) {
-  console.warn(
-    "⚠️ Cloudinary environment variables are not fully configured."
-  );
-}
-
 cloudinary.config({
-  cloud_name: cloudName,
-  api_key: apiKey,
-  api_secret: apiSecret,
+  cloud_name:
+    process.env.CLOUDINARY_CLOUD_NAME,
+
+  api_key:
+    process.env.CLOUDINARY_API_KEY,
+
+  api_secret:
+    process.env.CLOUDINARY_API_SECRET,
 });
 
 // ============================================================
-// CLOUDINARY STORAGE
+// MULTER MEMORY STORAGE
 // ============================================================
+//
+// We do NOT use multer-storage-cloudinary.
+//
+// The file is temporarily kept in memory and then uploaded
+// directly to Cloudinary using Cloudinary's v2 API.
+//
 
-const storage = new CloudinaryStorage({
-  cloudinary,
-
-  params: {
-    folder: "chat-attachments",
-
-    allowed_formats: [
-      "jpg",
-      "jpeg",
-      "png",
-      "gif",
-      "webp",
-      "mp4",
-      "mov",
-      "vcf",
-      "vcard",
-    ],
-
-    resource_type: "auto",
-  },
-});
+const storage =
+  multer.memoryStorage();
 
 // ============================================================
-// MULTER CONFIGURATION
+// MULTER
 // ============================================================
 
 const upload = multer({
   storage,
 
   limits: {
-    fileSize: 50 * 1024 * 1024, // 50MB
+    fileSize:
+      50 * 1024 * 1024, // 50 MB
+  },
+
+  fileFilter: (
+    req,
+    file,
+    callback
+  ) => {
+    const allowedTypes = [
+      // Images
+      "image/jpeg",
+      "image/jpg",
+      "image/png",
+      "image/gif",
+      "image/webp",
+
+      // Videos
+      "video/mp4",
+      "video/quicktime",
+      "video/webm",
+
+      // Contact files
+      "text/vcard",
+      "text/x-vcard",
+      "text/directory",
+      "application/vcard",
+    ];
+
+    if (
+      allowedTypes.includes(
+        file.mimetype
+      )
+    ) {
+      return callback(
+        null,
+        true
+      );
+    }
+
+    return callback(
+      new Error(
+        `Unsupported file type: ${file.mimetype}`
+      ),
+      false
+    );
   },
 });
+
+// ============================================================
+// UPLOAD BUFFER TO CLOUDINARY
+// ============================================================
+
+const uploadToCloudinary = (
+  buffer,
+  mimetype,
+  folder = "chat-attachments"
+) => {
+  return new Promise(
+    (resolve, reject) => {
+      // ------------------------------------------------------
+      // Determine resource type
+      // ------------------------------------------------------
+
+      let resourceType =
+        "auto";
+
+      if (
+        mimetype.startsWith(
+          "video/"
+        )
+      ) {
+        resourceType =
+          "video";
+      } else if (
+        mimetype.startsWith(
+          "image/"
+        )
+      ) {
+        resourceType =
+          "image";
+      } else {
+        resourceType =
+          "raw";
+      }
+
+      // ------------------------------------------------------
+      // Cloudinary upload stream
+      // ------------------------------------------------------
+
+      const uploadStream =
+        cloudinary.uploader.upload_stream(
+          {
+            folder,
+
+            resource_type:
+              resourceType,
+
+            // Generate unique public IDs
+            unique_filename: true,
+
+            // Keep original filename where possible
+            use_filename: true,
+          },
+
+          (
+            error,
+            result
+          ) => {
+            if (error) {
+              return reject(
+                error
+              );
+            }
+
+            resolve(result);
+          }
+        );
+
+      uploadStream.end(
+        buffer
+      );
+    }
+  );
+};
 
 // ============================================================
 // POST /api/upload
@@ -85,98 +178,129 @@ router.post(
   "/",
   verifyToken,
   upload.single("file"),
-
   async (req, res) => {
     try {
-      // --------------------------------------------------------
+      // ------------------------------------------------------
       // CHECK FILE
-      // --------------------------------------------------------
+      // ------------------------------------------------------
 
       if (!req.file) {
         return res.status(400).json({
           success: false,
-          message: "No file uploaded.",
+          message:
+            "No file uploaded.",
         });
       }
 
-      // --------------------------------------------------------
-      // CLOUDINARY URL
-      // --------------------------------------------------------
+      // ------------------------------------------------------
+      // CHECK CLOUDINARY CONFIG
+      // ------------------------------------------------------
 
-      const url =
-        req.file.secure_url ||
-        req.file.path ||
-        "";
-
-      if (!url) {
+      if (
+        !process.env
+          .CLOUDINARY_CLOUD_NAME ||
+        !process.env
+          .CLOUDINARY_API_KEY ||
+        !process.env
+          .CLOUDINARY_API_SECRET
+      ) {
         console.error(
-          "❌ Cloudinary upload completed but no URL was returned:",
-          req.file
+          "❌ Cloudinary environment variables are missing."
         );
 
         return res.status(500).json({
           success: false,
           message:
-            "File uploaded but no file URL was returned.",
+            "Cloudinary is not configured.",
         });
       }
 
-      // --------------------------------------------------------
-      // SUCCESS
-      // --------------------------------------------------------
+      // ------------------------------------------------------
+      // UPLOAD TO CLOUDINARY
+      // ------------------------------------------------------
 
       console.log(
-        "✅ File uploaded successfully:",
-        url
+        "☁️ Uploading file to Cloudinary:",
+        req.file.originalname
+      );
+
+      const result =
+        await uploadToCloudinary(
+          req.file.buffer,
+          req.file.mimetype,
+          "chat-attachments"
+        );
+
+      // ------------------------------------------------------
+      // CHECK RESULT
+      // ------------------------------------------------------
+
+      if (
+        !result ||
+        !result.secure_url
+      ) {
+        console.error(
+          "❌ Cloudinary returned no secure URL:",
+          result
+        );
+
+        return res.status(500).json({
+          success: false,
+          message:
+            "Cloudinary upload failed.",
+        });
+      }
+
+      // ------------------------------------------------------
+      // SUCCESS
+      // ------------------------------------------------------
+
+      console.log(
+        "✅ Cloudinary upload successful:"
+      );
+
+      console.log(
+        result.secure_url
       );
 
       return res.status(200).json({
         success: true,
-        url,
 
-        file: {
-          url,
-          publicId:
-            req.file.filename ||
-            req.file.public_id ||
-            null,
+        url:
+          result.secure_url,
 
-          originalName:
-            req.file.originalname ||
-            null,
+        secure_url:
+          result.secure_url,
 
-          mimetype:
-            req.file.mimetype ||
-            null,
+        public_id:
+          result.public_id,
 
-          size:
-            req.file.size ||
-            null,
+        resource_type:
+          result.resource_type,
 
-          resourceType:
-            req.file.resource_type ||
-            null,
-        },
+        format:
+          result.format,
+
+        originalName:
+          req.file.originalname,
+
+        mimeType:
+          req.file.mimetype,
+
+        size:
+          req.file.size,
       });
     } catch (error) {
-      // --------------------------------------------------------
-      // UPLOAD ERROR
-      // --------------------------------------------------------
+      // ------------------------------------------------------
+      // ERROR
+      // ------------------------------------------------------
 
       console.error(
-        "❌ Cloudinary upload error:"
+        "❌ Upload error:"
       );
 
       console.error(
-        "Message:",
-        error?.message ||
-          error
-      );
-
-      console.error(
-        "Stack:",
-        error?.stack ||
-          "N/A"
+        error
       );
 
       return res.status(500).json({
@@ -194,9 +318,15 @@ router.post(
 // ============================================================
 
 router.use(
-  (error, req, res, next) => {
+  (
+    error,
+    req,
+    res,
+    next
+  ) => {
     if (
-      error instanceof multer.MulterError
+      error instanceof
+      multer.MulterError
     ) {
       console.error(
         "❌ Multer error:",
@@ -207,10 +337,10 @@ router.use(
         error.code ===
         "LIMIT_FILE_SIZE"
       ) {
-        return res.status(413).json({
+        return res.status(400).json({
           success: false,
           message:
-            "File too large. Maximum size is 50MB.",
+            "File is too large. Maximum size is 50 MB.",
         });
       }
 
@@ -222,14 +352,27 @@ router.use(
       });
     }
 
-    // Pass other errors to the global
-    // Express error handler.
-    return next(error);
+    if (error) {
+      console.error(
+        "❌ Upload middleware error:",
+        error
+      );
+
+      return res.status(400).json({
+        success: false,
+        message:
+          error.message ||
+          "Invalid file.",
+      });
+    }
+
+    next();
   }
 );
 
 // ============================================================
-// EXPORT ROUTER
+// EXPORT
 // ============================================================
 
-module.exports = router;
+module.exports =
+  router;
