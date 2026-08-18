@@ -15,6 +15,13 @@ import { getProducts, getImageUrl } from "../services/api";
 const ProductCard = ({ product }) => {
   if (!product) return null;
 
+  // ─── DEBUG: check simStatus ──────────────────────────────────
+  console.log(`📱 Product ${product._id}:`, {
+    title: product.title,
+    simStatus: product.simStatus,
+    category: product.category,
+  });
+
   const {
     _id,
     title,
@@ -102,13 +109,12 @@ const ProductCard = ({ product }) => {
       if (model) specs.push({ icon: "📟", label: model });
       if (connectivity) specs.push({ icon: "📶", label: connectivity });
     }
-    // Phones
+    // Phones – we now show simStatus separately (see below)
     else if (category === "Phones") {
       if (brand) specs.push({ icon: "🏷️", label: brand });
       if (model) specs.push({ icon: "📟", label: model });
       if (batteryHealth) specs.push({ icon: "🔋", label: `${batteryHealth}%` });
       if (faceId) specs.push({ icon: "😊", label: faceId });
-      // We now explicitly render simStatus below, so we don't need it here
     }
 
     // Common: storage
@@ -351,9 +357,9 @@ const ProductCard = ({ product }) => {
         >
           {renderCategorySpecs()}
 
-          {/* ─── EXPLICIT SIM STATUS FOR PHONES ─── */}
-          {category === "Phones" && simStatus && (
-            <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+          {/* ─── SIM STATUS – show if present (any category) ─── */}
+          {simStatus && (
+            <span style={{ display: "flex", alignItems: "center", gap: "4px", color: "#0055a5", fontWeight: 600 }}>
               <i className="fas fa-sim-card"></i> SIM: {simStatus}
             </span>
           )}

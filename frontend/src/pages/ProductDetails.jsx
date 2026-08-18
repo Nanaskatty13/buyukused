@@ -1018,7 +1018,11 @@ const ProductDetails = () => {
     ];
 
     if (product.category === "Phones") {
-      fields.push(product.faceId, product.simStatus);
+      fields.push(product.faceId);
+    }
+    // We'll add simStatus separately
+    if (product.simStatus) {
+      fields.push(true);
     }
 
     return fields.some(f => f);
@@ -1472,8 +1476,8 @@ const ProductDetails = () => {
                   : ""}
               </span>
 
-              {/* ─── SIM STATUS (only for phones) ─── */}
-              {product.category === "Phones" && product.simStatus && (
+              {/* ─── SIM STATUS – show if present (any category) ─── */}
+              {product.simStatus && (
                 <span style={{ color: "#0055a5", fontWeight: 600 }}>
                   <i className="fas fa-sim-card" /> SIM: {product.simStatus}
                 </span>
@@ -1697,7 +1701,7 @@ const ProductDetails = () => {
                           {product.faceId}
                         </div>
                       )}
-                      {/* SIM Status also displayed here */}
+                      {/* SIM Status also displayed here (if present) */}
                       {product.simStatus && (
                         <div>
                           <strong>SIM Status:</strong>{" "}

@@ -13,6 +13,13 @@ const ProductCard = ({ product, onStatusToggle, appleStyle = false, videoPreview
 
   if (!product) return null;
 
+  // ─── DEBUG: log simStatus ──────────────────────────────────
+  console.log(`📱 Product ${product._id}:`, {
+    title: product.title,
+    simStatus: product.simStatus,
+    category: product.category,
+  });
+
   const liked = isFavorite(product._id);
 
   const imagePath = product.images?.[0] || product.image || null;
@@ -23,26 +30,17 @@ const ProductCard = ({ product, onStatusToggle, appleStyle = false, videoPreview
   const swapLabel = product.swapAccepted ? '🔄 Swap OK' : '🚫 No swap';
   const isSold = product.status === 'sold';
 
-  // Check if current user is the owner
   const isOwner = user && (
     user.role === 'admin' ||
     (product.sellerId?._id && product.sellerId._id === user._id) ||
     product.sellerId === user._id
   );
 
-  // ─── Debug: log the simStatus ──────────────────────────────
-  console.log(`📱 Product ${product._id}:`, {
-    title: product.title,
-    simStatus: product.simStatus,
-    category: product.category,
-  });
-
   // ─── Helper: render category‑specific specs ──────────────────
   const renderCategorySpecs = () => {
     const specs = [];
     const category = product.category;
 
-    // Laptops
     if (category === 'Laptops') {
       if (product.brand) specs.push({ icon: '🏷️', label: product.brand });
       if (product.model) specs.push({ icon: '📟', label: product.model });
@@ -51,7 +49,6 @@ const ProductCard = ({ product, onStatusToggle, appleStyle = false, videoPreview
       if (product.graphics) specs.push({ icon: '🖥️', label: product.graphics });
       if (product.screenSize) specs.push({ icon: '📐', label: product.screenSize });
     }
-    // Tablets
     else if (category === 'Tablets') {
       if (product.brand) specs.push({ icon: '🏷️', label: product.brand });
       if (product.model) specs.push({ icon: '📟', label: product.model });
@@ -59,49 +56,42 @@ const ProductCard = ({ product, onStatusToggle, appleStyle = false, videoPreview
       if (product.connectivity) specs.push({ icon: '📶', label: product.connectivity });
       if (product.screenSize) specs.push({ icon: '📐', label: product.screenSize });
     }
-    // TVs
     else if (category === 'TVs' || category === 'TV') {
       if (product.brand) specs.push({ icon: '🏷️', label: product.brand });
       if (product.model) specs.push({ icon: '📟', label: product.model });
       if (product.screenSize) specs.push({ icon: '📐', label: product.screenSize });
       if (product.connectivity) specs.push({ icon: '📶', label: product.connectivity });
     }
-    // Game Consoles
     else if (category === 'Game Consoles' || category === 'Consoles') {
       if (product.brand) specs.push({ icon: '🏷️', label: product.brand });
       if (product.model) specs.push({ icon: '📟', label: product.model });
       if (product.connectivity) specs.push({ icon: '📶', label: product.connectivity });
     }
-    // Accessories
     else if (category === 'Accessories') {
       if (product.brand) specs.push({ icon: '🏷️', label: product.brand });
       if (product.model) specs.push({ icon: '📟', label: product.model });
       if (product.connectivity) specs.push({ icon: '📶', label: product.connectivity });
     }
-    // Phones
     else if (category === 'Phones') {
       if (product.brand) specs.push({ icon: '🏷️', label: product.brand });
       if (product.model) specs.push({ icon: '📟', label: product.model });
       if (product.batteryHealth) specs.push({ icon: '🔋', label: `${product.batteryHealth}%` });
       if (product.faceId) specs.push({ icon: '😊', label: product.faceId });
-      // simStatus is now displayed separately below, so we don't add it here
+      // simStatus is now shown separately (see below)
     }
 
-    // Common: storage
     if (product.storage && !specs.some(s => s.label === product.storage)) {
       specs.push({ icon: '💾', label: product.storage });
     }
 
-    // Condition
     if (product.condition && !specs.some(s => s.label === product.condition)) {
       specs.push({ icon: '📋', label: product.condition });
     }
 
-    // Limit to first 4 to keep card clean
     return specs.slice(0, 4);
   };
 
-  // ─── Handle "Mark as Sold" / "Mark Available" ──────────────
+  // ─── Handle "Mark as Sold" ─────────────────────────────────────
   const handleMarkAsSold = async (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -209,7 +199,6 @@ const ProductCard = ({ product, onStatusToggle, appleStyle = false, videoPreview
           </span>
         )}
 
-        {/* ─── Video preview badge ─── */}
         {videoPreview && (
           <div
             className="product-card-video-badge"
@@ -371,7 +360,7 @@ const ProductCard = ({ product, onStatusToggle, appleStyle = false, videoPreview
             {swapLabel}
           </span>
 
-          {/* ─── SIM STATUS – NOW SHOWN FOR ANY PRODUCT WITH simStatus ─── */}
+          {/* ─── SIM STATUS – show if present (any category) ─── */}
           {product.simStatus && (
             <span style={{ display: 'flex', alignItems: 'center', gap: '3px', color: '#0055a5', fontWeight: 600 }}>
               <i className="fas fa-sim-card"></i> SIM: {product.simStatus}

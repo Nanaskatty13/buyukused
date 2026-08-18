@@ -8,11 +8,19 @@ type ProductConditionDetailsProps = {
     faceId?: string | null;
     storage?: string | null;
     condition?: string | null;
+
+    // Main field
     simStatus?: string | null;
+
+    // Compatibility aliases
+    sim_status?: string | null;
+    sim?: string | null;
+    simLock?: string | null;
+
     swapAccepted?: boolean | string | number | null;
   } | null;
 
-  // Optional direct props
+  // Direct props
   batteryHealth?: number | string | null;
   faceId?: string | null;
   storage?: string | null;
@@ -87,8 +95,7 @@ export default function ProductConditionDetails({
   className = "",
 }: ProductConditionDetailsProps) {
   // ==========================================================
-  // PRODUCT VALUES
-  // Product values take priority over direct props.
+  // BATTERY
   // ==========================================================
 
   const batteryHealth =
@@ -96,25 +103,54 @@ export default function ProductConditionDetails({
     batteryHealthProp ??
     null;
 
+  // ==========================================================
+  // FACE ID
+  // ==========================================================
+
   const faceId =
     product?.faceId ??
     faceIdProp ??
     "";
+
+  // ==========================================================
+  // STORAGE
+  // ==========================================================
 
   const storage =
     product?.storage ??
     storageProp ??
     "";
 
+  // ==========================================================
+  // CONDITION
+  // ==========================================================
+
   const condition =
     product?.condition ??
     conditionProp ??
     "";
 
+  // ==========================================================
+  // SIM STATUS
+  //
+  // IMPORTANT:
+  // Try the real backend field first.
+  //
+  // The aliases are only compatibility fallbacks for products
+  // coming from older frontend/API structures.
+  // ==========================================================
+
   const simStatus =
     product?.simStatus ??
+    product?.sim_status ??
+    product?.sim ??
+    product?.simLock ??
     simStatusProp ??
     "";
+
+  // ==========================================================
+  // SWAP
+  // ==========================================================
 
   const swapAccepted =
     product?.swapAccepted ??
@@ -147,9 +183,6 @@ export default function ProductConditionDetails({
 
   // ==========================================================
   // DISPLAY VALUES
-  //
-  // These fallbacks make sure older products that were created
-  // before these fields existed still display correctly.
   // ==========================================================
 
   const batteryDisplay =
@@ -166,8 +199,10 @@ export default function ProductConditionDetails({
   const conditionDisplay =
     conditionValue || "—";
 
+  // DO NOT ASSUME SIM IS UNLOCKED
   const simDisplay =
-    simStatusValue || "SIM Unlocked";
+    simStatusValue ||
+    "Not Available";
 
   const swapDisplay =
     swapValue

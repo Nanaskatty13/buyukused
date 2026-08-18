@@ -43,6 +43,9 @@ import Notifications from "./pages/Notifications";
 import Analytics from "./pages/Analytics";
 import Messages from "./pages/Messages";
 
+// ─── NEW: Seller Dashboard ──────────────────────────────────────
+import SellerProducts from "./seller/Products";
+
 function App() {
   return (
     <AuthProvider>
@@ -95,6 +98,9 @@ function App() {
           <Route path="/chat" element={<Messages />} />
           <Route path="/chat/:userId" element={<Messages />} />
           <Route path="/chat/:userId/:productId" element={<Messages />} />
+
+          {/* ─── SELLER ROUTES ──────────────────────────────────── */}
+          <Route path="/seller/products" element={<SellerProducts />} />
 
           <Route path="*" element={<Home />} />
         </Routes>
