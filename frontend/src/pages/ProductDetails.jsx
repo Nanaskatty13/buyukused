@@ -55,6 +55,28 @@ const ALL_COLORS = [
   ...new Set([...iphoneColors, ...TABLET_COLORS]),
 ].sort((a, b) => a.localeCompare(b));
 
+// ─── Helpers for image messages ──────────────────────────────────
+
+const isImageMessage = (text) => {
+  if (!text) return false;
+  const imagePatterns = [
+    /^📷 Image:/,
+    /^🎥 Video:/,
+    /\.(jpg|jpeg|png|gif|webp|svg|bmp|ico)/i,
+    /^https?:\/\/.*\.(jpg|jpeg|png|gif|webp|svg|bmp|ico)/i,
+    /res\.cloudinary\.com\/.*image\/upload/,
+  ];
+  return imagePatterns.some(pattern => pattern.test(text));
+};
+
+const extractImageUrl = (text) => {
+  const match = text.match(/^(?:📷 Image|🎥 Video):\s*(.+)/);
+  if (match) return match[1].trim();
+  const urlMatch = text.match(/https?:\/\/[^\s]+/);
+  if (urlMatch) return urlMatch[0];
+  return null;
+};
+
 // ================================================================
 // COMPONENT
 // ================================================================
@@ -99,7 +121,7 @@ const ProductDetails = () => {
     sellerPhone: "",
     batteryHealth: "",
     faceId: "",
-    simStatus: "",       // ✅ SIM status field
+    simStatus: "",
     negotiation: false,
     swapAccepted: false,
     warranty: "",
@@ -139,6 +161,7 @@ const ProductDetails = () => {
   const [chatLoading, setChatLoading] = useState(false);
   const [chatError, setChatError] = useState("");
   const [messagingAvailable, setMessagingAvailable] = useState(true);
+  const [viewingImage, setViewingImage] = useState(null);
 
   // Polling interval reference
   const pollInterval = useRef(null);
@@ -176,7 +199,7 @@ const ProductDetails = () => {
                 ? p.batteryHealth
                 : "",
             faceId: p.faceId || "",
-            simStatus: p.simStatus || "",   // ✅ Set simStatus
+            simStatus: p.simStatus || "",
             negotiation: Boolean(p.negotiation),
             swapAccepted: Boolean(p.swapAccepted),
             warranty: p.warranty || "",
@@ -995,7 +1018,7 @@ const ProductDetails = () => {
     ];
 
     if (product.category === "Phones") {
-      fields.push(product.faceId, product.simStatus);   // ✅ SIM status included
+      fields.push(product.faceId, product.simStatus);
     }
 
     return fields.some(f => f);
@@ -1680,7 +1703,6 @@ const ProductDetails = () => {
                           {product.faceId}
                         </div>
                       )}
-                      {/* ✅ SIM Status displayed here */}
                       {product.simStatus && (
                         <div>
                           <strong>SIM Status:</strong>{" "}
@@ -2241,7 +2263,7 @@ const ProductDetails = () => {
         </div>
 
         {/* ============================================================
-            EDIT MODAL – FULLY INCLUDED
+            EDIT MODAL – FULLY INCLUDED (unchanged)
         ============================================================ */}
 
         {showEditModal && (
@@ -4959,7 +4981,7 @@ const ProductDetails = () => {
         )}
 
         {/* ============================================================
-            CHAT MODAL – with seller name in header
+            CHAT MODAL – with image rendering & lightbox
         ============================================================ */}
 
         {showChatModal && (
@@ -4994,7 +5016,7 @@ const ProductDetails = () => {
               }}
               onClick={(e) => e.stopPropagation()}
             >
-              {/* Header – now shows seller name */}
+              {/* Header */}
               <div
                 style={{
                   padding: "16px 20px",
@@ -5053,6 +5075,9 @@ const ProductDetails = () => {
                 ) : (
                   messages.map((msg) => {
                     const isMine = msg.sender && msg.sender.toString() === user._id.toString();
+                    const isImage = isImageMessage(msg.message);
+                    const imageUrl = isImage ? extractImageUrl(msg.message) : null;
+
                     return (
                       <div
                         key={msg._id || msg.id}
@@ -5061,24 +5086,45 @@ const ProductDetails = () => {
                           maxWidth: "70%",
                           background: isMine ? "var(--primary)" : "var(--gray-100)",
                           color: isMine ? "white" : "var(--gray-800)",
-                          padding: "8px 14px",
+                          padding: isImage ? "4px" : "8px 14px",
                           borderRadius: "12px",
                           borderBottomRightRadius: isMine ? "4px" : "12px",
                           borderBottomLeftRadius: isMine ? "12px" : "4px",
-                          wordBreak: "break-word",
+                          overflow: "hidden",
                         }}
                       >
-                        <div>{msg.message}</div>
-                        <div
-                          style={{
-                            fontSize: "10px",
-                            opacity: 0.7,
-                            marginTop: "4px",
-                            textAlign: "right",
-                          }}
-                        >
-                          {new Date(msg.createdAt).toLocaleTimeString()}
-                        </div>
+                        {isImage ? (
+                          <>
+                            <img
+                              src={imageUrl}
+                              alt="Shared image"
+                              style={{
+                                maxWidth: "100%",
+                                maxHeight: "300px",
+                                borderRadius: "8px",
+                                display: "block",
+                                cursor: "pointer",
+                              }}
+                              onClick={() => setViewingImage(imageUrl)}
+                              onError={(e) => {
+                                e.currentTarget.style.display = "none";
+                                const parent = e.currentTarget.parentElement;
+                                parent.style.padding = "8px 14px";
+                                parent.textContent = "📷 Image (failed to load)";
+                              }}
+                            />
+                            <div style={{ fontSize: "10px", opacity: 0.7, marginTop: "4px", textAlign: "right" }}>
+                              {msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString() : ""}
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div>{msg.message}</div>
+                            <div style={{ fontSize: "10px", opacity: 0.7, marginTop: "4px", textAlign: "right" }}>
+                              {msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString() : ""}
+                            </div>
+                          </>
+                        )}
                       </div>
                     );
                   })
@@ -5133,6 +5179,36 @@ const ProductDetails = () => {
                 </button>
               </form>
             </div>
+          </div>
+        )}
+
+        {/* Lightbox */}
+        {viewingImage && (
+          <div
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              width: "100%",
+              height: "100%",
+              background: "rgba(0,0,0,0.9)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 10001,
+              cursor: "pointer",
+            }}
+            onClick={() => setViewingImage(null)}
+          >
+            <img
+              src={viewingImage}
+              alt="Full screen"
+              style={{
+                maxWidth: "90%",
+                maxHeight: "90%",
+                objectFit: "contain",
+              }}
+            />
           </div>
         )}
 
