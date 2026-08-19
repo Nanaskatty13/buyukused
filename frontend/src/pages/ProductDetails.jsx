@@ -9,6 +9,7 @@ import {
   updateProductWithFiles,
   getImageUrl,
   updateProductStatus,
+  getProducts,
 } from "../services/api";
 
 import { useAuth } from "../context/AuthContext";
@@ -77,8 +78,125 @@ const extractImageUrl = (text) => {
   return null;
 };
 
+// ─── Helper: format price ──────────────────────────────────────
+const formatPrice = (price) => {
+  return `GH₵ ${Number(price).toLocaleString()}`;
+};
+
+// ─── Helper: Product Card for related products ──────────────────
+const RelatedProductCard = ({ product }) => {
+  const navigate = useNavigate();
+
+  const image = product.images?.[0] || product.image || "";
+  const imageUrl = image ? getImageUrl(image) : "https://placehold.co/300x300?text=No+Image";
+  const isSold = product.status === "sold";
+
+  return (
+    <div
+      className="related-product-card"
+      style={{
+        background: "white",
+        borderRadius: "var(--radius-md)",
+        overflow: "hidden",
+        boxShadow: "0 2px 10px rgba(0,0,0,0.06)",
+        transition: "transform 0.2s, box-shadow 0.2s",
+        cursor: "pointer",
+        position: "relative",
+      }}
+      onClick={() => navigate(`/product/${product._id}`)}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.transform = "translateY(-4px)";
+        e.currentTarget.style.boxShadow = "0 8px 25px rgba(0,0,0,0.12)";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = "translateY(0)";
+        e.currentTarget.style.boxShadow = "0 2px 10px rgba(0,0,0,0.06)";
+      }}
+    >
+      {/* Image */}
+      <div
+        style={{
+          position: "relative",
+          width: "100%",
+          paddingBottom: "100%",
+          background: "#f1f5f9",
+          overflow: "hidden",
+        }}
+      >
+        <img
+          src={imageUrl}
+          alt={product.title}
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+          }}
+          onError={(e) => {
+            e.currentTarget.src = "https://placehold.co/300x300?text=No+Image";
+          }}
+        />
+        {isSold && (
+          <div
+            style={{
+              position: "absolute",
+              top: "8px",
+              right: "8px",
+              background: "#dc2626",
+              color: "white",
+              padding: "4px 12px",
+              borderRadius: "4px",
+              fontSize: "11px",
+              fontWeight: 700,
+              textTransform: "uppercase",
+            }}
+          >
+            Sold
+          </div>
+        )}
+      </div>
+
+      {/* Info */}
+      <div style={{ padding: "14px 16px" }}>
+        <h4
+          style={{
+            fontSize: "15px",
+            fontWeight: 700,
+            margin: "0 0 4px",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {product.title}
+        </h4>
+        <div
+          style={{
+            fontSize: "12px",
+            color: "var(--gray-500)",
+            marginBottom: "4px",
+          }}
+        >
+          {product.location || "Ghana"}
+        </div>
+        <div
+          style={{
+            fontSize: "18px",
+            fontWeight: 800,
+            color: isSold ? "#9ca3af" : "var(--primary)",
+          }}
+        >
+          {formatPrice(product.price)}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ================================================================
-// COMPONENT
+// MAIN COMPONENT
 // ================================================================
 
 const ProductDetails = () => {
@@ -95,6 +213,10 @@ const ProductDetails = () => {
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  // ─── RELATED PRODUCTS ──────────────────────────────────────────
+  const [relatedProducts, setRelatedProducts] = useState([]);
+  const [relatedLoading, setRelatedLoading] = useState(false);
 
   // ================================================================
   // IMAGE STATE
@@ -170,6 +292,42 @@ const ProductDetails = () => {
   // FETCH PRODUCT
   // ================================================================
 
+  const fetchRelatedProducts = async (currentProduct) => {
+    try {
+      setRelatedLoading(true);
+
+      const params = {
+        category: currentProduct.category,
+        limit: 8,
+        status: "active",
+      };
+
+      const data = await getProducts(params);
+
+      if (data?.products) {
+        let filtered = data.products.filter((p) => p._id !== currentProduct._id);
+
+        if (filtered.length < 4) {
+          const fallbackParams = {
+            category: currentProduct.category,
+            limit: 12,
+            status: "active",
+          };
+          const fallbackData = await getProducts(fallbackParams);
+          if (fallbackData?.products) {
+            filtered = fallbackData.products.filter((p) => p._id !== currentProduct._id);
+          }
+        }
+
+        setRelatedProducts(filtered.slice(0, 6));
+      }
+    } catch (err) {
+      console.error("Failed to fetch related products:", err);
+    } finally {
+      setRelatedLoading(false);
+    }
+  };
+
   useEffect(() => {
     const fetchProduct = async () => {
       try {
@@ -203,7 +361,6 @@ const ProductDetails = () => {
             negotiation: Boolean(p.negotiation),
             swapAccepted: Boolean(p.swapAccepted),
             warranty: p.warranty || "",
-            // Laptop / Tablet / TV / Console / Accessory fields
             brand: p.brand || "",
             model: p.model || "",
             processor: p.processor || "",
@@ -222,12 +379,14 @@ const ProductDetails = () => {
               : [];
 
           setImagesToKeep(existingImages);
+
+          // ─── Fetch related products ──────────────────────────
+          fetchRelatedProducts(p);
         } else {
           setError("Product not found.");
         }
       } catch (err) {
         console.error("Failed to load product:", err);
-
         setError(err?.message || "Failed to load product.");
       } finally {
         setLoading(false);
@@ -513,7 +672,6 @@ const ProductDetails = () => {
             ),
           warranty:
             updated.product.warranty || "",
-          // Laptop / Tablet / TV / Console / Accessory
           brand: updated.product.brand || "",
           model: updated.product.model || "",
           processor: updated.product.processor || "",
@@ -822,7 +980,6 @@ const ProductDetails = () => {
       const data = await response.json();
       
       if (data.success) {
-        // Filter messages for this product only
         const productMessages = data.messages.filter(
           msg => msg.productId && msg.productId._id === product._id
         );
@@ -852,7 +1009,6 @@ const ProductDetails = () => {
 
     if (!newMessage.trim()) return;
 
-    // Get seller ID from product
     const sellerId = product?.sellerId?._id || product?.sellerId;
     if (!sellerId) {
       alert('Seller information not available.');
@@ -910,7 +1066,6 @@ const ProductDetails = () => {
     setChatLoading(true);
     fetchMessages().finally(() => setChatLoading(false));
 
-    // Start polling for new messages every 5 seconds
     if (pollInterval.current) clearInterval(pollInterval.current);
     pollInterval.current = setInterval(() => {
       if (messagingAvailable) {
@@ -931,7 +1086,6 @@ const ProductDetails = () => {
     }
   };
 
-  // Cleanup polling on unmount
   useEffect(() => {
     return () => {
       if (pollInterval.current) {
@@ -1009,18 +1163,15 @@ const ProductDetails = () => {
   else if (isAccessory) specsTitle = "🎧 Accessories Specifications";
   else if (isPhone) specsTitle = "📱 Phone Specifications";
 
-  // ── Helper to render a spec row ──
   const SpecRow = ({ label, value, tooltip }) => (
     <div>
       <strong title={tooltip}>{label}:</strong> {value}
     </div>
   );
 
-  // ── Render category-specific specs ──
   const renderSpecs = () => {
     const specs = [];
 
-    // ── Common fields for all categories ──
     if (product.condition) {
       specs.push(<SpecRow key="condition" label="Condition" value={product.condition} />);
     }
@@ -1037,7 +1188,6 @@ const ProductDetails = () => {
       specs.push(<SpecRow key="color" label="Color" value={product.color} />);
     }
 
-    // ── Category-specific ──
     if (isLaptop) {
       if (product.brand) specs.push(<SpecRow key="brand" label="Brand" value={product.brand} />);
       if (product.model) specs.push(<SpecRow key="model" label="Model" value={product.model} />);
@@ -1132,26 +1282,21 @@ const ProductDetails = () => {
     return specs;
   };
 
-  // ── Check if any spec exists ──
   const hasAnySpec = () => {
-    // We'll rely on renderSpecs returning non-empty array
     return renderSpecs().length > 0;
   };
 
-  // ── Determine if the current user is the seller ──
   const isSeller = user && (
     product?.sellerId?._id === user._id ||
     product?.sellerId === user._id ||
     product?.sellerId?.toString() === user._id?.toString()
   );
 
-  // ── Seller name – reused in seller card and chat modal ──
   const sellerName = (() => {
     const seller = product.seller || product.sellerId || {};
     return seller.name || product.sellerName || 'Seller';
   })();
 
-  // ─── NEW: seller ID for the link ──────────────────────────────
   const sellerId = product.sellerId?._id || product.sellerId || product.seller?._id || '';
 
   // ================================================================
@@ -1224,6 +1369,19 @@ const ProductDetails = () => {
               justify-content: center !important;
             }
           }
+
+          .related-products-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+          }
+
+          @media (max-width: 600px) {
+            .related-products-grid {
+              grid-template-columns: repeat(2, 1fr);
+              gap: 12px;
+            }
+          }
         `}
       </style>
 
@@ -1233,90 +1391,57 @@ const ProductDetails = () => {
           padding: "30px 20px",
         }}
       >
-        {/* ============================================================
-            PRODUCT LAYOUT
-        ============================================================ */}
-
         <div
           className="product-detail"
           style={{
             display: "grid",
-            gridTemplateColumns:
-              "1fr 1fr",
+            gridTemplateColumns: "1fr 1fr",
             gap: "40px",
           }}
         >
-          {/* ========================================================
-              GALLERY
-          ======================================================== */}
-
+          {/* GALLERY */}
           <div className="gallery">
             <div
               className="main-image"
               style={{
-                position:
-                  "relative",
-                background:
-                  "#f1f5f9",
-                borderRadius:
-                  "var(--radius-md)",
+                position: "relative",
+                background: "#f1f5f9",
+                borderRadius: "var(--radius-md)",
                 overflow: "hidden",
                 aspectRatio: "1/1",
               }}
             >
               <img
                 src={getCurrentImage()}
-                alt={
-                  product.title
-                }
+                alt={product.title}
                 style={{
                   width: "100%",
                   height: "100%",
-                  objectFit:
-                    "cover",
-                  display:
-                    "block",
+                  objectFit: "cover",
+                  display: "block",
                 }}
               />
 
-              {/* SOLD RIBBON */}
-
-              {isSold && (
-                <SoldBadge
-                  variant="ribbon"
-                />
-              )}
-
-              {/* SLIDER CONTROLS */}
+              {isSold && <SoldBadge variant="ribbon" />}
 
               {totalImages > 1 && (
                 <>
                   <button
                     type="button"
-                    onClick={
-                      handlePrev
-                    }
+                    onClick={handlePrev}
                     style={{
-                      position:
-                        "absolute",
+                      position: "absolute",
                       top: "50%",
                       left: "12px",
-                      transform:
-                        "translateY(-50%)",
-                      background:
-                        "rgba(0,0,0,0.5)",
-                      color:
-                        "white",
-                      border:
-                        "none",
-                      borderRadius:
-                        "50%",
+                      transform: "translateY(-50%)",
+                      background: "rgba(0,0,0,0.5)",
+                      color: "white",
+                      border: "none",
+                      borderRadius: "50%",
                       width: "40px",
                       height: "40px",
-                      fontSize:
-                        "24px",
-                      cursor:
-                        "pointer",
+                      fontSize: "24px",
+                      cursor: "pointer",
                       zIndex: 10,
                     }}
                   >
@@ -1325,30 +1450,20 @@ const ProductDetails = () => {
 
                   <button
                     type="button"
-                    onClick={
-                      handleNext
-                    }
+                    onClick={handleNext}
                     style={{
-                      position:
-                        "absolute",
+                      position: "absolute",
                       top: "50%",
                       right: "12px",
-                      transform:
-                        "translateY(-50%)",
-                      background:
-                        "rgba(0,0,0,0.5)",
-                      color:
-                        "white",
-                      border:
-                        "none",
-                      borderRadius:
-                        "50%",
+                      transform: "translateY(-50%)",
+                      background: "rgba(0,0,0,0.5)",
+                      color: "white",
+                      border: "none",
+                      borderRadius: "50%",
                       width: "40px",
                       height: "40px",
-                      fontSize:
-                        "24px",
-                      cursor:
-                        "pointer",
+                      fontSize: "24px",
+                      cursor: "pointer",
                       zIndex: 10,
                     }}
                   >
@@ -1357,129 +1472,81 @@ const ProductDetails = () => {
 
                   <div
                     style={{
-                      position:
-                        "absolute",
+                      position: "absolute",
                       bottom: "16px",
                       left: "50%",
-                      transform:
-                        "translateX(-50%)",
-                      display:
-                        "flex",
+                      transform: "translateX(-50%)",
+                      display: "flex",
                       gap: "8px",
                       zIndex: 10,
                     }}
                   >
-                    {images.map(
-                      (_, idx) => (
-                        <button
-                          key={idx}
-                          type="button"
-                          onClick={() =>
-                            handleThumbClick(
-                              idx
-                            )
-                          }
-                          style={{
-                            width:
-                              "10px",
-                            height:
-                              "10px",
-                            borderRadius:
-                              "50%",
-                            background:
-                              idx ===
-                              currentImageIndex
-                                ? "white"
-                                : "rgba(255,255,255,0.5)",
-                            border:
-                              "none",
-                            cursor:
-                              "pointer",
-                            padding: 0,
-                          }}
-                        />
-                      )
-                    )}
+                    {images.map((_, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => handleThumbClick(idx)}
+                        style={{
+                          width: "10px",
+                          height: "10px",
+                          borderRadius: "50%",
+                          background:
+                            idx === currentImageIndex
+                              ? "white"
+                              : "rgba(255,255,255,0.5)",
+                          border: "none",
+                          cursor: "pointer",
+                          padding: 0,
+                        }}
+                      />
+                    ))}
                   </div>
                 </>
               )}
             </div>
 
-            {/* THUMBNAILS */}
-
-            {hasImages &&
-              totalImages > 1 && (
-                <div
-                  className="thumbnails"
-                  style={{
-                    display:
-                      "flex",
-                    gap: "10px",
-                    marginTop:
-                      "12px",
-                    overflowX:
-                      "auto",
-                    paddingBottom:
-                      "4px",
-                  }}
-                >
-                  {images.map(
-                    (
-                      img,
-                      idx
-                    ) => (
-                      <img
-                        key={idx}
-                        src={getImageUrl(
-                          img
-                        )}
-                        alt={`Thumb ${
-                          idx + 1
-                        }`}
-                        onClick={() =>
-                          handleThumbClick(
-                            idx
-                          )
-                        }
-                        style={{
-                          width:
-                            "80px",
-                          height:
-                            "80px",
-                          objectFit:
-                            "cover",
-                          borderRadius:
-                            "var(--radius-sm)",
-                          cursor:
-                            "pointer",
-                          border:
-                            currentImageIndex ===
-                            idx
-                              ? "3px solid var(--primary)"
-                              : "2px solid transparent",
-                          flexShrink:
-                            0,
-                        }}
-                      />
-                    )
-                  )}
-                </div>
-              )}
+            {hasImages && totalImages > 1 && (
+              <div
+                className="thumbnails"
+                style={{
+                  display: "flex",
+                  gap: "10px",
+                  marginTop: "12px",
+                  overflowX: "auto",
+                  paddingBottom: "4px",
+                }}
+              >
+                {images.map((img, idx) => (
+                  <img
+                    key={idx}
+                    src={getImageUrl(img)}
+                    alt={`Thumb ${idx + 1}`}
+                    onClick={() => handleThumbClick(idx)}
+                    style={{
+                      width: "80px",
+                      height: "80px",
+                      objectFit: "cover",
+                      borderRadius: "var(--radius-sm)",
+                      cursor: "pointer",
+                      border:
+                        currentImageIndex === idx
+                          ? "3px solid var(--primary)"
+                          : "2px solid transparent",
+                      flexShrink: 0,
+                    }}
+                  />
+                ))}
+              </div>
+            )}
           </div>
 
-          {/* ========================================================
-              DETAILS
-          ======================================================== */}
-
+          {/* DETAILS */}
           <div className="details">
             <h1
               style={{
-                fontSize:
-                  "28px",
-                fontWeight:
-                  800,
-                marginBottom:
-                  "8px",
+                fontSize: "28px",
+                fontWeight: 800,
+                marginBottom: "8px",
               }}
             >
               {product.title}
@@ -1487,24 +1554,15 @@ const ProductDetails = () => {
               {isSold && (
                 <span
                   style={{
-                    fontSize:
-                      "16px",
-                    fontWeight:
-                      700,
-                    color:
-                      "#dc2626",
-                    background:
-                      "#fee2e2",
-                    padding:
-                      "2px 14px",
-                    borderRadius:
-                      "4px",
-                    marginLeft:
-                      "12px",
-                    display:
-                      "inline-block",
-                    verticalAlign:
-                      "middle",
+                    fontSize: "16px",
+                    fontWeight: 700,
+                    color: "#dc2626",
+                    background: "#fee2e2",
+                    padding: "2px 14px",
+                    borderRadius: "4px",
+                    marginLeft: "12px",
+                    display: "inline-block",
+                    verticalAlign: "middle",
                   }}
                 >
                   SOLD
@@ -1512,52 +1570,31 @@ const ProductDetails = () => {
               )}
             </h1>
 
-            {/* PRICE */}
-
             <div
               className="price"
               style={{
-                fontSize:
-                  "32px",
-                fontWeight:
-                  800,
-                color: isSold
-                  ? "#9ca3af"
-                  : "var(--primary)",
-                marginBottom:
-                  "8px",
+                fontSize: "32px",
+                fontWeight: 800,
+                color: isSold ? "#9ca3af" : "var(--primary)",
+                marginBottom: "8px",
               }}
             >
-              GH₵{" "}
-              {Number(
-                product.price ||
-                  0
-              ).toLocaleString()}
-              
+              GH₵ {Number(product.price || 0).toLocaleString()}
               {product.oldPrice && (
                 <span
                   style={{
-                    fontSize:
-                      "18px",
-                    fontWeight:
-                      400,
-                    color:
-                      "var(--gray-400)",
-                    textDecoration:
-                      "line-through",
-                    marginLeft:
-                      "12px",
+                    fontSize: "18px",
+                    fontWeight: 400,
+                    color: "var(--gray-400)",
+                    textDecoration: "line-through",
+                    marginLeft: "12px",
                   }}
                 >
-                  GH₵{" "}
-                  {Number(
-                    product.oldPrice
-                  ).toLocaleString()}
+                  GH₵ {Number(product.oldPrice).toLocaleString()}
                 </span>
               )}
             </div>
 
-            {/* ─── META (with SIM Status hidden for laptops) ─── */}
             <div
               className="meta"
               style={{
@@ -1570,26 +1607,20 @@ const ProductDetails = () => {
               }}
             >
               <span>
-                <i className="fas fa-map-marker-alt" />{" "}
-                {product.location || "Ghana"}
+                <i className="fas fa-map-marker-alt" /> {product.location || "Ghana"}
               </span>
-
               <span>
                 <i className="fas fa-tag" /> {product.category}
               </span>
-
               <span>
                 <i className="fas fa-eye" /> {product.views || 0} views
               </span>
-
               <span>
                 <i className="fas fa-clock" />{" "}
                 {product.createdAt
                   ? new Date(product.createdAt).toLocaleDateString()
                   : ""}
               </span>
-
-              {/* ─── SIM STATUS – hidden for laptops ─── */}
               {product.simStatus && product.category !== 'Laptops' && (
                 <span style={{ color: "#0055a5", fontWeight: 600 }}>
                   <i className="fas fa-sim-card" /> SIM: {product.simStatus}
@@ -1597,44 +1628,30 @@ const ProductDetails = () => {
               )}
             </div>
 
-            {/* ======================================================
-                SPECIFICATIONS – refactored category-driven
-            ====================================================== */}
-
             {hasAnySpec() && (
               <div
                 className="specs"
                 style={{
-                  marginBottom:
-                    "20px",
-                  padding:
-                    "16px",
-                  background:
-                    "var(--gray-50)",
-                  borderRadius:
-                    "var(--radius-md)",
+                  marginBottom: "20px",
+                  padding: "16px",
+                  background: "var(--gray-50)",
+                  borderRadius: "var(--radius-md)",
                 }}
               >
                 <h3
                   style={{
-                    fontSize:
-                      "16px",
-                    fontWeight:
-                      700,
-                    marginBottom:
-                      "12px",
+                    fontSize: "16px",
+                    fontWeight: 700,
+                    marginBottom: "12px",
                   }}
                 >
                   {specsTitle}
                 </h3>
-
                 <div
                   className="specs-grid"
                   style={{
-                    display:
-                      "grid",
-                    gridTemplateColumns:
-                      "repeat(auto-fill, minmax(180px, 1fr))",
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))",
                     gap: "8px",
                   }}
                 >
@@ -1643,23 +1660,18 @@ const ProductDetails = () => {
               </div>
             )}
 
-            {/* DESCRIPTION */}
-
             <div
               className="description"
               style={{
-                color:
-                  "var(--gray-700)",
+                color: "var(--gray-700)",
                 lineHeight: 1.7,
-                marginBottom:
-                  "20px",
+                marginBottom: "20px",
               }}
             >
-              {product.description ||
-                "No description provided."}
+              {product.description || "No description provided."}
             </div>
 
-            {/* ─── SELLER CARD – with clickable name ────────────── */}
+            {/* SELLER CARD */}
             <div
               className="seller"
               style={{
@@ -1672,7 +1684,6 @@ const ProductDetails = () => {
                 gap: '16px',
               }}
             >
-              {/* Avatar */}
               <div
                 className="seller-avatar-wrapper"
                 style={{
@@ -1693,9 +1704,7 @@ const ProductDetails = () => {
               >
                 {(() => {
                   const seller = product.seller || product.sellerId || {};
-                  
-                  // ─── ALL POSSIBLE FIELD NAMES ──────────────
-                  const image =
+                  const imageField =
                     seller.profileImage ||
                     seller.photo ||
                     seller.avatar ||
@@ -1709,15 +1718,23 @@ const ProductDetails = () => {
 
                   const name = seller.name || product.sellerName || 'KN Seller';
 
-                  if (image) {
-                    const imageUrl = getImageUrl(image);
+                  let avatarUrl = null;
+                  if (imageField) {
+                    if (typeof imageField === 'string' && (imageField.startsWith('http://') || imageField.startsWith('https://'))) {
+                      avatarUrl = imageField;
+                    } else {
+                      avatarUrl = getImageUrl(imageField);
+                    }
+                  }
+
+                  if (avatarUrl) {
                     return (
                       <img
-                        src={imageUrl}
+                        src={avatarUrl}
                         alt={name}
                         style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                         onError={(e) => {
-                          // If image fails, fallback to icon
+                          console.warn('⚠️ Avatar failed to load:', avatarUrl);
                           e.currentTarget.style.display = 'none';
                           const parent = e.currentTarget.parentElement;
                           parent.innerHTML = `<i class="fas fa-user-circle" style="font-size: 28px; color: var(--gray-400);"></i>`;
@@ -1729,11 +1746,9 @@ const ProductDetails = () => {
                     );
                   }
 
-                  // ─── FALLBACK: USER ICON ──────────────────
                   return <i className="fas fa-user-circle" style={{ fontSize: '28px', color: 'var(--gray-400)' }} />;
                 })()}
 
-                {/* Status dot */}
                 <span
                   className={`seller-status-dot ${
                     (() => {
@@ -1753,9 +1768,7 @@ const ProductDetails = () => {
                 />
               </div>
 
-              {/* Seller info */}
               <div style={{ flex: 1 }}>
-                {/* ─── CLICKABLE SELLER NAME ───────────────────── */}
                 <Link
                   to={`/seller/${sellerId}`}
                   style={{
@@ -1763,7 +1776,8 @@ const ProductDetails = () => {
                     fontSize: '16px',
                     marginBottom: '2px',
                     color: 'var(--primary)',
-                    textDecoration: 'none',
+                    textDecoration: 'underline',
+                    textDecorationColor: 'var(--primary)',
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: '6px',
@@ -1774,26 +1788,15 @@ const ProductDetails = () => {
                   {sellerName}
                 </Link>
 
-                {/* ── PHONE NUMBER – SHOW ONLY IF LOGGED IN ── */}
                 {user ? (
                   product.sellerPhone && (
-                    <div
-                      style={{
-                        fontSize: '14px',
-                        color: 'var(--gray-600)',
-                      }}
-                    >
+                    <div style={{ fontSize: '14px', color: 'var(--gray-600)' }}>
                       <i className="fas fa-phone" style={{ marginRight: '6px' }} />
                       {product.sellerPhone}
                     </div>
                   )
                 ) : (
-                  <div
-                    style={{
-                      fontSize: '14px',
-                      color: 'var(--gray-600)',
-                    }}
-                  >
+                  <div style={{ fontSize: '14px', color: 'var(--gray-600)' }}>
                     <i className="fas fa-lock" style={{ marginRight: '6px' }} />
                     <span
                       style={{
@@ -1813,13 +1816,7 @@ const ProductDetails = () => {
                   const seller = product.seller || product.sellerId || {};
                   if (seller.createdAt) {
                     return (
-                      <div
-                        style={{
-                          fontSize: '12px',
-                          color: 'var(--gray-400)',
-                          marginTop: '4px',
-                        }}
-                      >
+                      <div style={{ fontSize: '12px', color: 'var(--gray-400)', marginTop: '4px' }}>
                         <i className="fas fa-calendar-alt" style={{ marginRight: '4px' }} />
                         Member since {new Date(seller.createdAt).toLocaleDateString()}
                       </div>
@@ -1830,47 +1827,30 @@ const ProductDetails = () => {
               </div>
             </div>
 
-            {/* ======================================================
-                ACTION BUTTONS
-            ====================================================== */}
-
+            {/* ACTIONS */}
             <div
               className="actions"
               style={{
-                display:
-                  "flex",
+                display: "flex",
                 gap: "12px",
-                flexWrap:
-                  "wrap",
+                flexWrap: "wrap",
               }}
             >
-              {/* CONTACT SELLER (WhatsApp) */}
-
               {isSold ? (
                 <button
                   type="button"
                   disabled
                   style={{
-                    padding:
-                      "12px 32px",
-                    background:
-                      "#9ca3af",
-                    color:
-                      "white",
-                    border:
-                      "none",
-                    borderRadius:
-                      "var(--radius-full)",
-                    fontWeight:
-                      700,
-                    fontSize:
-                      "16px",
-                    cursor:
-                      "not-allowed",
-                    display:
-                      "flex",
-                    alignItems:
-                      "center",
+                    padding: "12px 32px",
+                    background: "#9ca3af",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "var(--radius-full)",
+                    fontWeight: 700,
+                    fontSize: "16px",
+                    cursor: "not-allowed",
+                    display: "flex",
+                    alignItems: "center",
                     gap: "8px",
                     opacity: 0.7,
                   }}
@@ -1929,7 +1909,6 @@ const ProductDetails = () => {
                 )
               )}
 
-              {/* ─── MESSAGE SELLER BUTTON ─── */}
               {!isSold && user && !isSeller && messagingAvailable && (
                 <button
                   type="button"
@@ -1955,7 +1934,6 @@ const ProductDetails = () => {
                 </button>
               )}
 
-              {/* ─── BOOK A BIKE RIDER ─── */}
               <button
                 type="button"
                 onClick={() =>
@@ -1988,102 +1966,53 @@ const ProductDetails = () => {
                 BOOK A BIKE RIDER
               </button>
 
-              {/* MARK SOLD / AVAILABLE */}
-
               {canEdit && (
                 <button
                   type="button"
-                  onClick={
-                    handleMarkAsSold
-                  }
-                  disabled={
-                    isUpdating
-                  }
+                  onClick={handleMarkAsSold}
+                  disabled={isUpdating}
                   style={{
-                    padding:
-                      "12px 24px",
-                    background:
-                      isSold
-                        ? "#22c55e"
-                        : "#dc2626",
-                    color:
-                      "white",
-                    border:
-                      "none",
-                    borderRadius:
-                      "var(--radius-full)",
-                    fontWeight:
-                      600,
-                    fontSize:
-                      "16px",
-                    cursor:
-                      isUpdating
-                        ? "not-allowed"
-                        : "pointer",
-                    display:
-                      "flex",
-                    alignItems:
-                      "center",
+                    padding: "12px 24px",
+                    background: isSold ? "#22c55e" : "#dc2626",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "var(--radius-full)",
+                    fontWeight: 600,
+                    fontSize: "16px",
+                    cursor: isUpdating ? "not-allowed" : "pointer",
+                    display: "flex",
+                    alignItems: "center",
                     gap: "8px",
-                    opacity:
-                      isUpdating
-                        ? 0.7
-                        : 1,
-                    touchAction:
-                      "manipulation",
+                    opacity: isUpdating ? 0.7 : 1,
+                    touchAction: "manipulation",
                   }}
                 >
                   {isUpdating ? (
                     "⏳ Updating..."
                   ) : (
                     <>
-                      <i
-                        className={
-                          isSold
-                            ? "fas fa-undo"
-                            : "fas fa-check-circle"
-                        }
-                      />
-
-                      {isSold
-                        ? "Mark Available"
-                        : "Mark as Sold"}
+                      <i className={isSold ? "fas fa-undo" : "fas fa-check-circle"} />
+                      {isSold ? "Mark Available" : "Mark as Sold"}
                     </>
                   )}
                 </button>
               )}
 
-              {/* EDIT */}
-
               {canEdit && (
                 <button
                   type="button"
-                  onClick={() =>
-                    setShowEditModal(
-                      true
-                    )
-                  }
+                  onClick={() => setShowEditModal(true)}
                   style={{
-                    padding:
-                      "12px 24px",
-                    border:
-                      "1.5px solid var(--primary)",
-                    borderRadius:
-                      "var(--radius-full)",
-                    background:
-                      "white",
-                    color:
-                      "var(--primary)",
-                    fontWeight:
-                      600,
-                    fontSize:
-                      "16px",
-                    cursor:
-                      "pointer",
-                    display:
-                      "flex",
-                    alignItems:
-                      "center",
+                    padding: "12px 24px",
+                    border: "1.5px solid var(--primary)",
+                    borderRadius: "var(--radius-full)",
+                    background: "white",
+                    color: "var(--primary)",
+                    fontWeight: 600,
+                    fontSize: "16px",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
                     gap: "8px",
                   }}
                 >
@@ -2092,190 +2021,133 @@ const ProductDetails = () => {
                 </button>
               )}
 
-              {/* FAVORITE */}
-
               <button
                 type="button"
-                onClick={() =>
-                  toggleFavorite(
-                    product._id
-                  )
-                }
+                onClick={() => toggleFavorite(product._id)}
                 className="btn-outline"
                 style={{
-                  padding:
-                    "12px 24px",
-                  border:
-                    "1.5px solid var(--gray-300)",
-                  borderRadius:
-                    "var(--radius-full)",
-                  background:
-                    "transparent",
-                  fontWeight:
-                    600,
-                  fontSize:
-                    "16px",
-                  cursor:
-                    "pointer",
-                  display:
-                    "flex",
-                  alignItems:
-                    "center",
+                  padding: "12px 24px",
+                  border: "1.5px solid var(--gray-300)",
+                  borderRadius: "var(--radius-full)",
+                  background: "transparent",
+                  fontWeight: 600,
+                  fontSize: "16px",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
                   gap: "8px",
-                  color: liked
-                    ? "#e74c3c"
-                    : "var(--gray-700)",
+                  color: liked ? "#e74c3c" : "var(--gray-700)",
                 }}
               >
-                <i
-                  className={
-                    liked
-                      ? "fas fa-heart"
-                      : "far fa-heart"
-                  }
-                />
-
-                {liked
-                  ? "Saved"
-                  : "Save"}
+                <i className={liked ? "fas fa-heart" : "far fa-heart"} />
+                {liked ? "Saved" : "Save"}
               </button>
             </div>
 
             {/* SAFETY */}
-
             <div
               className="safety"
               style={{
-                marginTop:
-                  "20px",
-                background:
-                  "#fef9c3",
-                borderRadius:
-                  "var(--radius-md)",
-                padding:
-                  "14px 18px",
-                fontSize:
-                  "13px",
-                color:
-                  "#854d0e",
+                marginTop: "20px",
+                background: "#fef9c3",
+                borderRadius: "var(--radius-md)",
+                padding: "14px 18px",
+                fontSize: "13px",
+                color: "#854d0e",
               }}
             >
               <strong>
-                <i className="fas fa-shield-alt" />{" "}
-                Safety tips
+                <i className="fas fa-shield-alt" /> Safety tips
               </strong>
-
-              <ul
-                style={{
-                  paddingLeft:
-                    "20px",
-                  marginTop:
-                    "4px",
-                }}
-              >
-                <li>
-                  Avoid paying in
-                  advance, even
-                  for delivery.
-                </li>
-
-                <li>
-                  Meet with the
-                  seller at a
-                  safe public
-                  place.
-                </li>
-
-                <li>
-                  Inspect the
-                  item before
-                  paying.
-                </li>
+              <ul style={{ paddingLeft: "20px", marginTop: "4px" }}>
+                <li>Avoid paying in advance, even for delivery.</li>
+                <li>Meet with the seller at a safe public place.</li>
+                <li>Inspect the item before paying.</li>
               </ul>
             </div>
           </div>
         </div>
 
-        {/* ============================================================
-            EDIT MODAL – FULLY INCLUDED (unchanged)
-        ============================================================ */}
+        {/* RELATED PRODUCTS */}
+        {relatedProducts.length > 0 && (
+          <div
+            style={{
+              marginTop: "60px",
+              paddingTop: "40px",
+              borderTop: "1px solid #e5e7eb",
+            }}
+          >
+            <h2
+              style={{
+                fontSize: "24px",
+                fontWeight: 800,
+                marginBottom: "20px",
+              }}
+            >
+              You might also like
+            </h2>
 
+            {relatedLoading ? (
+              <div style={{ textAlign: "center", padding: "40px", color: "var(--gray-400)" }}>
+                Loading related products...
+              </div>
+            ) : (
+              <div className="related-products-grid">
+                {relatedProducts.map((relatedProduct) => (
+                  <RelatedProductCard
+                    key={relatedProduct._id}
+                    product={relatedProduct}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* EDIT MODAL */}
         {showEditModal && (
           <div
             style={{
-              position:
-                "fixed",
+              position: "fixed",
               top: 0,
               left: 0,
               width: "100%",
               height: "100%",
-              backgroundColor:
-                "rgba(0,0,0,0.5)",
-              backdropFilter:
-                "blur(4px)",
-              display:
-                "flex",
-              alignItems:
-                "center",
-              justifyContent:
-                "center",
+              backgroundColor: "rgba(0,0,0,0.5)",
+              backdropFilter: "blur(4px)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
               zIndex: 9999,
-              padding:
-                "20px",
+              padding: "20px",
             }}
-            onClick={() =>
-              setShowEditModal(
-                false
-              )
-            }
+            onClick={() => setShowEditModal(false)}
           >
             <div
               style={{
-                background:
-                  "white",
-                borderRadius:
-                  "var(--radius-xl)",
-                maxWidth:
-                  "600px",
-                width:
-                  "100%",
-                padding:
-                  "32px",
-                position:
-                  "relative",
-                maxHeight:
-                  "90vh",
-                overflowY:
-                  "auto",
+                background: "white",
+                borderRadius: "var(--radius-xl)",
+                maxWidth: "600px",
+                width: "100%",
+                padding: "32px",
+                position: "relative",
+                maxHeight: "90vh",
+                overflowY: "auto",
               }}
-              onClick={(e) =>
-                e.stopPropagation()
-              }
+              onClick={(e) => e.stopPropagation()}
             >
-              {/* CLOSE */}
-
               <button
                 type="button"
-                onClick={() =>
-                  setShowEditModal(
-                    false
-                  )
-                }
+                onClick={() => setShowEditModal(false)}
                 style={{
-                  position:
-                    "absolute",
+                  position: "absolute",
                   top: "14px",
                   right: "18px",
-                  fontSize:
-                    "28px",
-                  cursor:
-                    "pointer",
-                  color:
-                    "var(--gray-400)",
-                  background:
-                    "none",
-                  border:
-                    "none",
+                  fontSize: "28px",
+                  cursor: "pointer",
+                  color: "var(--gray-400)",
+                  background: "none",
+                  border: "none",
                 }}
               >
                 &times;
@@ -2283,2641 +2155,543 @@ const ProductDetails = () => {
 
               <h2
                 style={{
-                  fontSize:
-                    "24px",
-                  fontWeight:
-                    800,
-                  marginBottom:
-                    "20px",
-                  textAlign:
-                    "center",
+                  fontSize: "24px",
+                  fontWeight: 800,
+                  marginBottom: "20px",
+                  textAlign: "center",
                 }}
               >
                 Edit Product
               </h2>
 
-              {/* ERROR */}
-
               {editError && (
                 <div
                   style={{
-                    background:
-                      "#fee2e2",
-                    color:
-                      "#dc2626",
-                    padding:
-                      "10px 14px",
-                    borderRadius:
-                      "var(--radius-sm)",
-                    marginBottom:
-                      "16px",
+                    background: "#fee2e2",
+                    color: "#dc2626",
+                    padding: "10px 14px",
+                    borderRadius: "var(--radius-sm)",
+                    marginBottom: "16px",
                   }}
                 >
                   {editError}
                 </div>
               )}
 
-              <form
-                onSubmit={
-                  handleEditSubmit
-                }
-              >
-                {/* TITLE */}
-
-                <div
-                  className="form-group"
-                  style={{
-                    marginBottom:
-                      "12px",
-                  }}
-                >
-                  <label
-                    style={{
-                      display:
-                        "block",
-                      fontWeight:
-                        600,
-                      fontSize:
-                        "13px",
-                      marginBottom:
-                        "4px",
-                    }}
-                  >
+              <form onSubmit={handleEditSubmit}>
+                {/* Title */}
+                <div className="form-group" style={{ marginBottom: "12px" }}>
+                  <label style={{ display: "block", fontWeight: 600, fontSize: "13px", marginBottom: "4px" }}>
                     Title *
                   </label>
-
                   <input
                     type="text"
                     name="title"
-                    value={
-                      editForm.title
-                    }
-                    onChange={
-                      handleEditChange
-                    }
+                    value={editForm.title}
+                    onChange={handleEditChange}
                     required
                     style={{
-                      width:
-                        "100%",
-                      padding:
-                        "10px 14px",
-                      border:
-                        "1.5px solid var(--gray-200)",
-                      borderRadius:
-                        "var(--radius-md)",
-                      fontSize:
-                        "14px",
+                      width: "100%",
+                      padding: "10px 14px",
+                      border: "1.5px solid var(--gray-200)",
+                      borderRadius: "var(--radius-md)",
+                      fontSize: "14px",
                     }}
                   />
                 </div>
 
-                {/* PRICE */}
-
-                <div
-                  className="form-group"
-                  style={{
-                    marginBottom:
-                      "12px",
-                  }}
-                >
-                  <label
-                    style={{
-                      display:
-                        "block",
-                      fontWeight:
-                        600,
-                      fontSize:
-                        "13px",
-                      marginBottom:
-                        "4px",
-                    }}
-                  >
+                {/* Price */}
+                <div className="form-group" style={{ marginBottom: "12px" }}>
+                  <label style={{ display: "block", fontWeight: 600, fontSize: "13px", marginBottom: "4px" }}>
                     Price (GH₵) *
                   </label>
-
                   <input
                     type="number"
                     name="price"
-                    value={
-                      editForm.price
-                    }
-                    onChange={
-                      handleEditChange
-                    }
+                    value={editForm.price}
+                    onChange={handleEditChange}
                     required
                     step="0.01"
                     min="0"
                     style={{
-                      width:
-                        "100%",
-                      padding:
-                        "10px 14px",
-                      border:
-                        "1.5px solid var(--gray-200)",
-                      borderRadius:
-                        "var(--radius-md)",
-                      fontSize:
-                        "14px",
+                      width: "100%",
+                      padding: "10px 14px",
+                      border: "1.5px solid var(--gray-200)",
+                      borderRadius: "var(--radius-md)",
+                      fontSize: "14px",
                     }}
                   />
                 </div>
 
-                {/* PHONE */}
-
-                <div
-                  className="form-group"
-                  style={{
-                    marginBottom:
-                      "12px",
-                  }}
-                >
-                  <label
-                    style={{
-                      display:
-                        "block",
-                      fontWeight:
-                        600,
-                      fontSize:
-                        "13px",
-                      marginBottom:
-                        "4px",
-                    }}
-                  >
+                {/* Seller Phone */}
+                <div className="form-group" style={{ marginBottom: "12px" }}>
+                  <label style={{ display: "block", fontWeight: 600, fontSize: "13px", marginBottom: "4px" }}>
                     Seller Phone
                   </label>
-
                   <input
                     type="tel"
                     name="sellerPhone"
-                    value={
-                      editForm.sellerPhone
-                    }
-                    onChange={
-                      handleEditChange
-                    }
+                    value={editForm.sellerPhone}
+                    onChange={handleEditChange}
                     placeholder="e.g. 054 123 4567"
                     style={{
-                      width:
-                        "100%",
-                      padding:
-                        "10px 14px",
-                      border:
-                        "1.5px solid var(--gray-200)",
-                      borderRadius:
-                        "var(--radius-md)",
-                      fontSize:
-                        "14px",
+                      width: "100%",
+                      padding: "10px 14px",
+                      border: "1.5px solid var(--gray-200)",
+                      borderRadius: "var(--radius-md)",
+                      fontSize: "14px",
                     }}
                   />
                 </div>
 
-                {/* CATEGORY */}
-
-                <div
-                  className="form-group"
-                  style={{
-                    marginBottom:
-                      "12px",
-                  }}
-                >
-                  <label
-                    style={{
-                      display:
-                        "block",
-                      fontWeight:
-                        600,
-                      fontSize:
-                        "13px",
-                      marginBottom:
-                        "4px",
-                    }}
-                  >
+                {/* Category */}
+                <div className="form-group" style={{ marginBottom: "12px" }}>
+                  <label style={{ display: "block", fontWeight: 600, fontSize: "13px", marginBottom: "4px" }}>
                     Category
                   </label>
-
                   <select
                     name="category"
-                    value={
-                      editForm.category
-                    }
-                    onChange={
-                      handleEditChange
-                    }
+                    value={editForm.category}
+                    onChange={handleEditChange}
                     style={{
-                      width:
-                        "100%",
-                      padding:
-                        "10px 14px",
-                      border:
-                        "1.5px solid var(--gray-200)",
-                      borderRadius:
-                        "var(--radius-md)",
-                      fontSize:
-                        "14px",
+                      width: "100%",
+                      padding: "10px 14px",
+                      border: "1.5px solid var(--gray-200)",
+                      borderRadius: "var(--radius-md)",
+                      fontSize: "14px",
                     }}
                   >
-                    <option value="Cars">
-                      Cars
-                    </option>
-                    <option value="Phones">
-                      Phones
-                    </option>
-                    <option value="Laptops">
-                      Laptops
-                    </option>
-                    <option value="Tablets">
-                      Tablets
-                    </option>
-                    <option value="TVs">
-                      TVs
-                    </option>
-                    <option value="Game Consoles">
-                      Game Consoles
-                    </option>
-                    <option value="Accessories">
-                      Accessories
-                    </option>
-                    <option value="Real Estate">
-                      Real Estate
-                    </option>
-                    <option value="Jobs">
-                      Jobs
-                    </option>
-                    <option value="Electronics">
-                      Electronics
-                    </option>
-                    <option value="Fashion">
-                      Fashion
-                    </option>
-                    <option value="Home">
-                      Home
-                    </option>
-                    <option value="Other">
-                      Other
-                    </option>
+                    <option value="Cars">Cars</option>
+                    <option value="Phones">Phones</option>
+                    <option value="Laptops">Laptops</option>
+                    <option value="Tablets">Tablets</option>
+                    <option value="TVs">TVs</option>
+                    <option value="Game Consoles">Game Consoles</option>
+                    <option value="Accessories">Accessories</option>
+                    <option value="Real Estate">Real Estate</option>
+                    <option value="Jobs">Jobs</option>
+                    <option value="Electronics">Electronics</option>
+                    <option value="Fashion">Fashion</option>
+                    <option value="Home">Home</option>
+                    <option value="Other">Other</option>
                   </select>
                 </div>
 
-                {/* LOCATION */}
-
-                <div
-                  className="form-group"
-                  style={{
-                    marginBottom:
-                      "12px",
-                  }}
-                >
-                  <label
-                    style={{
-                      display:
-                        "block",
-                      fontWeight:
-                        600,
-                      fontSize:
-                        "13px",
-                      marginBottom:
-                        "4px",
-                    }}
-                  >
+                {/* Location */}
+                <div className="form-group" style={{ marginBottom: "12px" }}>
+                  <label style={{ display: "block", fontWeight: 600, fontSize: "13px", marginBottom: "4px" }}>
                     Location
                   </label>
-
                   <input
                     type="text"
                     name="location"
-                    value={
-                      editForm.location
-                    }
-                    onChange={
-                      handleEditChange
-                    }
+                    value={editForm.location}
+                    onChange={handleEditChange}
                     style={{
-                      width:
-                        "100%",
-                      padding:
-                        "10px 14px",
-                      border:
-                        "1.5px solid var(--gray-200)",
-                      borderRadius:
-                        "var(--radius-md)",
-                      fontSize:
-                        "14px",
+                      width: "100%",
+                      padding: "10px 14px",
+                      border: "1.5px solid var(--gray-200)",
+                      borderRadius: "var(--radius-md)",
+                      fontSize: "14px",
                     }}
                   />
                 </div>
 
-                {/* DESCRIPTION */}
-
-                <div
-                  className="form-group"
-                  style={{
-                    marginBottom:
-                      "12px",
-                  }}
-                >
-                  <label
-                    style={{
-                      display:
-                        "block",
-                      fontWeight:
-                        600,
-                      fontSize:
-                        "13px",
-                      marginBottom:
-                        "4px",
-                    }}
-                  >
+                {/* Description */}
+                <div className="form-group" style={{ marginBottom: "12px" }}>
+                  <label style={{ display: "block", fontWeight: 600, fontSize: "13px", marginBottom: "4px" }}>
                     Description
                   </label>
-
                   <textarea
                     name="description"
-                    value={
-                      editForm.description
-                    }
-                    onChange={
-                      handleEditChange
-                    }
+                    value={editForm.description}
+                    onChange={handleEditChange}
                     rows="3"
                     style={{
-                      width:
-                        "100%",
-                      padding:
-                        "10px 14px",
-                      border:
-                        "1.5px solid var(--gray-200)",
-                      borderRadius:
-                        "var(--radius-md)",
-                      fontSize:
-                        "14px",
-                      resize:
-                        "vertical",
+                      width: "100%",
+                      padding: "10px 14px",
+                      border: "1.5px solid var(--gray-200)",
+                      borderRadius: "var(--radius-md)",
+                      fontSize: "14px",
+                      resize: "vertical",
                     }}
                   />
                 </div>
 
-                {/* CONDITION */}
-
-                <div
-                  className="form-group"
-                  style={{
-                    marginBottom:
-                      "12px",
-                  }}
-                >
-                  <label
-                    style={{
-                      display:
-                        "block",
-                      fontWeight:
-                        600,
-                      fontSize:
-                        "13px",
-                      marginBottom:
-                        "4px",
-                    }}
-                  >
+                {/* Condition */}
+                <div className="form-group" style={{ marginBottom: "12px" }}>
+                  <label style={{ display: "block", fontWeight: 600, fontSize: "13px", marginBottom: "4px" }}>
                     Condition
                   </label>
-
                   <select
                     name="condition"
-                    value={
-                      editForm.condition
-                    }
-                    onChange={
-                      handleEditChange
-                    }
+                    value={editForm.condition}
+                    onChange={handleEditChange}
                     style={{
-                      width:
-                        "100%",
-                      padding:
-                        "10px 14px",
-                      border:
-                        "1.5px solid var(--gray-200)",
-                      borderRadius:
-                        "var(--radius-md)",
-                      fontSize:
-                        "14px",
+                      width: "100%",
+                      padding: "10px 14px",
+                      border: "1.5px solid var(--gray-200)",
+                      borderRadius: "var(--radius-md)",
+                      fontSize: "14px",
                     }}
                   >
-                    <option value="Brand New">
-                      Brand New
-                    </option>
-                    <option value="Like New">
-                      Like New
-                    </option>
-                    <option value="Excellent">
-                      Excellent
-                    </option>
-                    <option value="Good">
-                      Good
-                    </option>
-                    <option value="Fair">
-                      Fair
-                    </option>
-                    <option value="Poor">
-                      Poor
-                    </option>
+                    <option value="Brand New">Brand New</option>
+                    <option value="Like New">Like New</option>
+                    <option value="Excellent">Excellent</option>
+                    <option value="Good">Good</option>
+                    <option value="Fair">Fair</option>
+                    <option value="Poor">Poor</option>
                   </select>
                 </div>
 
-                {/* ─── CATEGORY‑SPECIFIC SECTIONS ────────────────────────── */}
-
-                {/* LAPTOP */}
-                {editForm.category === "Laptops" && (
-                  <>
-                    <div
-                      className="form-group"
-                      style={{
-                        marginBottom:
-                          "12px",
-                      }}
-                    >
-                      <label
-                        style={{
-                          display:
-                            "block",
-                          fontWeight:
-                            600,
-                          fontSize:
-                            "13px",
-                          marginBottom:
-                            "4px",
-                        }}
-                      >
-                        Brand
-                      </label>
-
-                      <select
-                        name="brand"
-                        value={
-                          editForm.brand
-                        }
-                        onChange={
-                          handleEditChange
-                        }
-                        style={{
-                          width:
-                            "100%",
-                          padding:
-                            "10px 14px",
-                          border:
-                            "1.5px solid var(--gray-200)",
-                          borderRadius:
-                            "var(--radius-md)",
-                          fontSize:
-                            "14px",
-                        }}
-                      >
-                        <option value="">
-                          Select brand
-                        </option>
-                        {LAPTOP_BRANDS.map(
-                          (brand) => (
-                            <option
-                              key={
-                                brand
-                              }
-                              value={
-                                brand
-                              }
-                            >
-                              {brand}
-                            </option>
-                          )
-                        )}
-                      </select>
-                    </div>
-
-                    <div
-                      className="form-group"
-                      style={{
-                        marginBottom:
-                          "12px",
-                      }}
-                    >
-                      <label
-                        style={{
-                          display:
-                            "block",
-                          fontWeight:
-                            600,
-                          fontSize:
-                            "13px",
-                          marginBottom:
-                            "4px",
-                        }}
-                      >
-                        Model
-                      </label>
-
-                      <select
-                        name="model"
-                        value={
-                          editForm.model
-                        }
-                        onChange={
-                          handleEditChange
-                        }
-                        style={{
-                          width:
-                            "100%",
-                          padding:
-                            "10px 14px",
-                          border:
-                            "1.5px solid var(--gray-200)",
-                          borderRadius:
-                            "var(--radius-md)",
-                          fontSize:
-                            "14px",
-                        }}
-                        disabled={
-                          !editForm.brand
-                        }
-                      >
-                        <option value="">
-                          {editForm.brand
-                            ? "Select model"
-                            : "Select a brand first"}
-                        </option>
-                        {getModelsByBrand(
-                          editForm.brand
-                        ).map(
-                          (model) => (
-                            <option
-                              key={
-                                model
-                              }
-                              value={
-                                model
-                              }
-                            >
-                              {model}
-                            </option>
-                          )
-                        )}
-                      </select>
-                    </div>
-
-                    <div
-                      className="form-group"
-                      style={{
-                        marginBottom:
-                          "12px",
-                      }}
-                    >
-                      <label
-                        style={{
-                          display:
-                            "block",
-                          fontWeight:
-                            600,
-                          fontSize:
-                            "13px",
-                          marginBottom:
-                            "4px",
-                        }}
-                      >
-                        Processor
-                      </label>
-
-                      <select
-                        name="processor"
-                        value={
-                          editForm.processor
-                        }
-                        onChange={
-                          handleEditChange
-                        }
-                        style={{
-                          width:
-                            "100%",
-                          padding:
-                            "10px 14px",
-                          border:
-                            "1.5px solid var(--gray-200)",
-                          borderRadius:
-                            "var(--radius-md)",
-                          fontSize:
-                            "14px",
-                        }}
-                      >
-                        <option value="">
-                          Select processor
-                        </option>
-                        {PROCESSOR_OPTIONS.map(
-                          (option) => (
-                            <option
-                              key={
-                                option
-                              }
-                              value={
-                                option
-                              }
-                            >
-                              {option}
-                            </option>
-                          )
-                        )}
-                      </select>
-                    </div>
-
-                    <div
-                      className="form-group"
-                      style={{
-                        marginBottom:
-                          "12px",
-                      }}
-                    >
-                      <label
-                        style={{
-                          display:
-                            "block",
-                          fontWeight:
-                            600,
-                          fontSize:
-                            "13px",
-                          marginBottom:
-                            "4px",
-                        }}
-                      >
-                        RAM
-                      </label>
-
-                      <select
-                        name="ram"
-                        value={
-                          editForm.ram
-                        }
-                        onChange={
-                          handleEditChange
-                        }
-                        style={{
-                          width:
-                            "100%",
-                          padding:
-                            "10px 14px",
-                          border:
-                            "1.5px solid var(--gray-200)",
-                          borderRadius:
-                            "var(--radius-md)",
-                          fontSize:
-                            "14px",
-                        }}
-                      >
-                        <option value="">
-                          Select RAM
-                        </option>
-                        {RAM_OPTIONS.map(
-                          (option) => (
-                            <option
-                              key={
-                                option
-                              }
-                              value={
-                                option
-                              }
-                            >
-                              {option}
-                            </option>
-                          )
-                        )}
-                      </select>
-                    </div>
-
-                    <div
-                      className="form-group"
-                      style={{
-                        marginBottom:
-                          "12px",
-                      }}
-                    >
-                      <label
-                        style={{
-                          display:
-                            "block",
-                          fontWeight:
-                            600,
-                          fontSize:
-                            "13px",
-                          marginBottom:
-                            "4px",
-                        }}
-                      >
-                        Screen Size
-                      </label>
-
-                      <select
-                        name="screenSize"
-                        value={
-                          editForm.screenSize
-                        }
-                        onChange={
-                          handleEditChange
-                        }
-                        style={{
-                          width:
-                            "100%",
-                          padding:
-                            "10px 14px",
-                          border:
-                            "1.5px solid var(--gray-200)",
-                          borderRadius:
-                            "var(--radius-md)",
-                          fontSize:
-                            "14px",
-                        }}
-                      >
-                        <option value="">
-                          Select screen size
-                        </option>
-                        {SCREEN_SIZE_OPTIONS.map(
-                          (option) => (
-                            <option
-                              key={
-                                option
-                              }
-                              value={
-                                option
-                              }
-                            >
-                              {option}
-                            </option>
-                          )
-                        )}
-                      </select>
-                    </div>
-
-                    <div
-                      className="form-group"
-                      style={{
-                        marginBottom:
-                          "12px",
-                      }}
-                    >
-                      <label
-                        style={{
-                          display:
-                            "block",
-                          fontWeight:
-                            600,
-                          fontSize:
-                            "13px",
-                          marginBottom:
-                            "4px",
-                        }}
-                      >
-                        Graphics
-                      </label>
-
-                      <select
-                        name="graphics"
-                        value={
-                          editForm.graphics
-                        }
-                        onChange={
-                          handleEditChange
-                        }
-                        style={{
-                          width:
-                            "100%",
-                          padding:
-                            "10px 14px",
-                          border:
-                            "1.5px solid var(--gray-200)",
-                          borderRadius:
-                            "var(--radius-md)",
-                          fontSize:
-                            "14px",
-                        }}
-                      >
-                        <option value="">
-                          Select graphics
-                        </option>
-                        {GRAPHICS_OPTIONS.map(
-                          (option) => (
-                            <option
-                              key={
-                                option
-                              }
-                              value={
-                                option
-                              }
-                            >
-                              {option}
-                            </option>
-                          )
-                        )}
-                      </select>
-                    </div>
-                  </>
-                )}
-
-                {/* TABLET */}
-                {editForm.category === "Tablets" && (
-                  <>
-                    <div
-                      className="form-group"
-                      style={{
-                        marginBottom:
-                          "12px",
-                      }}
-                    >
-                      <label
-                        style={{
-                          display:
-                            "block",
-                          fontWeight:
-                            600,
-                          fontSize:
-                            "13px",
-                          marginBottom:
-                            "4px",
-                        }}
-                      >
-                        Brand
-                      </label>
-
-                      <select
-                        name="brand"
-                        value={
-                          editForm.brand
-                        }
-                        onChange={
-                          handleEditChange
-                        }
-                        style={{
-                          width:
-                            "100%",
-                          padding:
-                            "10px 14px",
-                          border:
-                            "1.5px solid var(--gray-200)",
-                          borderRadius:
-                            "var(--radius-md)",
-                          fontSize:
-                            "14px",
-                        }}
-                      >
-                        <option value="">
-                          Select brand
-                        </option>
-                        {TABLET_BRANDS.map(
-                          (brand) => (
-                            <option
-                              key={
-                                brand
-                              }
-                              value={
-                                brand
-                              }
-                            >
-                              {brand}
-                            </option>
-                          )
-                        )}
-                      </select>
-                    </div>
-
-                    <div
-                      className="form-group"
-                      style={{
-                        marginBottom:
-                          "12px",
-                      }}
-                    >
-                      <label
-                        style={{
-                          display:
-                            "block",
-                          fontWeight:
-                            600,
-                          fontSize:
-                            "13px",
-                          marginBottom:
-                            "4px",
-                        }}
-                      >
-                        Model
-                      </label>
-
-                      <select
-                        name="model"
-                        value={
-                          editForm.model
-                        }
-                        onChange={
-                          handleEditChange
-                        }
-                        style={{
-                          width:
-                            "100%",
-                          padding:
-                            "10px 14px",
-                          border:
-                            "1.5px solid var(--gray-200)",
-                          borderRadius:
-                            "var(--radius-md)",
-                          fontSize:
-                            "14px",
-                        }}
-                        disabled={
-                          !editForm.brand
-                        }
-                      >
-                        <option value="">
-                          {editForm.brand
-                            ? "Select model"
-                            : "Select a brand first"}
-                        </option>
-                        {getTabletModelsByBrand(
-                          editForm.brand
-                        ).map(
-                          (model) => (
-                            <option
-                              key={
-                                model
-                              }
-                              value={
-                                model
-                              }
-                            >
-                              {model}
-                            </option>
-                          )
-                        )}
-                      </select>
-                    </div>
-
-                    <div
-                      className="form-group"
-                      style={{
-                        marginBottom:
-                          "12px",
-                      }}
-                    >
-                      <label
-                        style={{
-                          display:
-                            "block",
-                          fontWeight:
-                            600,
-                          fontSize:
-                            "13px",
-                          marginBottom:
-                            "4px",
-                        }}
-                      >
-                        Year
-                      </label>
-
-                      <select
-                        name="year"
-                        value={
-                          editForm.year
-                        }
-                        onChange={
-                          handleEditChange
-                        }
-                        style={{
-                          width:
-                            "100%",
-                          padding:
-                            "10px 14px",
-                          border:
-                            "1.5px solid var(--gray-200)",
-                          borderRadius:
-                            "var(--radius-md)",
-                          fontSize:
-                            "14px",
-                        }}
-                      >
-                        <option value="">
-                          Select year
-                        </option>
-                        {YEAR_OPTIONS.map(
-                          (year) => (
-                            <option
-                              key={year}
-                              value={year}
-                            >
-                              {year}
-                            </option>
-                          )
-                        )}
-                      </select>
-                    </div>
-
-                    <div
-                      className="form-group"
-                      style={{
-                        marginBottom:
-                          "12px",
-                      }}
-                    >
-                      <label
-                        style={{
-                          display:
-                            "block",
-                          fontWeight:
-                            600,
-                          fontSize:
-                            "13px",
-                          marginBottom:
-                            "4px",
-                        }}
-                      >
-                        Connectivity
-                      </label>
-
-                      <select
-                        name="connectivity"
-                        value={
-                          editForm.connectivity
-                        }
-                        onChange={
-                          handleEditChange
-                        }
-                        style={{
-                          width:
-                            "100%",
-                          padding:
-                            "10px 14px",
-                          border:
-                            "1.5px solid var(--gray-200)",
-                          borderRadius:
-                            "var(--radius-md)",
-                          fontSize:
-                            "14px",
-                        }}
-                      >
-                        <option value="">
-                          Select connectivity
-                        </option>
-                        {CONNECTIVITY_OPTIONS.map(
-                          (option) => (
-                            <option
-                              key={
-                                option
-                              }
-                              value={
-                                option
-                              }
-                            >
-                              {option}
-                            </option>
-                          )
-                        )}
-                      </select>
-                    </div>
-
-                    <div
-                      className="form-group"
-                      style={{
-                        marginBottom:
-                          "12px",
-                      }}
-                    >
-                      <label
-                        style={{
-                          display:
-                            "block",
-                          fontWeight:
-                            600,
-                          fontSize:
-                            "13px",
-                          marginBottom:
-                            "4px",
-                        }}
-                      >
-                        Screen Size
-                      </label>
-
-                      <select
-                        name="screenSize"
-                        value={
-                          editForm.screenSize
-                        }
-                        onChange={
-                          handleEditChange
-                        }
-                        style={{
-                          width:
-                            "100%",
-                          padding:
-                            "10px 14px",
-                          border:
-                            "1.5px solid var(--gray-200)",
-                          borderRadius:
-                            "var(--radius-md)",
-                          fontSize:
-                            "14px",
-                        }}
-                      >
-                        <option value="">
-                          Select screen size
-                        </option>
-                        {TABLET_SCREEN_SIZES.map(
-                          (size) => (
-                            <option
-                              key={size}
-                              value={size}
-                            >
-                              {size}
-                            </option>
-                          )
-                        )}
-                      </select>
-                    </div>
-                  </>
-                )}
-
-                {/* TV */}
-                {editForm.category === "TVs" && (
-                  <>
-                    <div
-                      className="form-group"
-                      style={{
-                        marginBottom:
-                          "12px",
-                      }}
-                    >
-                      <label
-                        style={{
-                          display:
-                            "block",
-                          fontWeight:
-                            600,
-                          fontSize:
-                            "13px",
-                          marginBottom:
-                            "4px",
-                        }}
-                      >
-                        Brand
-                      </label>
-
-                      <select
-                        name="brand"
-                        value={
-                          editForm.brand
-                        }
-                        onChange={
-                          handleEditChange
-                        }
-                        style={{
-                          width:
-                            "100%",
-                          padding:
-                            "10px 14px",
-                          border:
-                            "1.5px solid var(--gray-200)",
-                          borderRadius:
-                            "var(--radius-md)",
-                          fontSize:
-                            "14px",
-                        }}
-                      >
-                        <option value="">
-                          Select brand
-                        </option>
-                        {TV_BRANDS.map(
-                          (brand) => (
-                            <option
-                              key={
-                                brand
-                              }
-                              value={
-                                brand
-                              }
-                            >
-                              {brand}
-                            </option>
-                          )
-                        )}
-                      </select>
-                    </div>
-
-                    <div
-                      className="form-group"
-                      style={{
-                        marginBottom:
-                          "12px",
-                      }}
-                    >
-                      <label
-                        style={{
-                          display:
-                            "block",
-                          fontWeight:
-                            600,
-                          fontSize:
-                            "13px",
-                          marginBottom:
-                            "4px",
-                        }}
-                      >
-                        Model
-                      </label>
-
-                      <input
-                        type="text"
-                        name="model"
-                        value={
-                          editForm.model
-                        }
-                        onChange={
-                          handleEditChange
-                        }
-                        placeholder="e.g. QN90B"
-                        style={{
-                          width:
-                            "100%",
-                          padding:
-                            "10px 14px",
-                          border:
-                            "1.5px solid var(--gray-200)",
-                          borderRadius:
-                            "var(--radius-md)",
-                          fontSize:
-                            "14px",
-                        }}
-                      />
-                    </div>
-
-                    <div
-                      className="form-group"
-                      style={{
-                        marginBottom:
-                          "12px",
-                      }}
-                    >
-                      <label
-                        style={{
-                          display:
-                            "block",
-                          fontWeight:
-                            600,
-                          fontSize:
-                            "13px",
-                          marginBottom:
-                            "4px",
-                        }}
-                      >
-                        Screen Size
-                      </label>
-
-                      <select
-                        name="screenSize"
-                        value={
-                          editForm.screenSize
-                        }
-                        onChange={
-                          handleEditChange
-                        }
-                        style={{
-                          width:
-                            "100%",
-                          padding:
-                            "10px 14px",
-                          border:
-                            "1.5px solid var(--gray-200)",
-                          borderRadius:
-                            "var(--radius-md)",
-                          fontSize:
-                            "14px",
-                        }}
-                      >
-                        <option value="">
-                          Select screen size
-                        </option>
-                        {SCREEN_SIZE_OPTIONS.map(
-                          (size) => (
-                            <option
-                              key={size}
-                              value={size}
-                            >
-                              {size}
-                            </option>
-                          )
-                        )}
-                      </select>
-                    </div>
-
-                    <div
-                      className="form-group"
-                      style={{
-                        marginBottom:
-                          "12px",
-                      }}
-                    >
-                      <label
-                        style={{
-                          display:
-                            "block",
-                          fontWeight:
-                            600,
-                          fontSize:
-                            "13px",
-                          marginBottom:
-                            "4px",
-                        }}
-                      >
-                        Connectivity (Smart TV features)
-                      </label>
-
-                      <select
-                        name="connectivity"
-                        value={
-                          editForm.connectivity
-                        }
-                        onChange={
-                          handleEditChange
-                        }
-                        style={{
-                          width:
-                            "100%",
-                          padding:
-                            "10px 14px",
-                          border:
-                            "1.5px solid var(--gray-200)",
-                          borderRadius:
-                            "var(--radius-md)",
-                          fontSize:
-                            "14px",
-                        }}
-                      >
-                        <option value="">
-                          Select connectivity
-                        </option>
-                        {CONNECTIVITY_OPTIONS.map(
-                          (option) => (
-                            <option
-                              key={
-                                option
-                              }
-                              value={
-                                option
-                              }
-                            >
-                              {option}
-                            </option>
-                          )
-                        )}
-                      </select>
-                    </div>
-                  </>
-                )}
-
-                {/* GAME CONSOLES */}
-                {editForm.category === "Game Consoles" && (
-                  <>
-                    <div
-                      className="form-group"
-                      style={{
-                        marginBottom:
-                          "12px",
-                      }}
-                    >
-                      <label
-                        style={{
-                          display:
-                            "block",
-                          fontWeight:
-                            600,
-                          fontSize:
-                            "13px",
-                          marginBottom:
-                            "4px",
-                        }}
-                      >
-                        Brand
-                      </label>
-
-                      <select
-                        name="brand"
-                        value={
-                          editForm.brand
-                        }
-                        onChange={
-                          handleEditChange
-                        }
-                        style={{
-                          width:
-                            "100%",
-                          padding:
-                            "10px 14px",
-                          border:
-                            "1.5px solid var(--gray-200)",
-                          borderRadius:
-                            "var(--radius-md)",
-                          fontSize:
-                            "14px",
-                        }}
-                      >
-                        <option value="">
-                          Select brand
-                        </option>
-                        {CONSOLE_BRANDS.map(
-                          (brand) => (
-                            <option
-                              key={
-                                brand
-                              }
-                              value={
-                                brand
-                              }
-                            >
-                              {brand}
-                            </option>
-                          )
-                        )}
-                      </select>
-                    </div>
-
-                    <div
-                      className="form-group"
-                      style={{
-                        marginBottom:
-                          "12px",
-                      }}
-                    >
-                      <label
-                        style={{
-                          display:
-                            "block",
-                          fontWeight:
-                            600,
-                          fontSize:
-                            "13px",
-                          marginBottom:
-                            "4px",
-                        }}
-                      >
-                        Model
-                      </label>
-
-                      <input
-                        type="text"
-                        name="model"
-                        value={
-                          editForm.model
-                        }
-                        onChange={
-                          handleEditChange
-                        }
-                        placeholder="e.g. PS5, Xbox Series X"
-                        style={{
-                          width:
-                            "100%",
-                          padding:
-                            "10px 14px",
-                          border:
-                            "1.5px solid var(--gray-200)",
-                          borderRadius:
-                            "var(--radius-md)",
-                          fontSize:
-                            "14px",
-                        }}
-                      />
-                    </div>
-
-                    <div
-                      className="form-group"
-                      style={{
-                        marginBottom:
-                          "12px",
-                      }}
-                    >
-                      <label
-                        style={{
-                          display:
-                            "block",
-                          fontWeight:
-                            600,
-                          fontSize:
-                            "13px",
-                          marginBottom:
-                            "4px",
-                        }}
-                      >
-                        Connectivity (Wi‑Fi, Bluetooth, etc.)
-                      </label>
-
-                      <select
-                        name="connectivity"
-                        value={
-                          editForm.connectivity
-                        }
-                        onChange={
-                          handleEditChange
-                        }
-                        style={{
-                          width:
-                            "100%",
-                          padding:
-                            "10px 14px",
-                          border:
-                            "1.5px solid var(--gray-200)",
-                          borderRadius:
-                            "var(--radius-md)",
-                          fontSize:
-                            "14px",
-                        }}
-                      >
-                        <option value="">
-                          Select connectivity
-                        </option>
-                        {CONNECTIVITY_OPTIONS.map(
-                          (option) => (
-                            <option
-                              key={
-                                option
-                              }
-                              value={
-                                option
-                              }
-                            >
-                              {option}
-                            </option>
-                          )
-                        )}
-                      </select>
-                    </div>
-                  </>
-                )}
-
-                {/* ACCESSORIES */}
-                {editForm.category === "Accessories" && (
-                  <>
-                    <div
-                      className="form-group"
-                      style={{
-                        marginBottom:
-                          "12px",
-                      }}
-                    >
-                      <label
-                        style={{
-                          display:
-                            "block",
-                          fontWeight:
-                            600,
-                          fontSize:
-                            "13px",
-                          marginBottom:
-                            "4px",
-                        }}
-                      >
-                        Brand
-                      </label>
-
-                      <select
-                        name="brand"
-                        value={
-                          editForm.brand
-                        }
-                        onChange={
-                          handleEditChange
-                        }
-                        style={{
-                          width:
-                            "100%",
-                          padding:
-                            "10px 14px",
-                          border:
-                            "1.5px solid var(--gray-200)",
-                          borderRadius:
-                            "var(--radius-md)",
-                          fontSize:
-                            "14px",
-                        }}
-                      >
-                        <option value="">
-                          Select brand
-                        </option>
-                        {ACCESSORY_BRANDS.map(
-                          (brand) => (
-                            <option
-                              key={
-                                brand
-                              }
-                              value={
-                                brand
-                              }
-                            >
-                              {brand}
-                            </option>
-                          )
-                        )}
-                      </select>
-                    </div>
-
-                    <div
-                      className="form-group"
-                      style={{
-                        marginBottom:
-                          "12px",
-                      }}
-                    >
-                      <label
-                        style={{
-                          display:
-                            "block",
-                          fontWeight:
-                            600,
-                          fontSize:
-                            "13px",
-                          marginBottom:
-                            "4px",
-                        }}
-                      >
-                        Model
-                      </label>
-
-                      <input
-                        type="text"
-                        name="model"
-                        value={
-                          editForm.model
-                        }
-                        onChange={
-                          handleEditChange
-                        }
-                        placeholder="e.g. AirPods Pro, 4K Webcam"
-                        style={{
-                          width:
-                            "100%",
-                          padding:
-                            "10px 14px",
-                          border:
-                            "1.5px solid var(--gray-200)",
-                          borderRadius:
-                            "var(--radius-md)",
-                          fontSize:
-                            "14px",
-                        }}
-                      />
-                    </div>
-
-                    <div
-                      className="form-group"
-                      style={{
-                        marginBottom:
-                          "12px",
-                      }}
-                    >
-                      <label
-                        style={{
-                          display:
-                            "block",
-                          fontWeight:
-                            600,
-                          fontSize:
-                            "13px",
-                          marginBottom:
-                            "4px",
-                        }}
-                      >
-                        Connectivity (if applicable)
-                      </label>
-
-                      <select
-                        name="connectivity"
-                        value={
-                          editForm.connectivity
-                        }
-                        onChange={
-                          handleEditChange
-                        }
-                        style={{
-                          width:
-                            "100%",
-                          padding:
-                            "10px 14px",
-                          border:
-                            "1.5px solid var(--gray-200)",
-                          borderRadius:
-                            "var(--radius-md)",
-                          fontSize:
-                            "14px",
-                        }}
-                      >
-                        <option value="">
-                          Select connectivity
-                        </option>
-                        {CONNECTIVITY_OPTIONS.map(
-                          (option) => (
-                            <option
-                              key={
-                                option
-                              }
-                              value={
-                                option
-                              }
-                            >
-                              {option}
-                            </option>
-                          )
-                        )}
-                      </select>
-                    </div>
-                  </>
-                )}
-
-                {/* ─── COMMON REMAINING FIELDS ────────────────────────── */}
-
-                {/* STORAGE (but we already show it for laptops in specs, but we keep it in edit) */}
-
-                <div
-                  className="form-group"
-                  style={{
-                    marginBottom:
-                      "12px",
-                  }}
-                >
-                  <label
-                    style={{
-                      display:
-                        "block",
-                      fontWeight:
-                        600,
-                      fontSize:
-                        "13px",
-                      marginBottom:
-                        "4px",
-                    }}
-                  >
+                {/* Storage */}
+                <div className="form-group" style={{ marginBottom: "12px" }}>
+                  <label style={{ display: "block", fontWeight: 600, fontSize: "13px", marginBottom: "4px" }}>
                     Storage
                   </label>
-
                   <select
                     name="storage"
-                    value={
-                      editForm.storage
-                    }
-                    onChange={
-                      handleEditChange
-                    }
+                    value={editForm.storage}
+                    onChange={handleEditChange}
                     style={{
-                      width:
-                        "100%",
-                      padding:
-                        "10px 14px",
-                      border:
-                        "1.5px solid var(--gray-200)",
-                      borderRadius:
-                        "var(--radius-md)",
-                      fontSize:
-                        "14px",
+                      width: "100%",
+                      padding: "10px 14px",
+                      border: "1.5px solid var(--gray-200)",
+                      borderRadius: "var(--radius-md)",
+                      fontSize: "14px",
                     }}
                   >
-                    <option value="">
-                      Select storage
-                    </option>
-                    <option value="16GB">
-                      16GB
-                    </option>
-                    <option value="32GB">
-                      32GB
-                    </option>
-                    <option value="64GB">
-                      64GB
-                    </option>
-                    <option value="128GB">
-                      128GB
-                    </option>
-                    <option value="256GB">
-                      256GB
-                    </option>
-                    <option value="512GB">
-                      512GB
-                    </option>
-                    <option value="1TB">
-                      1TB
-                    </option>
-                    <option value="2TB">
-                      2TB
-                    </option>
-                    <option value="Other">
-                      Other
-                    </option>
+                    <option value="">Select storage</option>
+                    <option value="16GB">16GB</option>
+                    <option value="32GB">32GB</option>
+                    <option value="64GB">64GB</option>
+                    <option value="128GB">128GB</option>
+                    <option value="256GB">256GB</option>
+                    <option value="512GB">512GB</option>
+                    <option value="1TB">1TB</option>
+                    <option value="2TB">2TB</option>
+                    <option value="Other">Other</option>
                   </select>
                 </div>
 
-                {/* COLOR – using ALL_COLORS */}
-
-                <div
-                  className="form-group"
-                  style={{
-                    marginBottom:
-                      "12px",
-                  }}
-                >
-                  <label
-                    style={{
-                      display:
-                        "block",
-                      fontWeight:
-                        600,
-                      fontSize:
-                        "13px",
-                      marginBottom:
-                        "4px",
-                    }}
-                  >
+                {/* Color */}
+                <div className="form-group" style={{ marginBottom: "12px" }}>
+                  <label style={{ display: "block", fontWeight: 600, fontSize: "13px", marginBottom: "4px" }}>
                     Color
                   </label>
-
                   <select
                     name="color"
-                    value={
-                      editForm.color
-                    }
-                    onChange={
-                      handleEditChange
-                    }
+                    value={editForm.color}
+                    onChange={handleEditChange}
                     style={{
-                      width:
-                        "100%",
-                      padding:
-                        "10px 14px",
-                      border:
-                        "1.5px solid var(--gray-200)",
-                      borderRadius:
-                        "var(--radius-md)",
-                      fontSize:
-                        "14px",
+                      width: "100%",
+                      padding: "10px 14px",
+                      border: "1.5px solid var(--gray-200)",
+                      borderRadius: "var(--radius-md)",
+                      fontSize: "14px",
                     }}
                   >
-                    <option value="">
-                      Select color
-                    </option>
-
-                    {ALL_COLORS.map(
-                      (color) => (
-                        <option
-                          key={
-                            color
-                          }
-                          value={
-                            color
-                          }
-                        >
-                          {color}
-                        </option>
-                      )
-                    )}
+                    <option value="">Select color</option>
+                    {ALL_COLORS.map((color) => (
+                      <option key={color} value={color}>
+                        {color}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
-                {/* BATTERY */}
-
-                <div
-                  className="form-group"
-                  style={{
-                    marginBottom:
-                      "12px",
-                  }}
-                >
-                  <label
-                    style={{
-                      display:
-                        "block",
-                      fontWeight:
-                        600,
-                      fontSize:
-                        "13px",
-                      marginBottom:
-                        "4px",
-                    }}
-                  >
+                {/* Battery Health */}
+                <div className="form-group" style={{ marginBottom: "12px" }}>
+                  <label style={{ display: "block", fontWeight: 600, fontSize: "13px", marginBottom: "4px" }}>
                     Battery Health (%)
                   </label>
-
                   <input
                     type="number"
                     name="batteryHealth"
-                    value={
-                      editForm.batteryHealth
-                    }
-                    onChange={
-                      handleEditChange
-                    }
+                    value={editForm.batteryHealth}
+                    onChange={handleEditChange}
                     min="0"
                     max="100"
                     step="1"
                     style={{
-                      width:
-                        "100%",
-                      padding:
-                        "10px 14px",
-                      border:
-                        "1.5px solid var(--gray-200)",
-                      borderRadius:
-                        "var(--radius-md)",
-                      fontSize:
-                        "14px",
+                      width: "100%",
+                      padding: "10px 14px",
+                      border: "1.5px solid var(--gray-200)",
+                      borderRadius: "var(--radius-md)",
+                      fontSize: "14px",
                     }}
                   />
                 </div>
 
-                {/* FACE ID – only for phones, but we keep it in edit form for all */}
-                <div
-                  className="form-group"
-                  style={{
-                    marginBottom:
-                      "12px",
-                  }}
-                >
-                  <label
-                    style={{
-                      display:
-                        "block",
-                      fontWeight:
-                        600,
-                      fontSize:
-                        "13px",
-                      marginBottom:
-                        "4px",
-                    }}
-                  >
+                {/* Face ID */}
+                <div className="form-group" style={{ marginBottom: "12px" }}>
+                  <label style={{ display: "block", fontWeight: 600, fontSize: "13px", marginBottom: "4px" }}>
                     Face ID
                   </label>
-
                   <select
                     name="faceId"
-                    value={
-                      editForm.faceId
-                    }
-                    onChange={
-                      handleEditChange
-                    }
+                    value={editForm.faceId}
+                    onChange={handleEditChange}
                     style={{
-                      width:
-                        "100%",
-                      padding:
-                        "10px 14px",
-                      border:
-                        "1.5px solid var(--gray-200)",
-                      borderRadius:
-                        "var(--radius-md)",
-                      fontSize:
-                        "14px",
+                      width: "100%",
+                      padding: "10px 14px",
+                      border: "1.5px solid var(--gray-200)",
+                      borderRadius: "var(--radius-md)",
+                      fontSize: "14px",
                     }}
                   >
-                    <option value="">
-                      Select Face ID status
-                    </option>
-                    <option value="Working">
-                      Working
-                    </option>
-                    <option value="Not Working">
-                      Not Working
-                    </option>
-                    <option value="Not Available">
-                      Not Available
-                    </option>
+                    <option value="">Select Face ID status</option>
+                    <option value="Working">Working</option>
+                    <option value="Not Working">Not Working</option>
+                    <option value="Not Available">Not Available</option>
                   </select>
                 </div>
 
-                {/* SIM – only for phones, but we keep it in edit form for all */}
-                <div
-                  className="form-group"
-                  style={{
-                    marginBottom:
-                      "12px",
-                  }}
-                >
-                  <label
-                    style={{
-                      display:
-                        "block",
-                      fontWeight:
-                        600,
-                      fontSize:
-                        "13px",
-                      marginBottom:
-                        "4px",
-                    }}
-                  >
+                {/* SIM Status */}
+                <div className="form-group" style={{ marginBottom: "12px" }}>
+                  <label style={{ display: "block", fontWeight: 600, fontSize: "13px", marginBottom: "4px" }}>
                     SIM Status
                   </label>
-
                   <select
                     name="simStatus"
-                    value={
-                      editForm.simStatus
-                    }
-                    onChange={
-                      handleEditChange
-                    }
+                    value={editForm.simStatus}
+                    onChange={handleEditChange}
                     style={{
-                      width:
-                        "100%",
-                      padding:
-                        "10px 14px",
-                      border:
-                        "1.5px solid var(--gray-200)",
-                      borderRadius:
-                        "var(--radius-md)",
-                      fontSize:
-                        "14px",
+                      width: "100%",
+                      padding: "10px 14px",
+                      border: "1.5px solid var(--gray-200)",
+                      borderRadius: "var(--radius-md)",
+                      fontSize: "14px",
                     }}
                   >
-                    <option value="">
-                      Select SIM status
-                    </option>
-                    <option value="eSIM Unlocked">
-                      eSIM Unlocked
-                    </option>
-                    <option value="SIM Unlocked">
-                      SIM Unlocked
-                    </option>
-                    <option value="Locked">
-                      Locked
-                    </option>
-                    <option value="Bypass">
-                      Bypass
-                    </option>
+                    <option value="">Select SIM status</option>
+                    <option value="eSIM Unlocked">eSIM Unlocked</option>
+                    <option value="SIM Unlocked">SIM Unlocked</option>
+                    <option value="Locked">Locked</option>
+                    <option value="Bypass">Bypass</option>
                   </select>
                 </div>
 
-                {/* WARRANTY */}
-
-                <div
-                  className="form-group"
-                  style={{
-                    marginBottom:
-                      "12px",
-                  }}
-                >
-                  <label
-                    style={{
-                      display:
-                        "block",
-                      fontWeight:
-                        600,
-                      fontSize:
-                        "13px",
-                      marginBottom:
-                        "4px",
-                    }}
-                  >
+                {/* Warranty */}
+                <div className="form-group" style={{ marginBottom: "12px" }}>
+                  <label style={{ display: "block", fontWeight: 600, fontSize: "13px", marginBottom: "4px" }}>
                     Warranty Period
                   </label>
-
                   <select
                     name="warranty"
-                    value={
-                      editForm.warranty
-                    }
-                    onChange={
-                      handleEditChange
-                    }
+                    value={editForm.warranty}
+                    onChange={handleEditChange}
                     style={{
-                      width:
-                        "100%",
-                      padding:
-                        "10px 14px",
-                      border:
-                        "1.5px solid var(--gray-200)",
-                      borderRadius:
-                        "var(--radius-md)",
-                      fontSize:
-                        "14px",
+                      width: "100%",
+                      padding: "10px 14px",
+                      border: "1.5px solid var(--gray-200)",
+                      borderRadius: "var(--radius-md)",
+                      fontSize: "14px",
                     }}
                   >
-                    <option value="">
-                      No warranty
-                    </option>
-
-                    <option value="1 week">
-                      1 week
-                    </option>
-
-                    <option value="2 weeks">
-                      2 weeks
-                    </option>
-
-                    <option value="3 weeks">
-                      3 weeks
-                    </option>
-
-                    <option value="4 weeks">
-                      4 weeks
-                    </option>
-
-                    {Array.from(
-                      {
-                        length: 12,
-                      },
-                      (_, i) =>
-                        i + 1
-                    ).map(
-                      (months) => (
-                        <option
-                          key={
-                            months
-                          }
-                          value={`${months} month${
-                            months > 1
-                              ? "s"
-                              : ""
-                          }`}
-                        >
-                          {months}{" "}
-                          month
-                          {months >
-                          1
-                            ? "s"
-                            : ""}
-                        </option>
-                      )
-                    )}
-
-                    <option value="1 year">
-                      1 year
-                    </option>
+                    <option value="">No warranty</option>
+                    <option value="1 week">1 week</option>
+                    <option value="2 weeks">2 weeks</option>
+                    <option value="3 weeks">3 weeks</option>
+                    <option value="4 weeks">4 weeks</option>
+                    {Array.from({ length: 12 }, (_, i) => i + 1).map((months) => (
+                      <option key={months} value={`${months} month${months > 1 ? 's' : ''}`}>
+                        {months} month{months > 1 ? 's' : ''}
+                      </option>
+                    ))}
+                    <option value="1 year">1 year</option>
                   </select>
                 </div>
 
-                {/* NEGOTIATION / SWAP */}
-
-                <div
-                  style={{
-                    display:
-                      "flex",
-                    gap:
-                      "20px",
-                    marginBottom:
-                      "12px",
-                    flexWrap:
-                      "wrap",
-                  }}
-                >
-                  <div
-                    style={{
-                      display:
-                        "flex",
-                      alignItems:
-                        "center",
-                      gap:
-                        "8px",
-                    }}
-                  >
+                {/* Negotiation / Swap */}
+                <div style={{ display: "flex", gap: "20px", marginBottom: "12px", flexWrap: "wrap" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                     <input
                       type="checkbox"
                       name="negotiation"
-                      checked={
-                        editForm.negotiation
-                      }
-                      onChange={
-                        handleEditChange
-                      }
+                      checked={editForm.negotiation}
+                      onChange={handleEditChange}
                     />
-
-                    <label
-                      style={{
-                        fontWeight:
-                          600,
-                        fontSize:
-                          "13px",
-                      }}
-                    >
-                      Negotiation
-                    </label>
+                    <label style={{ fontWeight: 600, fontSize: "13px" }}>Negotiation</label>
                   </div>
-
-                  <div
-                    style={{
-                      display:
-                        "flex",
-                      alignItems:
-                        "center",
-                      gap:
-                        "8px",
-                    }}
-                  >
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                     <input
                       type="checkbox"
                       name="swapAccepted"
-                      checked={
-                        editForm.swapAccepted
-                      }
-                      onChange={
-                        handleEditChange
-                      }
+                      checked={editForm.swapAccepted}
+                      onChange={handleEditChange}
                     />
-
-                    <label
-                      style={{
-                        fontWeight:
-                          600,
-                        fontSize:
-                          "13px",
-                      }}
-                    >
-                      Swap Accepted
-                    </label>
+                    <label style={{ fontWeight: 600, fontSize: "13px" }}>Swap Accepted</label>
                   </div>
                 </div>
 
-                {/* STATUS */}
-
-                <div
-                  className="form-group"
-                  style={{
-                    marginBottom:
-                      "12px",
-                  }}
-                >
-                  <label
-                    style={{
-                      display:
-                        "block",
-                      fontWeight:
-                        600,
-                      fontSize:
-                        "13px",
-                      marginBottom:
-                        "4px",
-                    }}
-                  >
+                {/* Status */}
+                <div className="form-group" style={{ marginBottom: "12px" }}>
+                  <label style={{ display: "block", fontWeight: 600, fontSize: "13px", marginBottom: "4px" }}>
                     Status
                   </label>
-
                   <select
                     name="status"
-                    value={
-                      editForm.status
-                    }
-                    onChange={
-                      handleEditChange
-                    }
+                    value={editForm.status}
+                    onChange={handleEditChange}
                     style={{
-                      width:
-                        "100%",
-                      padding:
-                        "10px 14px",
-                      border:
-                        "1.5px solid var(--gray-200)",
-                      borderRadius:
-                        "var(--radius-md)",
-                      fontSize:
-                        "14px",
+                      width: "100%",
+                      padding: "10px 14px",
+                      border: "1.5px solid var(--gray-200)",
+                      borderRadius: "var(--radius-md)",
+                      fontSize: "14px",
                     }}
                   >
-                    <option value="active">
-                      Active
-                    </option>
-
-                    <option value="pending">
-                      Pending
-                    </option>
-
-                    <option value="inactive">
-                      Inactive
-                    </option>
-
-                    <option value="sold">
-                      Sold
-                    </option>
+                    <option value="active">Active</option>
+                    <option value="pending">Pending</option>
+                    <option value="inactive">Inactive</option>
+                    <option value="sold">Sold</option>
                   </select>
                 </div>
 
-                {/* EXISTING IMAGES */}
-
-                <div
-                  className="form-group"
-                  style={{
-                    marginBottom:
-                      "12px",
-                  }}
-                >
-                  <label
-                    style={{
-                      display:
-                        "block",
-                      fontWeight:
-                        600,
-                      fontSize:
-                        "13px",
-                      marginBottom:
-                        "4px",
-                    }}
-                  >
+                {/* Current Images */}
+                <div className="form-group" style={{ marginBottom: "12px" }}>
+                  <label style={{ display: "block", fontWeight: 600, fontSize: "13px", marginBottom: "4px" }}>
                     Current Images
                   </label>
-
-                  <div
-                    style={{
-                      display:
-                        "flex",
-                      flexWrap:
-                        "wrap",
-                      gap:
-                        "8px",
-                    }}
-                  >
-                    {imagesToKeep.map(
-                      (
-                        img,
-                        idx
-                      ) => (
-                        <div
-                          key={
-                            idx
-                          }
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                    {imagesToKeep.map((img, idx) => (
+                      <div
+                        key={idx}
+                        style={{
+                          position: "relative",
+                          width: "80px",
+                          height: "80px",
+                          border: "1px solid var(--gray-200)",
+                          borderRadius: "var(--radius-sm)",
+                          overflow: "hidden",
+                        }}
+                      >
+                        <img
+                          src={getImageUrl(img)}
+                          alt={`Current ${idx + 1}`}
+                          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveExistingImage(idx)}
                           style={{
-                            position:
-                              "relative",
-                            width:
-                              "80px",
-                            height:
-                              "80px",
-                            border:
-                              "1px solid var(--gray-200)",
-                            borderRadius:
-                              "var(--radius-sm)",
-                            overflow:
-                              "hidden",
+                            position: "absolute",
+                            top: "2px",
+                            right: "2px",
+                            background: "rgba(220,38,38,0.8)",
+                            color: "white",
+                            border: "none",
+                            borderRadius: "50%",
+                            width: "20px",
+                            height: "20px",
+                            fontSize: "12px",
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                          }}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                    {imagesToKeep.length === 0 && (
+                      <span style={{ color: "var(--gray-400)", fontSize: "13px" }}>No images</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* New Images */}
+                <div className="form-group" style={{ marginBottom: "12px" }}>
+                  <label style={{ display: "block", fontWeight: 600, fontSize: "13px", marginBottom: "4px" }}>
+                    Add New Images
+                  </label>
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    onChange={handleNewFileChange}
+                    style={{
+                      width: "100%",
+                      padding: "8px 12px",
+                      border: "1.5px solid var(--gray-200)",
+                      borderRadius: "var(--radius-md)",
+                      fontSize: "14px",
+                    }}
+                  />
+                  {newFilePreviews.length > 0 && (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginTop: "8px" }}>
+                      {newFilePreviews.map((preview, idx) => (
+                        <div
+                          key={idx}
+                          style={{
+                            position: "relative",
+                            width: "80px",
+                            height: "80px",
+                            border: "1px solid var(--gray-200)",
+                            borderRadius: "var(--radius-sm)",
+                            overflow: "hidden",
                           }}
                         >
                           <img
-                            src={getImageUrl(
-                              img
-                            )}
-                            alt={`Current ${
-                              idx +
-                              1
-                            }`}
-                            style={{
-                              width:
-                                "100%",
-                              height:
-                                "100%",
-                              objectFit:
-                                "cover",
-                            }}
+                            src={preview}
+                            alt={`New ${idx + 1}`}
+                            style={{ width: "100%", height: "100%", objectFit: "cover" }}
                           />
-
                           <button
                             type="button"
-                            onClick={() =>
-                              handleRemoveExistingImage(
-                                idx
-                              )
-                            }
+                            onClick={() => removeNewFile(idx)}
                             style={{
-                              position:
-                                "absolute",
-                              top:
-                                "2px",
-                              right:
-                                "2px",
-                              background:
-                                "rgba(220,38,38,0.8)",
-                              color:
-                                "white",
-                              border:
-                                "none",
-                              borderRadius:
-                                "50%",
-                              width:
-                                "20px",
-                              height:
-                                "20px",
-                              fontSize:
-                                "12px",
-                              cursor:
-                                "pointer",
-                              display:
-                                "flex",
-                              alignItems:
-                                "center",
-                              justifyContent:
-                                "center",
+                              position: "absolute",
+                              top: "2px",
+                              right: "2px",
+                              background: "rgba(220,38,38,0.8)",
+                              color: "white",
+                              border: "none",
+                              borderRadius: "50%",
+                              width: "20px",
+                              height: "20px",
+                              fontSize: "12px",
+                              cursor: "pointer",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
                             }}
                           >
                             ✕
                           </button>
                         </div>
-                      )
-                    )}
-
-                    {imagesToKeep.length ===
-                      0 && (
-                      <span
-                        style={{
-                          color:
-                            "var(--gray-400)",
-                          fontSize:
-                            "13px",
-                        }}
-                      >
-                        No images
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {/* NEW IMAGES */}
-
-                <div
-                  className="form-group"
-                  style={{
-                    marginBottom:
-                      "12px",
-                  }}
-                >
-                  <label
-                    style={{
-                      display:
-                        "block",
-                      fontWeight:
-                        600,
-                      fontSize:
-                        "13px",
-                      marginBottom:
-                        "4px",
-                    }}
-                  >
-                    Add New Images
-                  </label>
-
-                  <input
-                    type="file"
-                    multiple
-                    accept="image/*"
-                    onChange={
-                      handleNewFileChange
-                    }
-                    style={{
-                      width:
-                        "100%",
-                      padding:
-                        "8px 12px",
-                      border:
-                        "1.5px solid var(--gray-200)",
-                      borderRadius:
-                        "var(--radius-md)",
-                      fontSize:
-                        "14px",
-                    }}
-                  />
-
-                  {newFilePreviews.length >
-                    0 && (
-                    <div
-                      style={{
-                        display:
-                          "flex",
-                        flexWrap:
-                          "wrap",
-                        gap:
-                          "8px",
-                        marginTop:
-                          "8px",
-                      }}
-                    >
-                      {newFilePreviews.map(
-                        (
-                          preview,
-                          idx
-                        ) => (
-                          <div
-                            key={
-                              idx
-                            }
-                            style={{
-                              position:
-                                "relative",
-                              width:
-                                "80px",
-                              height:
-                                "80px",
-                              border:
-                                "1px solid var(--gray-200)",
-                              borderRadius:
-                                "var(--radius-sm)",
-                              overflow:
-                                "hidden",
-                            }}
-                          >
-                            <img
-                              src={
-                                preview
-                              }
-                              alt={`New ${
-                                idx +
-                                1
-                              }`}
-                              style={{
-                                width:
-                                  "100%",
-                                height:
-                                  "100%",
-                                objectFit:
-                                  "cover",
-                              }}
-                            />
-
-                            <button
-                              type="button"
-                              onClick={() =>
-                                removeNewFile(
-                                  idx
-                                )
-                              }
-                              style={{
-                                position:
-                                  "absolute",
-                                top:
-                                  "2px",
-                                right:
-                                  "2px",
-                                background:
-                                  "rgba(220,38,38,0.8)",
-                                color:
-                                  "white",
-                                border:
-                                  "none",
-                                borderRadius:
-                                  "50%",
-                                width:
-                                  "20px",
-                                height:
-                                  "20px",
-                                fontSize:
-                                  "12px",
-                                cursor:
-                                  "pointer",
-                                display:
-                                  "flex",
-                                alignItems:
-                                  "center",
-                                justifyContent:
-                                  "center",
-                              }}
-                            >
-                              ✕
-                            </button>
-                          </div>
-                        )
-                      )}
+                      ))}
                     </div>
                   )}
                 </div>
 
-                {/* SAVE */}
-
+                {/* Save */}
                 <button
                   type="submit"
-                  disabled={
-                    editLoading
-                  }
+                  disabled={editLoading}
                   style={{
-                    width:
-                      "100%",
-                    padding:
-                      "14px",
-                    background:
-                      "var(--secondary)",
-                    color:
-                      "white",
-                    border:
-                      "none",
-                    borderRadius:
-                      "var(--radius-full)",
-                    fontWeight:
-                      700,
-                    fontSize:
-                      "16px",
-                    cursor:
-                      editLoading
-                        ? "not-allowed"
-                        : "pointer",
-                    opacity:
-                      editLoading
-                        ? 0.7
-                        : 1,
+                    width: "100%",
+                    padding: "14px",
+                    background: "var(--secondary)",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "var(--radius-full)",
+                    fontWeight: 700,
+                    fontSize: "16px",
+                    cursor: editLoading ? "not-allowed" : "pointer",
+                    opacity: editLoading ? 0.7 : 1,
                   }}
                 >
-                  {editLoading
-                    ? "Saving..."
-                    : "Save Changes"}
+                  {editLoading ? "Saving..." : "Save Changes"}
                 </button>
               </form>
             </div>
           </div>
         )}
 
-        {/* ============================================================
-            CHAT MODAL – with image rendering & lightbox
-        ============================================================ */}
-
+        {/* CHAT MODAL */}
         {showChatModal && (
           <div
             style={{
@@ -4950,7 +2724,6 @@ const ProductDetails = () => {
               }}
               onClick={(e) => e.stopPropagation()}
             >
-              {/* Header */}
               <div
                 style={{
                   padding: "16px 20px",
@@ -4968,9 +2741,7 @@ const ProductDetails = () => {
                     <i className="fas fa-comment-dots" style={{ marginRight: "8px" }} />
                     Messages with {sellerName}
                   </h3>
-                  <div style={{ fontSize: "12px", opacity: 0.8 }}>
-                    {product.title}
-                  </div>
+                  <div style={{ fontSize: "12px", opacity: 0.8 }}>{product.title}</div>
                 </div>
                 <button
                   type="button"
@@ -4987,7 +2758,6 @@ const ProductDetails = () => {
                 </button>
               </div>
 
-              {/* Messages list */}
               <div
                 style={{
                   flex: 1,
@@ -5064,13 +2834,10 @@ const ProductDetails = () => {
                   })
                 )}
                 {chatError && (
-                  <div style={{ color: "#dc2626", fontSize: "13px", textAlign: "center" }}>
-                    {chatError}
-                  </div>
+                  <div style={{ color: "#dc2626", fontSize: "13px", textAlign: "center" }}>{chatError}</div>
                 )}
               </div>
 
-              {/* Input area */}
               <form
                 onSubmit={sendMessage}
                 style={{
@@ -5116,7 +2883,7 @@ const ProductDetails = () => {
           </div>
         )}
 
-        {/* Lightbox */}
+        {/* LIGHTBOX */}
         {viewingImage && (
           <div
             style={{
@@ -5145,40 +2912,6 @@ const ProductDetails = () => {
             />
           </div>
         )}
-
-        {/* ============================================================
-            RELATED PRODUCTS
-        ============================================================ */}
-
-        <div
-          style={{
-            marginTop:
-              "60px",
-          }}
-        >
-          <h2
-            style={{
-              fontSize:
-                "22px",
-              fontWeight:
-                800,
-              marginBottom:
-                "20px",
-            }}
-          >
-            You might also like
-          </h2>
-
-          <div
-            style={{
-              color:
-                "var(--gray-500)",
-            }}
-          >
-            Related products
-            coming soon...
-          </div>
-        </div>
       </div>
     </>
   );

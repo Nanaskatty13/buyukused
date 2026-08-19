@@ -1,3 +1,7 @@
+// ============================================================
+// BuyUKUsed Backend Server
+// ============================================================
+
 const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
@@ -17,7 +21,11 @@ dotenv.config();
 
 const connectDB = require("./config/db");
 
+// Passport configuration
 require("./config/passport")(passport);
+
+// Activity tracking middleware
+const activityMiddleware = require("./middleware/activity");
 
 const app = express();
 
@@ -111,8 +119,9 @@ const corsOptions = {
       origin
     );
 
-    // Requests without an Origin header:
-    // curl, Render health checks, server-to-server requests, etc.
+    // Requests without Origin:
+    // curl, Render health checks,
+    // server-to-server requests, etc.
     if (!origin) {
       return callback(null, true);
     }
@@ -122,7 +131,7 @@ const corsOptions = {
       return callback(null, true);
     }
 
-    // Vercel preview deployments
+    // Allow Vercel preview deployments
     if (
       /^https:\/\/[a-zA-Z0-9-]+\.vercel\.app$/.test(
         origin
@@ -212,6 +221,29 @@ console.log(
 
 app.use(
   passport.initialize()
+);
+
+// ============================================================
+// ACTIVITY TRACKING
+// ============================================================
+//
+// IMPORTANT:
+// This middleware checks the Bearer JWT and updates
+// the authenticated user's lastActive timestamp.
+//
+// It does NOT block unauthenticated requests.
+//
+// This allows authenticated sellers to have their
+// "Active now" / "Last seen" information updated
+// automatically.
+//
+
+app.use(
+  activityMiddleware
+);
+
+console.log(
+  "🟢 Seller/user activity tracking enabled"
 );
 
 // ============================================================
@@ -378,10 +410,11 @@ const adminRoutes =
 const deliveryRoutes =
   require("./routes/deliveryRoutes");
 
-const uploadRoutes = require("./routes/upload");
+const uploadRoutes =
+  require("./routes/upload");
 
-// ─── ADD SELLER ROUTES ──────────────────────────────────────
-const sellerRoutes = require("./routes/sellers");
+const sellerRoutes =
+  require("./routes/sellers");
 
 console.log(
   "✅ Routes loaded successfully"
@@ -406,7 +439,7 @@ app.use(
 );
 
 // ============================================================
-// SELLER ROUTES (NEW)
+// SELLER ROUTES
 // ============================================================
 
 app.use(
@@ -469,7 +502,7 @@ app.use(
 );
 
 // ============================================================
-// UPLOAD – CORRECTLY MOUNTED AFTER `app` EXISTS
+// UPLOAD
 // ============================================================
 
 app.use(
@@ -543,7 +576,7 @@ app.use(
     );
 
     // --------------------------------------------------------
-    // CORS
+    // CORS ERROR
     // --------------------------------------------------------
 
     if (
@@ -559,7 +592,7 @@ app.use(
     }
 
     // --------------------------------------------------------
-    // MULTER
+    // MULTER ERROR
     // --------------------------------------------------------
 
     if (
@@ -833,6 +866,10 @@ const start =
 
             console.log(
               "🛒 Seller API: /sellers"
+            );
+
+            console.log(
+              "🟢 Activity tracking: ENABLED"
             );
           }
         );

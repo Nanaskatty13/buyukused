@@ -1,126 +1,127 @@
 // frontend/src/pages/SellerPage.jsx
 
-import React, { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
+import React, {
+  useState,
+  useEffect,
+} from "react";
+
+import {
+  useParams,
+  useNavigate,
+  Link,
+} from "react-router-dom";
+
 import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
+
+import { getImageUrl } from "../services/api";
+
 import {
   getPublicSellerProfile,
   getPublicSellerProducts,
 } from "../services/sellerService";
+
 import ProductCard from "../components/ProductCard";
 
 // ============================================================
-// IMAGE URL HELPER
-// ============================================================
-// IMPORTANT:
-// Do NOT pass an already complete Cloudinary URL through
-// getImageUrl(), because it may transform the URL incorrectly.
+// TIME AGO
 // ============================================================
 
-const buildImageUrl = (image) => {
-  if (!image) return null;
-
-  const value = String(image).trim();
-
-  if (!value) return null;
-
-  // Cloudinary / external HTTPS URL
-  if (
-    value.startsWith("https://") ||
-    value.startsWith("http://")
-  ) {
-    return value;
-  }
-
-  // Protocol-relative URL
-  if (value.startsWith("//")) {
-    return `https:${value}`;
-  }
-
-  // Backend URL
-  const apiBase =
-    import.meta.env.VITE_API_URL ||
-    import.meta.env.VITE_BACKEND_URL ||
-    "http://localhost:5000";
-
-  const cleanBase = apiBase.replace(/\/+$/, "");
-
-  // Already starts with /uploads
-  if (value.startsWith("/uploads/")) {
-    return `${cleanBase}${value}`;
-  }
-
-  // Already starts with uploads/
-  if (value.startsWith("uploads/")) {
-    return `${cleanBase}/${value}`;
-  }
-
-  // Relative path
-  if (value.startsWith("/")) {
-    return `${cleanBase}${value}`;
-  }
-
-  // Cloudinary public ID/path without protocol
-  // If your database stores a relative Cloudinary path,
-  // it will be handled by the backend URL.
-  return `${cleanBase}/${value}`;
-};
-
-// ============================================================
-// RELATIVE TIME
-// ============================================================
-
-const timeAgo = (dateString) => {
-  if (!dateString) return "N/A";
-
-  const past = new Date(dateString);
-
-  if (Number.isNaN(past.getTime())) {
+const timeAgo = (
+  dateString
+) => {
+  if (!dateString) {
     return "N/A";
   }
 
-  const now = new Date();
+  const past =
+    new Date(dateString);
 
-  const diffMs = Math.max(
-    0,
-    now.getTime() - past.getTime()
-  );
+  if (
+    Number.isNaN(
+      past.getTime()
+    )
+  ) {
+    return "N/A";
+  }
 
-  const diffSec = Math.floor(diffMs / 1000);
-  const diffMin = Math.floor(diffSec / 60);
-  const diffHr = Math.floor(diffMin / 60);
-  const diffDays = Math.floor(diffHr / 24);
-  const diffMonths = Math.floor(diffDays / 30);
-  const diffYears = Math.floor(diffDays / 365);
+  const now =
+    new Date();
+
+  const diffMs =
+    Math.max(
+      0,
+      now.getTime() -
+        past.getTime()
+    );
+
+  const diffSec =
+    Math.floor(
+      diffMs / 1000
+    );
+
+  const diffMin =
+    Math.floor(
+      diffSec / 60
+    );
+
+  const diffHr =
+    Math.floor(
+      diffMin / 60
+    );
+
+  const diffDays =
+    Math.floor(
+      diffHr / 24
+    );
+
+  const diffMonths =
+    Math.floor(
+      diffDays / 30
+    );
+
+  const diffYears =
+    Math.floor(
+      diffDays / 365
+    );
 
   if (diffYears > 0) {
     return `${diffYears} year${
-      diffYears > 1 ? "s" : ""
+      diffYears > 1
+        ? "s"
+        : ""
     } ago`;
   }
 
   if (diffMonths > 0) {
     return `${diffMonths} month${
-      diffMonths > 1 ? "s" : ""
+      diffMonths > 1
+        ? "s"
+        : ""
     } ago`;
   }
 
   if (diffDays > 0) {
     return `${diffDays} day${
-      diffDays > 1 ? "s" : ""
+      diffDays > 1
+        ? "s"
+        : ""
     } ago`;
   }
 
   if (diffHr > 0) {
     return `${diffHr} hour${
-      diffHr > 1 ? "s" : ""
+      diffHr > 1
+        ? "s"
+        : ""
     } ago`;
   }
 
   if (diffMin > 0) {
     return `${diffMin} minute${
-      diffMin > 1 ? "s" : ""
+      diffMin > 1
+        ? "s"
+        : ""
     } ago`;
   }
 
@@ -128,264 +129,481 @@ const timeAgo = (dateString) => {
 };
 
 // ============================================================
-// SELLER PAGE
+// IMAGE URL HELPER
+// ============================================================
+//
+// IMPORTANT:
+// If Cloudinary already gives us a complete URL,
+// use it directly.
+//
+// Otherwise use your existing getImageUrl() helper.
+// ============================================================
+
+const getSellerImageUrl = (
+  image
+) => {
+  if (!image) {
+    return null;
+  }
+
+  const value =
+    String(image).trim();
+
+  if (!value) {
+    return null;
+  }
+
+  // Cloudinary / external URL
+  if (
+    value.startsWith(
+      "http://"
+    ) ||
+    value.startsWith(
+      "https://"
+    ) ||
+    value.startsWith(
+      "data:image/"
+    )
+  ) {
+    return value;
+  }
+
+  return getImageUrl(value);
+};
+
+// ============================================================
+// COMPONENT
 // ============================================================
 
 const SellerPage = () => {
-  const { sellerId } = useParams();
+  const {
+    sellerId,
+  } = useParams();
 
-  const { user } = useAuth();
+  const navigate =
+    useNavigate();
+
+  const {
+    user,
+  } = useAuth();
 
   const {
     toggleFavorite,
     isFavorite,
   } = useCart();
 
-  const [seller, setSeller] = useState(null);
-  const [products, setProducts] = useState([]);
+  const [
+    seller,
+    setSeller,
+  ] = useState(null);
 
-  const [loading, setLoading] =
-    useState(true);
+  const [
+    products,
+    setProducts,
+  ] = useState([]);
 
-  const [error, setError] =
-    useState("");
+  const [
+    loading,
+    setLoading,
+  ] = useState(true);
 
-  const [pagination, setPagination] =
-    useState(null);
+  const [
+    error,
+    setError,
+  ] = useState("");
+
+  const [
+    pagination,
+    setPagination,
+  ] = useState(null);
+
+  const [
+    imageError,
+    setImageError,
+  ] = useState(false);
 
   // ==========================================================
-  // FETCH SELLER DATA
+  // FETCH SELLER
   // ==========================================================
 
   useEffect(() => {
-    let cancelled = false;
-
-    const fetchSellerData = async () => {
-      if (!sellerId) {
-        setError("No seller ID provided.");
-        setLoading(false);
-        return;
-      }
-
-      try {
-        setLoading(true);
-        setError("");
-
-        // ------------------------------------------------------
-        // SELLER PROFILE
-        // ------------------------------------------------------
-
-        const profileData =
-          await getPublicSellerProfile(
-            sellerId
-          );
-
-        console.log(
-          "👤 COMPLETE SELLER PROFILE RESPONSE:",
-          profileData
-        );
-
-        if (cancelled) return;
-
-        if (
-          !profileData?.success ||
-          !profileData?.seller
-        ) {
+    const fetchSellerData =
+      async () => {
+        if (!sellerId) {
           setError(
-            profileData?.message ||
-              "Failed to load seller profile."
+            "No seller ID provided."
           );
 
           setLoading(false);
+
           return;
         }
 
-        const sellerData =
-          profileData.seller;
+        // ----------------------------------------------------
+        // Require authentication
+        // ----------------------------------------------------
 
-        // ------------------------------------------------------
-        // IMPORTANT:
-        // Support every profile-image field currently used
-        // by your backend/database.
-        // ------------------------------------------------------
+        if (!user) {
+          setLoading(false);
 
-        const rawAvatar =
-          sellerData.avatar ||
-          sellerData.photoURL ||
-          sellerData.profileImage ||
-          sellerData.photo ||
-          null;
+          return;
+        }
 
-        const avatarUrl =
-          buildImageUrl(rawAvatar);
+        try {
+          setLoading(true);
+          setError("");
 
-        console.log(
-          "🖼️ Seller raw avatar:",
-          rawAvatar
-        );
+          // ==================================================
+          // PROFILE
+          // ==================================================
 
-        console.log(
-          "🖼️ Seller final avatar URL:",
-          avatarUrl
-        );
+          const profileData =
+            await getPublicSellerProfile(
+              sellerId
+            );
 
-        // ------------------------------------------------------
-        // SELLER DATE
-        // ------------------------------------------------------
-
-        const memberSince =
-          sellerData.sellerSince ||
-          sellerData.memberSince ||
-          sellerData.createdAt ||
-          null;
-
-        const normalizedSeller = {
-          _id:
-            sellerData._id ||
-            sellerId,
-
-          name:
-            sellerData.name ||
-            "Seller",
-
-          shopName:
-            sellerData.shopName ||
-            "",
-
-          shopDescription:
-            sellerData.shopDescription ||
-            "",
-
-          phone:
-            sellerData.phone ||
-            "",
-
-          email:
-            sellerData.email ||
-            "",
-
-          location:
-            sellerData.location ||
-            "",
-
-          // Final image URL
-          avatar:
-            avatarUrl,
-
-          // Keep original values too
-          photoURL:
-            sellerData.photoURL ||
-            null,
-
-          profileImage:
-            sellerData.profileImage ||
-            null,
-
-          photo:
-            sellerData.photo ||
-            null,
-
-          createdAt:
-            sellerData.createdAt ||
-            null,
-
-          sellerSince:
-            sellerData.sellerSince ||
-            null,
-
-          memberSince,
-
-          lastActive:
-            sellerData.lastActive ||
-            null,
-
-          lastSeen:
-            sellerData.lastSeen ||
-            null,
-
-          role:
-            sellerData.role ||
-            "seller",
-
-          rating:
-            Number(
-              sellerData.rating || 0
-            ),
-
-          productsCount:
-            Number(
-              sellerData.productsCount || 0
-            ),
-        };
-
-        setSeller(
-          normalizedSeller
-        );
-
-        // ------------------------------------------------------
-        // SELLER PRODUCTS
-        // ------------------------------------------------------
-
-        const productsData =
-          await getPublicSellerProducts(
-            sellerId,
-            {
-              page: 1,
-              limit: 20,
-              sort: "-createdAt",
-            }
-          );
-
-        if (cancelled) return;
-
-        console.log(
-          "📦 Seller products:",
-          productsData
-        );
-
-        if (
-          productsData?.success
-        ) {
-          setProducts(
-            productsData.products ||
-              []
+          console.log(
+            "👤 Seller profile:",
+            profileData
           );
 
           if (
-            productsData.pagination
+            !profileData?.success ||
+            !profileData?.seller
           ) {
-            setPagination(
-              productsData.pagination
+            throw new Error(
+              profileData?.message ||
+                "Failed to load seller profile."
             );
           }
-        } else {
-          setProducts([]);
-        }
-      } catch (err) {
-        if (cancelled) return;
 
-        console.error(
-          "❌ Error fetching seller data:",
-          err
-        );
+          const sellerData =
+            profileData.seller;
 
-        setError(
-          err?.message ||
-            "An error occurred while loading the seller."
-        );
-      } finally {
-        if (!cancelled) {
+          setSeller({
+            _id:
+              sellerData._id ||
+              sellerId,
+
+            name:
+              sellerData.name ||
+              "Seller",
+
+            shopName:
+              sellerData.shopName ||
+              sellerData.name ||
+              "Seller",
+
+            phone:
+              sellerData.phone ||
+              "",
+
+            email:
+              sellerData.email ||
+              "",
+
+            location:
+              sellerData.location ||
+              "",
+
+            // Use backend's resolved avatar.
+            avatar:
+              sellerData.avatar ||
+              sellerData.profileImage ||
+              sellerData.photo ||
+              sellerData.photoURL ||
+              null,
+
+            profileImage:
+              sellerData.profileImage ||
+              "",
+
+            photo:
+              sellerData.photo ||
+              "",
+
+            photoURL:
+              sellerData.photoURL ||
+              "",
+
+            createdAt:
+              sellerData.createdAt ||
+              "",
+
+            sellerSince:
+              sellerData.sellerSince ||
+              "",
+
+            memberSince:
+              sellerData.memberSince ||
+              sellerData.sellerSince ||
+              sellerData.createdAt ||
+              "",
+
+            lastActive:
+              sellerData.lastActive ||
+              sellerData.lastSeen ||
+              "",
+
+            lastSeen:
+              sellerData.lastSeen ||
+              sellerData.lastActive ||
+              "",
+
+            role:
+              sellerData.role ||
+              "seller",
+
+            rating:
+              Number(
+                sellerData.rating ||
+                  0
+              ),
+
+            productsCount:
+              Number(
+                sellerData.productsCount ||
+                  0
+              ),
+          });
+
+          // ==================================================
+          // PRODUCTS
+          // ==================================================
+
+          const productsData =
+            await getPublicSellerProducts(
+              sellerId,
+              {
+                page: 1,
+                limit: 20,
+                sort: "-createdAt",
+              }
+            );
+
+          console.log(
+            "📦 Seller products:",
+            productsData
+          );
+
+          if (
+            productsData?.success
+          ) {
+            setProducts(
+              productsData.products ||
+                []
+            );
+
+            if (
+              productsData.pagination
+            ) {
+              setPagination(
+                productsData.pagination
+              );
+            }
+          } else {
+            setProducts([]);
+          }
+        } catch (err) {
+          console.error(
+            "❌ Error fetching seller data:",
+            err
+          );
+
+          // --------------------------------------------------
+          // If backend says unauthorized, send user to login.
+          // --------------------------------------------------
+
+          if (
+            err?.response?.status ===
+              401 ||
+            err?.status === 401
+          ) {
+            navigate(
+              "/login",
+              {
+                state: {
+                  from: `/seller/${sellerId}`,
+                },
+              }
+            );
+
+            return;
+          }
+
+          setError(
+            err?.message ||
+              "An error occurred while loading seller profile."
+          );
+        } finally {
           setLoading(false);
         }
-      }
-    };
+      };
 
     fetchSellerData();
+  }, [
+    sellerId,
+    user,
+    navigate,
+  ]);
 
-    return () => {
-      cancelled = true;
-    };
-  }, [sellerId]);
+  // ==========================================================
+  // REQUIRE LOGIN
+  // ==========================================================
+
+  if (!user) {
+    return (
+      <div
+        className="container"
+        style={{
+          minHeight:
+            "60vh",
+          padding:
+            "80px 20px",
+          display:
+            "flex",
+          alignItems:
+            "center",
+          justifyContent:
+            "center",
+        }}
+      >
+        <div
+          style={{
+            maxWidth:
+              "520px",
+            width: "100%",
+            background:
+              "white",
+            borderRadius:
+              "var(--radius-xl)",
+            padding:
+              "40px 30px",
+            textAlign:
+              "center",
+            boxShadow:
+              "0 8px 30px rgba(0,0,0,0.08)",
+          }}
+        >
+          <i
+            className="fas fa-user-lock"
+            style={{
+              fontSize:
+                "56px",
+              color:
+                "var(--primary)",
+              marginBottom:
+                "20px",
+            }}
+          />
+
+          <h1
+            style={{
+              fontSize:
+                "28px",
+              fontWeight:
+                800,
+              marginBottom:
+                "12px",
+            }}
+          >
+            Sign in to view this seller
+          </h1>
+
+          <p
+            style={{
+              color:
+                "var(--gray-500)",
+              lineHeight:
+                1.6,
+              marginBottom:
+                "25px",
+            }}
+          >
+            Please sign in or create a
+            BuyUKUsed account before viewing
+            seller profiles and their products.
+          </p>
+
+          <div
+            style={{
+              display:
+                "flex",
+              gap: "12px",
+              justifyContent:
+                "center",
+              flexWrap:
+                "wrap",
+            }}
+          >
+            <Link
+              to="/login"
+              state={{
+                from: `/seller/${sellerId}`,
+              }}
+              style={{
+                textDecoration:
+                  "none",
+              }}
+            >
+              <button
+                style={{
+                  padding:
+                    "12px 26px",
+                  background:
+                    "var(--primary)",
+                  color:
+                    "white",
+                  border:
+                    "none",
+                  borderRadius:
+                    "var(--radius-full)",
+                  fontWeight:
+                    700,
+                  cursor:
+                    "pointer",
+                }}
+              >
+                Sign In
+              </button>
+            </Link>
+
+            <Link
+              to="/register"
+              state={{
+                from: `/seller/${sellerId}`,
+              }}
+              style={{
+                textDecoration:
+                  "none",
+              }}
+            >
+              <button
+                style={{
+                  padding:
+                    "12px 26px",
+                  background:
+                    "var(--gray-100)",
+                  color:
+                    "var(--gray-800)",
+                  border:
+                    "1px solid var(--gray-300)",
+                  borderRadius:
+                    "var(--radius-full)",
+                  fontWeight:
+                    700,
+                  cursor:
+                    "pointer",
+                }}
+              >
+                Create Account
+              </button>
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // ==========================================================
   // LOADING
@@ -396,8 +614,10 @@ const SellerPage = () => {
       <div
         className="container"
         style={{
-          padding: "60px 20px",
-          textAlign: "center",
+          padding:
+            "60px 20px",
+          textAlign:
+            "center",
         }}
       >
         Loading seller profile...
@@ -414,9 +634,12 @@ const SellerPage = () => {
       <div
         className="container"
         style={{
-          padding: "60px 20px",
-          textAlign: "center",
-          color: "#e74c3c",
+          padding:
+            "60px 20px",
+          textAlign:
+            "center",
+          color:
+            "#e74c3c",
         }}
       >
         {error}
@@ -424,17 +647,15 @@ const SellerPage = () => {
     );
   }
 
-  // ==========================================================
-  // NO SELLER
-  // ==========================================================
-
   if (!seller) {
     return (
       <div
         className="container"
         style={{
-          padding: "60px 20px",
-          textAlign: "center",
+          padding:
+            "60px 20px",
+          textAlign:
+            "center",
         }}
       >
         Seller not found.
@@ -443,7 +664,7 @@ const SellerPage = () => {
   }
 
   // ==========================================================
-  // SELLER INFORMATION
+  // SELLER DATA
   // ==========================================================
 
   const sellerName =
@@ -451,17 +672,19 @@ const SellerPage = () => {
     seller.name ||
     "Unknown Seller";
 
-  const sellerMemberDate =
-    seller.memberSince ||
-    seller.sellerSince ||
-    seller.createdAt ||
-    null;
+  const memberDate =
+    seller.memberSince
+      ? new Date(
+          seller.memberSince
+        )
+      : null;
 
   const memberSince =
-    sellerMemberDate
-      ? new Date(
-          sellerMemberDate
-        ).toLocaleDateString(
+    memberDate &&
+    !Number.isNaN(
+      memberDate.getTime()
+    )
+      ? memberDate.toLocaleDateString(
           undefined,
           {
             year: "numeric",
@@ -472,93 +695,89 @@ const SellerPage = () => {
       : "N/A";
 
   const memberDuration =
-    sellerMemberDate
+    seller.memberSince
       ? timeAgo(
-          sellerMemberDate
+          seller.memberSince
         )
       : "N/A";
 
-  const lastSeen =
+  const lastSeenDate =
     seller.lastActive ||
-    seller.lastSeen
+    seller.lastSeen ||
+    null;
+
+  const lastSeen =
+    lastSeenDate
       ? timeAgo(
-          seller.lastActive ||
-            seller.lastSeen
+          lastSeenDate
         )
       : null;
 
   const productCount =
     seller.productsCount ||
-    products.length;
+    products.length ||
+    0;
+
+  const sellerImage =
+    getSellerImageUrl(
+      seller.avatar
+    );
 
   // ==========================================================
   // WHATSAPP
   // ==========================================================
 
-  const handleWhatsApp = () => {
-    const rawPhone =
-      seller.phone || "";
+  const handleWhatsApp =
+    () => {
+      const rawPhone =
+        seller.phone ||
+        "";
 
-    let phone = String(
-      rawPhone
-    ).replace(/\D/g, "");
+      let phone =
+        String(
+          rawPhone
+        ).replace(
+          /\D/g,
+          ""
+        );
 
-    if (
-      phone.startsWith("0") &&
-      phone.length === 10
-    ) {
-      phone =
-        "233" +
-        phone.substring(1);
-    }
+      if (
+        phone.startsWith(
+          "0"
+        ) &&
+        phone.length ===
+          10
+      ) {
+        phone =
+          "233" +
+          phone.substring(
+            1
+          );
+      }
 
-    if (
-      !phone ||
-      phone.length < 10
-    ) {
-      alert(
-        "This seller has not provided a valid phone number."
-      );
-      return;
-    }
+      if (
+        !phone ||
+        phone.length <
+          10
+      ) {
+        alert(
+          "This seller has not provided a valid phone number."
+        );
 
-    const message =
-      "Hi, I'm interested in your products listed on BuyUkUsed.com. Are you available?";
+        return;
+      }
 
-    const encoded =
-      encodeURIComponent(
-        message
-      );
+      const message =
+        "Hi, I'm interested in your products listed on BuyUKUsed.com. Are you available?";
 
-    window.location.href =
-      `https://wa.me/${phone}?text=${encoded}`;
-  };
+      const encoded =
+        encodeURIComponent(
+          message
+        );
 
-  // ==========================================================
-  // AVATAR ERROR HANDLER
-  // ==========================================================
-
-  const handleAvatarError = (
-    event
-  ) => {
-    console.error(
-      "❌ Seller profile image failed to load:",
-      seller.avatar
-    );
-
-    event.currentTarget.style.display =
-      "none";
-
-    const fallback =
-      event.currentTarget.parentElement?.querySelector(
-        ".seller-avatar-fallback"
-      );
-
-    if (fallback) {
-      fallback.style.display =
-        "flex";
-    }
-  };
+      window.location.href =
+        `https://wa.me/${phone}?text=${encoded}`;
+    };
 
   // ==========================================================
   // RENDER
@@ -568,96 +787,22 @@ const SellerPage = () => {
     <>
       <style>
         {`
-          .seller-profile-card {
-            background: white;
-            border-radius: var(--radius-xl);
-            padding: 30px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-            margin-bottom: 40px;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 30px;
-            align-items: center;
-          }
-
-          .seller-avatar-wrapper {
-            width: 120px;
-            height: 120px;
-            min-width: 120px;
-            border-radius: 50%;
-            overflow: hidden;
-            background: var(--gray-200);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-            flex-shrink: 0;
-          }
-
-          .seller-avatar-image {
-            width: 100%;
-            height: 100%;
-            display: block;
-            object-fit: cover;
-            object-position: center;
-          }
-
-          .seller-avatar-fallback {
-            position: absolute;
-            inset: 0;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            background: var(--gray-200);
-          }
-
-          .seller-avatar-fallback i {
-            font-size: 64px;
-            color: var(--gray-400);
-          }
-
-          .seller-info {
-            flex: 1;
-            min-width: 250px;
-          }
-
-          .seller-products-grid {
-            display: grid;
-            grid-template-columns: repeat(
-              auto-fill,
-              minmax(250px, 1fr)
-            );
-            gap: 24px;
-          }
-
           @media (max-width: 600px) {
             .seller-profile-card {
-              padding: 20px;
-              gap: 20px;
-              flex-direction: column;
-              text-align: center;
+              flex-direction: column !important;
+              text-align: center !important;
             }
 
-            .seller-avatar-wrapper {
-              width: 110px;
-              height: 110px;
-              min-width: 110px;
+            .seller-profile-info {
+              width: 100% !important;
             }
 
-            .seller-info {
-              width: 100%;
-              min-width: 0;
-            }
-
-            .seller-info-stats {
+            .seller-profile-details {
               justify-content: center !important;
             }
 
             .seller-products-grid {
-              grid-template-columns: repeat(
-                2,
-                1fr
-              ) !important;
+              grid-template-columns: repeat(2, 1fr) !important;
               gap: 12px !important;
             }
 
@@ -671,81 +816,203 @@ const SellerPage = () => {
       <div
         className="container"
         style={{
-          padding: "30px 20px",
+          padding:
+            "30px 20px",
         }}
       >
         {/* ====================================================
-            SELLER PROFILE
+            SELLER PROFILE CARD
         ==================================================== */}
 
-        <div className="seller-profile-card">
-          {/* PROFILE PICTURE */}
+        <div
+          className="seller-profile-card"
+          style={{
+            background:
+              "white",
+            borderRadius:
+              "var(--radius-xl)",
+            padding:
+              "30px",
+            boxShadow:
+              "0 4px 20px rgba(0,0,0,0.08)",
+            marginBottom:
+              "40px",
+            display:
+              "flex",
+            flexWrap:
+              "wrap",
+            gap:
+              "30px",
+            alignItems:
+              "center",
+          }}
+        >
+          {/* ==================================================
+              AVATAR
+          ================================================== */}
 
-          <div className="seller-avatar-wrapper">
-            {seller.avatar ? (
+          <div
+            style={{
+              width:
+                "120px",
+              height:
+                "120px",
+              borderRadius:
+                "50%",
+              overflow:
+                "hidden",
+              background:
+                "var(--gray-200)",
+              display:
+                "flex",
+              alignItems:
+                "center",
+              justifyContent:
+                "center",
+              flexShrink:
+                0,
+              border:
+                "3px solid var(--gray-100)",
+            }}
+          >
+            {sellerImage &&
+            !imageError ? (
               <img
-                src={seller.avatar}
-                alt={`${sellerName} profile`}
-                className="seller-avatar-image"
-                loading="eager"
-                decoding="async"
-                onError={
-                  handleAvatarError
+                src={
+                  sellerImage
                 }
-              />
-            ) : null}
-
-            <div className="seller-avatar-fallback">
-              <i className="fas fa-user-circle" />
-            </div>
-
-            {!seller.avatar && (
-              <div
-                className="seller-avatar-fallback"
+                alt={
+                  sellerName
+                }
                 style={{
-                  display: "flex",
+                  width:
+                    "100%",
+                  height:
+                    "100%",
+                  objectFit:
+                    "cover",
+                  display:
+                    "block",
                 }}
-              >
-                <i className="fas fa-user-circle" />
-              </div>
+                onError={(
+                  event
+                ) => {
+                  console.error(
+                    "❌ Seller profile image failed:",
+                    sellerImage
+                  );
+
+                  setImageError(
+                    true
+                  );
+
+                  event.currentTarget.style.display =
+                    "none";
+                }}
+              />
+            ) : (
+              <i
+                className="fas fa-user-circle"
+                style={{
+                  fontSize:
+                    "64px",
+                  color:
+                    "var(--gray-400)",
+                }}
+              />
             )}
           </div>
 
-          {/* SELLER INFORMATION */}
+          {/* ==================================================
+              SELLER INFORMATION
+          ================================================== */}
 
-          <div className="seller-info">
+          <div
+            className="seller-profile-info"
+            style={{
+              flex: 1,
+              minWidth:
+                "250px",
+            }}
+          >
             <h1
               style={{
-                fontSize: "28px",
-                fontWeight: 800,
-                marginBottom: "4px",
+                fontSize:
+                  "28px",
+                fontWeight:
+                  800,
+                marginBottom:
+                  "8px",
               }}
             >
               {sellerName}
             </h1>
+
+            {/* Location */}
 
             {seller.location && (
               <div
                 style={{
                   color:
                     "var(--gray-500)",
-                  marginBottom: "4px",
+                  marginBottom:
+                    "8px",
                 }}
               >
-                <i className="fas fa-map-marker-alt" />{" "}
+                <i
+                  className="fas fa-map-marker-alt"
+                  style={{
+                    marginRight:
+                      "7px",
+                  }}
+                />
+
                 {seller.location}
               </div>
             )}
+
+            {/* Phone */}
+
+            {seller.phone && (
+              <div
+                style={{
+                  color:
+                    "var(--gray-500)",
+                  marginBottom:
+                    "8px",
+                }}
+              >
+                <i
+                  className="fas fa-phone"
+                  style={{
+                    marginRight:
+                      "7px",
+                  }}
+                />
+
+                {seller.phone}
+              </div>
+            )}
+
+            {/* Role */}
 
             {seller.role && (
               <div
                 style={{
                   color:
                     "var(--gray-500)",
-                  marginBottom: "4px",
+                  marginBottom:
+                    "8px",
                 }}
               >
-                <i className="fas fa-user-tag" />{" "}
+                <i
+                  className="fas fa-user-tag"
+                  style={{
+                    marginRight:
+                      "7px",
+                  }}
+                />
+
                 {seller.role
                   .charAt(0)
                   .toUpperCase() +
@@ -755,61 +1022,104 @@ const SellerPage = () => {
               </div>
             )}
 
+            {/* Member Since */}
+
             <div
               style={{
                 color:
                   "var(--gray-500)",
-                marginBottom: "4px",
+                marginBottom:
+                  "8px",
               }}
             >
-              <i className="fas fa-calendar-alt" />{" "}
+              <i
+                className="fas fa-calendar-alt"
+                style={{
+                  marginRight:
+                    "7px",
+                }}
+              />
+
               Member since{" "}
               {memberSince}
-              {memberDuration !==
-                "N/A" && (
-                <>
-                  {" "}
-                  ({memberDuration})
-                </>
-              )}
+
+              {memberDuration &&
+                memberDuration !==
+                  "N/A" && (
+                  <>
+                    {" "}
+                    (
+                    {
+                      memberDuration
+                    }
+                    )
+                  </>
+                )}
             </div>
+
+            {/* Last Seen */}
 
             {lastSeen && (
               <div
                 style={{
                   color:
                     "var(--gray-500)",
-                  marginBottom: "12px",
+                  marginBottom:
+                    "12px",
                 }}
               >
-                <i className="fas fa-clock" />{" "}
+                <i
+                  className="fas fa-clock"
+                  style={{
+                    marginRight:
+                      "7px",
+                  }}
+                />
+
                 Last seen:{" "}
                 {lastSeen}
               </div>
             )}
 
+            {/* Stats */}
+
             <div
-              className="seller-info-stats"
+              className="seller-profile-details"
               style={{
-                display: "flex",
-                gap: "20px",
-                flexWrap: "wrap",
-                marginBottom: "12px",
+                display:
+                  "flex",
+                gap:
+                  "20px",
+                flexWrap:
+                  "wrap",
+                marginBottom:
+                  "15px",
               }}
             >
               <span
                 style={{
-                  fontWeight: 600,
+                  fontWeight:
+                    600,
                 }}
               >
-                <i className="fas fa-box" />{" "}
-                {productCount} products
+                <i
+                  className="fas fa-box"
+                  style={{
+                    marginRight:
+                      "6px",
+                  }}
+                />
+
+                {productCount}{" "}
+                products
               </span>
 
-              {seller.rating > 0 && (
+              {seller.rating >
+                0 && (
                 <span
                   style={{
-                    fontWeight: 600,
+                    fontWeight:
+                      600,
                   }}
                 >
                   <i
@@ -817,70 +1127,65 @@ const SellerPage = () => {
                     style={{
                       color:
                         "#f59e0b",
+                      marginRight:
+                        "6px",
                     }}
-                  />{" "}
-                  {seller.rating} / 5
+                  />
+
+                  {
+                    seller.rating
+                  }{" "}
+                  / 5
                 </span>
               )}
             </div>
 
-            {/* CONTACT SELLER */}
+            {/* ==================================================
+                CONTACT
+            ================================================== */}
 
-            {user ? (
-              <button
-                type="button"
-                onClick={
-                  handleWhatsApp
-                }
-                style={{
-                  padding:
-                    "10px 24px",
-                  background:
-                    "#25D366",
-                  color: "white",
-                  border: "none",
-                  borderRadius:
-                    "var(--radius-full)",
-                  fontWeight: 700,
-                  fontSize: "15px",
-                  cursor: "pointer",
-                  display:
-                    "inline-flex",
-                  alignItems:
-                    "center",
-                  gap: "8px",
-                }}
-              >
-                <i className="fab fa-whatsapp" />
-                Contact Seller
-              </button>
-            ) : (
-              <Link
-                to="/login"
-                state={{
-                  from: `/seller/${sellerId}`,
-                }}
-              >
-                <button
-                  type="button"
-                  style={{
-                    padding:
-                      "10px 24px",
-                    background:
-                      "var(--primary)",
-                    color: "white",
-                    border: "none",
-                    borderRadius:
-                      "var(--radius-full)",
-                    fontWeight: 700,
-                    fontSize: "15px",
-                    cursor: "pointer",
-                  }}
-                >
-                  Sign in to contact
-                </button>
-              </Link>
-            )}
+            <button
+              onClick={
+                handleWhatsApp
+              }
+              disabled={
+                !seller.phone
+              }
+              style={{
+                padding:
+                  "10px 24px",
+                background:
+                  seller.phone
+                    ? "#25D366"
+                    : "var(--gray-300)",
+                color:
+                  "white",
+                border:
+                  "none",
+                borderRadius:
+                  "var(--radius-full)",
+                fontWeight:
+                  700,
+                fontSize:
+                  "15px",
+                cursor:
+                  seller.phone
+                    ? "pointer"
+                    : "not-allowed",
+                display:
+                  "inline-flex",
+                alignItems:
+                  "center",
+                gap:
+                  "8px",
+              }}
+            >
+              <i className="fab fa-whatsapp" />
+
+              {seller.phone
+                ? "Contact Seller"
+                : "No Phone Number"}
+            </button>
           </div>
         </div>
 
@@ -890,41 +1195,63 @@ const SellerPage = () => {
 
         <h2
           style={{
-            fontSize: "22px",
-            fontWeight: 800,
-            marginBottom: "20px",
+            fontSize:
+              "22px",
+            fontWeight:
+              800,
+            marginBottom:
+              "20px",
           }}
         >
-          Products by {sellerName}
+          Products by{" "}
+          {sellerName}
         </h2>
 
-        {products.length === 0 ? (
+        {productCount ===
+        0 ? (
           <div
             style={{
               color:
                 "var(--gray-500)",
-              padding: "40px 0",
-              textAlign: "center",
+              padding:
+                "40px 0",
+              textAlign:
+                "center",
             }}
           >
             <i
               className="fas fa-box-open"
               style={{
-                fontSize: "48px",
-                display: "block",
+                fontSize:
+                  "48px",
+                display:
+                  "block",
                 marginBottom:
                   "12px",
               }}
             />
 
-            This seller has not
-            listed any products yet.
+            This seller has
+            not listed any
+            products yet.
           </div>
         ) : (
           <>
-            <div className="seller-products-grid">
+            <div
+              className="seller-products-grid"
+              style={{
+                display:
+                  "grid",
+                gridTemplateColumns:
+                  "repeat(auto-fill, minmax(250px, 1fr))",
+                gap:
+                  "24px",
+              }}
+            >
               {products.map(
-                (product) => (
+                (
+                  product
+                ) => (
                   <div
                     key={
                       product._id
@@ -954,16 +1281,17 @@ const SellerPage = () => {
                 1 && (
                 <div
                   style={{
-                    display: "flex",
+                    display:
+                      "flex",
                     justifyContent:
                       "center",
-                    gap: "10px",
+                    gap:
+                      "10px",
                     marginTop:
                       "30px",
                   }}
                 >
                   <button
-                    type="button"
                     style={{
                       padding:
                         "8px 16px",
@@ -971,7 +1299,8 @@ const SellerPage = () => {
                         "var(--primary)",
                       color:
                         "white",
-                      border: "none",
+                      border:
+                        "none",
                       borderRadius:
                         "var(--radius-md)",
                       cursor:

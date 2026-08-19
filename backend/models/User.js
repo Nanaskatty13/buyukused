@@ -21,10 +21,6 @@ const userSchema = new mongoose.Schema(
         2,
         "Name must be at least 2 characters",
       ],
-      maxlength: [
-        100,
-        "Name cannot exceed 100 characters",
-      ],
     },
 
     email: {
@@ -97,22 +93,12 @@ const userSchema = new mongoose.Schema(
     // PROFILE IMAGE
     // ==========================================================
 
-    // Primary profile picture field.
-    // Store the complete Cloudinary URL here.
     avatar: {
       type: String,
       default: "",
       trim: true,
     },
 
-    // Kept for compatibility with existing users.
-    photoURL: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    // Compatibility fields for older records/components.
     profileImage: {
       type: String,
       default: "",
@@ -120,6 +106,12 @@ const userSchema = new mongoose.Schema(
     },
 
     photo: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    photoURL: {
       type: String,
       default: "",
       trim: true,
@@ -133,20 +125,14 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: "",
       trim: true,
-      maxlength: [
-        100,
-        "Shop name cannot exceed 100 characters",
-      ],
+      maxlength: 100,
     },
 
     shopDescription: {
       type: String,
       default: "",
       trim: true,
-      maxlength: [
-        500,
-        "Shop description cannot exceed 500 characters",
-      ],
+      maxlength: 500,
     },
 
     businessType: {
@@ -157,14 +143,13 @@ const userSchema = new mongoose.Schema(
         "organization",
         "",
       ],
-      default: "",
+      default: "individual",
     },
 
     taxId: {
       type: String,
       default: "",
       trim: true,
-      maxlength: 50,
     },
 
     sellerStatus: {
@@ -174,34 +159,15 @@ const userSchema = new mongoose.Schema(
         "active",
         "suspended",
         "inactive",
+        "",
       ],
-      default: "pending",
+      default: "",
     },
 
-    // IMPORTANT:
-    // This stores the actual date the user became a seller.
     sellerSince: {
       type: Date,
       default: null,
     },
-
-    // ==========================================================
-    // SELLER ACTIVITY
-    // ==========================================================
-
-    lastActive: {
-      type: Date,
-      default: null,
-    },
-
-    lastSeen: {
-      type: Date,
-      default: null,
-    },
-
-    // ==========================================================
-    // SELLER RATING
-    // ==========================================================
 
     rating: {
       type: Number,
@@ -315,6 +281,22 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+
+    // ==========================================================
+    // ACTIVITY TRACKING
+    // ==========================================================
+
+    // Most recent authenticated request
+    lastActive: {
+      type: Date,
+      default: null,
+    },
+
+    // Most recent authenticated visit/activity
+    lastSeen: {
+      type: Date,
+      default: null,
+    },
   },
 
   {
@@ -331,20 +313,19 @@ userSchema.pre(
   "save",
   async function (next) {
     try {
-      // Password has not changed.
       if (!this.isModified("password")) {
         return next();
       }
 
-      // No password.
       if (!this.password) {
         return next();
       }
 
-      this.password = await bcrypt.hash(
-        this.password,
-        10
-      );
+      this.password =
+        await bcrypt.hash(
+          this.password,
+          10
+        );
 
       next();
     } catch (error) {

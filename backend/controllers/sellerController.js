@@ -1,6 +1,7 @@
 // backend/controllers/sellerController.js
 
 const mongoose = require("mongoose");
+
 const User = require("../models/User");
 const Product = require("../models/Product");
 const Order = require("../models/Orders");
@@ -9,18 +10,26 @@ const Order = require("../models/Orders");
 // HELPERS
 // ============================================================
 
-const sanitizeSeller = (user) => {
-  const obj = user?.toObject
+const sanitizeSeller = (
+  user
+) => {
+  const obj = user.toObject
     ? user.toObject()
-    : { ...user };
+    : {
+        ...user,
+      };
 
   delete obj.password;
+  delete obj.__v;
   delete obj.resetPasswordToken;
   delete obj.resetPasswordExpires;
-  delete obj.__v;
 
   return obj;
 };
+
+// ============================================================
+// PAGINATION
+// ============================================================
 
 const getPagination = (
   page = 1,
@@ -50,7 +59,13 @@ const getPagination = (
   };
 };
 
-const parseSort = (sortStr) => {
+// ============================================================
+// SORT
+// ============================================================
+
+const parseSort = (
+  sortStr
+) => {
   if (!sortStr) {
     return {
       createdAt: -1,
@@ -62,21 +77,25 @@ const parseSort = (sortStr) => {
 
   const sortObj = {};
 
-  fields.forEach((field) => {
-    const isDesc =
-      field.startsWith("-");
+  fields.forEach(
+    (field) => {
+      const isDesc =
+        field.startsWith("-");
 
-    const key = isDesc
-      ? field.slice(1)
-      : field;
+      const key = isDesc
+        ? field.slice(1)
+        : field;
 
-    if (key) {
-      sortObj[key] =
-        isDesc ? -1 : 1;
+      if (key) {
+        sortObj[key] =
+          isDesc ? -1 : 1;
+      }
     }
-  });
+  );
 
-  return Object.keys(sortObj).length
+  return Object.keys(
+    sortObj
+  ).length
     ? sortObj
     : {
         createdAt: -1,
@@ -84,142 +103,151 @@ const parseSort = (sortStr) => {
 };
 
 // ============================================================
-// PROFILE IMAGE HELPER
-// ============================================================
-
-const getSellerAvatar = (seller) => {
-  if (!seller) {
-    return "";
-  }
-
-  // Preferred order.
-  return (
-    seller.avatar ||
-    seller.photoURL ||
-    seller.profileImage ||
-    seller.photo ||
-    ""
-  );
-};
-
-// ============================================================
 // 1. REGISTER SELLER
 // ============================================================
 
-exports.registerSeller = async (
-  req,
-  res
-) => {
-  try {
-    const userId =
-      req.user._id || req.user.id;
+exports.registerSeller =
+  async (
+    req,
+    res
+  ) => {
+    try {
+      const userId =
+        req.user._id ||
+        req.user.id;
 
-    const {
-      shopName,
-      description,
-      phone,
-      location,
-      termsAccepted,
-    } = req.body;
+      const {
+        shopName,
+        description,
+        phone,
+        location,
+        termsAccepted,
+        businessType,
+        taxId,
+      } = req.body;
 
-    if (!termsAccepted) {
-      return res.status(400).json({
+      if (!termsAccepted) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "You must accept the terms and conditions.",
+        });
+      }
+
+      const user =
+        await User.findById(
+          userId
+        );
+
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message:
+            "User not found.",
+        });
+      }
+
+      if (
+        user.role ===
+          "seller" ||
+        user.role === "admin"
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "You are already a seller or admin.",
+        });
+      }
+
+      user.shopName =
+        shopName?.trim() ||
+        user.shopName ||
+        user.name;
+
+      user.shopDescription =
+        description?.trim() ||
+        user.shopDescription ||
+        "";
+
+      user.phone =
+        phone?.trim() ||
+        user.phone ||
+        "";
+
+      user.location =
+        location?.trim() ||
+        user.location ||
+        "Ghana";
+
+      user.businessType =
+        businessType ||
+        user.businessType ||
+        "individual";
+
+      user.taxId =
+        taxId?.trim() ||
+        user.taxId ||
+        "";
+
+      user.role = "seller";
+
+      user.sellerStatus =
+        "active";
+
+      user.sellerSince =
+        new Date();
+
+      // Initial activity
+      user.lastActive =
+        new Date();
+
+      user.lastSeen =
+        new Date();
+
+      await user.save();
+
+      return res.status(201).json({
+        success: true,
+        message:
+          "Seller account created successfully.",
+        seller:
+          sanitizeSeller(user),
+      });
+    } catch (error) {
+      console.error(
+        "Register seller error:",
+        error
+      );
+
+      return res.status(500).json({
         success: false,
         message:
-          "You must accept the terms and conditions.",
+          error.message ||
+          "Failed to register as seller.",
       });
     }
-
-    const user =
-      await User.findById(userId);
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message:
-          "User not found.",
-      });
-    }
-
-    if (
-      user.role === "seller" ||
-      user.role === "admin"
-    ) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "You are already a seller or admin.",
-      });
-    }
-
-    user.shopName =
-      shopName?.trim() ||
-      user.shopName ||
-      user.name;
-
-    user.shopDescription =
-      description?.trim() ||
-      user.shopDescription ||
-      "";
-
-    user.phone =
-      phone?.trim() ||
-      user.phone ||
-      "";
-
-    user.location =
-      location?.trim() ||
-      user.location ||
-      "";
-
-    user.role = "seller";
-
-    user.sellerStatus = "active";
-
-    // IMPORTANT:
-    // Save the exact date the user became a seller.
-    user.sellerSince =
-      new Date();
-
-    await user.save();
-
-    return res.status(201).json({
-      success: true,
-      message:
-        "Seller account created successfully.",
-      seller:
-        sanitizeSeller(user),
-    });
-  } catch (error) {
-    console.error(
-      "Register seller error:",
-      error
-    );
-
-    return res.status(500).json({
-      success: false,
-      message:
-        error.message ||
-        "Failed to register as seller.",
-    });
-  }
-};
+  };
 
 // ============================================================
-// 2. GET PRIVATE SELLER PROFILE
+// 2. PRIVATE SELLER PROFILE
 // ============================================================
 
 exports.getSellerProfile =
-  async (req, res) => {
+  async (
+    req,
+    res
+  ) => {
     try {
       const userId =
         req.user._id ||
         req.user.id;
 
       const seller =
-        await User.findById(userId)
+        await User.findById(
+          userId
+        )
           .select(
-            "-password -resetPasswordToken -resetPasswordExpires -__v"
+            "-password -__v -resetPasswordToken -resetPasswordExpires"
           )
           .lean();
 
@@ -232,7 +260,10 @@ exports.getSellerProfile =
       }
 
       if (
-        !["seller", "admin"].includes(
+        ![
+          "seller",
+          "admin",
+        ].includes(
           seller.role
         )
       ) {
@@ -243,36 +274,9 @@ exports.getSellerProfile =
         });
       }
 
-      const avatar =
-        getSellerAvatar(seller);
-
-      const memberSince =
-        seller.sellerSince ||
-        seller.createdAt ||
-        null;
-
       return res.json({
         success: true,
-
-        seller: {
-          ...seller,
-
-          avatar,
-
-          profileImage:
-            seller.profileImage ||
-            null,
-
-          photoURL:
-            seller.photoURL ||
-            null,
-
-          photo:
-            seller.photo ||
-            null,
-
-          memberSince,
-        },
+        seller,
       });
     } catch (error) {
       console.error(
@@ -294,7 +298,10 @@ exports.getSellerProfile =
 // ============================================================
 
 exports.updateSellerProfile =
-  async (req, res) => {
+  async (
+    req,
+    res
+  ) => {
     try {
       const {
         shopName,
@@ -302,43 +309,40 @@ exports.updateSellerProfile =
         description,
         phone,
         location,
-
-        // Profile image fields
         avatar,
-        photoURL,
         profileImage,
         photo,
-
+        photoURL,
         businessType,
         taxId,
       } = req.body;
 
       const updates = {};
 
-      // ------------------------------------------------------
-      // SHOP NAME
-      // ------------------------------------------------------
-
       if (
         shopName !== undefined
       ) {
         updates.shopName =
-          String(shopName).trim();
+          String(
+            shopName
+          ).trim();
       }
 
-      // ------------------------------------------------------
-      // SHOP DESCRIPTION
-      // ------------------------------------------------------
-
       if (
-        shopDescription !== undefined
+        shopDescription !==
+        undefined
       ) {
         updates.shopDescription =
           String(
             shopDescription
           ).trim();
-      } else if (
-        description !== undefined
+      }
+
+      if (
+        description !==
+          undefined &&
+        shopDescription ===
+          undefined
       ) {
         updates.shopDescription =
           String(
@@ -346,51 +350,36 @@ exports.updateSellerProfile =
           ).trim();
       }
 
-      // ------------------------------------------------------
-      // PHONE
-      // ------------------------------------------------------
-
       if (
         phone !== undefined
       ) {
         updates.phone =
-          String(phone).trim();
+          String(
+            phone
+          ).trim();
       }
-
-      // ------------------------------------------------------
-      // LOCATION
-      // ------------------------------------------------------
 
       if (
         location !== undefined
       ) {
         updates.location =
-          String(location).trim();
+          String(
+            location
+          ).trim();
       }
 
-      // ------------------------------------------------------
-      // PROFILE IMAGE
-      // ------------------------------------------------------
-
-      // If avatar is supplied, make it the primary image.
       if (
         avatar !== undefined
       ) {
         updates.avatar =
-          String(avatar).trim();
+          String(
+            avatar
+          ).trim();
       }
 
-      // Support photoURL from older frontend code.
       if (
-        photoURL !== undefined
-      ) {
-        updates.photoURL =
-          String(photoURL).trim();
-      }
-
-      // Support profileImage.
-      if (
-        profileImage !== undefined
+        profileImage !==
+        undefined
       ) {
         updates.profileImage =
           String(
@@ -398,20 +387,27 @@ exports.updateSellerProfile =
           ).trim();
       }
 
-      // Support photo.
       if (
         photo !== undefined
       ) {
         updates.photo =
-          String(photo).trim();
+          String(
+            photo
+          ).trim();
       }
 
-      // ------------------------------------------------------
-      // BUSINESS INFORMATION
-      // ------------------------------------------------------
+      if (
+        photoURL !== undefined
+      ) {
+        updates.photoURL =
+          String(
+            photoURL
+          ).trim();
+      }
 
       if (
-        businessType !== undefined
+        businessType !==
+        undefined
       ) {
         updates.businessType =
           businessType;
@@ -421,24 +417,33 @@ exports.updateSellerProfile =
         taxId !== undefined
       ) {
         updates.taxId =
-          String(taxId).trim();
+          String(
+            taxId
+          ).trim();
       }
 
-      // Never allow profile update
-      // to change the user's role.
+      // Update activity as well
+      updates.lastActive =
+        new Date();
+
+      updates.lastSeen =
+        new Date();
+
       delete updates.role;
 
       const seller =
         await User.findByIdAndUpdate(
           req.user._id,
-          updates,
+          {
+            $set: updates,
+          },
           {
             new: true,
             runValidators: true,
           }
         )
           .select(
-            "-password -resetPasswordToken -resetPasswordExpires -__v"
+            "-password -__v -resetPasswordToken -resetPasswordExpires"
           )
           .lean();
 
@@ -450,27 +455,11 @@ exports.updateSellerProfile =
         });
       }
 
-      const sellerAvatar =
-        getSellerAvatar(seller);
-
-      const memberSince =
-        seller.sellerSince ||
-        seller.createdAt ||
-        null;
-
       return res.json({
         success: true,
         message:
           "Seller profile updated successfully.",
-
-        seller: {
-          ...seller,
-
-          avatar:
-            sellerAvatar,
-
-          memberSince,
-        },
+        seller,
       });
     } catch (error) {
       console.error(
@@ -492,7 +481,10 @@ exports.updateSellerProfile =
 // ============================================================
 
 exports.getSellerDashboard =
-  async (req, res) => {
+  async (
+    req,
+    res
+  ) => {
     try {
       const userId =
         req.user._id.toString();
@@ -504,7 +496,9 @@ exports.getSellerDashboard =
       let dateFilter = {};
 
       if (period !== "all") {
-        const now = new Date();
+        const now =
+          new Date();
+
         let startDate;
 
         switch (period) {
@@ -518,6 +512,7 @@ exports.getSellerDashboard =
               0,
               0
             );
+
             break;
 
           case "week":
@@ -525,8 +520,10 @@ exports.getSellerDashboard =
               new Date(now);
 
             startDate.setDate(
-              startDate.getDate() - 7
+              startDate.getDate() -
+                7
             );
+
             break;
 
           case "month":
@@ -534,8 +531,10 @@ exports.getSellerDashboard =
               new Date(now);
 
             startDate.setMonth(
-              startDate.getMonth() - 1
+              startDate.getMonth() -
+                1
             );
+
             break;
 
           case "year":
@@ -543,8 +542,10 @@ exports.getSellerDashboard =
               new Date(now);
 
             startDate.setFullYear(
-              startDate.getFullYear() - 1
+              startDate.getFullYear() -
+                1
             );
+
             break;
         }
 
@@ -558,10 +559,12 @@ exports.getSellerDashboard =
       }
 
       const productsCount =
-        await Product.countDocuments({
-          sellerId: userId,
-          ...dateFilter,
-        });
+        await Product.countDocuments(
+          {
+            sellerId: userId,
+            ...dateFilter,
+          }
+        );
 
       const orders =
         await Order.find({
@@ -588,15 +591,18 @@ exports.getSellerDashboard =
               ) {
                 totalSales +=
                   Number(
-                    item.price || 0
+                    item.price ||
+                      0
                   ) *
                   Number(
-                    item.quantity || 0
+                    item.quantity ||
+                      0
                   );
 
                 totalItemsSold +=
                   Number(
-                    item.quantity || 0
+                    item.quantity ||
+                      0
                   );
 
                 orderIds.add(
@@ -609,11 +615,13 @@ exports.getSellerDashboard =
       );
 
       const pendingOrders =
-        await Order.countDocuments({
-          "items.sellerId":
-            userId,
-          status: "pending",
-        });
+        await Order.countDocuments(
+          {
+            "items.sellerId":
+              userId,
+            status: "pending",
+          }
+        );
 
       return res.json({
         success: true,
@@ -654,7 +662,10 @@ exports.getSellerDashboard =
 // ============================================================
 
 exports.getMyProducts =
-  async (req, res) => {
+  async (
+    req,
+    res
+  ) => {
     try {
       const userId =
         req.user._id;
@@ -678,7 +689,9 @@ exports.getMyProducts =
         sellerId: userId,
       };
 
-      if (req.query.status) {
+      if (
+        req.query.status
+      ) {
         filter.status =
           req.query.status;
       }
@@ -686,17 +699,18 @@ exports.getMyProducts =
       const [
         products,
         total,
-      ] = await Promise.all([
-        Product.find(filter)
-          .sort(sort)
-          .skip(skip)
-          .limit(limit)
-          .lean(),
+      ] =
+        await Promise.all([
+          Product.find(filter)
+            .sort(sort)
+            .skip(skip)
+            .limit(limit)
+            .lean(),
 
-        Product.countDocuments(
-          filter
-        ),
-      ]);
+          Product.countDocuments(
+            filter
+          ),
+        ]);
 
       return res.json({
         success: true,
@@ -730,11 +744,14 @@ exports.getMyProducts =
   };
 
 // ============================================================
-// 6. GET SELLER ORDERS
+// 6. SELLER ORDERS
 // ============================================================
 
 exports.getSellerOrders =
-  async (req, res) => {
+  async (
+    req,
+    res
+  ) => {
     try {
       const userId =
         req.user._id.toString();
@@ -759,7 +776,9 @@ exports.getSellerOrders =
           userId,
       };
 
-      if (req.query.status) {
+      if (
+        req.query.status
+      ) {
         filter.status =
           req.query.status;
       }
@@ -767,32 +786,34 @@ exports.getSellerOrders =
       const [
         orders,
         total,
-      ] = await Promise.all([
-        Order.find(filter)
-          .populate(
-            "user",
-            "name email phone"
-          )
-          .populate(
-            "items.productId",
-            "title price images"
-          )
-          .sort(sort)
-          .skip(skip)
-          .limit(limit)
-          .lean(),
+      ] =
+        await Promise.all([
+          Order.find(filter)
+            .populate(
+              "user",
+              "name email phone"
+            )
+            .populate(
+              "items.productId",
+              "title price images"
+            )
+            .sort(sort)
+            .skip(skip)
+            .limit(limit)
+            .lean(),
 
-        Order.countDocuments(
-          filter
-        ),
-      ]);
+          Order.countDocuments(
+            filter
+          ),
+        ]);
 
       const processedOrders =
         orders.map(
           (order) => {
             const sellerItems =
               (
-                order.items || []
+                order.items ||
+                []
               ).filter(
                 (item) =>
                   item.sellerId?.toString() ===
@@ -815,10 +836,12 @@ exports.getSellerOrders =
                   ) =>
                     sum +
                     Number(
-                      item.price || 0
+                      item.price ||
+                        0
                     ) *
                       Number(
-                        item.quantity || 0
+                        item.quantity ||
+                          0
                       ),
                   0
                 ),
@@ -863,7 +886,10 @@ exports.getSellerOrders =
 // ============================================================
 
 exports.getSellerEarnings =
-  async (req, res) => {
+  async (
+    req,
+    res
+  ) => {
     try {
       const userId =
         req.user._id.toString();
@@ -875,7 +901,9 @@ exports.getSellerEarnings =
       let dateFilter = {};
 
       if (period !== "all") {
-        const now = new Date();
+        const now =
+          new Date();
+
         let startDate;
 
         switch (period) {
@@ -884,8 +912,10 @@ exports.getSellerEarnings =
               new Date(now);
 
             startDate.setDate(
-              startDate.getDate() - 7
+              startDate.getDate() -
+                7
             );
+
             break;
 
           case "month":
@@ -893,8 +923,10 @@ exports.getSellerEarnings =
               new Date(now);
 
             startDate.setMonth(
-              startDate.getMonth() - 1
+              startDate.getMonth() -
+                1
             );
+
             break;
 
           case "year":
@@ -902,8 +934,10 @@ exports.getSellerEarnings =
               new Date(now);
 
             startDate.setFullYear(
-              startDate.getFullYear() - 1
+              startDate.getFullYear() -
+                1
             );
+
             break;
         }
 
@@ -944,15 +978,18 @@ exports.getSellerEarnings =
               ) {
                 totalEarnings +=
                   Number(
-                    item.price || 0
+                    item.price ||
+                      0
                   ) *
                   Number(
-                    item.quantity || 0
+                    item.quantity ||
+                      0
                   );
 
                 itemsSold +=
                   Number(
-                    item.quantity || 0
+                    item.quantity ||
+                      0
                   );
 
                 hasSellerItem =
@@ -1004,15 +1041,18 @@ exports.getSellerEarnings =
 // ============================================================
 
 exports.getPublicSellerProfile =
-  async (req, res) => {
+  async (
+    req,
+    res
+  ) => {
     try {
       const {
         sellerId,
       } = req.params;
 
-      // ------------------------------------------------------
-      // VALIDATE SELLER ID
-      // ------------------------------------------------------
+      // --------------------------------------------------------
+      // Validate seller ID
+      // --------------------------------------------------------
 
       if (
         !mongoose.Types.ObjectId.isValid(
@@ -1026,9 +1066,9 @@ exports.getPublicSellerProfile =
         });
       }
 
-      // ------------------------------------------------------
-      // FIND SELLER
-      // ------------------------------------------------------
+      // --------------------------------------------------------
+      // Find seller
+      // --------------------------------------------------------
 
       const seller =
         await User.findById(
@@ -1039,31 +1079,29 @@ exports.getPublicSellerProfile =
               "_id",
               "name",
               "email",
-              "shopName",
-              "shopDescription",
+              "phone",
               "location",
 
-              // Profile images
               "avatar",
-              "photoURL",
               "profileImage",
               "photo",
+              "photoURL",
 
-              // Seller info
+              "shopName",
+              "shopDescription",
+
+              "businessType",
               "role",
               "sellerStatus",
               "sellerSince",
 
-              // Dates
               "createdAt",
               "updatedAt",
+
               "lastActive",
               "lastSeen",
+              "lastLogin",
 
-              // Contact
-              "phone",
-
-              // Rating
               "rating",
             ].join(" ")
           )
@@ -1077,37 +1115,76 @@ exports.getPublicSellerProfile =
         });
       }
 
-      // ------------------------------------------------------
-      // PRODUCT COUNT
-      // ------------------------------------------------------
+      // --------------------------------------------------------
+      // Count active products
+      // --------------------------------------------------------
 
       const productsCount =
-        await Product.countDocuments({
-          sellerId:
-            seller._id,
+        await Product.countDocuments(
+          {
+            sellerId:
+              seller._id,
 
-          status: "active",
-        });
+            status: "active",
+          }
+        );
 
-      // ------------------------------------------------------
-      // PROFILE PICTURE
-      // ------------------------------------------------------
+      // --------------------------------------------------------
+      // Profile picture
+      //
+      // Use the first available real image.
+      // --------------------------------------------------------
 
       const avatar =
-        getSellerAvatar(seller);
+        seller.avatar ||
+        seller.profileImage ||
+        seller.photo ||
+        seller.photoURL ||
+        null;
 
-      // ------------------------------------------------------
-      // SELLER DATE
-      // ------------------------------------------------------
+      // --------------------------------------------------------
+      // Member date
+      //
+      // sellerSince is preferred because this is when
+      // the user became a seller.
+      // --------------------------------------------------------
 
       const memberSince =
         seller.sellerSince ||
         seller.createdAt ||
         null;
 
-      // ------------------------------------------------------
+      // --------------------------------------------------------
+      // ACTIVITY
+      // --------------------------------------------------------
+
+      const activityDate =
+        seller.lastActive ||
+        seller.lastSeen ||
+        null;
+
+      let isOnline = false;
+
+      if (activityDate) {
+        const activityTime =
+          new Date(
+            activityDate
+          ).getTime();
+
+        const difference =
+          Date.now() -
+          activityTime;
+
+        // Active if activity occurred within 5 minutes.
+        isOnline =
+          difference >= 0 &&
+          difference <=
+            5 * 60 * 1000;
+      }
+
+      // --------------------------------------------------------
       // PUBLIC PROFILE
-      // ------------------------------------------------------
+      // --------------------------------------------------------
 
       const publicProfile = {
         _id:
@@ -1121,6 +1198,14 @@ exports.getPublicSellerProfile =
           seller.email ||
           "",
 
+        phone:
+          seller.phone ||
+          "",
+
+        location:
+          seller.location ||
+          "",
+
         shopName:
           seller.shopName ||
           seller.name ||
@@ -1130,17 +1215,20 @@ exports.getPublicSellerProfile =
           seller.shopDescription ||
           "",
 
-        location:
-          seller.location ||
+        businessType:
+          seller.businessType ||
+          "individual",
+
+        role:
+          seller.role ||
+          "seller",
+
+        sellerStatus:
+          seller.sellerStatus ||
           "",
 
-        // PRIMARY PROFILE IMAGE
+        // Profile image
         avatar,
-
-        // Compatibility fields
-        photoURL:
-          seller.photoURL ||
-          null,
 
         profileImage:
           seller.profileImage ||
@@ -1150,18 +1238,11 @@ exports.getPublicSellerProfile =
           seller.photo ||
           null,
 
-        phone:
-          seller.phone ||
-          "",
+        photoURL:
+          seller.photoURL ||
+          null,
 
-        role:
-          seller.role ||
-          "seller",
-
-        sellerStatus:
-          seller.sellerStatus ||
-          "active",
-
+        // Dates
         createdAt:
           seller.createdAt ||
           null,
@@ -1170,9 +1251,9 @@ exports.getPublicSellerProfile =
           seller.sellerSince ||
           null,
 
-        // Frontend can use this directly.
         memberSince,
 
+        // Activity
         lastActive:
           seller.lastActive ||
           null,
@@ -1181,6 +1262,13 @@ exports.getPublicSellerProfile =
           seller.lastSeen ||
           null,
 
+        lastLogin:
+          seller.lastLogin ||
+          null,
+
+        isOnline,
+
+        // Other
         rating:
           Number(
             seller.rating || 0
@@ -1200,20 +1288,28 @@ exports.getPublicSellerProfile =
           avatar:
             publicProfile.avatar,
 
-          sellerSince:
-            publicProfile.sellerSince,
+          phone:
+            publicProfile.phone,
 
-          createdAt:
-            publicProfile.createdAt,
+          location:
+            publicProfile.location,
 
           memberSince:
             publicProfile.memberSince,
+
+          lastActive:
+            publicProfile.lastActive,
+
+          lastSeen:
+            publicProfile.lastSeen,
+
+          isOnline:
+            publicProfile.isOnline,
         }
       );
 
       return res.json({
         success: true,
-
         seller:
           publicProfile,
       });
@@ -1237,7 +1333,10 @@ exports.getPublicSellerProfile =
 // ============================================================
 
 exports.getPublicSellerProducts =
-  async (req, res) => {
+  async (
+    req,
+    res
+  ) => {
     try {
       const {
         sellerId,
@@ -1264,6 +1363,12 @@ exports.getPublicSellerProducts =
       const sellerExists =
         await User.exists({
           _id: sellerId,
+          role: {
+            $in: [
+              "seller",
+              "admin",
+            ],
+          },
         });
 
       if (!sellerExists) {
@@ -1277,14 +1382,20 @@ exports.getPublicSellerProducts =
       const pageNum =
         Math.max(
           1,
-          parseInt(page, 10) || 1
+          parseInt(
+            page,
+            10
+          ) || 1
         );
 
       const limitNum =
         Math.min(
           Math.max(
             1,
-            parseInt(limit, 10) || 20
+            parseInt(
+              limit,
+              10
+            ) || 20
           ),
           50
         );
@@ -1304,17 +1415,18 @@ exports.getPublicSellerProducts =
       const [
         products,
         total,
-      ] = await Promise.all([
-        Product.find(filter)
-          .sort(sortObj)
-          .skip(skip)
-          .limit(limitNum)
-          .lean(),
+      ] =
+        await Promise.all([
+          Product.find(filter)
+            .sort(sortObj)
+            .skip(skip)
+            .limit(limitNum)
+            .lean(),
 
-        Product.countDocuments(
-          filter
-        ),
-      ]);
+          Product.countDocuments(
+            filter
+          ),
+        ]);
 
       return res.json({
         success: true,
@@ -1323,7 +1435,9 @@ exports.getPublicSellerProducts =
 
         pagination: {
           page: pageNum,
+
           limit: limitNum,
+
           total,
 
           totalPages:
