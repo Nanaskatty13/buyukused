@@ -15,11 +15,11 @@ import TabletForm, {
   TABLET_BRANDS,
 } from "../components/TabletForm";
 
-// ✅ Correct import – default only
+// ✅ Import GameConsoleForm (default export)
 import GameConsoleForm from "../components/GameConsoleForm";
 
 // ============================================================
-// LOCATION DATA (unchanged, same as before)
+// LOCATION DATA
 // ============================================================
 
 const countries = ["Ghana"];
@@ -100,6 +100,7 @@ const citiesByRegion = {
     "Kasoa",
     "Bawjiase",
   ],
+
   Ashanti: [
     "Kumasi",
     "Obuasi",
@@ -117,6 +118,7 @@ const citiesByRegion = {
     "Kejetia",
     "Manhyia",
   ],
+
   Central: [
     "Cape Coast",
     "Elmina",
@@ -127,6 +129,7 @@ const citiesByRegion = {
     "Twifo Praso",
     "Kasoa",
   ],
+
   Eastern: [
     "Koforidua",
     "Nkawkaw",
@@ -138,6 +141,7 @@ const citiesByRegion = {
     "Suhum",
     "Asamankese",
   ],
+
   Western: [
     "Sekondi-Takoradi",
     "Tarkwa",
@@ -147,6 +151,7 @@ const citiesByRegion = {
     "Apollonia",
     "Elubo",
   ],
+
   Volta: [
     "Ho",
     "Hohoe",
@@ -156,6 +161,7 @@ const citiesByRegion = {
     "Jasikan",
     "Kpeve",
   ],
+
   Northern: [
     "Tamale",
     "Yendi",
@@ -164,6 +170,7 @@ const citiesByRegion = {
     "Kpandai",
     "Savelugu",
   ],
+
   "Upper East": [
     "Bolgatanga",
     "Bawku",
@@ -171,6 +178,7 @@ const citiesByRegion = {
     "Paga",
     "Zuarungu",
   ],
+
   "Upper West": [
     "Wa",
     "Lawra",
@@ -178,6 +186,7 @@ const citiesByRegion = {
     "Nandom",
     "Tumu",
   ],
+
   Ahafo: [
     "Goaso",
     "Mim",
@@ -185,6 +194,7 @@ const citiesByRegion = {
     "Kukuom",
     "Sankore",
   ],
+
   Bono: [
     "Sunyani",
     "Techiman",
@@ -192,6 +202,7 @@ const citiesByRegion = {
     "Dormaa Ahenkro",
     "Nkoranza",
   ],
+
   "Bono East": [
     "Techiman",
     "Atebubu",
@@ -199,12 +210,14 @@ const citiesByRegion = {
     "Jema",
     "Yeji",
   ],
+
   "North East": [
     "Nalerigu",
     "Bunkpurugu",
     "Gambaga",
     "Walewale",
   ],
+
   Oti: [
     "Dambai",
     "Jasikan",
@@ -212,6 +225,7 @@ const citiesByRegion = {
     "Nkwanta",
     "Worawora",
   ],
+
   Savannah: [
     "Damongo",
     "Bole",
@@ -219,6 +233,7 @@ const citiesByRegion = {
     "Tuna",
     "Kpandai",
   ],
+
   "Western North": [
     "Sefwi Wiawso",
     "Bibiani",
@@ -407,7 +422,9 @@ const PostAd = () => {
     accessoryColor: "",
     accessoryMaterial: "",
 
-    // 🎮 Game Console
+    // =========================================================
+    // 🎮 GAME CONSOLE FIELDS (aligned with GameConsoleForm)
+    // =========================================================
     consoleType: "",
     edition: "",
     discDrive: "",
@@ -920,6 +937,7 @@ const PostAd = () => {
     // --------------------------------------------------------
 
     if (isGameConsole) {
+      // Send all console-specific fields if they have values
       const consoleFields = [
         "consoleType",
         "edition",
@@ -928,7 +946,7 @@ const PostAd = () => {
         "battery",
         "resolution",
         "videoOutput",
-        "storage",
+        "storage",    // already in baseFields, but we ensure it's sent
         "ram",
         "screenSize",
         "year",
@@ -940,6 +958,15 @@ const PostAd = () => {
           baseFields[field] = formData[field];
         }
       });
+
+      // Ensure storage, ram, screenSize, year, connectivity are sent
+      // They are already in baseFields from the common fields, but we might have cleared them?
+      // Actually they are not in baseFields by default – we need to add them explicitly for consoles.
+      // So we set them if they exist.
+      // The fields that are already in baseFields: brand, model, color, condition, warranty.
+      // The console-specific ones are not in baseFields, so we add them.
+      // We also need to ensure storage, ram, screenSize, year, connectivity are sent.
+      // They are already in the consoleFields list above.
     }
 
     // --------------------------------------------------------
@@ -1078,6 +1105,7 @@ const PostAd = () => {
         setError("Please select a console model.");
         return;
       }
+      // Additional validation can be added if needed
     }
 
     // --------------------------------------------------------
@@ -1143,6 +1171,7 @@ const PostAd = () => {
           }
         });
 
+        // Go to products
         navigate("/products");
         return;
       }
@@ -1393,7 +1422,7 @@ const PostAd = () => {
               </div>
             )}
 
-            {/* CONSOLE BRAND – hardcoded list to avoid import issues */}
+            {/* CONSOLE BRAND */}
 
             {isGameConsole && (
               <div className="form-group">
@@ -1411,6 +1440,7 @@ const PostAd = () => {
                     Select brand
                   </option>
 
+                  {/* Need to import GAME_CONSOLE_BRANDS or define locally */}
                   {[
                     "Sony",
                     "Microsoft",

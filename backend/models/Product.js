@@ -39,6 +39,7 @@ const productSchema = new mongoose.Schema(
         "Phones",
         "Laptops",
         "Tablets",
+        "Game Consoles",
         "Accessories",
         "Real Estate",
         "Jobs",
@@ -152,7 +153,7 @@ const productSchema = new mongoose.Schema(
     },
 
     // ========================================================
-    // COMPUTER / TABLET DETAILS
+    // COMPUTER / TABLET / GENERAL DEVICE DETAILS
     // ========================================================
 
     storage: {
@@ -198,38 +199,187 @@ const productSchema = new mongoose.Schema(
     },
 
     // ========================================================
+    // GAME CONSOLE DETAILS
+    // ========================================================
+
+    // Console type
+    // Example:
+    // Home Console
+    // Handheld Console
+    // Hybrid Console
+    // Retro Console
+    consoleType: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    // Console edition
+    // Example:
+    // Standard
+    // Digital Edition
+    // Disc Edition
+    // Slim
+    // Pro
+    // OLED
+    // Special Edition
+    edition: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    // Storage is already defined above.
+    // Example:
+    // 256GB
+    // 512GB
+    // 825GB
+    // 1TB
+    // 2TB
+
+    // Video output
+    // Example:
+    // HDMI
+    // HDMI 2.1
+    // DisplayPort
+    // AV
+    videoOutput: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    // Maximum supported resolution
+    // Example:
+    // 1080p
+    // 1440p
+    // 4K
+    // 8K
+    resolution: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    // Region
+    // Example:
+    // USA
+    // UK
+    // Europe
+    // Japan
+    // Ghana / Africa
+    // Worldwide
+    region: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    // Number of controllers included
+    controllerCount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+
+    // Type of controller
+    // Example:
+    // DualSense
+    // DualShock 4
+    // Xbox Wireless Controller
+    // Joy-Con
+    controllerType: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    // Whether controllers are included
+    controllersIncluded: {
+      type: Boolean,
+      default: false,
+    },
+
+    // Physical game disc support
+    discDrive: {
+      type: String,
+      enum: [
+        "Yes",
+        "No",
+        "Not Available",
+        "",
+      ],
+      default: "",
+    },
+
+    // Digital games support
+    digitalEdition: {
+      type: Boolean,
+      default: false,
+    },
+
+    // Online multiplayer support
+    onlineGaming: {
+      type: Boolean,
+      default: false,
+    },
+
+    // Wi-Fi / Bluetooth / Ethernet etc.
+    networkSupport: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    // CPU information
+    cpu: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    // GPU information
+    gpu: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    // Game console operating system
+    operatingSystem: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    // Whether the original box is included
+    boxIncluded: {
+      type: Boolean,
+      default: false,
+    },
+
+    // Whether original accessories are included
+    originalAccessories: {
+      type: Boolean,
+      default: false,
+    },
+
+    // ========================================================
     // ACCESSORY DETAILS
     // ========================================================
 
-    // Example:
-    // Charger
-    // AirPods
-    // Earphones
-    // Power Bank
-    // Smart Watch
-    // Phone Case
-    // Screen Protector
-    // Cable
-    // Wireless Charger
-    // Bluetooth Speaker
     accessoryType: {
       type: String,
       default: "",
       trim: true,
     },
 
-    // Example:
-    // iPhone 15
-    // Samsung Galaxy S24
-    // iPad
-    // MacBook
     compatibleWith: {
       type: String,
       default: "",
       trim: true,
     },
 
-    // More detailed compatibility information
     compatibility: {
       type: String,
       default: "",
@@ -237,59 +387,47 @@ const productSchema = new mongoose.Schema(
       maxlength: 1000,
     },
 
-    // Accessory material
-    // Leather, Silicone, Plastic, Metal, etc.
     material: {
       type: String,
       default: "",
       trim: true,
     },
 
-    // Cable-specific
     cableType: {
       type: String,
       default: "",
       trim: true,
     },
 
-    // USB-C, Lightning, Micro USB, etc.
     connectorType: {
       type: String,
       default: "",
       trim: true,
     },
 
-    // Charger / power bank output
-    // Example: 20W, 25W, 65W
     powerOutput: {
       type: String,
       default: "",
       trim: true,
     },
 
-    // Storage/capacity for applicable accessories
-    // Example: 128GB memory card
     capacity: {
       type: String,
       default: "",
       trim: true,
     },
 
-    // Power bank / battery-powered accessories
-    // Example: 10,000mAh
     batteryCapacity: {
       type: String,
       default: "",
       trim: true,
     },
 
-    // Wireless accessory
     wireless: {
       type: Boolean,
       default: false,
     },
 
-    // Seller indicates whether accessory is original
     original: {
       type: Boolean,
       default: false,
@@ -317,8 +455,6 @@ const productSchema = new mongoose.Schema(
       default: "",
     },
 
-    // Only meaningful for Phones.
-    // Backend should leave this empty for Accessories.
     simStatus: {
       type: String,
       enum: [
@@ -440,6 +576,14 @@ productSchema.index({
   accessoryType: "text",
   compatibleWith: "text",
   compatibility: "text",
+
+  // Game console search
+  consoleType: "text",
+  edition: "text",
+  controllerType: "text",
+  videoOutput: "text",
+  resolution: "text",
+  region: "text",
 });
 
 // ============================================================
@@ -511,6 +655,46 @@ productSchema.index({
 
 productSchema.index({
   original: 1,
+});
+
+// ============================================================
+// GAME CONSOLE FILTERS
+// ============================================================
+
+productSchema.index({
+  consoleType: 1,
+});
+
+productSchema.index({
+  edition: 1,
+});
+
+productSchema.index({
+  videoOutput: 1,
+});
+
+productSchema.index({
+  resolution: 1,
+});
+
+productSchema.index({
+  region: 1,
+});
+
+productSchema.index({
+  controllerCount: 1,
+});
+
+productSchema.index({
+  discDrive: 1,
+});
+
+productSchema.index({
+  controllersIncluded: 1,
+});
+
+productSchema.index({
+  onlineGaming: 1,
 });
 
 // ============================================================

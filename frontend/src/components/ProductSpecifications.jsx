@@ -36,7 +36,7 @@ import {
   YEAR_OPTIONS as TABLET_YEAR_OPTIONS,
 } from "../components/TabletForm";
 
-// ── ✅ CORRECTED CONSOLE IMPORT (default only) ──────────────────
+// ── Console component – fixed import (default only) ─────────────
 import ConsoleForm from "../components/GameConsoleForm";
 
 // ── Reusable specifications component ────────────────────────────
@@ -264,6 +264,7 @@ const ProductDetails = () => {
     // Console specific
     videoOutput: "",
     region: "",
+    // Additional console fields (if present)
     consoleType: "",
     edition: "",
     discDrive: "",
