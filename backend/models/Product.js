@@ -29,6 +29,7 @@ const productSchema = new mongoose.Schema(
     oldPrice: {
       type: Number,
       default: null,
+      min: 0,
     },
 
     category: {
@@ -47,12 +48,14 @@ const productSchema = new mongoose.Schema(
         "Other",
       ],
       default: "Other",
+      index: true,
     },
 
     location: {
       type: String,
       default: "Ghana",
       trim: true,
+      index: true,
     },
 
     description: {
@@ -63,7 +66,7 @@ const productSchema = new mongoose.Schema(
     },
 
     // ========================================================
-    // SELLER
+    // SELLER INFORMATION
     // ========================================================
 
     sellerId: {
@@ -89,23 +92,26 @@ const productSchema = new mongoose.Schema(
     // MEDIA
     // ========================================================
 
+    // Legacy single image
     image: {
       type: String,
       default: "",
     },
 
+    // Product images
     images: {
       type: [String],
       default: [],
     },
 
+    // Product videos
     videos: {
       type: [String],
       default: [],
     },
 
     // ========================================================
-    // PRODUCT DETAILS
+    // GENERAL PRODUCT DETAILS
     // ========================================================
 
     brand: {
@@ -120,37 +126,7 @@ const productSchema = new mongoose.Schema(
       trim: true,
     },
 
-    processor: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    screenSize: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    graphics: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    year: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    connectivity: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    warranty: {
+    color: {
       type: String,
       default: "",
       trim: true,
@@ -169,6 +145,16 @@ const productSchema = new mongoose.Schema(
       default: "Good",
     },
 
+    warranty: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    // ========================================================
+    // COMPUTER / TABLET DETAILS
+    // ========================================================
+
     storage: {
       type: String,
       default: "",
@@ -181,57 +167,130 @@ const productSchema = new mongoose.Schema(
       trim: true,
     },
 
-    color: {
+    processor: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    graphics: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    screenSize: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    year: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    connectivity: {
       type: String,
       default: "",
       trim: true,
     },
 
     // ========================================================
-    // STATISTICS
+    // ACCESSORY DETAILS
     // ========================================================
 
-    views: {
-      type: Number,
-      default: 0,
-    },
-
-    // ========================================================
-    // STATUS
-    // ========================================================
-
-    status: {
+    // Example:
+    // Charger
+    // AirPods
+    // Earphones
+    // Power Bank
+    // Smart Watch
+    // Phone Case
+    // Screen Protector
+    // Cable
+    // Wireless Charger
+    // Bluetooth Speaker
+    accessoryType: {
       type: String,
-      enum: [
-        "active",
-        "pending",
-        "inactive",
-        "sold",
-      ],
-      default: "active",
+      default: "",
+      trim: true,
     },
 
-    promo: {
+    // Example:
+    // iPhone 15
+    // Samsung Galaxy S24
+    // iPad
+    // MacBook
+    compatibleWith: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    // More detailed compatibility information
+    compatibility: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 1000,
+    },
+
+    // Accessory material
+    // Leather, Silicone, Plastic, Metal, etc.
+    material: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    // Cable-specific
+    cableType: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    // USB-C, Lightning, Micro USB, etc.
+    connectorType: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    // Charger / power bank output
+    // Example: 20W, 25W, 65W
+    powerOutput: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    // Storage/capacity for applicable accessories
+    // Example: 128GB memory card
+    capacity: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    // Power bank / battery-powered accessories
+    // Example: 10,000mAh
+    batteryCapacity: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    // Wireless accessory
+    wireless: {
       type: Boolean,
       default: false,
     },
 
-    verified: {
-      type: Boolean,
-      default: false,
-    },
-
-    yearsOnPlatform: {
-      type: Number,
-      default: 0,
-    },
-
-    negotiation: {
-      type: Boolean,
-      default: false,
-    },
-
-    swapAccepted: {
+    // Seller indicates whether accessory is original
+    original: {
       type: Boolean,
       default: false,
     },
@@ -258,6 +317,8 @@ const productSchema = new mongoose.Schema(
       default: "",
     },
 
+    // Only meaningful for Phones.
+    // Backend should leave this empty for Accessories.
     simStatus: {
       type: String,
       enum: [
@@ -270,6 +331,66 @@ const productSchema = new mongoose.Schema(
       ],
       default: "",
       trim: true,
+    },
+
+    // ========================================================
+    // SELLING OPTIONS
+    // ========================================================
+
+    negotiation: {
+      type: Boolean,
+      default: false,
+    },
+
+    swapAccepted: {
+      type: Boolean,
+      default: false,
+    },
+
+    // ========================================================
+    // STATISTICS
+    // ========================================================
+
+    views: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+
+    // ========================================================
+    // STATUS
+    // ========================================================
+
+    status: {
+      type: String,
+      enum: [
+        "active",
+        "pending",
+        "inactive",
+        "sold",
+      ],
+      default: "active",
+      index: true,
+    },
+
+    // ========================================================
+    // PROMOTION / VERIFICATION
+    // ========================================================
+
+    promo: {
+      type: Boolean,
+      default: false,
+    },
+
+    verified: {
+      type: Boolean,
+      default: false,
+    },
+
+    yearsOnPlatform: {
+      type: Number,
+      default: 0,
+      min: 0,
     },
 
     // ========================================================
@@ -308,13 +429,22 @@ productSchema.pre("save", function (next) {
 });
 
 // ============================================================
-// INDEXES
+// TEXT SEARCH INDEX
 // ============================================================
 
 productSchema.index({
   title: "text",
   description: "text",
+  brand: "text",
+  model: "text",
+  accessoryType: "text",
+  compatibleWith: "text",
+  compatibility: "text",
 });
+
+// ============================================================
+// CATEGORY / LOCATION / STATUS
+// ============================================================
 
 productSchema.index({
   category: 1,
@@ -322,18 +452,34 @@ productSchema.index({
   status: 1,
 });
 
+// ============================================================
+// NEWEST PRODUCTS
+// ============================================================
+
 productSchema.index({
   createdAt: -1,
 });
+
+// ============================================================
+// PRICE
+// ============================================================
 
 productSchema.index({
   price: 1,
 });
 
+// ============================================================
+// SELLER PRODUCTS
+// ============================================================
+
 productSchema.index({
   sellerId: 1,
   createdAt: -1,
 });
+
+// ============================================================
+// PHONE FILTERS
+// ============================================================
 
 productSchema.index({
   simStatus: 1,
@@ -344,14 +490,35 @@ productSchema.index({
 });
 
 // ============================================================
+// ACCESSORY FILTERS
+// ============================================================
+
+productSchema.index({
+  accessoryType: 1,
+});
+
+productSchema.index({
+  compatibleWith: 1,
+});
+
+productSchema.index({
+  brand: 1,
+});
+
+productSchema.index({
+  wireless: 1,
+});
+
+productSchema.index({
+  original: 1,
+});
+
+// ============================================================
 // MODEL
 // ============================================================
 
 const Product =
   mongoose.models.Product ||
-  mongoose.model(
-    "Product",
-    productSchema
-  );
+  mongoose.model("Product", productSchema);
 
 module.exports = Product;

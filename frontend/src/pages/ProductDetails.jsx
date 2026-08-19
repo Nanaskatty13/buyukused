@@ -999,6 +999,7 @@ const ProductDetails = () => {
   const isTV = product.category === "TVs" || product.category === "TV";
   const isConsole = product.category === "Game Consoles" || product.category === "Consoles";
   const isAccessory = product.category === "Accessories";
+  const isPhone = product.category === "Phones";
 
   let specsTitle = "📋 Specifications";
   if (isLaptop) specsTitle = "💻 Laptop Specifications";
@@ -1006,26 +1007,135 @@ const ProductDetails = () => {
   else if (isTV) specsTitle = "📺 TV Specifications";
   else if (isConsole) specsTitle = "🎮 Game Console Specifications";
   else if (isAccessory) specsTitle = "🎧 Accessories Specifications";
+  else if (isPhone) specsTitle = "📱 Phone Specifications";
 
-  // ── Check for any spec to decide if the section should show ──
+  // ── Helper to render a spec row ──
+  const SpecRow = ({ label, value, tooltip }) => (
+    <div>
+      <strong title={tooltip}>{label}:</strong> {value}
+    </div>
+  );
+
+  // ── Render category-specific specs ──
+  const renderSpecs = () => {
+    const specs = [];
+
+    // ── Common fields for all categories ──
+    if (product.condition) {
+      specs.push(<SpecRow key="condition" label="Condition" value={product.condition} />);
+    }
+    if (product.warranty) {
+      specs.push(<SpecRow key="warranty" label="Warranty" value={product.warranty} />);
+    }
+    if (product.negotiation) {
+      specs.push(<SpecRow key="negotiation" label="Negotiable" value="Yes" />);
+    }
+    if (product.swapAccepted) {
+      specs.push(<SpecRow key="swap" label="Swap Accepted" value="Yes" />);
+    }
+    if (product.color) {
+      specs.push(<SpecRow key="color" label="Color" value={product.color} />);
+    }
+
+    // ── Category-specific ──
+    if (isLaptop) {
+      if (product.brand) specs.push(<SpecRow key="brand" label="Brand" value={product.brand} />);
+      if (product.model) specs.push(<SpecRow key="model" label="Model" value={product.model} />);
+      if (product.processor) {
+        specs.push(
+          <SpecRow
+            key="processor"
+            label="Processor"
+            value={product.processor}
+            tooltip="The brain of the computer; higher numbers and more cores mean better multitasking."
+          />
+        );
+      }
+      if (product.ram) {
+        specs.push(
+          <SpecRow
+            key="ram"
+            label="RAM"
+            value={product.ram}
+            tooltip="Temporary storage for active tasks; 8GB handles basic work, 16GB+ is recommended for gaming and heavy creative work."
+          />
+        );
+      }
+      if (product.storage) {
+        specs.push(
+          <SpecRow
+            key="storage"
+            label="Storage"
+            value={product.storage}
+            tooltip="Solid‑state drives (SSD) offer fast boot and load times compared to older hard drives (HDD)."
+          />
+        );
+      }
+      if (product.screenSize) {
+        specs.push(
+          <SpecRow
+            key="screenSize"
+            label="Screen Size"
+            value={product.screenSize}
+            tooltip="Display diagonal size in inches."
+          />
+        );
+      }
+      if (product.graphics) {
+        specs.push(
+          <SpecRow
+            key="graphics"
+            label="Graphics"
+            value={product.graphics}
+            tooltip="Handles visual rendering, video editing, and 3D gaming."
+          />
+        );
+      }
+      if (product.batteryHealth !== null && product.batteryHealth !== undefined) {
+        specs.push(<SpecRow key="battery" label="Battery Health" value={`${product.batteryHealth}%`} />);
+      }
+    } else if (isTablet) {
+      if (product.brand) specs.push(<SpecRow key="brand" label="Brand" value={product.brand} />);
+      if (product.model) specs.push(<SpecRow key="model" label="Model" value={product.model} />);
+      if (product.year) specs.push(<SpecRow key="year" label="Year" value={product.year} />);
+      if (product.storage) specs.push(<SpecRow key="storage" label="Storage" value={product.storage} />);
+      if (product.screenSize) specs.push(<SpecRow key="screenSize" label="Screen Size" value={product.screenSize} />);
+      if (product.connectivity) specs.push(<SpecRow key="connectivity" label="Connectivity" value={product.connectivity} />);
+      if (product.batteryHealth !== null && product.batteryHealth !== undefined) {
+        specs.push(<SpecRow key="battery" label="Battery Health" value={`${product.batteryHealth}%`} />);
+      }
+    } else if (isPhone) {
+      if (product.brand) specs.push(<SpecRow key="brand" label="Brand" value={product.brand} />);
+      if (product.model) specs.push(<SpecRow key="model" label="Model" value={product.model} />);
+      if (product.storage) specs.push(<SpecRow key="storage" label="Storage" value={product.storage} />);
+      if (product.screenSize) specs.push(<SpecRow key="screenSize" label="Screen Size" value={product.screenSize} />);
+      if (product.batteryHealth !== null && product.batteryHealth !== undefined) {
+        specs.push(<SpecRow key="battery" label="Battery Health" value={`${product.batteryHealth}%`} />);
+      }
+      if (product.faceId) specs.push(<SpecRow key="faceId" label="Face ID" value={product.faceId} />);
+      if (product.simStatus) specs.push(<SpecRow key="sim" label="SIM Status" value={product.simStatus} />);
+    } else if (isTV) {
+      if (product.brand) specs.push(<SpecRow key="brand" label="Brand" value={product.brand} />);
+      if (product.model) specs.push(<SpecRow key="model" label="Model" value={product.model} />);
+      if (product.screenSize) specs.push(<SpecRow key="screenSize" label="Screen Size" value={product.screenSize} />);
+      if (product.connectivity) specs.push(<SpecRow key="connectivity" label="Connectivity" value={product.connectivity} />);
+    } else if (isConsole) {
+      if (product.brand) specs.push(<SpecRow key="brand" label="Brand" value={product.brand} />);
+      if (product.model) specs.push(<SpecRow key="model" label="Model" value={product.model} />);
+      if (product.connectivity) specs.push(<SpecRow key="connectivity" label="Connectivity" value={product.connectivity} />);
+    } else if (isAccessory) {
+      if (product.brand) specs.push(<SpecRow key="brand" label="Brand" value={product.brand} />);
+      if (product.model) specs.push(<SpecRow key="model" label="Model" value={product.model} />);
+      if (product.connectivity) specs.push(<SpecRow key="connectivity" label="Connectivity" value={product.connectivity} />);
+    }
+
+    return specs;
+  };
+
+  // ── Check if any spec exists ──
   const hasAnySpec = () => {
-    const fields = [
-      product.storage, product.color, product.condition,
-      product.batteryHealth !== null && product.batteryHealth !== undefined,
-      product.negotiation, product.swapAccepted, product.warranty,
-      product.brand, product.model, product.processor, product.ram,
-      product.screenSize, product.graphics, product.year, product.connectivity,
-    ];
-
-    if (product.category === "Phones") {
-      fields.push(product.faceId);
-    }
-    // We'll add simStatus separately
-    if (product.simStatus) {
-      fields.push(true);
-    }
-
-    return fields.some(f => f);
+    // We'll rely on renderSpecs returning non-empty array
+    return renderSpecs().length > 0;
   };
 
   // ── Determine if the current user is the seller ──
@@ -1485,7 +1595,7 @@ const ProductDetails = () => {
             </div>
 
             {/* ======================================================
-                SPECIFICATIONS – with laptop tooltips
+                SPECIFICATIONS – refactored category-driven
             ====================================================== */}
 
             {hasAnySpec() && (
@@ -1525,209 +1635,7 @@ const ProductDetails = () => {
                     gap: "8px",
                   }}
                 >
-                  {/* ── Common: Brand & Model ── */}
-                  {product.brand && (
-                    <div>
-                      <strong>Brand:</strong>{" "}
-                      {product.brand}
-                    </div>
-                  )}
-                  {product.model && (
-                    <div>
-                      <strong>Model:</strong>{" "}
-                      {product.model}
-                    </div>
-                  )}
-
-                  {/* ── Laptop specific with tooltips ── */}
-                  {isLaptop && (
-                    <>
-                      {product.processor && (
-                        <div>
-                          <strong
-                            title="The brain of the computer (e.g., Intel Core or AMD Ryzen); higher numbers and more cores mean better multitasking."
-                          >
-                            Processor:
-                          </strong>{" "}
-                          {product.processor}
-                        </div>
-                      )}
-                      {product.ram && (
-                        <div>
-                          <strong
-                            title="Temporary storage for active tasks; 8GB handles basic work, 16GB+ is recommended for gaming and heavy creative work."
-                          >
-                            RAM:
-                          </strong>{" "}
-                          {product.ram}
-                        </div>
-                      )}
-                      {product.graphics && (
-                        <div>
-                          <strong
-                            title="Handles visual rendering, video editing, and 3D gaming."
-                          >
-                            Graphics:
-                          </strong>{" "}
-                          {product.graphics}
-                        </div>
-                      )}
-                      {/* Storage and screen size are already common; we can add tooltips too */}
-                      {product.storage && (
-                        <div>
-                          <strong
-                            title="Solid‑state drives (SSD) offer fast boot and load times compared to older hard drives (HDD)."
-                          >
-                            Storage:
-                          </strong>{" "}
-                          {product.storage}
-                        </div>
-                      )}
-                      {product.screenSize && (
-                        <div>
-                          <strong
-                            title="Display resolution and size, such as Full HD (1920×1080) or WUXGA."
-                          >
-                            Screen Size:
-                          </strong>{" "}
-                          {product.screenSize}
-                        </div>
-                      )}
-                    </>
-                  )}
-
-                  {/* ── Tablet specific ── */}
-                  {isTablet && (
-                    <>
-                      {product.year && (
-                        <div>
-                          <strong>Year:</strong>{" "}
-                          {product.year}
-                        </div>
-                      )}
-                      {product.connectivity && (
-                        <div>
-                          <strong>Connectivity:</strong>{" "}
-                          {product.connectivity}
-                        </div>
-                      )}
-                      {/* Screen size and storage also show for tablets via common fields */}
-                    </>
-                  )}
-
-                  {/* ── TV specific ── */}
-                  {isTV && (
-                    <>
-                      {product.screenSize && (
-                        <div>
-                          <strong>Screen Size:</strong>{" "}
-                          {product.screenSize}
-                        </div>
-                      )}
-                      {product.connectivity && (
-                        <div>
-                          <strong>Connectivity:</strong>{" "}
-                          {product.connectivity}
-                        </div>
-                      )}
-                    </>
-                  )}
-
-                  {/* ── Game Console specific ── */}
-                  {isConsole && (
-                    <>
-                      {product.connectivity && (
-                        <div>
-                          <strong>Connectivity:</strong>{" "}
-                          {product.connectivity}
-                        </div>
-                      )}
-                    </>
-                  )}
-
-                  {/* ── Accessories specific ── */}
-                  {isAccessory && (
-                    <>
-                      {/* No extra fields, but could add compatibility later */}
-                    </>
-                  )}
-
-                  {/* ── Common fields (storage, color, condition, etc.) ── */}
-                  {/* For laptops, storage and screen size are already displayed above, so we skip duplicates if isLaptop */}
-                  {!isLaptop && product.storage && (
-                    <div>
-                      <strong>Storage:</strong>{" "}
-                      {product.storage}
-                    </div>
-                  )}
-
-                  {!isLaptop && product.screenSize && (
-                    <div>
-                      <strong>Screen Size:</strong>{" "}
-                      {product.screenSize}
-                    </div>
-                  )}
-
-                  {product.color && (
-                    <div>
-                      <strong>Color:</strong>{" "}
-                      {product.color}
-                    </div>
-                  )}
-
-                  {product.condition && (
-                    <div>
-                      <strong>Condition:</strong>{" "}
-                      {product.condition}
-                    </div>
-                  )}
-
-                  {product.batteryHealth !==
-                    null &&
-                    product.batteryHealth !==
-                      undefined && (
-                      <div>
-                        <strong>Battery Health:</strong>{" "}
-                        {product.batteryHealth}%
-                      </div>
-                    )}
-
-                  {/* ── Phone‑only fields (SIM shown only for Phones) ── */}
-                  {product.category === "Phones" && (
-                    <>
-                      {product.faceId && (
-                        <div>
-                          <strong>Face ID:</strong>{" "}
-                          {product.faceId}
-                        </div>
-                      )}
-                      {product.simStatus && (
-                        <div>
-                          <strong>SIM Status:</strong>{" "}
-                          {product.simStatus}
-                        </div>
-                      )}
-                    </>
-                  )}
-
-                  {product.negotiation && (
-                    <div>
-                      <strong>Negotiable:</strong> Yes
-                    </div>
-                  )}
-
-                  {product.swapAccepted && (
-                    <div>
-                      <strong>Swap Accepted:</strong> Yes
-                    </div>
-                  )}
-
-                  {product.warranty && (
-                    <div>
-                      <strong>Warranty:</strong>{" "}
-                      {product.warranty}
-                    </div>
-                  )}
+                  {renderSpecs()}
                 </div>
               </div>
             )}

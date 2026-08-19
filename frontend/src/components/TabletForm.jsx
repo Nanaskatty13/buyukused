@@ -1,4 +1,5 @@
 // frontend/src/components/TabletForm.jsx
+
 import React from 'react';
 
 // ================================================================
@@ -18,44 +19,91 @@ export const TABLET_BRANDS = [
 ];
 
 // ================================================================
-// APPLE IPAD MODELS (by screen size)
+// APPLE IPAD MODELS
 // ================================================================
 
 export const IPAD_MODELS = [
-  // iPad Pro series
-  'iPad Pro 11" (1st Gen) - 2018',
-  'iPad Pro 11" (2nd Gen) - 2020',
-  'iPad Pro 11" (3rd Gen) - 2021',
-  'iPad Pro 11" (4th Gen) - 2022',
-  'iPad Pro 11" (5th Gen) - 2024',
-  'iPad Pro 12.9" (3rd Gen) - 2018',
-  'iPad Pro 12.9" (4th Gen) - 2020',
-  'iPad Pro 12.9" (5th Gen) - 2021',
-  'iPad Pro 12.9" (6th Gen) - 2022',
-  'iPad Pro 12.9" (7th Gen) - 2024',
-  'iPad Pro 13" (M4) - 2024',
-  
-  // iPad Air series
-  'iPad Air 3 (10.5") - 2019',
-  'iPad Air 4 (10.9") - 2020',
-  'iPad Air 5 (10.9") - 2022',
-  'iPad Air 6 (11") - 2024',
-  'iPad Air 6 (13") - 2024',
-  'iPad Air 7 (11") - 2025',
-  'iPad Air 7 (13") - 2025',
-  
-  // iPad mini series
-  'iPad mini 5 (7.9") - 2019',
-  'iPad mini 6 (8.3") - 2021',
-  'iPad mini 7 (8.3") - 2024',
-  
-  // iPad standard series
-  'iPad (7th Gen) 10.2" - 2019',
-  'iPad (8th Gen) 10.2" - 2020',
-  'iPad (9th Gen) 10.2" - 2021',
-  'iPad (10th Gen) 10.9" - 2022',
-  'iPad (11th Gen) 10.9" - 2024',
-  'iPad (12th Gen) 11" - 2025',
+  // =========================================================
+  // iPad — Standard
+  // =========================================================
+  'iPad (1st generation) — 2010',
+  'iPad 2 — 2011',
+  'iPad (3rd generation) — 2012',
+  'iPad (4th generation) — 2012',
+  'iPad (5th generation) — 2017',
+  'iPad (6th generation) — 2018',
+  'iPad (7th generation) — 2019',
+  'iPad (8th generation) — 2020',
+  'iPad (9th generation) — 2021',
+  'iPad (10th generation) — 2022',
+  'iPad (A16) — 2025',
+
+  // =========================================================
+  // iPad Air
+  // =========================================================
+  'iPad Air (1st generation) — 2013',
+  'iPad Air 2 — 2014',
+  'iPad Air (3rd generation) — 2019',
+  'iPad Air (4th generation) — 2020',
+  'iPad Air (5th generation) — 2022',
+  'iPad Air 11-inch (M2) — 2024',
+  'iPad Air 13-inch (M2) — 2024',
+  'iPad Air 11-inch (M3) — 2025',
+  'iPad Air 13-inch (M3) — 2025',
+  'iPad Air 11-inch (M4) — 2026',
+  'iPad Air 13-inch (M4) — 2026',
+
+  // =========================================================
+  // iPad mini
+  // =========================================================
+  'iPad mini (1st generation) — 2012',
+  'iPad mini 2 — 2013',
+  'iPad mini 3 — 2014',
+  'iPad mini 4 — 2015',
+  'iPad mini (5th generation) — 2019',
+  'iPad mini (6th generation) — 2021',
+  'iPad mini (A17 Pro) — 2024',
+
+  // =========================================================
+  // iPad Pro — 9.7-inch
+  // =========================================================
+  'iPad Pro 9.7-inch — 2016',
+
+  // =========================================================
+  // iPad Pro — 10.5-inch
+  // =========================================================
+  'iPad Pro 10.5-inch — 2017',
+
+  // =========================================================
+  // iPad Pro — 11-inch
+  // =========================================================
+  'iPad Pro 11-inch (1st generation) — 2018',
+  'iPad Pro 11-inch (2nd generation) — 2020',
+  'iPad Pro 11-inch (3rd generation) — 2021',
+  'iPad Pro 11-inch (4th generation) — 2022',
+  'iPad Pro 11-inch (M4) — 2024',
+  'iPad Pro 11-inch (M5) — 2025',
+
+  // =========================================================
+  // iPad Pro — 12.9-inch
+  // =========================================================
+  'iPad Pro 12.9-inch (1st generation) — 2015',
+  'iPad Pro 12.9-inch (2nd generation) — 2017',
+  'iPad Pro 12.9-inch (3rd generation) — 2018',
+  'iPad Pro 12.9-inch (4th generation) — 2020',
+  'iPad Pro 12.9-inch (5th generation) — 2021',
+  'iPad Pro 12.9-inch (6th generation) — 2022',
+
+  // =========================================================
+  // iPad Pro — 13-inch
+  // =========================================================
+  'iPad Pro 13-inch (M4) — 2024',
+  'iPad Pro 13-inch (M5) — 2025',
+
+  // =========================================================
+  // Other
+  // =========================================================
+  'Other',
 ];
 
 // ================================================================
@@ -80,7 +128,7 @@ const SAMSUNG_TAB_MODELS = [
 ];
 
 // ================================================================
-// OTHER TABLET MODELS
+// LENOVO TABLET MODELS
 // ================================================================
 
 const LENOVO_TAB_MODELS = [
@@ -91,6 +139,10 @@ const LENOVO_TAB_MODELS = [
   'Lenovo Tab M8',
 ];
 
+// ================================================================
+// HUAWEI TABLET MODELS
+// ================================================================
+
 const HUAWEI_TAB_MODELS = [
   'Huawei MatePad Pro 13.2"',
   'Huawei MatePad Pro 12.6"',
@@ -98,6 +150,10 @@ const HUAWEI_TAB_MODELS = [
   'Huawei MatePad T10',
   'Huawei MediaPad M5',
 ];
+
+// ================================================================
+// MICROSOFT TABLET MODELS
+// ================================================================
 
 const MICROSOFT_TAB_MODELS = [
   'Surface Pro 9',
@@ -108,6 +164,10 @@ const MICROSOFT_TAB_MODELS = [
   'Surface Book 3',
 ];
 
+// ================================================================
+// AMAZON TABLET MODELS
+// ================================================================
+
 const AMAZON_TAB_MODELS = [
   'Fire HD 10',
   'Fire HD 8',
@@ -115,10 +175,18 @@ const AMAZON_TAB_MODELS = [
   'Fire Max 11',
 ];
 
+// ================================================================
+// GOOGLE TABLET MODELS
+// ================================================================
+
 const GOOGLE_TAB_MODELS = [
   'Pixel Slate',
   'Pixel Tablet',
 ];
+
+// ================================================================
+// XIAOMI TABLET MODELS
+// ================================================================
 
 const XIAOMI_TAB_MODELS = [
   'Xiaomi Pad 6',
@@ -135,20 +203,28 @@ export const getTabletModelsByBrand = (brand) => {
   switch (brand) {
     case 'Apple':
       return IPAD_MODELS;
+
     case 'Samsung':
       return SAMSUNG_TAB_MODELS;
+
     case 'Lenovo':
       return LENOVO_TAB_MODELS;
+
     case 'Huawei':
       return HUAWEI_TAB_MODELS;
+
     case 'Microsoft':
       return MICROSOFT_TAB_MODELS;
+
     case 'Amazon':
       return AMAZON_TAB_MODELS;
+
     case 'Google':
       return GOOGLE_TAB_MODELS;
+
     case 'Xiaomi':
       return XIAOMI_TAB_MODELS;
+
     default:
       return [];
   }
@@ -157,72 +233,161 @@ export const getTabletModelsByBrand = (brand) => {
 // ================================================================
 // TABLET COLORS
 // ================================================================
+// IMPORTANT:
+// This list intentionally contains NO duplicate values.
+// This prevents React warnings such as:
+// "Encountered two children with the same key, Purple."
+// ================================================================
 
 export const TABLET_COLORS = [
+  // ─── Apple / Premium ──────────────────────────────────────────
   'Space Gray',
+  'Space Black',
   'Silver',
   'Gold',
   'Rose Gold',
   'Starlight',
   'Midnight',
   'Blue',
-  'Pink',
   'Purple',
+  'Pink',
   'Green',
-  'Red',
-  'White',
-  'Black',
-  'Graphite',
-  'Sierra Blue',
-  'Alpine Green',
-  'Deep Purple',
-  'Coral',
   'Yellow',
+  'Red',
   'Orange',
+
+  // ─── Samsung / Android ───────────────────────────────────────
+  'Graphite',
+  'Mystic Black',
+  'Mystic Bronze',
+  'Mystic Navy',
+  'Phantom Black',
+  'Phantom Silver',
+  'Phantom Gray',
+  'Phantom White',
+  'Cream',
+  'Beige',
+  'Lavender',
+  'Mint',
+  'Navy',
+
+  // ─── General Colors ───────────────────────────────────────────
+  'Black',
+  'Matte Black',
+  'Jet Black',
+  'Dark Gray',
+  'Gray',
+  'Charcoal',
+  'White',
+  'Pearl White',
+  'Arctic White',
+
+  // ─── Blue ─────────────────────────────────────────────────────
+  'Dark Blue',
+  'Light Blue',
+  'Sky Blue',
+  'Navy Blue',
+  'Sierra Blue',
+  'Alpine Blue',
+
+  // ─── Green ────────────────────────────────────────────────────
+  'Dark Green',
+  'Forest Green',
+  'Olive Green',
+  'Mint Green',
+  'Alpine Green',
+
+  // ─── Pink / Red ───────────────────────────────────────────────
+  'Dark Red',
+  'Coral',
+  'Rose',
+  'Light Pink',
+
+  // ─── Purple ───────────────────────────────────────────────────
+  'Deep Purple',
+  'Light Purple',
+
+  // ─── Brown / Beige ────────────────────────────────────────────
+  'Brown',
+  'Dark Brown',
+  'Light Beige',
+  'Sand',
+  'Champagne',
+
+  // ─── Metallic ─────────────────────────────────────────────────
+  'Bronze',
+  'Copper',
+
+  // ─── Other ────────────────────────────────────────────────────
+  'Other',
 ];
 
 // ================================================================
-// SCREEN SIZE OPTIONS (for tablets)
+// TABLET SCREEN SIZE OPTIONS
 // ================================================================
 
 export const TABLET_SCREEN_SIZES = [
+  '7.0"',
   '7.9"',
+  '8.0"',
   '8.3"',
   '8.7"',
+  '9.0"',
   '9.7"',
+  '10.1"',
   '10.2"',
   '10.4"',
   '10.5"',
   '10.9"',
-  '11"',
+  '11.0"',
   '11.6"',
+  '12.0"',
   '12.4"',
   '12.9"',
-  '13"',
+  '13.0"',
   '13.2"',
   '13.6"',
+  '14.0"',
   '14.6"',
   '15.6"',
+  'Other',
 ];
 
 // ================================================================
 // STORAGE OPTIONS
 // ================================================================
 
-export const TABLET_STORAGE_OPTIONS = ['32GB', '64GB', '128GB', '256GB', '512GB', '1TB', '2TB'];
+export const TABLET_STORAGE_OPTIONS = [
+  '16GB',
+  '32GB',
+  '64GB',
+  '128GB',
+  '256GB',
+  '512GB',
+  '1TB',
+  '2TB',
+];
 
 // ================================================================
 // CONNECTIVITY OPTIONS
 // ================================================================
 
-export const CONNECTIVITY_OPTIONS = ['Wi-Fi', 'Wi-Fi + Cellular'];
+export const CONNECTIVITY_OPTIONS = [
+  'Wi-Fi',
+  'Wi-Fi + Cellular',
+];
 
 // ================================================================
 // YEAR OPTIONS
 // ================================================================
 
 export const YEAR_OPTIONS = [];
-for (let year = 2015; year <= new Date().getFullYear() + 1; year++) {
+
+for (
+  let year = 2010;
+  year <= new Date().getFullYear() + 1;
+  year++
+) {
   YEAR_OPTIONS.push(year.toString());
 }
 
@@ -269,15 +434,40 @@ const TabletForm = ({
 
   return (
     <div className="tablet-form">
-      <h3 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '16px' }}>
+
+      {/* ========================================================
+          TITLE
+      ======================================================== */}
+
+      <h3
+        style={{
+          fontSize: '18px',
+          fontWeight: 700,
+          marginBottom: '16px',
+        }}
+      >
         📱 Tablet Specifications
       </h3>
 
-      {/* Brand */}
-      <div className="form-group" style={{ marginBottom: '14px' }}>
-        <label style={{ display: 'block', fontWeight: 600, fontSize: '13px', marginBottom: '4px' }}>
+      {/* ========================================================
+          BRAND
+      ======================================================== */}
+
+      <div
+        className="form-group"
+        style={{ marginBottom: '14px' }}
+      >
+        <label
+          style={{
+            display: 'block',
+            fontWeight: 600,
+            fontSize: '13px',
+            marginBottom: '4px',
+          }}
+        >
           Brand *
         </label>
+
         <select
           name="brand"
           value={formData.brand || ''}
@@ -286,68 +476,132 @@ const TabletForm = ({
           style={{
             width: '100%',
             padding: '10px 14px',
-            border: errors.brand ? '1.5px solid #dc2626' : '1.5px solid var(--gray-200)',
+            border: errors.brand
+              ? '1.5px solid #dc2626'
+              : '1.5px solid var(--gray-200)',
             borderRadius: 'var(--radius-md)',
             fontSize: '14px',
             background: 'white',
           }}
         >
           <option value="">Select brand</option>
+
           {TABLET_BRANDS.map((brand) => (
-            <option key={brand} value={brand}>
+            <option
+              key={brand}
+              value={brand}
+            >
               {brand}
             </option>
           ))}
         </select>
+
         {errors.brand && (
-          <span style={{ color: '#dc2626', fontSize: '12px', marginTop: '4px', display: 'block' }}>
+          <span
+            style={{
+              color: '#dc2626',
+              fontSize: '12px',
+              marginTop: '4px',
+              display: 'block',
+            }}
+          >
             {errors.brand}
           </span>
         )}
       </div>
 
-      {/* Model */}
-      <div className="form-group" style={{ marginBottom: '14px' }}>
-        <label style={{ display: 'block', fontWeight: 600, fontSize: '13px', marginBottom: '4px' }}>
+      {/* ========================================================
+          MODEL
+      ======================================================== */}
+
+      <div
+        className="form-group"
+        style={{ marginBottom: '14px' }}
+      >
+        <label
+          style={{
+            display: 'block',
+            fontWeight: 600,
+            fontSize: '13px',
+            marginBottom: '4px',
+          }}
+        >
           Model *
         </label>
+
         <select
           name="model"
           value={formData.model || ''}
           onChange={handleChange}
           required
+          disabled={!formData.brand}
           style={{
             width: '100%',
             padding: '10px 14px',
-            border: errors.model ? '1.5px solid #dc2626' : '1.5px solid var(--gray-200)',
+            border: errors.model
+              ? '1.5px solid #dc2626'
+              : '1.5px solid var(--gray-200)',
             borderRadius: 'var(--radius-md)',
             fontSize: '14px',
             background: 'white',
           }}
-          disabled={!formData.brand}
         >
           <option value="">
-            {formData.brand ? 'Select model' : 'Select a brand first'}
+            {formData.brand
+              ? 'Select model'
+              : 'Select a brand first'}
           </option>
+
           {brandModels.map((model) => (
-            <option key={model} value={model}>
+            <option
+              key={model}
+              value={model}
+            >
               {model}
             </option>
           ))}
         </select>
+
         {errors.model && (
-          <span style={{ color: '#dc2626', fontSize: '12px', marginTop: '4px', display: 'block' }}>
+          <span
+            style={{
+              color: '#dc2626',
+              fontSize: '12px',
+              marginTop: '4px',
+              display: 'block',
+            }}
+          >
             {errors.model}
           </span>
         )}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+      {/* ========================================================
+          YEAR + STORAGE
+      ======================================================== */}
+
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: '14px',
+        }}
+      >
+
         {/* Year */}
+
         <div className="form-group">
-          <label style={{ display: 'block', fontWeight: 600, fontSize: '13px', marginBottom: '4px' }}>
+          <label
+            style={{
+              display: 'block',
+              fontWeight: 600,
+              fontSize: '13px',
+              marginBottom: '4px',
+            }}
+          >
             Year
           </label>
+
           <select
             name="year"
             value={formData.year || ''}
@@ -355,15 +609,21 @@ const TabletForm = ({
             style={{
               width: '100%',
               padding: '10px 14px',
-              border: errors.year ? '1.5px solid #dc2626' : '1.5px solid var(--gray-200)',
+              border: errors.year
+                ? '1.5px solid #dc2626'
+                : '1.5px solid var(--gray-200)',
               borderRadius: 'var(--radius-md)',
               fontSize: '14px',
               background: 'white',
             }}
           >
             <option value="">Select year</option>
+
             {YEAR_OPTIONS.map((year) => (
-              <option key={year} value={year}>
+              <option
+                key={year}
+                value={year}
+              >
                 {year}
               </option>
             ))}
@@ -371,10 +631,19 @@ const TabletForm = ({
         </div>
 
         {/* Storage */}
+
         <div className="form-group">
-          <label style={{ display: 'block', fontWeight: 600, fontSize: '13px', marginBottom: '4px' }}>
+          <label
+            style={{
+              display: 'block',
+              fontWeight: 600,
+              fontSize: '13px',
+              marginBottom: '4px',
+            }}
+          >
             Storage
           </label>
+
           <select
             name="storage"
             value={formData.storage || ''}
@@ -382,15 +651,21 @@ const TabletForm = ({
             style={{
               width: '100%',
               padding: '10px 14px',
-              border: errors.storage ? '1.5px solid #dc2626' : '1.5px solid var(--gray-200)',
+              border: errors.storage
+                ? '1.5px solid #dc2626'
+                : '1.5px solid var(--gray-200)',
               borderRadius: 'var(--radius-md)',
               fontSize: '14px',
               background: 'white',
             }}
           >
             <option value="">Select storage</option>
+
             {TABLET_STORAGE_OPTIONS.map((option) => (
-              <option key={option} value={option}>
+              <option
+                key={option}
+                value={option}
+              >
                 {option}
               </option>
             ))}
@@ -398,12 +673,33 @@ const TabletForm = ({
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+      {/* ========================================================
+          SCREEN SIZE + CONNECTIVITY
+      ======================================================== */}
+
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: '14px',
+          marginTop: '14px',
+        }}
+      >
+
         {/* Screen Size */}
+
         <div className="form-group">
-          <label style={{ display: 'block', fontWeight: 600, fontSize: '13px', marginBottom: '4px' }}>
+          <label
+            style={{
+              display: 'block',
+              fontWeight: 600,
+              fontSize: '13px',
+              marginBottom: '4px',
+            }}
+          >
             Screen Size
           </label>
+
           <select
             name="screenSize"
             value={formData.screenSize || ''}
@@ -411,15 +707,23 @@ const TabletForm = ({
             style={{
               width: '100%',
               padding: '10px 14px',
-              border: errors.screenSize ? '1.5px solid #dc2626' : '1.5px solid var(--gray-200)',
+              border: errors.screenSize
+                ? '1.5px solid #dc2626'
+                : '1.5px solid var(--gray-200)',
               borderRadius: 'var(--radius-md)',
               fontSize: '14px',
               background: 'white',
             }}
           >
-            <option value="">Select screen size</option>
+            <option value="">
+              Select screen size
+            </option>
+
             {TABLET_SCREEN_SIZES.map((size) => (
-              <option key={size} value={size}>
+              <option
+                key={size}
+                value={size}
+              >
                 {size}
               </option>
             ))}
@@ -427,10 +731,19 @@ const TabletForm = ({
         </div>
 
         {/* Connectivity */}
+
         <div className="form-group">
-          <label style={{ display: 'block', fontWeight: 600, fontSize: '13px', marginBottom: '4px' }}>
+          <label
+            style={{
+              display: 'block',
+              fontWeight: 600,
+              fontSize: '13px',
+              marginBottom: '4px',
+            }}
+          >
             Connectivity
           </label>
+
           <select
             name="connectivity"
             value={formData.connectivity || ''}
@@ -438,15 +751,23 @@ const TabletForm = ({
             style={{
               width: '100%',
               padding: '10px 14px',
-              border: errors.connectivity ? '1.5px solid #dc2626' : '1.5px solid var(--gray-200)',
+              border: errors.connectivity
+                ? '1.5px solid #dc2626'
+                : '1.5px solid var(--gray-200)',
               borderRadius: 'var(--radius-md)',
               fontSize: '14px',
               background: 'white',
             }}
           >
-            <option value="">Select connectivity</option>
+            <option value="">
+              Select connectivity
+            </option>
+
             {CONNECTIVITY_OPTIONS.map((option) => (
-              <option key={option} value={option}>
+              <option
+                key={option}
+                value={option}
+              >
                 {option}
               </option>
             ))}
@@ -454,12 +775,33 @@ const TabletForm = ({
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+      {/* ========================================================
+          COLOR + CONDITION
+      ======================================================== */}
+
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: '14px',
+          marginTop: '14px',
+        }}
+      >
+
         {/* Color */}
+
         <div className="form-group">
-          <label style={{ display: 'block', fontWeight: 600, fontSize: '13px', marginBottom: '4px' }}>
+          <label
+            style={{
+              display: 'block',
+              fontWeight: 600,
+              fontSize: '13px',
+              marginBottom: '4px',
+            }}
+          >
             Color
           </label>
+
           <select
             name="color"
             value={formData.color || ''}
@@ -467,15 +809,23 @@ const TabletForm = ({
             style={{
               width: '100%',
               padding: '10px 14px',
-              border: errors.color ? '1.5px solid #dc2626' : '1.5px solid var(--gray-200)',
+              border: errors.color
+                ? '1.5px solid #dc2626'
+                : '1.5px solid var(--gray-200)',
               borderRadius: 'var(--radius-md)',
               fontSize: '14px',
               background: 'white',
             }}
           >
-            <option value="">Select color</option>
+            <option value="">
+              Select color
+            </option>
+
             {TABLET_COLORS.map((color) => (
-              <option key={color} value={color}>
+              <option
+                key={color}
+                value={color}
+              >
                 {color}
               </option>
             ))}
@@ -483,10 +833,19 @@ const TabletForm = ({
         </div>
 
         {/* Condition */}
+
         <div className="form-group">
-          <label style={{ display: 'block', fontWeight: 600, fontSize: '13px', marginBottom: '4px' }}>
+          <label
+            style={{
+              display: 'block',
+              fontWeight: 600,
+              fontSize: '13px',
+              marginBottom: '4px',
+            }}
+          >
             Condition *
           </label>
+
           <select
             name="condition"
             value={formData.condition || ''}
@@ -495,15 +854,23 @@ const TabletForm = ({
             style={{
               width: '100%',
               padding: '10px 14px',
-              border: errors.condition ? '1.5px solid #dc2626' : '1.5px solid var(--gray-200)',
+              border: errors.condition
+                ? '1.5px solid #dc2626'
+                : '1.5px solid var(--gray-200)',
               borderRadius: 'var(--radius-md)',
               fontSize: '14px',
               background: 'white',
             }}
           >
-            <option value="">Select condition</option>
+            <option value="">
+              Select condition
+            </option>
+
             {TABLET_CONDITION_OPTIONS.map((option) => (
-              <option key={option} value={option}>
+              <option
+                key={option}
+                value={option}
+              >
                 {option}
               </option>
             ))}
@@ -511,12 +878,33 @@ const TabletForm = ({
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+      {/* ========================================================
+          BATTERY + WARRANTY
+      ======================================================== */}
+
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: '14px',
+          marginTop: '14px',
+        }}
+      >
+
         {/* Battery Health */}
+
         <div className="form-group">
-          <label style={{ display: 'block', fontWeight: 600, fontSize: '13px', marginBottom: '4px' }}>
+          <label
+            style={{
+              display: 'block',
+              fontWeight: 600,
+              fontSize: '13px',
+              marginBottom: '4px',
+            }}
+          >
             Battery Health (%)
           </label>
+
           <input
             type="number"
             name="batteryHealth"
@@ -528,7 +916,9 @@ const TabletForm = ({
             style={{
               width: '100%',
               padding: '10px 14px',
-              border: errors.batteryHealth ? '1.5px solid #dc2626' : '1.5px solid var(--gray-200)',
+              border: errors.batteryHealth
+                ? '1.5px solid #dc2626'
+                : '1.5px solid var(--gray-200)',
               borderRadius: 'var(--radius-md)',
               fontSize: '14px',
               background: 'white',
@@ -537,10 +927,19 @@ const TabletForm = ({
         </div>
 
         {/* Warranty */}
+
         <div className="form-group">
-          <label style={{ display: 'block', fontWeight: 600, fontSize: '13px', marginBottom: '4px' }}>
+          <label
+            style={{
+              display: 'block',
+              fontWeight: 600,
+              fontSize: '13px',
+              marginBottom: '4px',
+            }}
+          >
             Warranty
           </label>
+
           <select
             name="warranty"
             value={formData.warranty || ''}
@@ -548,14 +947,19 @@ const TabletForm = ({
             style={{
               width: '100%',
               padding: '10px 14px',
-              border: errors.warranty ? '1.5px solid #dc2626' : '1.5px solid var(--gray-200)',
+              border: errors.warranty
+                ? '1.5px solid #dc2626'
+                : '1.5px solid var(--gray-200)',
               borderRadius: 'var(--radius-md)',
               fontSize: '14px',
               background: 'white',
             }}
           >
             {TABLET_WARRANTY_OPTIONS.map((option) => (
-              <option key={option} value={option}>
+              <option
+                key={option}
+                value={option}
+              >
                 {option}
               </option>
             ))}
@@ -563,31 +967,85 @@ const TabletForm = ({
         </div>
       </div>
 
-      {/* Negotiation & Swap */}
-      <div style={{ display: 'flex', gap: '20px', marginTop: '8px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+      {/* ========================================================
+          NEGOTIATION + SWAP
+      ======================================================== */}
+
+      <div
+        style={{
+          display: 'flex',
+          gap: '20px',
+          marginTop: '16px',
+        }}
+      >
+
+        {/* Negotiation */}
+
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+          }}
+        >
           <input
             type="checkbox"
             name="negotiation"
             checked={formData.negotiation || false}
             onChange={handleCheckboxChange}
           />
-          <label style={{ fontWeight: 600, fontSize: '13px' }}>Negotiable</label>
+
+          <label
+            style={{
+              fontWeight: 600,
+              fontSize: '13px',
+            }}
+          >
+            Negotiable
+          </label>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+
+        {/* Swap */}
+
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+          }}
+        >
           <input
             type="checkbox"
             name="swapAccepted"
             checked={formData.swapAccepted || false}
             onChange={handleCheckboxChange}
           />
-          <label style={{ fontWeight: 600, fontSize: '13px' }}>Swap Accepted</label>
+
+          <label
+            style={{
+              fontWeight: 600,
+              fontSize: '13px',
+            }}
+          >
+            Swap Accepted
+          </label>
         </div>
       </div>
 
-      <div style={{ marginTop: '12px', fontSize: '13px', color: 'var(--gray-500)' }}>
+      {/* ========================================================
+          REQUIRED FIELDS
+      ======================================================== */}
+
+      <div
+        style={{
+          marginTop: '12px',
+          fontSize: '13px',
+          color: 'var(--gray-500)',
+        }}
+      >
         * Required fields
       </div>
+
     </div>
   );
 };
