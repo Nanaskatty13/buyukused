@@ -56,6 +56,80 @@ const ALL_COLORS = [
   ...new Set([...iphoneColors, ...TABLET_COLORS]),
 ].sort((a, b) => a.localeCompare(b));
 
+// ─── Console‑specific option lists (aligned with GameConsoleForm) ──
+const CONSOLE_TYPES = [
+  'Home Console',
+  'Handheld Console',
+  'Hybrid Console',
+  'Retro Console',
+  'Portable Gaming PC',
+  'Other',
+];
+
+const CONSOLE_EDITIONS = [
+  'Standard Edition',
+  'Digital Edition',
+  'Disc Edition',
+  'All-Digital Edition',
+  'Slim Edition',
+  'Pro Edition',
+  'OLED Edition',
+  'Limited Edition',
+  'Special Edition',
+  'Collector’s Edition',
+  'Other',
+];
+
+const DISC_DRIVE_OPTIONS = [
+  'Built-in Disc Drive',
+  'No Disc Drive',
+  'External Disc Drive Compatible',
+  'Not Applicable',
+];
+
+const CONTROLLER_OPTIONS = [
+  'No Controller',
+  '1 Controller',
+  '2 Controllers',
+  '3 Controllers',
+  '4 Controllers',
+  'More than 4 Controllers',
+];
+
+const BATTERY_OPTIONS = [
+  'Built-in Rechargeable Battery',
+  'Replaceable Battery',
+  'No Battery',
+  'Not Applicable',
+];
+
+const CONSOLE_RESOLUTIONS = [
+  '720p',
+  '900p',
+  '1080p',
+  '1440p',
+  '4K UHD',
+  '8K UHD',
+  'Other',
+];
+
+const VIDEO_OUTPUT_OPTIONS = [
+  'HDMI',
+  'HDMI 2.0',
+  'HDMI 2.1',
+  'DisplayPort',
+  'USB-C DisplayPort',
+  'Other',
+];
+
+const REGION_OPTIONS = [
+  'NTSC',
+  'PAL',
+  'NTSC-J',
+  'Region Free',
+  'Other',
+];
+
 // ─── Helpers for image messages ──────────────────────────────────
 
 const isImageMessage = (text) => {
@@ -257,6 +331,15 @@ const ProductDetails = () => {
     // Tablet specific
     year: "",
     connectivity: "",
+    // 🎮 Console specific
+    consoleType: "",
+    edition: "",
+    discDrive: "",
+    controllersIncluded: "",
+    battery: "",
+    resolution: "",
+    videoOutput: "",
+    region: "",
   });
 
   const [imagesToKeep, setImagesToKeep] = useState([]);
@@ -369,6 +452,15 @@ const ProductDetails = () => {
             graphics: p.graphics || "",
             year: p.year || "",
             connectivity: p.connectivity || "",
+            // Console fields
+            consoleType: p.consoleType || "",
+            edition: p.edition || "",
+            discDrive: p.discDrive || "",
+            controllersIncluded: p.controllersIncluded || "",
+            battery: p.battery || "",
+            resolution: p.resolution || "",
+            videoOutput: p.videoOutput || "",
+            region: p.region || "",
           });
 
           const existingImages =
@@ -680,6 +772,14 @@ const ProductDetails = () => {
           graphics: updated.product.graphics || "",
           year: updated.product.year || "",
           connectivity: updated.product.connectivity || "",
+          consoleType: updated.product.consoleType || "",
+          edition: updated.product.edition || "",
+          discDrive: updated.product.discDrive || "",
+          controllersIncluded: updated.product.controllersIncluded || "",
+          battery: updated.product.battery || "",
+          resolution: updated.product.resolution || "",
+          videoOutput: updated.product.videoOutput || "",
+          region: updated.product.region || "",
         });
       }
 
@@ -1272,6 +1372,18 @@ const ProductDetails = () => {
     } else if (isConsole) {
       if (product.brand) specs.push(<SpecRow key="brand" label="Brand" value={product.brand} />);
       if (product.model) specs.push(<SpecRow key="model" label="Model" value={product.model} />);
+      if (product.consoleType) specs.push(<SpecRow key="consoleType" label="Console Type" value={product.consoleType} />);
+      if (product.edition) specs.push(<SpecRow key="edition" label="Edition" value={product.edition} />);
+      if (product.discDrive) specs.push(<SpecRow key="discDrive" label="Disc Drive" value={product.discDrive} />);
+      if (product.controllersIncluded) specs.push(<SpecRow key="controllers" label="Controllers Included" value={product.controllersIncluded} />);
+      if (product.battery) specs.push(<SpecRow key="battery" label="Battery" value={product.battery} />);
+      if (product.resolution) specs.push(<SpecRow key="resolution" label="Resolution" value={product.resolution} />);
+      if (product.videoOutput) specs.push(<SpecRow key="videoOutput" label="Video Output" value={product.videoOutput} />);
+      if (product.region) specs.push(<SpecRow key="region" label="Region" value={product.region} />);
+      if (product.storage) specs.push(<SpecRow key="storage" label="Storage" value={product.storage} />);
+      if (product.ram) specs.push(<SpecRow key="ram" label="RAM" value={product.ram} />);
+      if (product.screenSize) specs.push(<SpecRow key="screenSize" label="Screen Size" value={product.screenSize} />);
+      if (product.year) specs.push(<SpecRow key="year" label="Year" value={product.year} />);
       if (product.connectivity) specs.push(<SpecRow key="connectivity" label="Connectivity" value={product.connectivity} />);
     } else if (isAccessory) {
       if (product.brand) specs.push(<SpecRow key="brand" label="Brand" value={product.brand} />);
@@ -2318,6 +2430,223 @@ const ProductDetails = () => {
                   />
                 </div>
 
+                {/* ==================================================
+                    CONSOLE‑SPECIFIC FIELDS
+                ================================================== */}
+
+                {editForm.category === "Game Consoles" && (
+                  <>
+                    <div
+                      style={{
+                        marginTop: "16px",
+                        paddingTop: "12px",
+                        borderTop: "1px solid #e5e7eb",
+                        marginBottom: "12px",
+                      }}
+                    >
+                      <h3 style={{ fontSize: "16px", fontWeight: 700, marginBottom: "8px" }}>
+                        🎮 Console Details
+                      </h3>
+                    </div>
+
+                    {/* Console Type */}
+                    <div className="form-group" style={{ marginBottom: "12px" }}>
+                      <label style={{ display: "block", fontWeight: 600, fontSize: "13px", marginBottom: "4px" }}>
+                        Console Type
+                      </label>
+                      <select
+                        name="consoleType"
+                        value={editForm.consoleType}
+                        onChange={handleEditChange}
+                        style={{
+                          width: "100%",
+                          padding: "10px 14px",
+                          border: "1.5px solid var(--gray-200)",
+                          borderRadius: "var(--radius-md)",
+                          fontSize: "14px",
+                        }}
+                      >
+                        <option value="">Select console type</option>
+                        {CONSOLE_TYPES.map(type => (
+                          <option key={type} value={type}>{type}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Edition */}
+                    <div className="form-group" style={{ marginBottom: "12px" }}>
+                      <label style={{ display: "block", fontWeight: 600, fontSize: "13px", marginBottom: "4px" }}>
+                        Edition
+                      </label>
+                      <select
+                        name="edition"
+                        value={editForm.edition}
+                        onChange={handleEditChange}
+                        style={{
+                          width: "100%",
+                          padding: "10px 14px",
+                          border: "1.5px solid var(--gray-200)",
+                          borderRadius: "var(--radius-md)",
+                          fontSize: "14px",
+                        }}
+                      >
+                        <option value="">Select edition</option>
+                        {CONSOLE_EDITIONS.map(ed => (
+                          <option key={ed} value={ed}>{ed}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Disc Drive */}
+                    <div className="form-group" style={{ marginBottom: "12px" }}>
+                      <label style={{ display: "block", fontWeight: 600, fontSize: "13px", marginBottom: "4px" }}>
+                        Disc Drive
+                      </label>
+                      <select
+                        name="discDrive"
+                        value={editForm.discDrive}
+                        onChange={handleEditChange}
+                        style={{
+                          width: "100%",
+                          padding: "10px 14px",
+                          border: "1.5px solid var(--gray-200)",
+                          borderRadius: "var(--radius-md)",
+                          fontSize: "14px",
+                        }}
+                      >
+                        <option value="">Select disc drive</option>
+                        {DISC_DRIVE_OPTIONS.map(opt => (
+                          <option key={opt} value={opt}>{opt}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Controllers Included */}
+                    <div className="form-group" style={{ marginBottom: "12px" }}>
+                      <label style={{ display: "block", fontWeight: 600, fontSize: "13px", marginBottom: "4px" }}>
+                        Controllers Included
+                      </label>
+                      <select
+                        name="controllersIncluded"
+                        value={editForm.controllersIncluded}
+                        onChange={handleEditChange}
+                        style={{
+                          width: "100%",
+                          padding: "10px 14px",
+                          border: "1.5px solid var(--gray-200)",
+                          borderRadius: "var(--radius-md)",
+                          fontSize: "14px",
+                        }}
+                      >
+                        <option value="">Select controllers</option>
+                        {CONTROLLER_OPTIONS.map(opt => (
+                          <option key={opt} value={opt}>{opt}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Battery */}
+                    <div className="form-group" style={{ marginBottom: "12px" }}>
+                      <label style={{ display: "block", fontWeight: 600, fontSize: "13px", marginBottom: "4px" }}>
+                        Battery
+                      </label>
+                      <select
+                        name="battery"
+                        value={editForm.battery}
+                        onChange={handleEditChange}
+                        style={{
+                          width: "100%",
+                          padding: "10px 14px",
+                          border: "1.5px solid var(--gray-200)",
+                          borderRadius: "var(--radius-md)",
+                          fontSize: "14px",
+                        }}
+                      >
+                        <option value="">Select battery</option>
+                        {BATTERY_OPTIONS.map(opt => (
+                          <option key={opt} value={opt}>{opt}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Resolution */}
+                    <div className="form-group" style={{ marginBottom: "12px" }}>
+                      <label style={{ display: "block", fontWeight: 600, fontSize: "13px", marginBottom: "4px" }}>
+                        Resolution
+                      </label>
+                      <select
+                        name="resolution"
+                        value={editForm.resolution}
+                        onChange={handleEditChange}
+                        style={{
+                          width: "100%",
+                          padding: "10px 14px",
+                          border: "1.5px solid var(--gray-200)",
+                          borderRadius: "var(--radius-md)",
+                          fontSize: "14px",
+                        }}
+                      >
+                        <option value="">Select resolution</option>
+                        {CONSOLE_RESOLUTIONS.map(res => (
+                          <option key={res} value={res}>{res}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Video Output */}
+                    <div className="form-group" style={{ marginBottom: "12px" }}>
+                      <label style={{ display: "block", fontWeight: 600, fontSize: "13px", marginBottom: "4px" }}>
+                        Video Output
+                      </label>
+                      <select
+                        name="videoOutput"
+                        value={editForm.videoOutput}
+                        onChange={handleEditChange}
+                        style={{
+                          width: "100%",
+                          padding: "10px 14px",
+                          border: "1.5px solid var(--gray-200)",
+                          borderRadius: "var(--radius-md)",
+                          fontSize: "14px",
+                        }}
+                      >
+                        <option value="">Select video output</option>
+                        {VIDEO_OUTPUT_OPTIONS.map(opt => (
+                          <option key={opt} value={opt}>{opt}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Region */}
+                    <div className="form-group" style={{ marginBottom: "12px" }}>
+                      <label style={{ display: "block", fontWeight: 600, fontSize: "13px", marginBottom: "4px" }}>
+                        Region
+                      </label>
+                      <select
+                        name="region"
+                        value={editForm.region}
+                        onChange={handleEditChange}
+                        style={{
+                          width: "100%",
+                          padding: "10px 14px",
+                          border: "1.5px solid var(--gray-200)",
+                          borderRadius: "var(--radius-md)",
+                          fontSize: "14px",
+                        }}
+                      >
+                        <option value="">Select region</option>
+                        {REGION_OPTIONS.map(reg => (
+                          <option key={reg} value={reg}>{reg}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </>
+                )}
+
+                {/* ==================================================
+                    GENERIC FIELDS (always shown)
+                ================================================== */}
+
                 {/* Condition */}
                 <div className="form-group" style={{ marginBottom: "12px" }}>
                   <label style={{ display: "block", fontWeight: 600, fontSize: "13px", marginBottom: "4px" }}>
@@ -2344,7 +2673,7 @@ const ProductDetails = () => {
                   </select>
                 </div>
 
-                {/* Storage */}
+                {/* Storage – already used by consoles, kept here */}
                 <div className="form-group" style={{ marginBottom: "12px" }}>
                   <label style={{ display: "block", fontWeight: 600, fontSize: "13px", marginBottom: "4px" }}>
                     Storage
@@ -2400,7 +2729,7 @@ const ProductDetails = () => {
                   </select>
                 </div>
 
-                {/* Battery Health */}
+                {/* Battery Health – may also be used for phones; keep generic */}
                 <div className="form-group" style={{ marginBottom: "12px" }}>
                   <label style={{ display: "block", fontWeight: 600, fontSize: "13px", marginBottom: "4px" }}>
                     Battery Health (%)
@@ -2423,54 +2752,58 @@ const ProductDetails = () => {
                   />
                 </div>
 
-                {/* Face ID */}
-                <div className="form-group" style={{ marginBottom: "12px" }}>
-                  <label style={{ display: "block", fontWeight: 600, fontSize: "13px", marginBottom: "4px" }}>
-                    Face ID
-                  </label>
-                  <select
-                    name="faceId"
-                    value={editForm.faceId}
-                    onChange={handleEditChange}
-                    style={{
-                      width: "100%",
-                      padding: "10px 14px",
-                      border: "1.5px solid var(--gray-200)",
-                      borderRadius: "var(--radius-md)",
-                      fontSize: "14px",
-                    }}
-                  >
-                    <option value="">Select Face ID status</option>
-                    <option value="Working">Working</option>
-                    <option value="Not Working">Not Working</option>
-                    <option value="Not Available">Not Available</option>
-                  </select>
-                </div>
+                {/* Face ID – only for phones */}
+                {editForm.category === "Phones" && (
+                  <div className="form-group" style={{ marginBottom: "12px" }}>
+                    <label style={{ display: "block", fontWeight: 600, fontSize: "13px", marginBottom: "4px" }}>
+                      Face ID
+                    </label>
+                    <select
+                      name="faceId"
+                      value={editForm.faceId}
+                      onChange={handleEditChange}
+                      style={{
+                        width: "100%",
+                        padding: "10px 14px",
+                        border: "1.5px solid var(--gray-200)",
+                        borderRadius: "var(--radius-md)",
+                        fontSize: "14px",
+                      }}
+                    >
+                      <option value="">Select Face ID status</option>
+                      <option value="Working">Working</option>
+                      <option value="Not Working">Not Working</option>
+                      <option value="Not Available">Not Available</option>
+                    </select>
+                  </div>
+                )}
 
-                {/* SIM Status */}
-                <div className="form-group" style={{ marginBottom: "12px" }}>
-                  <label style={{ display: "block", fontWeight: 600, fontSize: "13px", marginBottom: "4px" }}>
-                    SIM Status
-                  </label>
-                  <select
-                    name="simStatus"
-                    value={editForm.simStatus}
-                    onChange={handleEditChange}
-                    style={{
-                      width: "100%",
-                      padding: "10px 14px",
-                      border: "1.5px solid var(--gray-200)",
-                      borderRadius: "var(--radius-md)",
-                      fontSize: "14px",
-                    }}
-                  >
-                    <option value="">Select SIM status</option>
-                    <option value="eSIM Unlocked">eSIM Unlocked</option>
-                    <option value="SIM Unlocked">SIM Unlocked</option>
-                    <option value="Locked">Locked</option>
-                    <option value="Bypass">Bypass</option>
-                  </select>
-                </div>
+                {/* SIM Status – only for phones */}
+                {editForm.category === "Phones" && (
+                  <div className="form-group" style={{ marginBottom: "12px" }}>
+                    <label style={{ display: "block", fontWeight: 600, fontSize: "13px", marginBottom: "4px" }}>
+                      SIM Status
+                    </label>
+                    <select
+                      name="simStatus"
+                      value={editForm.simStatus}
+                      onChange={handleEditChange}
+                      style={{
+                        width: "100%",
+                        padding: "10px 14px",
+                        border: "1.5px solid var(--gray-200)",
+                        borderRadius: "var(--radius-md)",
+                        fontSize: "14px",
+                      }}
+                    >
+                      <option value="">Select SIM status</option>
+                      <option value="eSIM Unlocked">eSIM Unlocked</option>
+                      <option value="SIM Unlocked">SIM Unlocked</option>
+                      <option value="Locked">Locked</option>
+                      <option value="Bypass">Bypass</option>
+                    </select>
+                  </div>
+                )}
 
                 {/* Warranty */}
                 <div className="form-group" style={{ marginBottom: "12px" }}>
