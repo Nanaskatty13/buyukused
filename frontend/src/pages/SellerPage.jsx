@@ -2,17 +2,70 @@
 
 import React, { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
-
 import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
-import { getImageUrl } from "../services/api";
-
 import {
   getPublicSellerProfile,
   getPublicSellerProducts,
 } from "../services/sellerService";
-
 import ProductCard from "../components/ProductCard";
+
+// ============================================================
+// IMAGE URL HELPER
+// ============================================================
+// IMPORTANT:
+// Do NOT pass an already complete Cloudinary URL through
+// getImageUrl(), because it may transform the URL incorrectly.
+// ============================================================
+
+const buildImageUrl = (image) => {
+  if (!image) return null;
+
+  const value = String(image).trim();
+
+  if (!value) return null;
+
+  // Cloudinary / external HTTPS URL
+  if (
+    value.startsWith("https://") ||
+    value.startsWith("http://")
+  ) {
+    return value;
+  }
+
+  // Protocol-relative URL
+  if (value.startsWith("//")) {
+    return `https:${value}`;
+  }
+
+  // Backend URL
+  const apiBase =
+    import.meta.env.VITE_API_URL ||
+    import.meta.env.VITE_BACKEND_URL ||
+    "http://localhost:5000";
+
+  const cleanBase = apiBase.replace(/\/+$/, "");
+
+  // Already starts with /uploads
+  if (value.startsWith("/uploads/")) {
+    return `${cleanBase}${value}`;
+  }
+
+  // Already starts with uploads/
+  if (value.startsWith("uploads/")) {
+    return `${cleanBase}/${value}`;
+  }
+
+  // Relative path
+  if (value.startsWith("/")) {
+    return `${cleanBase}${value}`;
+  }
+
+  // Cloudinary public ID/path without protocol
+  // If your database stores a relative Cloudinary path,
+  // it will be handled by the backend URL.
+  return `${cleanBase}/${value}`;
+};
 
 // ============================================================
 // RELATIVE TIME
@@ -28,11 +81,11 @@ const timeAgo = (dateString) => {
   }
 
   const now = new Date();
-  const diffMs = now - past;
 
-  if (diffMs < 0) {
-    return "Just now";
-  }
+  const diffMs = Math.max(
+    0,
+    now.getTime() - past.getTime()
+  );
 
   const diffSec = Math.floor(diffMs / 1000);
   const diffMin = Math.floor(diffSec / 60);
@@ -42,82 +95,36 @@ const timeAgo = (dateString) => {
   const diffYears = Math.floor(diffDays / 365);
 
   if (diffYears > 0) {
-    return `${diffYears} year${diffYears > 1 ? "s" : ""} ago`;
+    return `${diffYears} year${
+      diffYears > 1 ? "s" : ""
+    } ago`;
   }
 
   if (diffMonths > 0) {
-    return `${diffMonths} month${diffMonths > 1 ? "s" : ""} ago`;
+    return `${diffMonths} month${
+      diffMonths > 1 ? "s" : ""
+    } ago`;
   }
 
   if (diffDays > 0) {
-    return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
+    return `${diffDays} day${
+      diffDays > 1 ? "s" : ""
+    } ago`;
   }
 
   if (diffHr > 0) {
-    return `${diffHr} hour${diffHr > 1 ? "s" : ""} ago`;
+    return `${diffHr} hour${
+      diffHr > 1 ? "s" : ""
+    } ago`;
   }
 
   if (diffMin > 0) {
-    return `${diffMin} minute${diffMin > 1 ? "s" : ""} ago`;
+    return `${diffMin} minute${
+      diffMin > 1 ? "s" : ""
+    } ago`;
   }
 
   return "Just now";
-};
-
-// ============================================================
-// DATE FORMATTER
-// ============================================================
-
-const formatDate = (dateString) => {
-  if (!dateString) return "N/A";
-
-  const date = new Date(dateString);
-
-  if (Number.isNaN(date.getTime())) {
-    return "N/A";
-  }
-
-  return date.toLocaleDateString("en-GH", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-};
-
-// ============================================================
-// PROFILE IMAGE RESOLVER
-// ============================================================
-
-const getSellerImage = (seller) => {
-  if (!seller) return null;
-
-  const possibleImages = [
-    seller.avatar,
-    seller.photoURL,
-    seller.profileImage,
-    seller.photo,
-  ];
-
-  const image = possibleImages.find(
-    (value) =>
-      typeof value === "string" &&
-      value.trim().length > 0
-  );
-
-  if (!image) {
-    return null;
-  }
-
-  try {
-    return getImageUrl(image.trim());
-  } catch (error) {
-    console.error(
-      "❌ Failed to build seller image URL:",
-      error
-    );
-
-    return image.trim();
-  }
 };
 
 // ============================================================
@@ -135,12 +142,13 @@ const SellerPage = () => {
   } = useCart();
 
   const [seller, setSeller] = useState(null);
-
   const [products, setProducts] = useState([]);
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] =
+    useState(true);
 
-  const [error, setError] = useState("");
+  const [error, setError] =
+    useState("");
 
   const [pagination, setPagination] =
     useState(null);
@@ -173,7 +181,7 @@ const SellerPage = () => {
           );
 
         console.log(
-          "👤 Seller profile response:",
+          "👤 COMPLETE SELLER PROFILE RESPONSE:",
           profileData
         );
 
@@ -189,7 +197,6 @@ const SellerPage = () => {
           );
 
           setLoading(false);
-
           return;
         }
 
@@ -198,36 +205,35 @@ const SellerPage = () => {
 
         // ------------------------------------------------------
         // IMPORTANT:
-        // Use every possible profile-image field.
+        // Support every profile-image field currently used
+        // by your backend/database.
         // ------------------------------------------------------
 
-        const resolvedAvatar =
-          getSellerImage(sellerData);
+        const rawAvatar =
+          sellerData.avatar ||
+          sellerData.photoURL ||
+          sellerData.profileImage ||
+          sellerData.photo ||
+          null;
+
+        const avatarUrl =
+          buildImageUrl(rawAvatar);
 
         console.log(
-          "🖼️ Seller image fields:",
-          {
-            avatar:
-              sellerData.avatar,
-            photoURL:
-              sellerData.photoURL,
-            profileImage:
-              sellerData.profileImage,
-            photo:
-              sellerData.photo,
-            resolvedAvatar,
-          }
+          "🖼️ Seller raw avatar:",
+          rawAvatar
+        );
+
+        console.log(
+          "🖼️ Seller final avatar URL:",
+          avatarUrl
         );
 
         // ------------------------------------------------------
         // SELLER DATE
-        //
-        // sellerSince = actual seller registration date
-        // createdAt   = account creation fallback
-        // memberSince = backend-calculated fallback
         // ------------------------------------------------------
 
-        const sellerDate =
+        const memberSince =
           sellerData.sellerSince ||
           sellerData.memberSince ||
           sellerData.createdAt ||
@@ -240,12 +246,14 @@ const SellerPage = () => {
 
           name:
             sellerData.name ||
-            sellerData.shopName ||
             "Seller",
 
           shopName:
             sellerData.shopName ||
-            sellerData.name ||
+            "",
+
+          shopDescription:
+            sellerData.shopDescription ||
             "",
 
           phone:
@@ -260,8 +268,14 @@ const SellerPage = () => {
             sellerData.location ||
             "",
 
+          // Final image URL
           avatar:
-            resolvedAvatar,
+            avatarUrl,
+
+          // Keep original values too
+          photoURL:
+            sellerData.photoURL ||
+            null,
 
           profileImage:
             sellerData.profileImage ||
@@ -269,10 +283,6 @@ const SellerPage = () => {
 
           photo:
             sellerData.photo ||
-            null,
-
-          photoURL:
-            sellerData.photoURL ||
             null,
 
           createdAt:
@@ -283,8 +293,7 @@ const SellerPage = () => {
             sellerData.sellerSince ||
             null,
 
-          memberSince:
-            sellerDate,
+          memberSince,
 
           lastActive:
             sellerData.lastActive ||
@@ -330,7 +339,7 @@ const SellerPage = () => {
         if (cancelled) return;
 
         console.log(
-          "📦 Seller products response:",
+          "📦 Seller products:",
           productsData
         );
 
@@ -391,14 +400,7 @@ const SellerPage = () => {
           textAlign: "center",
         }}
       >
-        <div
-          style={{
-            fontSize: "18px",
-            fontWeight: 600,
-          }}
-        >
-          Loading seller profile...
-        </div>
+        Loading seller profile...
       </div>
     );
   }
@@ -417,28 +419,13 @@ const SellerPage = () => {
           color: "#e74c3c",
         }}
       >
-        <i
-          className="fas fa-exclamation-circle"
-          style={{
-            fontSize: "45px",
-            marginBottom: "15px",
-          }}
-        />
-
-        <div
-          style={{
-            fontSize: "18px",
-            fontWeight: 600,
-          }}
-        >
-          {error}
-        </div>
+        {error}
       </div>
     );
   }
 
   // ==========================================================
-  // SELLER NOT FOUND
+  // NO SELLER
   // ==========================================================
 
   if (!seller) {
@@ -464,29 +451,44 @@ const SellerPage = () => {
     seller.name ||
     "Unknown Seller";
 
-  const memberSince =
-    formatDate(
-      seller.memberSince
-    );
-
-  const memberDuration =
-    timeAgo(
-      seller.memberSince
-    );
-
-  const lastSeenDate =
-    seller.lastActive ||
-    seller.lastSeen ||
+  const sellerMemberDate =
+    seller.memberSince ||
+    seller.sellerSince ||
+    seller.createdAt ||
     null;
 
+  const memberSince =
+    sellerMemberDate
+      ? new Date(
+          sellerMemberDate
+        ).toLocaleDateString(
+          undefined,
+          {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          }
+        )
+      : "N/A";
+
+  const memberDuration =
+    sellerMemberDate
+      ? timeAgo(
+          sellerMemberDate
+        )
+      : "N/A";
+
   const lastSeen =
-    lastSeenDate
-      ? timeAgo(lastSeenDate)
+    seller.lastActive ||
+    seller.lastSeen
+      ? timeAgo(
+          seller.lastActive ||
+            seller.lastSeen
+        )
       : null;
 
   const productCount =
-    pagination?.total ??
-    seller.productsCount ??
+    seller.productsCount ||
     products.length;
 
   // ==========================================================
@@ -501,8 +503,6 @@ const SellerPage = () => {
       rawPhone
     ).replace(/\D/g, "");
 
-    // Ghana local number:
-    // 0241234567 -> 233241234567
     if (
       phone.startsWith("0") &&
       phone.length === 10
@@ -512,15 +512,6 @@ const SellerPage = () => {
         phone.substring(1);
     }
 
-    // Ghana number already supplied:
-    // 233241234567
-    if (
-      phone.startsWith("233") &&
-      phone.length === 12
-    ) {
-      // valid
-    }
-
     if (
       !phone ||
       phone.length < 10
@@ -528,7 +519,6 @@ const SellerPage = () => {
       alert(
         "This seller has not provided a valid phone number."
       );
-
       return;
     }
 
@@ -545,19 +535,41 @@ const SellerPage = () => {
   };
 
   // ==========================================================
+  // AVATAR ERROR HANDLER
+  // ==========================================================
+
+  const handleAvatarError = (
+    event
+  ) => {
+    console.error(
+      "❌ Seller profile image failed to load:",
+      seller.avatar
+    );
+
+    event.currentTarget.style.display =
+      "none";
+
+    const fallback =
+      event.currentTarget.parentElement?.querySelector(
+        ".seller-avatar-fallback"
+      );
+
+    if (fallback) {
+      fallback.style.display =
+        "flex";
+    }
+  };
+
+  // ==========================================================
   // RENDER
   // ==========================================================
 
   return (
     <>
-      {/* ======================================================
-          RESPONSIVE STYLES
-      ====================================================== */}
-
       <style>
         {`
           .seller-profile-card {
-            background: #ffffff;
+            background: white;
             border-radius: var(--radius-xl);
             padding: 30px;
             box-shadow: 0 4px 20px rgba(0,0,0,0.08);
@@ -568,78 +580,45 @@ const SellerPage = () => {
             align-items: center;
           }
 
-          .seller-avatar {
+          .seller-avatar-wrapper {
             width: 120px;
             height: 120px;
+            min-width: 120px;
             border-radius: 50%;
             overflow: hidden;
             background: var(--gray-200);
             display: flex;
             align-items: center;
             justify-content: center;
+            position: relative;
             flex-shrink: 0;
           }
 
-          .seller-avatar img {
+          .seller-avatar-image {
             width: 100%;
             height: 100%;
-            object-fit: cover;
             display: block;
+            object-fit: cover;
+            object-position: center;
+          }
+
+          .seller-avatar-fallback {
+            position: absolute;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: var(--gray-200);
+          }
+
+          .seller-avatar-fallback i {
+            font-size: 64px;
+            color: var(--gray-400);
           }
 
           .seller-info {
             flex: 1;
-            min-width: 240px;
-          }
-
-          .seller-name {
-            font-size: 28px;
-            font-weight: 800;
-            margin: 0 0 6px;
-          }
-
-          .seller-meta {
-            color: var(--gray-500);
-            margin-bottom: 6px;
-          }
-
-          .seller-stats {
-            display: flex;
-            gap: 20px;
-            flex-wrap: wrap;
-            margin: 14px 0;
-          }
-
-          .seller-contact-btn {
-            padding: 10px 24px;
-            background: #25D366;
-            color: white;
-            border: none;
-            border-radius: var(--radius-full);
-            font-weight: 700;
-            font-size: 15px;
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-          }
-
-          .seller-contact-btn:hover {
-            opacity: 0.9;
-          }
-
-          .seller-login-btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            padding: 10px 24px;
-            background: var(--primary);
-            color: white;
-            border: none;
-            border-radius: var(--radius-full);
-            font-weight: 700;
-            font-size: 15px;
-            text-decoration: none;
+            min-width: 250px;
           }
 
           .seller-products-grid {
@@ -651,21 +630,18 @@ const SellerPage = () => {
             gap: 24px;
           }
 
-          .seller-product-card {
-            min-width: 0;
-          }
-
           @media (max-width: 600px) {
             .seller-profile-card {
-              padding: 22px;
+              padding: 20px;
               gap: 20px;
               flex-direction: column;
               text-align: center;
             }
 
-            .seller-avatar {
-              width: 105px;
-              height: 105px;
+            .seller-avatar-wrapper {
+              width: 110px;
+              height: 110px;
+              min-width: 110px;
             }
 
             .seller-info {
@@ -673,31 +649,24 @@ const SellerPage = () => {
               min-width: 0;
             }
 
-            .seller-name {
-              font-size: 24px;
-            }
-
-            .seller-stats {
-              justify-content: center;
-            }
-
-            .seller-contact-btn,
-            .seller-login-btn {
-              width: 100%;
+            .seller-info-stats {
+              justify-content: center !important;
             }
 
             .seller-products-grid {
-              grid-template-columns:
-                repeat(2, minmax(0, 1fr));
-              gap: 12px;
+              grid-template-columns: repeat(
+                2,
+                1fr
+              ) !important;
+              gap: 12px !important;
+            }
+
+            .seller-products-grid .product-card {
+              min-width: 0 !important;
             }
           }
         `}
       </style>
-
-      {/* ======================================================
-          MAIN CONTAINER
-      ====================================================== */}
 
       <div
         className="container"
@@ -710,154 +679,130 @@ const SellerPage = () => {
         ==================================================== */}
 
         <div className="seller-profile-card">
+          {/* PROFILE PICTURE */}
 
-          {/* ==================================================
-              PROFILE IMAGE
-          ================================================== */}
-
-          <div className="seller-avatar">
+          <div className="seller-avatar-wrapper">
             {seller.avatar ? (
               <img
                 src={seller.avatar}
-                alt={sellerName}
+                alt={`${sellerName} profile`}
+                className="seller-avatar-image"
                 loading="eager"
-                onError={(event) => {
-                  console.error(
-                    "❌ Seller profile image failed:",
-                    seller.avatar
-                  );
-
-                  event.currentTarget.style.display =
-                    "none";
-                }}
+                decoding="async"
+                onError={
+                  handleAvatarError
+                }
               />
-            ) : (
-              <i
-                className="fas fa-user-circle"
+            ) : null}
+
+            <div className="seller-avatar-fallback">
+              <i className="fas fa-user-circle" />
+            </div>
+
+            {!seller.avatar && (
+              <div
+                className="seller-avatar-fallback"
                 style={{
-                  fontSize: "64px",
-                  color: "var(--gray-400)",
+                  display: "flex",
                 }}
-              />
+              >
+                <i className="fas fa-user-circle" />
+              </div>
             )}
-
-            {/* Fallback icon remains behind the image */}
-            <i
-              className="fas fa-user-circle"
-              style={{
-                fontSize: "64px",
-                color: "var(--gray-400)",
-                position: "absolute",
-                zIndex: 0,
-                pointerEvents: "none",
-              }}
-            />
           </div>
 
-          {/* ==================================================
-              SELLER INFORMATION
-          ================================================== */}
+          {/* SELLER INFORMATION */}
 
           <div className="seller-info">
-
-            {/* Seller name */}
-            <h1 className="seller-name">
+            <h1
+              style={{
+                fontSize: "28px",
+                fontWeight: 800,
+                marginBottom: "4px",
+              }}
+            >
               {sellerName}
             </h1>
 
-            {/* Location */}
             {seller.location && (
-              <div className="seller-meta">
-                <i
-                  className="fas fa-map-marker-alt"
-                  style={{
-                    marginRight: "7px",
-                  }}
-                />
-
+              <div
+                style={{
+                  color:
+                    "var(--gray-500)",
+                  marginBottom: "4px",
+                }}
+              >
+                <i className="fas fa-map-marker-alt" />{" "}
                 {seller.location}
               </div>
             )}
 
-            {/* Role */}
             {seller.role && (
-              <div className="seller-meta">
-                <i
-                  className="fas fa-user-tag"
-                  style={{
-                    marginRight: "7px",
-                  }}
-                />
-
+              <div
+                style={{
+                  color:
+                    "var(--gray-500)",
+                  marginBottom: "4px",
+                }}
+              >
+                <i className="fas fa-user-tag" />{" "}
                 {seller.role
                   .charAt(0)
                   .toUpperCase() +
-                  seller.role.slice(1)}
+                  seller.role.slice(
+                    1
+                  )}
               </div>
             )}
 
-            {/* =================================================
-                MEMBER SINCE
-            ================================================= */}
-
-            <div className="seller-meta">
-              <i
-                className="fas fa-calendar-alt"
-                style={{
-                  marginRight: "7px",
-                }}
-              />
-
+            <div
+              style={{
+                color:
+                  "var(--gray-500)",
+                marginBottom: "4px",
+              }}
+            >
+              <i className="fas fa-calendar-alt" />{" "}
               Member since{" "}
-              <strong>
-                {memberSince}
-              </strong>
-
-              {memberDuration &&
-                memberDuration !== "N/A" && (
-                  <>
-                    {" "}
-                    ({memberDuration})
-                  </>
-                )}
+              {memberSince}
+              {memberDuration !==
+                "N/A" && (
+                <>
+                  {" "}
+                  ({memberDuration})
+                </>
+              )}
             </div>
 
-            {/* =================================================
-                LAST ACTIVE
-            ================================================= */}
-
             {lastSeen && (
-              <div className="seller-meta">
-                <i
-                  className="fas fa-clock"
-                  style={{
-                    marginRight: "7px",
-                  }}
-                />
-
+              <div
+                style={{
+                  color:
+                    "var(--gray-500)",
+                  marginBottom: "12px",
+                }}
+              >
+                <i className="fas fa-clock" />{" "}
                 Last seen:{" "}
                 {lastSeen}
               </div>
             )}
 
-            {/* =================================================
-                STATS
-            ================================================= */}
-
-            <div className="seller-stats">
-
+            <div
+              className="seller-info-stats"
+              style={{
+                display: "flex",
+                gap: "20px",
+                flexWrap: "wrap",
+                marginBottom: "12px",
+              }}
+            >
               <span
                 style={{
                   fontWeight: 600,
                 }}
               >
-                <i
-                  className="fas fa-box"
-                  style={{
-                    marginRight: "6px",
-                  }}
-                />
-
+                <i className="fas fa-box" />{" "}
                 {productCount} products
               </span>
 
@@ -870,22 +815,16 @@ const SellerPage = () => {
                   <i
                     className="fas fa-star"
                     style={{
-                      color: "#f59e0b",
-                      marginRight: "6px",
+                      color:
+                        "#f59e0b",
                     }}
-                  />
-
-                  {seller.rating.toFixed
-                    ? seller.rating.toFixed(1)
-                    : seller.rating}{" "}
-                  / 5
+                  />{" "}
+                  {seller.rating} / 5
                 </span>
               )}
             </div>
 
-            {/* =================================================
-                CONTACT SELLER
-            ================================================= */}
+            {/* CONTACT SELLER */}
 
             {user ? (
               <button
@@ -893,10 +832,26 @@ const SellerPage = () => {
                 onClick={
                   handleWhatsApp
                 }
-                className="seller-contact-btn"
+                style={{
+                  padding:
+                    "10px 24px",
+                  background:
+                    "#25D366",
+                  color: "white",
+                  border: "none",
+                  borderRadius:
+                    "var(--radius-full)",
+                  fontWeight: 700,
+                  fontSize: "15px",
+                  cursor: "pointer",
+                  display:
+                    "inline-flex",
+                  alignItems:
+                    "center",
+                  gap: "8px",
+                }}
               >
                 <i className="fab fa-whatsapp" />
-
                 Contact Seller
               </button>
             ) : (
@@ -905,16 +860,32 @@ const SellerPage = () => {
                 state={{
                   from: `/seller/${sellerId}`,
                 }}
-                className="seller-login-btn"
               >
-                Sign in to contact
+                <button
+                  type="button"
+                  style={{
+                    padding:
+                      "10px 24px",
+                    background:
+                      "var(--primary)",
+                    color: "white",
+                    border: "none",
+                    borderRadius:
+                      "var(--radius-full)",
+                    fontWeight: 700,
+                    fontSize: "15px",
+                    cursor: "pointer",
+                  }}
+                >
+                  Sign in to contact
+                </button>
               </Link>
             )}
           </div>
         </div>
 
         {/* ====================================================
-            PRODUCTS TITLE
+            PRODUCTS
         ==================================================== */}
 
         <h2
@@ -927,14 +898,11 @@ const SellerPage = () => {
           Products by {sellerName}
         </h2>
 
-        {/* ====================================================
-            NO PRODUCTS
-        ==================================================== */}
-
-        {productCount === 0 ? (
+        {products.length === 0 ? (
           <div
             style={{
-              color: "var(--gray-500)",
+              color:
+                "var(--gray-500)",
               padding: "40px 0",
               textAlign: "center",
             }}
@@ -944,28 +912,29 @@ const SellerPage = () => {
               style={{
                 fontSize: "48px",
                 display: "block",
-                marginBottom: "12px",
+                marginBottom:
+                  "12px",
               }}
             />
 
-            This seller has not listed any
-            products yet.
+            This seller has not
+            listed any products yet.
           </div>
         ) : (
           <>
-            {/* ================================================
-                PRODUCTS GRID
-            ================================================ */}
-
             <div className="seller-products-grid">
               {products.map(
                 (product) => (
                   <div
-                    key={product._id}
-                    className="seller-product-card"
+                    key={
+                      product._id
+                    }
+                    className="product-card"
                   >
                     <ProductCard
-                      product={product}
+                      product={
+                        product
+                      }
                       isFavorite={isFavorite(
                         product._id
                       )}
@@ -980,10 +949,6 @@ const SellerPage = () => {
               )}
             </div>
 
-            {/* ================================================
-                PAGINATION
-            ================================================ */}
-
             {pagination &&
               pagination.totalPages >
                 1 && (
@@ -993,24 +958,24 @@ const SellerPage = () => {
                     justifyContent:
                       "center",
                     gap: "10px",
-                    marginTop: "30px",
+                    marginTop:
+                      "30px",
                   }}
                 >
                   <button
                     type="button"
-                    disabled
                     style={{
                       padding:
                         "8px 16px",
                       background:
                         "var(--primary)",
-                      color: "white",
+                      color:
+                        "white",
                       border: "none",
                       borderRadius:
                         "var(--radius-md)",
                       cursor:
-                        "not-allowed",
-                      opacity: 0.7,
+                        "pointer",
                     }}
                   >
                     Load More
