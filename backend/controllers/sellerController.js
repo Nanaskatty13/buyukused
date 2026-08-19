@@ -10,11 +10,13 @@ const Order = require("../models/Orders");
 // ============================================================
 
 const sanitizeSeller = (user) => {
-  const obj = user.toObject
+  const obj = user?.toObject
     ? user.toObject()
     : { ...user };
 
   delete obj.password;
+  delete obj.resetPasswordToken;
+  delete obj.resetPasswordExpires;
   delete obj.__v;
 
   return obj;
@@ -55,7 +57,9 @@ const parseSort = (sortStr) => {
     };
   }
 
-  const fields = sortStr.split(",");
+  const fields =
+    String(sortStr).split(",");
+
   const sortObj = {};
 
   fields.forEach((field) => {
@@ -74,7 +78,28 @@ const parseSort = (sortStr) => {
 
   return Object.keys(sortObj).length
     ? sortObj
-    : { createdAt: -1 };
+    : {
+        createdAt: -1,
+      };
+};
+
+// ============================================================
+// PROFILE IMAGE HELPER
+// ============================================================
+
+const getSellerAvatar = (seller) => {
+  if (!seller) {
+    return "";
+  }
+
+  // Preferred order.
+  return (
+    seller.avatar ||
+    seller.photoURL ||
+    seller.profileImage ||
+    seller.photo ||
+    ""
+  );
 };
 
 // ============================================================
@@ -111,7 +136,8 @@ exports.registerSeller = async (
     if (!user) {
       return res.status(404).json({
         success: false,
-        message: "User not found.",
+        message:
+          "User not found.",
       });
     }
 
@@ -147,7 +173,11 @@ exports.registerSeller = async (
       "";
 
     user.role = "seller";
+
     user.sellerStatus = "active";
+
+    // IMPORTANT:
+    // Save the exact date the user became a seller.
     user.sellerSince =
       new Date();
 
@@ -179,57 +209,85 @@ exports.registerSeller = async (
 // 2. GET PRIVATE SELLER PROFILE
 // ============================================================
 
-exports.getSellerProfile = async (
-  req,
-  res
-) => {
-  try {
-    const userId =
-      req.user._id || req.user.id;
+exports.getSellerProfile =
+  async (req, res) => {
+    try {
+      const userId =
+        req.user._id ||
+        req.user.id;
 
-    const seller =
-      await User.findById(userId)
-        .select("-password -__v")
-        .lean();
+      const seller =
+        await User.findById(userId)
+          .select(
+            "-password -resetPasswordToken -resetPasswordExpires -__v"
+          )
+          .lean();
 
-    if (!seller) {
-      return res.status(404).json({
+      if (!seller) {
+        return res.status(404).json({
+          success: false,
+          message:
+            "Seller not found.",
+        });
+      }
+
+      if (
+        !["seller", "admin"].includes(
+          seller.role
+        )
+      ) {
+        return res.status(403).json({
+          success: false,
+          message:
+            "Access denied. You are not a seller.",
+        });
+      }
+
+      const avatar =
+        getSellerAvatar(seller);
+
+      const memberSince =
+        seller.sellerSince ||
+        seller.createdAt ||
+        null;
+
+      return res.json({
+        success: true,
+
+        seller: {
+          ...seller,
+
+          avatar,
+
+          profileImage:
+            seller.profileImage ||
+            null,
+
+          photoURL:
+            seller.photoURL ||
+            null,
+
+          photo:
+            seller.photo ||
+            null,
+
+          memberSince,
+        },
+      });
+    } catch (error) {
+      console.error(
+        "Get seller profile error:",
+        error
+      );
+
+      return res.status(500).json({
         success: false,
         message:
-          "Seller not found.",
+          error.message ||
+          "Failed to fetch seller profile.",
       });
     }
-
-    if (
-      !["seller", "admin"].includes(
-        seller.role
-      )
-    ) {
-      return res.status(403).json({
-        success: false,
-        message:
-          "Access denied. You are not a seller.",
-      });
-    }
-
-    return res.json({
-      success: true,
-      seller,
-    });
-  } catch (error) {
-    console.error(
-      "Get seller profile error:",
-      error
-    );
-
-    return res.status(500).json({
-      success: false,
-      message:
-        error.message ||
-        "Failed to fetch seller profile.",
-    });
-  }
-};
+  };
 
 // ============================================================
 // 3. UPDATE SELLER PROFILE
@@ -244,13 +302,22 @@ exports.updateSellerProfile =
         description,
         phone,
         location,
+
+        // Profile image fields
         avatar,
+        photoURL,
         profileImage,
+        photo,
+
         businessType,
         taxId,
       } = req.body;
 
       const updates = {};
+
+      // ------------------------------------------------------
+      // SHOP NAME
+      // ------------------------------------------------------
 
       if (
         shopName !== undefined
@@ -259,6 +326,10 @@ exports.updateSellerProfile =
           String(shopName).trim();
       }
 
+      // ------------------------------------------------------
+      // SHOP DESCRIPTION
+      // ------------------------------------------------------
+
       if (
         shopDescription !== undefined
       ) {
@@ -266,17 +337,18 @@ exports.updateSellerProfile =
           String(
             shopDescription
           ).trim();
-      }
-
-      if (
-        description !== undefined &&
-        shopDescription === undefined
+      } else if (
+        description !== undefined
       ) {
         updates.shopDescription =
           String(
             description
           ).trim();
       }
+
+      // ------------------------------------------------------
+      // PHONE
+      // ------------------------------------------------------
 
       if (
         phone !== undefined
@@ -285,6 +357,10 @@ exports.updateSellerProfile =
           String(phone).trim();
       }
 
+      // ------------------------------------------------------
+      // LOCATION
+      // ------------------------------------------------------
+
       if (
         location !== undefined
       ) {
@@ -292,6 +368,11 @@ exports.updateSellerProfile =
           String(location).trim();
       }
 
+      // ------------------------------------------------------
+      // PROFILE IMAGE
+      // ------------------------------------------------------
+
+      // If avatar is supplied, make it the primary image.
       if (
         avatar !== undefined
       ) {
@@ -299,6 +380,15 @@ exports.updateSellerProfile =
           String(avatar).trim();
       }
 
+      // Support photoURL from older frontend code.
+      if (
+        photoURL !== undefined
+      ) {
+        updates.photoURL =
+          String(photoURL).trim();
+      }
+
+      // Support profileImage.
       if (
         profileImage !== undefined
       ) {
@@ -307,6 +397,18 @@ exports.updateSellerProfile =
             profileImage
           ).trim();
       }
+
+      // Support photo.
+      if (
+        photo !== undefined
+      ) {
+        updates.photo =
+          String(photo).trim();
+      }
+
+      // ------------------------------------------------------
+      // BUSINESS INFORMATION
+      // ------------------------------------------------------
 
       if (
         businessType !== undefined
@@ -322,6 +424,8 @@ exports.updateSellerProfile =
           String(taxId).trim();
       }
 
+      // Never allow profile update
+      // to change the user's role.
       delete updates.role;
 
       const seller =
@@ -333,7 +437,9 @@ exports.updateSellerProfile =
             runValidators: true,
           }
         )
-          .select("-password -__v")
+          .select(
+            "-password -resetPasswordToken -resetPasswordExpires -__v"
+          )
           .lean();
 
       if (!seller) {
@@ -344,11 +450,27 @@ exports.updateSellerProfile =
         });
       }
 
+      const sellerAvatar =
+        getSellerAvatar(seller);
+
+      const memberSince =
+        seller.sellerSince ||
+        seller.createdAt ||
+        null;
+
       return res.json({
         success: true,
         message:
           "Seller profile updated successfully.",
-        seller,
+
+        seller: {
+          ...seller,
+
+          avatar:
+            sellerAvatar,
+
+          memberSince,
+        },
       });
     } catch (error) {
       console.error(
@@ -389,6 +511,7 @@ exports.getSellerDashboard =
           case "today":
             startDate =
               new Date(now);
+
             startDate.setHours(
               0,
               0,
@@ -400,6 +523,7 @@ exports.getSellerDashboard =
           case "week":
             startDate =
               new Date(now);
+
             startDate.setDate(
               startDate.getDate() - 7
             );
@@ -408,6 +532,7 @@ exports.getSellerDashboard =
           case "month":
             startDate =
               new Date(now);
+
             startDate.setMonth(
               startDate.getMonth() - 1
             );
@@ -416,6 +541,7 @@ exports.getSellerDashboard =
           case "year":
             startDate =
               new Date(now);
+
             startDate.setFullYear(
               startDate.getFullYear() - 1
             );
@@ -452,15 +578,21 @@ exports.getSellerDashboard =
 
       orders.forEach(
         (order) => {
-          (order.items || []).forEach(
+          (
+            order.items || []
+          ).forEach(
             (item) => {
               if (
                 item.sellerId?.toString() ===
                 userId
               ) {
                 totalSales +=
-                  Number(item.price || 0) *
-                  Number(item.quantity || 0);
+                  Number(
+                    item.price || 0
+                  ) *
+                  Number(
+                    item.quantity || 0
+                  );
 
                 totalItemsSold +=
                   Number(
@@ -485,14 +617,20 @@ exports.getSellerDashboard =
 
       return res.json({
         success: true,
+
         stats: {
           products:
             productsCount,
+
           orders:
             orderIds.size,
+
           totalSales,
+
           totalItemsSold,
+
           pendingOrders,
+
           period,
         },
       });
@@ -562,11 +700,14 @@ exports.getMyProducts =
 
       return res.json({
         success: true,
+
         products,
+
         pagination: {
           page,
           limit,
           total,
+
           totalPages:
             Math.ceil(
               total / limit
@@ -660,9 +801,12 @@ exports.getSellerOrders =
 
             return {
               ...order,
+
               sellerItems,
+
               totalSellerItems:
                 sellerItems.length,
+
               sellerTotal:
                 sellerItems.reduce(
                   (
@@ -684,12 +828,15 @@ exports.getSellerOrders =
 
       return res.json({
         success: true,
+
         orders:
           processedOrders,
+
         pagination: {
           page,
           limit,
           total,
+
           totalPages:
             Math.ceil(
               total / limit
@@ -735,6 +882,7 @@ exports.getSellerEarnings =
           case "week":
             startDate =
               new Date(now);
+
             startDate.setDate(
               startDate.getDate() - 7
             );
@@ -743,6 +891,7 @@ exports.getSellerEarnings =
           case "month":
             startDate =
               new Date(now);
+
             startDate.setMonth(
               startDate.getMonth() - 1
             );
@@ -751,6 +900,7 @@ exports.getSellerEarnings =
           case "year":
             startDate =
               new Date(now);
+
             startDate.setFullYear(
               startDate.getFullYear() - 1
             );
@@ -823,11 +973,15 @@ exports.getSellerEarnings =
 
       return res.json({
         success: true,
+
         earnings:
           totalEarnings,
+
         itemsSold,
+
         orders:
           uniqueOrders.size,
+
         period,
       });
     } catch (error) {
@@ -856,7 +1010,10 @@ exports.getPublicSellerProfile =
         sellerId,
       } = req.params;
 
-      // Validate ID
+      // ------------------------------------------------------
+      // VALIDATE SELLER ID
+      // ------------------------------------------------------
+
       if (
         !mongoose.Types.ObjectId.isValid(
           sellerId
@@ -869,7 +1026,10 @@ exports.getPublicSellerProfile =
         });
       }
 
-      // Get seller
+      // ------------------------------------------------------
+      // FIND SELLER
+      // ------------------------------------------------------
+
       const seller =
         await User.findById(
           sellerId
@@ -882,16 +1042,28 @@ exports.getPublicSellerProfile =
               "shopName",
               "shopDescription",
               "location",
+
+              // Profile images
               "avatar",
+              "photoURL",
               "profileImage",
               "photo",
+
+              // Seller info
               "role",
+              "sellerStatus",
+              "sellerSince",
+
+              // Dates
               "createdAt",
               "updatedAt",
-              "sellerSince",
               "lastActive",
               "lastSeen",
+
+              // Contact
               "phone",
+
+              // Rating
               "rating",
             ].join(" ")
           )
@@ -905,38 +1077,37 @@ exports.getPublicSellerProfile =
         });
       }
 
-      // Count active products
+      // ------------------------------------------------------
+      // PRODUCT COUNT
+      // ------------------------------------------------------
+
       const productsCount =
         await Product.countDocuments({
           sellerId:
             seller._id,
+
           status: "active",
         });
 
       // ------------------------------------------------------
-      // PROFILE IMAGE
-      //
-      // Prefer avatar, then profileImage, then photo.
-      // This preserves the Cloudinary URL exactly.
+      // PROFILE PICTURE
       // ------------------------------------------------------
 
       const avatar =
-        seller.avatar ||
-        seller.profileImage ||
-        seller.photo ||
-        null;
+        getSellerAvatar(seller);
 
       // ------------------------------------------------------
       // SELLER DATE
-      //
-      // Prefer sellerSince if available.
-      // Otherwise use account createdAt.
       // ------------------------------------------------------
 
       const memberSince =
         seller.sellerSince ||
         seller.createdAt ||
         null;
+
+      // ------------------------------------------------------
+      // PUBLIC PROFILE
+      // ------------------------------------------------------
 
       const publicProfile = {
         _id:
@@ -963,11 +1134,14 @@ exports.getPublicSellerProfile =
           seller.location ||
           "",
 
-        // Main profile picture
+        // PRIMARY PROFILE IMAGE
         avatar,
 
-        // Also return the original fields
-        // in case frontend needs them.
+        // Compatibility fields
+        photoURL:
+          seller.photoURL ||
+          null,
+
         profileImage:
           seller.profileImage ||
           null,
@@ -984,17 +1158,19 @@ exports.getPublicSellerProfile =
           seller.role ||
           "seller",
 
-        // Account creation date
+        sellerStatus:
+          seller.sellerStatus ||
+          "active",
+
         createdAt:
           seller.createdAt ||
           null,
 
-        // Actual seller registration date
         sellerSince:
           seller.sellerSince ||
           null,
 
-        // Date frontend should display
+        // Frontend can use this directly.
         memberSince,
 
         lastActive:
@@ -1017,19 +1193,27 @@ exports.getPublicSellerProfile =
         "👤 Public seller profile:",
         {
           sellerId,
+
           name:
             publicProfile.name,
+
           avatar:
             publicProfile.avatar,
-          createdAt:
-            publicProfile.createdAt,
+
           sellerSince:
             publicProfile.sellerSince,
+
+          createdAt:
+            publicProfile.createdAt,
+
+          memberSince:
+            publicProfile.memberSince,
         }
       );
 
       return res.json({
         success: true,
+
         seller:
           publicProfile,
       });
@@ -1134,11 +1318,14 @@ exports.getPublicSellerProducts =
 
       return res.json({
         success: true,
+
         products,
+
         pagination: {
           page: pageNum,
           limit: limitNum,
           total,
+
           totalPages:
             Math.ceil(
               total /
