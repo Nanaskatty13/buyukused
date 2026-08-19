@@ -1,6 +1,7 @@
 // frontend/src/pages/ProductDetails.jsx
 import React, { useState, useEffect, useRef } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
+
 import { FaMotorcycle } from "react-icons/fa";
 
 import {
@@ -32,18 +33,13 @@ import {
   getTabletModelsByBrand,
   TABLET_COLORS,
   TABLET_SCREEN_SIZES,
-  CONNECTIVITY_OPTIONS as TABLET_CONNECTIVITY_OPTIONS,
-  YEAR_OPTIONS as TABLET_YEAR_OPTIONS,
+  CONNECTIVITY_OPTIONS,
+  YEAR_OPTIONS,
 } from "../components/TabletForm";
 
-// ── ✅ CORRECTED CONSOLE IMPORT (default only) ──────────────────
-import ConsoleForm from "../components/GameConsoleForm";
-
-// ── Reusable specifications component ────────────────────────────
-import ProductSpecifications from "../components/ProductSpecifications";
-
-// ── Brand lists for TV, Accessories ──────────────────────────────
+// ── Brand lists for TV, Consoles, Accessories ──────────────────
 const TV_BRANDS = ['Samsung', 'LG', 'Sony', 'TCL', 'Hisense', 'Panasonic', 'Philips', 'Vizio', 'Sharp', 'Other'];
+const CONSOLE_BRANDS = ['Sony PlayStation', 'Microsoft Xbox', 'Nintendo', 'Sega', 'Atari', 'Other'];
 const ACCESSORY_BRANDS = ['Apple', 'Samsung', 'Sony', 'Bose', 'Beats', 'JBL', 'Logitech', 'Razer', 'Corsair', 'SteelSeries', 'HyperX', 'Other'];
 
 // ── Unified colour list (iPhone colours + tablet colours) ──────
@@ -261,15 +257,6 @@ const ProductDetails = () => {
     // Tablet specific
     year: "",
     connectivity: "",
-    // Console specific
-    videoOutput: "",
-    region: "",
-    consoleType: "",
-    edition: "",
-    discDrive: "",
-    controllersIncluded: "",
-    battery: "",
-    resolution: "",
   });
 
   const [imagesToKeep, setImagesToKeep] = useState([]);
@@ -382,14 +369,6 @@ const ProductDetails = () => {
             graphics: p.graphics || "",
             year: p.year || "",
             connectivity: p.connectivity || "",
-            videoOutput: p.videoOutput || "",
-            region: p.region || "",
-            consoleType: p.consoleType || "",
-            edition: p.edition || "",
-            discDrive: p.discDrive || "",
-            controllersIncluded: p.controllersIncluded || "",
-            battery: p.battery || "",
-            resolution: p.resolution || "",
           });
 
           const existingImages =
@@ -701,14 +680,6 @@ const ProductDetails = () => {
           graphics: updated.product.graphics || "",
           year: updated.product.year || "",
           connectivity: updated.product.connectivity || "",
-          videoOutput: updated.product.videoOutput || "",
-          region: updated.product.region || "",
-          consoleType: updated.product.consoleType || "",
-          edition: updated.product.edition || "",
-          discDrive: updated.product.discDrive || "",
-          controllersIncluded: updated.product.controllersIncluded || "",
-          battery: updated.product.battery || "",
-          resolution: updated.product.resolution || "",
         });
       }
 
@@ -1177,6 +1148,144 @@ const ProductDetails = () => {
   const liked = isFavorite(product._id);
   const isSold = product.status === "sold";
 
+  const isLaptop = product.category === "Laptops";
+  const isTablet = product.category === "Tablets";
+  const isTV = product.category === "TVs" || product.category === "TV";
+  const isConsole = product.category === "Game Consoles" || product.category === "Consoles";
+  const isAccessory = product.category === "Accessories";
+  const isPhone = product.category === "Phones";
+
+  let specsTitle = "📋 Specifications";
+  if (isLaptop) specsTitle = "💻 Laptop Specifications";
+  else if (isTablet) specsTitle = "📲 Tablet Specifications";
+  else if (isTV) specsTitle = "📺 TV Specifications";
+  else if (isConsole) specsTitle = "🎮 Game Console Specifications";
+  else if (isAccessory) specsTitle = "🎧 Accessories Specifications";
+  else if (isPhone) specsTitle = "📱 Phone Specifications";
+
+  const SpecRow = ({ label, value, tooltip }) => (
+    <div>
+      <strong title={tooltip}>{label}:</strong> {value}
+    </div>
+  );
+
+  const renderSpecs = () => {
+    const specs = [];
+
+    if (product.condition) {
+      specs.push(<SpecRow key="condition" label="Condition" value={product.condition} />);
+    }
+    if (product.warranty) {
+      specs.push(<SpecRow key="warranty" label="Warranty" value={product.warranty} />);
+    }
+    if (product.negotiation) {
+      specs.push(<SpecRow key="negotiation" label="Negotiable" value="Yes" />);
+    }
+    if (product.swapAccepted) {
+      specs.push(<SpecRow key="swap" label="Swap Accepted" value="Yes" />);
+    }
+    if (product.color) {
+      specs.push(<SpecRow key="color" label="Color" value={product.color} />);
+    }
+
+    if (isLaptop) {
+      if (product.brand) specs.push(<SpecRow key="brand" label="Brand" value={product.brand} />);
+      if (product.model) specs.push(<SpecRow key="model" label="Model" value={product.model} />);
+      if (product.processor) {
+        specs.push(
+          <SpecRow
+            key="processor"
+            label="Processor"
+            value={product.processor}
+            tooltip="The brain of the computer; higher numbers and more cores mean better multitasking."
+          />
+        );
+      }
+      if (product.ram) {
+        specs.push(
+          <SpecRow
+            key="ram"
+            label="RAM"
+            value={product.ram}
+            tooltip="Temporary storage for active tasks; 8GB handles basic work, 16GB+ is recommended for gaming and heavy creative work."
+          />
+        );
+      }
+      if (product.storage) {
+        specs.push(
+          <SpecRow
+            key="storage"
+            label="Storage"
+            value={product.storage}
+            tooltip="Solid‑state drives (SSD) offer fast boot and load times compared to older hard drives (HDD)."
+          />
+        );
+      }
+      if (product.screenSize) {
+        specs.push(
+          <SpecRow
+            key="screenSize"
+            label="Screen Size"
+            value={product.screenSize}
+            tooltip="Display diagonal size in inches."
+          />
+        );
+      }
+      if (product.graphics) {
+        specs.push(
+          <SpecRow
+            key="graphics"
+            label="Graphics"
+            value={product.graphics}
+            tooltip="Handles visual rendering, video editing, and 3D gaming."
+          />
+        );
+      }
+      if (product.batteryHealth !== null && product.batteryHealth !== undefined) {
+        specs.push(<SpecRow key="battery" label="Battery Health" value={`${product.batteryHealth}%`} />);
+      }
+    } else if (isTablet) {
+      if (product.brand) specs.push(<SpecRow key="brand" label="Brand" value={product.brand} />);
+      if (product.model) specs.push(<SpecRow key="model" label="Model" value={product.model} />);
+      if (product.year) specs.push(<SpecRow key="year" label="Year" value={product.year} />);
+      if (product.storage) specs.push(<SpecRow key="storage" label="Storage" value={product.storage} />);
+      if (product.screenSize) specs.push(<SpecRow key="screenSize" label="Screen Size" value={product.screenSize} />);
+      if (product.connectivity) specs.push(<SpecRow key="connectivity" label="Connectivity" value={product.connectivity} />);
+      if (product.batteryHealth !== null && product.batteryHealth !== undefined) {
+        specs.push(<SpecRow key="battery" label="Battery Health" value={`${product.batteryHealth}%`} />);
+      }
+    } else if (isPhone) {
+      if (product.brand) specs.push(<SpecRow key="brand" label="Brand" value={product.brand} />);
+      if (product.model) specs.push(<SpecRow key="model" label="Model" value={product.model} />);
+      if (product.storage) specs.push(<SpecRow key="storage" label="Storage" value={product.storage} />);
+      if (product.screenSize) specs.push(<SpecRow key="screenSize" label="Screen Size" value={product.screenSize} />);
+      if (product.batteryHealth !== null && product.batteryHealth !== undefined) {
+        specs.push(<SpecRow key="battery" label="Battery Health" value={`${product.batteryHealth}%`} />);
+      }
+      if (product.faceId) specs.push(<SpecRow key="faceId" label="Face ID" value={product.faceId} />);
+      if (product.simStatus) specs.push(<SpecRow key="sim" label="SIM Status" value={product.simStatus} />);
+    } else if (isTV) {
+      if (product.brand) specs.push(<SpecRow key="brand" label="Brand" value={product.brand} />);
+      if (product.model) specs.push(<SpecRow key="model" label="Model" value={product.model} />);
+      if (product.screenSize) specs.push(<SpecRow key="screenSize" label="Screen Size" value={product.screenSize} />);
+      if (product.connectivity) specs.push(<SpecRow key="connectivity" label="Connectivity" value={product.connectivity} />);
+    } else if (isConsole) {
+      if (product.brand) specs.push(<SpecRow key="brand" label="Brand" value={product.brand} />);
+      if (product.model) specs.push(<SpecRow key="model" label="Model" value={product.model} />);
+      if (product.connectivity) specs.push(<SpecRow key="connectivity" label="Connectivity" value={product.connectivity} />);
+    } else if (isAccessory) {
+      if (product.brand) specs.push(<SpecRow key="brand" label="Brand" value={product.brand} />);
+      if (product.model) specs.push(<SpecRow key="model" label="Model" value={product.model} />);
+      if (product.connectivity) specs.push(<SpecRow key="connectivity" label="Connectivity" value={product.connectivity} />);
+    }
+
+    return specs;
+  };
+
+  const hasAnySpec = () => {
+    return renderSpecs().length > 0;
+  };
+
   const isSeller = user && (
     product?.sellerId?._id === user._id ||
     product?.sellerId === user._id ||
@@ -1519,8 +1628,37 @@ const ProductDetails = () => {
               )}
             </div>
 
-            {/* Specifications – using the reusable component */}
-            <ProductSpecifications product={product} />
+            {hasAnySpec() && (
+              <div
+                className="specs"
+                style={{
+                  marginBottom: "20px",
+                  padding: "16px",
+                  background: "var(--gray-50)",
+                  borderRadius: "var(--radius-md)",
+                }}
+              >
+                <h3
+                  style={{
+                    fontSize: "16px",
+                    fontWeight: 700,
+                    marginBottom: "12px",
+                  }}
+                >
+                  {specsTitle}
+                </h3>
+                <div
+                  className="specs-grid"
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))",
+                    gap: "8px",
+                  }}
+                >
+                  {renderSpecs()}
+                </div>
+              </div>
+            )}
 
             <div
               className="description"
@@ -2180,231 +2318,214 @@ const ProductDetails = () => {
                   />
                 </div>
 
-                {/* ─── Conditionally render the appropriate form ─── */}
-                {editForm.category === "Game Consoles" ? (
-                  <ConsoleForm
-                    formData={editForm}
-                    handleChange={handleEditChange}
-                    handleCheckboxChange={handleEditChange}
-                    errors={{}}
+                {/* Condition */}
+                <div className="form-group" style={{ marginBottom: "12px" }}>
+                  <label style={{ display: "block", fontWeight: 600, fontSize: "13px", marginBottom: "4px" }}>
+                    Condition
+                  </label>
+                  <select
+                    name="condition"
+                    value={editForm.condition}
+                    onChange={handleEditChange}
+                    style={{
+                      width: "100%",
+                      padding: "10px 14px",
+                      border: "1.5px solid var(--gray-200)",
+                      borderRadius: "var(--radius-md)",
+                      fontSize: "14px",
+                    }}
+                  >
+                    <option value="Brand New">Brand New</option>
+                    <option value="Like New">Like New</option>
+                    <option value="Excellent">Excellent</option>
+                    <option value="Good">Good</option>
+                    <option value="Fair">Fair</option>
+                    <option value="Poor">Poor</option>
+                  </select>
+                </div>
+
+                {/* Storage */}
+                <div className="form-group" style={{ marginBottom: "12px" }}>
+                  <label style={{ display: "block", fontWeight: 600, fontSize: "13px", marginBottom: "4px" }}>
+                    Storage
+                  </label>
+                  <select
+                    name="storage"
+                    value={editForm.storage}
+                    onChange={handleEditChange}
+                    style={{
+                      width: "100%",
+                      padding: "10px 14px",
+                      border: "1.5px solid var(--gray-200)",
+                      borderRadius: "var(--radius-md)",
+                      fontSize: "14px",
+                    }}
+                  >
+                    <option value="">Select storage</option>
+                    <option value="16GB">16GB</option>
+                    <option value="32GB">32GB</option>
+                    <option value="64GB">64GB</option>
+                    <option value="128GB">128GB</option>
+                    <option value="256GB">256GB</option>
+                    <option value="512GB">512GB</option>
+                    <option value="1TB">1TB</option>
+                    <option value="2TB">2TB</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+
+                {/* Color */}
+                <div className="form-group" style={{ marginBottom: "12px" }}>
+                  <label style={{ display: "block", fontWeight: 600, fontSize: "13px", marginBottom: "4px" }}>
+                    Color
+                  </label>
+                  <select
+                    name="color"
+                    value={editForm.color}
+                    onChange={handleEditChange}
+                    style={{
+                      width: "100%",
+                      padding: "10px 14px",
+                      border: "1.5px solid var(--gray-200)",
+                      borderRadius: "var(--radius-md)",
+                      fontSize: "14px",
+                    }}
+                  >
+                    <option value="">Select color</option>
+                    {ALL_COLORS.map((color) => (
+                      <option key={color} value={color}>
+                        {color}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Battery Health */}
+                <div className="form-group" style={{ marginBottom: "12px" }}>
+                  <label style={{ display: "block", fontWeight: 600, fontSize: "13px", marginBottom: "4px" }}>
+                    Battery Health (%)
+                  </label>
+                  <input
+                    type="number"
+                    name="batteryHealth"
+                    value={editForm.batteryHealth}
+                    onChange={handleEditChange}
+                    min="0"
+                    max="100"
+                    step="1"
+                    style={{
+                      width: "100%",
+                      padding: "10px 14px",
+                      border: "1.5px solid var(--gray-200)",
+                      borderRadius: "var(--radius-md)",
+                      fontSize: "14px",
+                    }}
                   />
-                ) : (
-                  <>
-                    {/* Generic fields for other categories */}
-                    {/* Condition */}
-                    <div className="form-group" style={{ marginBottom: "12px" }}>
-                      <label style={{ display: "block", fontWeight: 600, fontSize: "13px", marginBottom: "4px" }}>
-                        Condition
-                      </label>
-                      <select
-                        name="condition"
-                        value={editForm.condition}
-                        onChange={handleEditChange}
-                        style={{
-                          width: "100%",
-                          padding: "10px 14px",
-                          border: "1.5px solid var(--gray-200)",
-                          borderRadius: "var(--radius-md)",
-                          fontSize: "14px",
-                        }}
-                      >
-                        <option value="Brand New">Brand New</option>
-                        <option value="Like New">Like New</option>
-                        <option value="Excellent">Excellent</option>
-                        <option value="Good">Good</option>
-                        <option value="Fair">Fair</option>
-                        <option value="Poor">Poor</option>
-                      </select>
-                    </div>
+                </div>
 
-                    {/* Storage */}
-                    <div className="form-group" style={{ marginBottom: "12px" }}>
-                      <label style={{ display: "block", fontWeight: 600, fontSize: "13px", marginBottom: "4px" }}>
-                        Storage
-                      </label>
-                      <select
-                        name="storage"
-                        value={editForm.storage}
-                        onChange={handleEditChange}
-                        style={{
-                          width: "100%",
-                          padding: "10px 14px",
-                          border: "1.5px solid var(--gray-200)",
-                          borderRadius: "var(--radius-md)",
-                          fontSize: "14px",
-                        }}
-                      >
-                        <option value="">Select storage</option>
-                        <option value="16GB">16GB</option>
-                        <option value="32GB">32GB</option>
-                        <option value="64GB">64GB</option>
-                        <option value="128GB">128GB</option>
-                        <option value="256GB">256GB</option>
-                        <option value="512GB">512GB</option>
-                        <option value="1TB">1TB</option>
-                        <option value="2TB">2TB</option>
-                        <option value="Other">Other</option>
-                      </select>
-                    </div>
+                {/* Face ID */}
+                <div className="form-group" style={{ marginBottom: "12px" }}>
+                  <label style={{ display: "block", fontWeight: 600, fontSize: "13px", marginBottom: "4px" }}>
+                    Face ID
+                  </label>
+                  <select
+                    name="faceId"
+                    value={editForm.faceId}
+                    onChange={handleEditChange}
+                    style={{
+                      width: "100%",
+                      padding: "10px 14px",
+                      border: "1.5px solid var(--gray-200)",
+                      borderRadius: "var(--radius-md)",
+                      fontSize: "14px",
+                    }}
+                  >
+                    <option value="">Select Face ID status</option>
+                    <option value="Working">Working</option>
+                    <option value="Not Working">Not Working</option>
+                    <option value="Not Available">Not Available</option>
+                  </select>
+                </div>
 
-                    {/* Color */}
-                    <div className="form-group" style={{ marginBottom: "12px" }}>
-                      <label style={{ display: "block", fontWeight: 600, fontSize: "13px", marginBottom: "4px" }}>
-                        Color
-                      </label>
-                      <select
-                        name="color"
-                        value={editForm.color}
-                        onChange={handleEditChange}
-                        style={{
-                          width: "100%",
-                          padding: "10px 14px",
-                          border: "1.5px solid var(--gray-200)",
-                          borderRadius: "var(--radius-md)",
-                          fontSize: "14px",
-                        }}
-                      >
-                        <option value="">Select color</option>
-                        {ALL_COLORS.map((color) => (
-                          <option key={color} value={color}>
-                            {color}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+                {/* SIM Status */}
+                <div className="form-group" style={{ marginBottom: "12px" }}>
+                  <label style={{ display: "block", fontWeight: 600, fontSize: "13px", marginBottom: "4px" }}>
+                    SIM Status
+                  </label>
+                  <select
+                    name="simStatus"
+                    value={editForm.simStatus}
+                    onChange={handleEditChange}
+                    style={{
+                      width: "100%",
+                      padding: "10px 14px",
+                      border: "1.5px solid var(--gray-200)",
+                      borderRadius: "var(--radius-md)",
+                      fontSize: "14px",
+                    }}
+                  >
+                    <option value="">Select SIM status</option>
+                    <option value="eSIM Unlocked">eSIM Unlocked</option>
+                    <option value="SIM Unlocked">SIM Unlocked</option>
+                    <option value="Locked">Locked</option>
+                    <option value="Bypass">Bypass</option>
+                  </select>
+                </div>
 
-                    {/* Battery Health */}
-                    <div className="form-group" style={{ marginBottom: "12px" }}>
-                      <label style={{ display: "block", fontWeight: 600, fontSize: "13px", marginBottom: "4px" }}>
-                        Battery Health (%)
-                      </label>
-                      <input
-                        type="number"
-                        name="batteryHealth"
-                        value={editForm.batteryHealth}
-                        onChange={handleEditChange}
-                        min="0"
-                        max="100"
-                        step="1"
-                        style={{
-                          width: "100%",
-                          padding: "10px 14px",
-                          border: "1.5px solid var(--gray-200)",
-                          borderRadius: "var(--radius-md)",
-                          fontSize: "14px",
-                        }}
-                      />
-                    </div>
+                {/* Warranty */}
+                <div className="form-group" style={{ marginBottom: "12px" }}>
+                  <label style={{ display: "block", fontWeight: 600, fontSize: "13px", marginBottom: "4px" }}>
+                    Warranty Period
+                  </label>
+                  <select
+                    name="warranty"
+                    value={editForm.warranty}
+                    onChange={handleEditChange}
+                    style={{
+                      width: "100%",
+                      padding: "10px 14px",
+                      border: "1.5px solid var(--gray-200)",
+                      borderRadius: "var(--radius-md)",
+                      fontSize: "14px",
+                    }}
+                  >
+                    <option value="">No warranty</option>
+                    <option value="1 week">1 week</option>
+                    <option value="2 weeks">2 weeks</option>
+                    <option value="3 weeks">3 weeks</option>
+                    <option value="4 weeks">4 weeks</option>
+                    {Array.from({ length: 12 }, (_, i) => i + 1).map((months) => (
+                      <option key={months} value={`${months} month${months > 1 ? 's' : ''}`}>
+                        {months} month{months > 1 ? 's' : ''}
+                      </option>
+                    ))}
+                    <option value="1 year">1 year</option>
+                  </select>
+                </div>
 
-                    {/* Face ID (only for phones) */}
-                    {editForm.category === "Phones" && (
-                      <div className="form-group" style={{ marginBottom: "12px" }}>
-                        <label style={{ display: "block", fontWeight: 600, fontSize: "13px", marginBottom: "4px" }}>
-                          Face ID
-                        </label>
-                        <select
-                          name="faceId"
-                          value={editForm.faceId}
-                          onChange={handleEditChange}
-                          style={{
-                            width: "100%",
-                            padding: "10px 14px",
-                            border: "1.5px solid var(--gray-200)",
-                            borderRadius: "var(--radius-md)",
-                            fontSize: "14px",
-                          }}
-                        >
-                          <option value="">Select Face ID status</option>
-                          <option value="Working">Working</option>
-                          <option value="Not Working">Not Working</option>
-                          <option value="Not Available">Not Available</option>
-                        </select>
-                      </div>
-                    )}
+                {/* Negotiation / Swap */}
+                <div style={{ display: "flex", gap: "20px", marginBottom: "12px", flexWrap: "wrap" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <input
+                      type="checkbox"
+                      name="negotiation"
+                      checked={editForm.negotiation}
+                      onChange={handleEditChange}
+                    />
+                    <label style={{ fontWeight: 600, fontSize: "13px" }}>Negotiation</label>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <input
+                      type="checkbox"
+                      name="swapAccepted"
+                      checked={editForm.swapAccepted}
+                      onChange={handleEditChange}
+                    />
+                    <label style={{ fontWeight: 600, fontSize: "13px" }}>Swap Accepted</label>
+                  </div>
+                </div>
 
-                    {/* SIM Status (only for phones) */}
-                    {editForm.category === "Phones" && (
-                      <div className="form-group" style={{ marginBottom: "12px" }}>
-                        <label style={{ display: "block", fontWeight: 600, fontSize: "13px", marginBottom: "4px" }}>
-                          SIM Status
-                        </label>
-                        <select
-                          name="simStatus"
-                          value={editForm.simStatus}
-                          onChange={handleEditChange}
-                          style={{
-                            width: "100%",
-                            padding: "10px 14px",
-                            border: "1.5px solid var(--gray-200)",
-                            borderRadius: "var(--radius-md)",
-                            fontSize: "14px",
-                          }}
-                        >
-                          <option value="">Select SIM status</option>
-                          <option value="eSIM Unlocked">eSIM Unlocked</option>
-                          <option value="SIM Unlocked">SIM Unlocked</option>
-                          <option value="Locked">Locked</option>
-                          <option value="Bypass">Bypass</option>
-                        </select>
-                      </div>
-                    )}
-
-                    {/* Warranty */}
-                    <div className="form-group" style={{ marginBottom: "12px" }}>
-                      <label style={{ display: "block", fontWeight: 600, fontSize: "13px", marginBottom: "4px" }}>
-                        Warranty Period
-                      </label>
-                      <select
-                        name="warranty"
-                        value={editForm.warranty}
-                        onChange={handleEditChange}
-                        style={{
-                          width: "100%",
-                          padding: "10px 14px",
-                          border: "1.5px solid var(--gray-200)",
-                          borderRadius: "var(--radius-md)",
-                          fontSize: "14px",
-                        }}
-                      >
-                        <option value="">No warranty</option>
-                        <option value="1 week">1 week</option>
-                        <option value="2 weeks">2 weeks</option>
-                        <option value="3 weeks">3 weeks</option>
-                        <option value="4 weeks">4 weeks</option>
-                        {Array.from({ length: 12 }, (_, i) => i + 1).map((months) => (
-                          <option key={months} value={`${months} month${months > 1 ? 's' : ''}`}>
-                            {months} month{months > 1 ? 's' : ''}
-                          </option>
-                        ))}
-                        <option value="1 year">1 year</option>
-                      </select>
-                    </div>
-
-                    {/* Negotiation / Swap */}
-                    <div style={{ display: "flex", gap: "20px", marginBottom: "12px", flexWrap: "wrap" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                        <input
-                          type="checkbox"
-                          name="negotiation"
-                          checked={editForm.negotiation}
-                          onChange={handleEditChange}
-                        />
-                        <label style={{ fontWeight: 600, fontSize: "13px" }}>Negotiation</label>
-                      </div>
-                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                        <input
-                          type="checkbox"
-                          name="swapAccepted"
-                          checked={editForm.swapAccepted}
-                          onChange={handleEditChange}
-                        />
-                        <label style={{ fontWeight: 600, fontSize: "13px" }}>Swap Accepted</label>
-                      </div>
-                    </div>
-                  </>
-                )}
-
-                {/* Status - common for all */}
+                {/* Status */}
                 <div className="form-group" style={{ marginBottom: "12px" }}>
                   <label style={{ display: "block", fontWeight: 600, fontSize: "13px", marginBottom: "4px" }}>
                     Status
