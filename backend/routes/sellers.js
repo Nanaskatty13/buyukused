@@ -2,7 +2,6 @@
 
 const express = require("express");
 const router = express.Router();
-
 const {
   body,
   query,
@@ -30,6 +29,9 @@ const {
 // AUTH MIDDLEWARE
 // ============================================================
 
+// IMPORTANT:
+// auth.js exports verifyToken and isSeller.
+// It does NOT export protect.
 const {
   verifyToken,
   isSeller,
@@ -57,15 +59,12 @@ const validate = (req, res, next) => {
 };
 
 // ============================================================
-// 1. REGISTER AS SELLER
-// POST /sellers/register
-// PRIVATE
+// 1. SELLER ACCOUNT MANAGEMENT
 // ============================================================
 
 router.post(
   "/register",
   verifyToken,
-
   [
     body("termsAccepted")
       .isBoolean()
@@ -79,10 +78,7 @@ router.post(
       .optional()
       .isString()
       .trim()
-      .isLength({
-        min: 2,
-        max: 100,
-      })
+      .isLength({ min: 2, max: 100 })
       .withMessage(
         "Shop name must be between 2 and 100 characters"
       ),
@@ -102,9 +98,7 @@ router.post(
       .optional()
       .isString()
       .trim()
-      .isLength({
-        max: 500,
-      })
+      .isLength({ max: 500 })
       .withMessage(
         "Description must be less than 500 characters"
       ),
@@ -113,22 +107,17 @@ router.post(
       .optional()
       .isString()
       .trim()
-      .isLength({
-        min: 5,
-        max: 50,
-      })
+      .isLength({ min: 5, max: 50 })
       .withMessage(
         "Tax ID must be between 5 and 50 characters"
       ),
   ],
-
   validate,
   registerSeller
 );
 
 // ============================================================
-// 2. PRIVATE SELLER PROFILE
-// GET /sellers/profile
+// PRIVATE SELLER PROFILE
 // ============================================================
 
 router.get(
@@ -138,38 +127,18 @@ router.get(
   getSellerProfile
 );
 
-// ============================================================
-// 3. UPDATE SELLER PROFILE
-// PUT /sellers/profile
-// ============================================================
-
 router.put(
   "/profile",
   verifyToken,
   isSeller,
-
   [
     body("shopName")
       .optional()
       .isString()
       .trim()
-      .isLength({
-        min: 2,
-        max: 100,
-      })
+      .isLength({ min: 2, max: 100 })
       .withMessage(
         "Shop name must be between 2 and 100 characters"
-      ),
-
-    body("shopDescription")
-      .optional()
-      .isString()
-      .trim()
-      .isLength({
-        max: 500,
-      })
-      .withMessage(
-        "Shop description must be less than 500 characters"
       ),
 
     body("businessType")
@@ -183,16 +152,13 @@ router.put(
       ])
       .withMessage("Invalid business type"),
 
-    body("taxId")
+    body("shopDescription")
       .optional()
       .isString()
       .trim()
-      .isLength({
-        min: 5,
-        max: 50,
-      })
+      .isLength({ max: 500 })
       .withMessage(
-        "Tax ID must be between 5 and 50 characters"
+        "Description must be less than 500 characters"
       ),
 
     body("phone")
@@ -208,10 +174,7 @@ router.put(
       .optional()
       .isString()
       .trim()
-      .isLength({
-        min: 2,
-        max: 100,
-      })
+      .isLength({ min: 2, max: 100 })
       .withMessage(
         "Location must be between 2 and 100 characters"
       ),
@@ -225,22 +188,18 @@ router.put(
         "Avatar must be a valid URL"
       ),
   ],
-
   validate,
   updateSellerProfile
 );
 
 // ============================================================
-// 4. SELLER DASHBOARD
-// GET /sellers/dashboard
-// PRIVATE
+// 2. DASHBOARD
 // ============================================================
 
 router.get(
   "/dashboard",
   verifyToken,
   isSeller,
-
   [
     query("period")
       .optional()
@@ -255,22 +214,18 @@ router.get(
       ])
       .withMessage("Invalid period"),
   ],
-
   validate,
   getSellerDashboard
 );
 
 // ============================================================
-// 5. SELLER EARNINGS
-// GET /sellers/earnings
-// PRIVATE
+// 3. EARNINGS
 // ============================================================
 
 router.get(
   "/earnings",
   verifyToken,
   isSeller,
-
   [
     query("period")
       .optional()
@@ -284,28 +239,22 @@ router.get(
       ])
       .withMessage("Invalid period"),
   ],
-
   validate,
   getSellerEarnings
 );
 
 // ============================================================
-// 6. SELLER PRODUCTS
-// GET /sellers/products
-// PRIVATE
+// 4. SELLER PRODUCTS
 // ============================================================
 
 router.get(
   "/products",
   verifyToken,
   isSeller,
-
   [
     query("page")
       .optional()
-      .isInt({
-        min: 1,
-      })
+      .isInt({ min: 1 })
       .withMessage(
         "Page must be a positive integer"
       )
@@ -313,10 +262,7 @@ router.get(
 
     query("limit")
       .optional()
-      .isInt({
-        min: 1,
-        max: 50,
-      })
+      .isInt({ min: 1, max: 50 })
       .withMessage(
         "Limit must be between 1 and 50"
       )
@@ -327,9 +273,7 @@ router.get(
       .isString()
       .trim()
       .matches(/^-?[a-zA-Z0-9]+$/)
-      .withMessage(
-        "Invalid sort field"
-      ),
+      .withMessage("Invalid sort field"),
 
     query("status")
       .optional()
@@ -341,32 +285,24 @@ router.get(
         "sold",
         "inactive",
       ])
-      .withMessage(
-        "Invalid status"
-      ),
+      .withMessage("Invalid status"),
   ],
-
   validate,
   getMyProducts
 );
 
 // ============================================================
-// 7. SELLER ORDERS
-// GET /sellers/orders
-// PRIVATE
+// 5. SELLER ORDERS
 // ============================================================
 
 router.get(
   "/orders",
   verifyToken,
   isSeller,
-
   [
     query("page")
       .optional()
-      .isInt({
-        min: 1,
-      })
+      .isInt({ min: 1 })
       .withMessage(
         "Page must be a positive integer"
       )
@@ -374,10 +310,7 @@ router.get(
 
     query("limit")
       .optional()
-      .isInt({
-        min: 1,
-        max: 50,
-      })
+      .isInt({ min: 1, max: 50 })
       .withMessage(
         "Limit must be between 1 and 50"
       )
@@ -398,53 +331,25 @@ router.get(
         "Invalid order status"
       ),
   ],
-
   validate,
   getSellerOrders
 );
 
 // ============================================================
-// 8. PUBLIC SELLER PROFILE
-// GET /sellers/:sellerId
-// PUBLIC
-// ============================================================
-
-router.get(
-  "/:sellerId",
-
-  [
-    param("sellerId")
-      .isMongoId()
-      .withMessage(
-        "Invalid seller ID"
-      ),
-  ],
-
-  validate,
-  getPublicSellerProfile
-);
-
-// ============================================================
-// 9. PUBLIC SELLER PRODUCTS
-// GET /sellers/:sellerId/products
-// PUBLIC
+// 6. PUBLIC SELLER PRODUCTS
+// IMPORTANT: Put /:sellerId/products BEFORE /:sellerId
 // ============================================================
 
 router.get(
   "/:sellerId/products",
-
   [
     param("sellerId")
       .isMongoId()
-      .withMessage(
-        "Invalid seller ID"
-      ),
+      .withMessage("Invalid seller ID"),
 
     query("page")
       .optional()
-      .isInt({
-        min: 1,
-      })
+      .isInt({ min: 1 })
       .withMessage(
         "Page must be a positive integer"
       )
@@ -452,10 +357,7 @@ router.get(
 
     query("limit")
       .optional()
-      .isInt({
-        min: 1,
-        max: 50,
-      })
+      .isInt({ min: 1, max: 50 })
       .withMessage(
         "Limit must be between 1 and 50"
       )
@@ -466,13 +368,25 @@ router.get(
       .isString()
       .trim()
       .matches(/^-?[a-zA-Z0-9]+$/)
-      .withMessage(
-        "Invalid sort field"
-      ),
+      .withMessage("Invalid sort field"),
   ],
-
   validate,
   getPublicSellerProducts
+);
+
+// ============================================================
+// 7. PUBLIC SELLER PROFILE
+// ============================================================
+
+router.get(
+  "/:sellerId",
+  [
+    param("sellerId")
+      .isMongoId()
+      .withMessage("Invalid seller ID"),
+  ],
+  validate,
+  getPublicSellerProfile
 );
 
 // ============================================================
