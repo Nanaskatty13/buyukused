@@ -7,73 +7,40 @@ const User = require("../models/User");
 // VERIFY JWT TOKEN
 // ============================================================
 
-const verifyToken = async (
-  req,
-  res,
-  next
-) => {
+const verifyToken = async (req, res, next) => {
   try {
-    // ----------------------------------------------------------
-    // Check JWT secret
-    // ----------------------------------------------------------
-
     if (!process.env.JWT_SECRET) {
-      console.error(
-        "❌ JWT_SECRET is not configured"
-      );
+      console.error("❌ JWT_SECRET is not configured");
 
       return res.status(500).json({
         success: false,
-        message:
-          "Server authentication is not configured",
+        message: "Server authentication is not configured",
       });
     }
 
-    // ----------------------------------------------------------
-    // Authorization header
-    // ----------------------------------------------------------
+    const authHeader = req.headers.authorization || "";
 
-    const authHeader =
-      req.headers.authorization || "";
-
-    if (
-      !authHeader.startsWith("Bearer ")
-    ) {
+    if (!authHeader.startsWith("Bearer ")) {
       return res.status(401).json({
         success: false,
-        message:
-          "No authentication token provided",
+        message: "No authentication token provided",
       });
     }
 
-    // ----------------------------------------------------------
-    // Extract token
-    // ----------------------------------------------------------
-
-    const token =
-      authHeader
-        .substring(7)
-        .trim();
+    const token = authHeader.substring(7).trim();
 
     if (!token) {
       return res.status(401).json({
         success: false,
-        message:
-          "Authentication token missing",
+        message: "Authentication token missing",
       });
     }
 
-    // ----------------------------------------------------------
-    // Verify token
-    // ----------------------------------------------------------
+    const decoded = jwt.verify(
+      token,
+      process.env.JWT_SECRET
+    );
 
-    const decoded =
-      jwt.verify(
-        token,
-        process.env.JWT_SECRET
-      );
-
-    // Support all common JWT ID names
     const userId =
       decoded.id ||
       decoded._id ||
@@ -82,50 +49,33 @@ const verifyToken = async (
     if (!userId) {
       return res.status(401).json({
         success: false,
-        message:
-          "Invalid token payload",
+        message: "Invalid token payload",
       });
     }
 
-    // ----------------------------------------------------------
-    // Find user
-    // ----------------------------------------------------------
-
-    const user =
-      await User.findById(userId)
-        .select("-password");
+    const user = await User.findById(userId).select("-password");
 
     if (!user) {
       return res.status(401).json({
         success: false,
-        message:
-          "User not found",
+        message: "User not found",
       });
     }
-
-    // ----------------------------------------------------------
-    // Account status
-    // ----------------------------------------------------------
 
     if (user.isActive === false) {
       return res.status(403).json({
         success: false,
-        message:
-          "Account is deactivated",
+        message: "Account is deactivated",
       });
     }
 
-    // ----------------------------------------------------------
-    // Attach user
-    // ----------------------------------------------------------
-
+    // Attach full user document
     req.user = user;
 
-    req.userId =
-      user._id.toString();
+    // Convenient user ID
+    req.userId = user._id.toString();
 
     // Keep decoded JWT available
-    // for middleware/controllers that need it.
     req.auth = decoded;
 
     next();
@@ -135,44 +85,23 @@ const verifyToken = async (
       error.message
     );
 
-    // ----------------------------------------------------------
-    // Expired token
-    // ----------------------------------------------------------
-
-    if (
-      error.name ===
-      "TokenExpiredError"
-    ) {
+    if (error.name === "TokenExpiredError") {
       return res.status(401).json({
         success: false,
-        message:
-          "Token expired",
+        message: "Token expired",
       });
     }
 
-    // ----------------------------------------------------------
-    // Invalid token
-    // ----------------------------------------------------------
-
-    if (
-      error.name ===
-      "JsonWebTokenError"
-    ) {
+    if (error.name === "JsonWebTokenError") {
       return res.status(401).json({
         success: false,
-        message:
-          "Invalid token",
+        message: "Invalid token",
       });
     }
-
-    // ----------------------------------------------------------
-    // Generic authentication error
-    // ----------------------------------------------------------
 
     return res.status(401).json({
       success: false,
-      message:
-        "Authentication failed",
+      message: "Authentication failed",
     });
   }
 };
@@ -181,11 +110,7 @@ const verifyToken = async (
 // ADMIN ONLY
 // ============================================================
 
-const isAdmin = (
-  req,
-  res,
-  next
-) => {
+const isAdmin = (req, res, next) => {
   if (
     req.user &&
     req.user.role === "admin"
@@ -195,8 +120,7 @@ const isAdmin = (
 
   return res.status(403).json({
     success: false,
-    message:
-      "Access denied. Admin only.",
+    message: "Access denied. Admin only.",
   });
 };
 
@@ -204,11 +128,7 @@ const isAdmin = (
 // SELLER ONLY
 // ============================================================
 
-const isSeller = (
-  req,
-  res,
-  next
-) => {
+const isSeller = (req, res, next) => {
   if (
     req.user &&
     (
@@ -221,8 +141,7 @@ const isSeller = (
 
   return res.status(403).json({
     success: false,
-    message:
-      "Access denied. Seller only.",
+    message: "Access denied. Seller only.",
   });
 };
 
@@ -230,11 +149,7 @@ const isSeller = (
 // RIDER ONLY
 // ============================================================
 
-const isRider = (
-  req,
-  res,
-  next
-) => {
+const isRider = (req, res, next) => {
   if (
     req.user &&
     req.user.role === "rider"
@@ -244,8 +159,7 @@ const isRider = (
 
   return res.status(403).json({
     success: false,
-    message:
-      "Access denied. Rider only.",
+    message: "Access denied. Rider only.",
   });
 };
 
@@ -253,11 +167,7 @@ const isRider = (
 // CUSTOMER ONLY
 // ============================================================
 
-const isCustomer = (
-  req,
-  res,
-  next
-) => {
+const isCustomer = (req, res, next) => {
   if (
     req.user &&
     (
@@ -270,10 +180,24 @@ const isCustomer = (
 
   return res.status(403).json({
     success: false,
-    message:
-      "Access denied. Customer only.",
+    message: "Access denied. Customer only.",
   });
 };
+
+// ============================================================
+// BACKWARD-COMPATIBILITY ALIASES
+// ============================================================
+//
+// Your existing routes were using:
+//
+// const { protect } = require("../middleware/auth");
+// const seller = require("../middleware/seller");
+//
+// These aliases prevent undefined middleware errors.
+//
+
+const protect = verifyToken;
+const seller = isSeller;
 
 // ============================================================
 // EXPORTS
@@ -281,8 +205,14 @@ const isCustomer = (
 
 module.exports = {
   verifyToken,
+  protect,
+
   isAdmin,
   isSeller,
+
   isRider,
   isCustomer,
+
+  // Compatibility aliases
+  seller,
 };

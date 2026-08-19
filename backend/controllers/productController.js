@@ -734,10 +734,13 @@ exports.getProducts = async (
       products,
       total,
     ] = await Promise.all([
+      // ─── UPDATED: ALL POSSIBLE IMAGE FIELDS + lastActive ──
       Product.find(query)
         .populate(
           "sellerId",
-          "name email phone location avatar role"
+          "name email phone location " +
+          "avatar profileImage profilePicture profilePic photo picture image profile_pic profile_picture " +
+          "role lastActive lastSeen createdAt"
         )
         .sort({
           createdAt: -1,
@@ -814,12 +817,15 @@ exports.getProductById =
         });
       }
 
+      // ─── UPDATED: ALL POSSIBLE IMAGE FIELDS + lastActive ──
       const product =
         await Product.findById(
           id
         ).populate(
           "sellerId",
-          "name email phone location avatar role"
+          "name email phone location " +
+          "avatar profileImage profilePicture profilePic photo picture image profile_pic profile_picture " +
+          "role lastActive lastSeen createdAt"
         );
 
       if (!product) {
@@ -2032,13 +2038,16 @@ exports.getSellerProducts =
         });
       }
 
+      // ─── UPDATED: ALL POSSIBLE IMAGE FIELDS + lastActive ──
       const products =
         await Product.find({
           sellerId: userId,
         })
           .populate(
             "sellerId",
-            "name email phone location avatar role"
+            "name email phone location " +
+            "avatar profileImage profilePicture profilePic photo picture image profile_pic profile_picture " +
+            "role lastActive lastSeen createdAt"
           )
           .sort({
             createdAt: -1,

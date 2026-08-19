@@ -1770,6 +1770,14 @@ export const deleteProduct =
 export const updateProductStatus =
   products.updateStatus;
 
+// ─── NEW: GET SELLER PRODUCTS (public profile) ──────────────
+export const getSellerProducts = async (sellerId) => {
+  if (!sellerId) {
+    throw new Error("Seller ID is required");
+  }
+  return products.getAll({ sellerId });
+};
+
 // ================================================================
 // USER EXPORTS
 // ================================================================
@@ -2016,6 +2024,8 @@ const api = {
   deleteProduct,
 
   updateProductStatus,
+
+  getSellerProducts, // 👈 added
 
   getUsers,
 

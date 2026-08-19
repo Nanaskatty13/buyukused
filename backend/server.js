@@ -378,8 +378,10 @@ const adminRoutes =
 const deliveryRoutes =
   require("./routes/deliveryRoutes");
 
-// ─── ADD THIS ───
 const uploadRoutes = require("./routes/upload");
+
+// ─── ADD SELLER ROUTES ──────────────────────────────────────
+const sellerRoutes = require("./routes/sellers");
 
 console.log(
   "✅ Routes loaded successfully"
@@ -401,6 +403,15 @@ app.use(
 app.use(
   "/auth",
   authRoutes
+);
+
+// ============================================================
+// SELLER ROUTES (NEW)
+// ============================================================
+
+app.use(
+  "/sellers",
+  sellerRoutes
 );
 
 // ============================================================
@@ -482,6 +493,10 @@ console.log(
   "🚴 Delivery API mounted at: /api/deliveries"
 );
 
+console.log(
+  "🛒 Seller API mounted at: /sellers"
+);
+
 // ============================================================
 // 404 HANDLER
 // ============================================================
@@ -494,7 +509,8 @@ app.use(
 
     if (
       req.path.startsWith("/api") ||
-      req.path.startsWith("/auth")
+      req.path.startsWith("/auth") ||
+      req.path.startsWith("/sellers")
     ) {
       return res.status(404).json({
         success: false,
@@ -813,6 +829,10 @@ const start =
 
             console.log(
               "📤 Upload API: /api/upload"
+            );
+
+            console.log(
+              "🛒 Seller API: /sellers"
             );
           }
         );

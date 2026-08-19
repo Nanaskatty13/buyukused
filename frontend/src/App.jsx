@@ -7,7 +7,7 @@ import { CartProvider } from "./context/CartContext";
 
 import Navbar from "./components/Navbar";
 import FloatingPhone from "./components/FloatingPhone";
-import BackToTop from "./components/BackToTop";   // ✅ fixed path
+import BackToTop from "./components/BackToTop";
 
 // Pages
 import Home from "./pages/Home";
@@ -44,8 +44,12 @@ import Notifications from "./pages/Notifications";
 import Analytics from "./pages/Analytics";
 import Messages from "./pages/Messages";
 
-// ─── NEW: Seller Dashboard ──────────────────────────────────────
+// Seller routes
 import SellerProducts from "./seller/Products";
+import SellerPage from "./pages/SellerPage";
+
+// ─── NEW: Admin Seller Management ──────────────────────────────
+import Sellers from "./admin/Sellers";
 
 function App() {
   return (
@@ -89,7 +93,9 @@ function App() {
           <Route path="/book-rider" element={<BookRider />} />
           <Route path="/rider/dashboard" element={<RiderDashboard />} />
 
+          {/* ─── Admin Routes ─────────────────────────────────────── */}
           <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/admin/sellers" element={<Sellers />} />
 
           <Route path="/my-ads" element={<MyAds />} />
           <Route path="/analytics" element={<Analytics />} />
@@ -100,16 +106,14 @@ function App() {
           <Route path="/chat/:userId" element={<Messages />} />
           <Route path="/chat/:userId/:productId" element={<Messages />} />
 
-          {/* ─── SELLER ROUTES ──────────────────────────────────── */}
           <Route path="/seller/products" element={<SellerProducts />} />
+          <Route path="/seller/:sellerId" element={<SellerPage />} />
 
           <Route path="*" element={<Home />} />
         </Routes>
 
-        {/* Floating elements - placed after the main content */}
         <FloatingPhone />
-        <BackToTop />   {/* ✅ now it's rendered */}
-
+        <BackToTop />
       </CartProvider>
     </AuthProvider>
   );

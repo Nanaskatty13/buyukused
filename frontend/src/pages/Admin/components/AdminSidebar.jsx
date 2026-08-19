@@ -20,6 +20,13 @@ const AdminSidebar = ({
       label: "Users",
     },
 
+    // ─── NEW: Sellers management ──────────────────────────────
+    {
+      id: "sellers",
+      icon: "fa-store",
+      label: "Sellers",
+    },
+
     {
       id: "riders",
       icon: "fa-motorcycle",

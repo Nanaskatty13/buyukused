@@ -15,6 +15,7 @@ const Register = () => {
     confirmPassword: '',
     phone: '',
     country: '',
+    birthday: '', // 👈 NEW
     role: 'buyer',
   });
   const [error, setError] = useState('');
@@ -116,6 +117,21 @@ const Register = () => {
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
       return;
+    }
+
+    // 👇 Optional: check if user is at least 18
+    if (formData.birthday) {
+      const birthDate = new Date(formData.birthday);
+      const today = new Date();
+      let age = today.getFullYear() - birthDate.getFullYear();
+      const m = today.getMonth() - birthDate.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+      }
+      if (age < 18) {
+        setError('You must be at least 18 years old to register.');
+        return;
+      }
     }
 
     setLoading(true);
@@ -471,6 +487,33 @@ const Register = () => {
               </select>
               <small style={{ color: 'var(--gray-400)', display: 'block', marginTop: '4px' }}>
                 Select the country you are based in.
+              </small>
+            </div>
+
+            {/* 👇 NEW BIRTHDAY FIELD */}
+            <div className="form-group" style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', fontWeight: 600, fontSize: '13px', marginBottom: '4px' }}>
+                Date of Birth <span style={{ fontWeight: 400, color: 'var(--gray-400)' }}>(optional)</span>
+              </label>
+              <input
+                type="date"
+                name="birthday"
+                value={formData.birthday}
+                onChange={handleChange}
+                max={new Date().toISOString().split('T')[0]} // prevents future dates
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  border: '1.5px solid var(--gray-200)',
+                  borderRadius: 'var(--radius-md)',
+                  fontSize: '14px',
+                  fontFamily: 'inherit',
+                  transition: 'var(--transition)',
+                  background: 'white',
+                }}
+              />
+              <small style={{ color: 'var(--gray-400)', display: 'block', marginTop: '4px' }}>
+                You must be at least 18 years old to register.
               </small>
             </div>
 

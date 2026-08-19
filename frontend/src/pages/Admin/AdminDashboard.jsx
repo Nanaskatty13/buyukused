@@ -18,6 +18,9 @@ import ProductsTable from "./components/ProductsTable";
 import ReportsChart from "./components/ReportsChart";
 import Settings from "./components/Settings";
 
+// ─── NEW: Seller Management ──────────────────────────────────────
+import Sellers from "../../admin/Sellers";
+
 import {
   getProducts,
   getUsers,
@@ -1195,6 +1198,37 @@ const AdminDashboard = () => {
                 filteredProducts
               }
             />
+
+            {/* ─── Quick link to Sellers Management ─── */}
+            <div
+              style={{
+                marginTop: "24px",
+                display: "flex",
+                justifyContent: "center",
+              }}
+            >
+              <button
+                type="button"
+                onClick={() =>
+                  setActivePage("sellers")
+                }
+                style={{
+                  padding: "12px 24px",
+                  background: "#2563eb",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "8px",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                }}
+              >
+                <i className="fas fa-users" />
+                Manage Sellers & Users
+              </button>
+            </div>
           </>
         );
 
@@ -1232,6 +1266,9 @@ const AdminDashboard = () => {
             }
           />
         );
+
+      case "sellers":
+        return <Sellers />;
 
       case "reports":
         return (
@@ -1408,7 +1445,9 @@ const AdminDashboard = () => {
 
           {loading &&
           activePage !==
-            "riders" ? (
+            "riders" &&
+          activePage !==
+            "sellers" ? (
             <div className="admin-loading">
               Loading dashboard...
             </div>

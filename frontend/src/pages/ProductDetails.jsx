@@ -1,6 +1,6 @@
 // frontend/src/pages/ProductDetails.jsx
 import React, { useState, useEffect, useRef } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 
 import { FaMotorcycle } from "react-icons/fa";
 
@@ -1151,6 +1151,9 @@ const ProductDetails = () => {
     return seller.name || product.sellerName || 'Seller';
   })();
 
+  // ─── NEW: seller ID for the link ──────────────────────────────
+  const sellerId = product.sellerId?._id || product.sellerId || product.seller?._id || '';
+
   // ================================================================
   // RENDER
   // ================================================================
@@ -1656,7 +1659,7 @@ const ProductDetails = () => {
                 "No description provided."}
             </div>
 
-            {/* ─── SELLER CARD – using sellerName ─── */}
+            {/* ─── SELLER CARD – with clickable name ────────────── */}
             <div
               className="seller"
               style={{
@@ -1690,30 +1693,47 @@ const ProductDetails = () => {
               >
                 {(() => {
                   const seller = product.seller || product.sellerId || {};
-                  const image = seller.profileImage || seller.photo || seller.avatar || seller.profilePicture || null;
+                  
+                  // ─── ALL POSSIBLE FIELD NAMES ──────────────
+                  const image =
+                    seller.profileImage ||
+                    seller.photo ||
+                    seller.avatar ||
+                    seller.profilePicture ||
+                    seller.profilePic ||
+                    seller.picture ||
+                    seller.image ||
+                    seller.profile_pic ||
+                    seller.profile_picture ||
+                    null;
+
                   const name = seller.name || product.sellerName || 'KN Seller';
 
                   if (image) {
+                    const imageUrl = getImageUrl(image);
                     return (
                       <img
-                        src={getImageUrl(image)}
+                        src={imageUrl}
                         alt={name}
-                        style={{
-                          width: '100%',
-                          height: '100%',
-                          objectFit: 'cover',
-                        }}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                         onError={(e) => {
+                          // If image fails, fallback to icon
                           e.currentTarget.style.display = 'none';
-                          e.currentTarget.parentElement.textContent = name.charAt(0).toUpperCase();
+                          const parent = e.currentTarget.parentElement;
+                          parent.innerHTML = `<i class="fas fa-user-circle" style="font-size: 28px; color: var(--gray-400);"></i>`;
+                          parent.style.display = 'flex';
+                          parent.style.alignItems = 'center';
+                          parent.style.justifyContent = 'center';
                         }}
                       />
                     );
                   }
-                  return name.charAt(0).toUpperCase();
+
+                  // ─── FALLBACK: USER ICON ──────────────────
+                  return <i className="fas fa-user-circle" style={{ fontSize: '28px', color: 'var(--gray-400)' }} />;
                 })()}
 
-                {/* Status indicator */}
+                {/* Status dot */}
                 <span
                   className={`seller-status-dot ${
                     (() => {
@@ -1735,16 +1755,24 @@ const ProductDetails = () => {
 
               {/* Seller info */}
               <div style={{ flex: 1 }}>
-                <div
+                {/* ─── CLICKABLE SELLER NAME ───────────────────── */}
+                <Link
+                  to={`/seller/${sellerId}`}
                   style={{
                     fontWeight: 700,
                     fontSize: '16px',
                     marginBottom: '2px',
+                    color: 'var(--primary)',
+                    textDecoration: 'none',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
                   }}
+                  onClick={(e) => e.stopPropagation()}
                 >
-                  <i className="fas fa-user" style={{ marginRight: '6px' }} />
+                  <i className="fas fa-user" />
                   {sellerName}
-                </div>
+                </Link>
 
                 {/* ── PHONE NUMBER – SHOW ONLY IF LOGGED IN ── */}
                 {user ? (
