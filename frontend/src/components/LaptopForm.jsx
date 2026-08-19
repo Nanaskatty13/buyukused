@@ -23,22 +23,58 @@ export const LAPTOP_BRANDS = [
 
 // ─── Apple Models ─────────────────────────────────────────────────
 const APPLE_MODELS = [
-  'MacBook Air (M1)',
-  'MacBook Air (M2)',
-  'MacBook Air (M3)',
-  'MacBook Pro 13" (M1)',
-  'MacBook Pro 13" (M2)',
-  'MacBook Pro 14" (M1 Pro/Max)',
-  'MacBook Pro 14" (M2 Pro/Max)',
-  'MacBook Pro 14" (M3 Pro/Max)',
-  'MacBook Pro 16" (M1 Pro/Max)',
-  'MacBook Pro 16" (M2 Pro/Max)',
-  'MacBook Pro 16" (M3 Pro/Max)',
-  'MacBook Pro 13" (Intel)',
-  'MacBook Pro 15" (Intel)',
-  'MacBook Pro 16" (Intel)',
-  'MacBook (Retina)',
-  'MacBook Air (Intel)',
+   // MacBook Neo
+    "MacBook Neo",
+
+   // MacBook Air
+    "MacBook Air 13-inch (M1)",
+    "MacBook Air 13-inch (M2)",
+    "MacBook Air 13-inch (M3)",
+    "MacBook Air 13-inch (M4)",
+
+    "MacBook Air 15-inch (M2)",
+    "MacBook Air 15-inch (M3)",
+    "MacBook Air 15-inch (M4)",
+
+    // Intel MacBook Air
+    "MacBook Air 13-inch (Intel, 2018)",
+    "MacBook Air 13-inch (Intel, 2019)",
+    "MacBook Air 13-inch (Intel, 2020)",
+
+    // MacBook Pro 13
+    "MacBook Pro 13-inch (M1)",
+    "MacBook Pro 13-inch (M2)",
+
+    "MacBook Pro 13-inch (Intel, 2016)",
+    "MacBook Pro 13-inch (Intel, 2017)",
+    "MacBook Pro 13-inch (Intel, 2018)",
+    "MacBook Pro 13-inch (Intel, 2019)",
+    "MacBook Pro 13-inch (Intel, 2020)",
+
+    // MacBook Pro 14
+    "MacBook Pro 14-inch (M1 Pro/Max)",
+    "MacBook Pro 14-inch (M2 Pro/Max)",
+    "MacBook Pro 14-inch (M3 Pro/Max)",
+    "MacBook Pro 14-inch (M4 Pro/Max)",
+
+    // MacBook Pro 15
+    "MacBook Pro 15-inch (Intel, 2016)",
+    "MacBook Pro 15-inch (Intel, 2017)",
+    "MacBook Pro 15-inch (Intel, 2018)",
+    "MacBook Pro 15-inch (Intel, 2019)",
+
+    // MacBook Pro 16
+    "MacBook Pro 16-inch (Intel, 2019)",
+    "MacBook Pro 16-inch (Intel, 2020)",
+    "MacBook Pro 16-inch (M1 Pro/Max)",
+    "MacBook Pro 16-inch (M2 Pro/Max)",
+    "MacBook Pro 16-inch (M3 Pro/Max)",
+    "MacBook Pro 16-inch (M4 Pro/Max)",
+
+    // Older MacBook
+    "MacBook 12-inch (Retina, 2015)",
+    "MacBook 12-inch (Retina, 2016)",
+    "MacBook 12-inch (Retina, 2017)"
 ];
 
 // ─── Dell Models ──────────────────────────────────────────────────
@@ -207,30 +243,227 @@ export const getModelsByBrand = (brand) => {
 
 // ─── Processor options ───────────────────────────────────────────
 export const PROCESSOR_OPTIONS = [
-  'Intel Core i3',
-  'Intel Core i5',
-  'Intel Core i7',
-  'Intel Core i9',
-  'Intel Celeron',
-  'Intel Pentium',
-  'AMD Ryzen 3',
-  'AMD Ryzen 5',
-  'AMD Ryzen 7',
-  'AMD Ryzen 9',
-  'AMD Athlon',
-  'Apple M1',
-  'Apple M2',
-  'Apple M3',
-  'Apple M1 Pro',
-  'Apple M1 Max',
-  'Apple M2 Pro',
-  'Apple M2 Max',
-  'Apple M3 Pro',
-  'Apple M3 Max',
-  'Apple M4',          // ✅ Added for MacBook Neo
-  'Apple M4 Pro',
-  'Apple M4 Max',
-  'Other',
+  // ============================================================
+  // APPLE SILICON
+  // ============================================================
+   // MacBook Neo
+  "Apple A18 Pro",
+  "Apple M1",
+  "Apple M1 Pro",
+  "Apple M1 Max",
+  "Apple M1 Ultra",
+  "Apple M2",
+  "Apple M2 Pro",
+  "Apple M2 Max",
+  "Apple M2 Ultra",
+  "Apple M3",
+  "Apple M3 Pro",
+  "Apple M3 Max",
+  "Apple M3 Ultra",
+  "Apple M4",
+  "Apple M4 Pro",
+  "Apple M4 Max",
+  "Apple M4 Ultra",
+  "Apple A-series / Other Apple Silicon",
+  // ============================================================
+  // INTEL CORE ULTRA
+  // ============================================================
+  "Intel Core Ultra 3",
+  "Intel Core Ultra 5",
+  "Intel Core Ultra 7",
+  "Intel Core Ultra 9",
+  "Intel Core Ultra 5 100 Series",
+  "Intel Core Ultra 7 100 Series",
+  "Intel Core Ultra 9 100 Series",
+  "Intel Core Ultra 5 200 Series",
+  "Intel Core Ultra 7 200 Series",
+  "Intel Core Ultra 9 200 Series",
+  // ============================================================
+  // INTEL CORE i3
+  // ============================================================
+  "Intel Core i3",
+  "Intel Core i3-2nd Gen",
+  "Intel Core i3-3rd Gen",
+  "Intel Core i3-4th Gen",
+  "Intel Core i3-5th Gen",
+  "Intel Core i3-6th Gen",
+  "Intel Core i3-7th Gen",
+  "Intel Core i3-8th Gen",
+  "Intel Core i3-9th Gen",
+  "Intel Core i3-10th Gen",
+  "Intel Core i3-11th Gen",
+  "Intel Core i3-12th Gen",
+  "Intel Core i3-13th Gen",
+  "Intel Core i3-N Series",
+  // ============================================================
+  // INTEL CORE i5
+  // ============================================================
+  "Intel Core i5",
+  "Intel Core i5-2nd Gen",
+  "Intel Core i5-3rd Gen",
+  "Intel Core i5-4th Gen",
+  "Intel Core i5-5th Gen",
+  "Intel Core i5-6th Gen",
+  "Intel Core i5-7th Gen",
+  "Intel Core i5-8th Gen",
+  "Intel Core i5-9th Gen",
+  "Intel Core i5-10th Gen",
+  "Intel Core i5-11th Gen",
+  "Intel Core i5-12th Gen",
+  "Intel Core i5-13th Gen",
+  "Intel Core i5-14th Gen",
+  // ============================================================
+  // INTEL CORE i7
+  // ============================================================
+  "Intel Core i7",
+  "Intel Core i7-2nd Gen",
+  "Intel Core i7-3rd Gen",
+  "Intel Core i7-4th Gen",
+  "Intel Core i7-5th Gen",
+  "Intel Core i7-6th Gen",
+  "Intel Core i7-7th Gen",
+  "Intel Core i7-8th Gen",
+  "Intel Core i7-9th Gen",
+  "Intel Core i7-10th Gen",
+  "Intel Core i7-11th Gen",
+  "Intel Core i7-12th Gen",
+  "Intel Core i7-13th Gen",
+  "Intel Core i7-14th Gen",
+  // ============================================================
+  // INTEL CORE i9
+  // ============================================================
+  "Intel Core i9",
+  "Intel Core i9-8th Gen",
+  "Intel Core i9-9th Gen",
+  "Intel Core i9-10th Gen",
+  "Intel Core i9-11th Gen",
+  "Intel Core i9-12th Gen",
+  "Intel Core i9-13th Gen",
+  "Intel Core i9-14th Gen",
+  // ============================================================
+  // INTEL PENTIUM
+  // ============================================================
+  "Intel Pentium",
+  "Intel Pentium Gold",
+  "Intel Pentium Silver",
+  "Intel Pentium N-Series",
+  // ============================================================
+  // INTEL CELERON
+  // ============================================================
+  "Intel Celeron",
+  "Intel Celeron N-Series",
+  "Intel Celeron 4xxx Series",
+  "Intel Celeron 5xxx Series",
+  "Intel Celeron 6xxx Series",
+  // ============================================================
+  // INTEL ATOM
+  // ============================================================
+  "Intel Atom",
+  // ============================================================
+  // AMD RYZEN 3
+  // ============================================================
+  "AMD Ryzen 3",
+  "AMD Ryzen 3 3000 Series",
+  "AMD Ryzen 3 4000 Series",
+  "AMD Ryzen 3 5000 Series",
+  "AMD Ryzen 3 7000 Series",
+  "AMD Ryzen 3 8000 Series",
+  // ============================================================
+  // AMD RYZEN 5
+  // ============================================================
+  "AMD Ryzen 5",
+  "AMD Ryzen 5 3000 Series",
+  "AMD Ryzen 5 4000 Series",
+  "AMD Ryzen 5 5000 Series",
+  "AMD Ryzen 5 6000 Series",
+  "AMD Ryzen 5 7000 Series",
+  "AMD Ryzen 5 8000 Series",
+
+  // ============================================================
+  // AMD RYZEN 7
+  // ============================================================
+
+  "AMD Ryzen 7",
+  "AMD Ryzen 7 3000 Series",
+  "AMD Ryzen 7 4000 Series",
+  "AMD Ryzen 7 5000 Series",
+  "AMD Ryzen 7 6000 Series",
+  "AMD Ryzen 7 7000 Series",
+  "AMD Ryzen 7 8000 Series",
+
+  // ============================================================
+  // AMD RYZEN 9
+  // ============================================================
+
+  "AMD Ryzen 9",
+  "AMD Ryzen 9 3000 Series",
+  "AMD Ryzen 9 4000 Series",
+  "AMD Ryzen 9 5000 Series",
+  "AMD Ryzen 9 6000 Series",
+  "AMD Ryzen 9 7000 Series",
+  "AMD Ryzen 9 8000 Series",
+
+  // ============================================================
+  // AMD RYZEN AI
+  // ============================================================
+
+  "AMD Ryzen AI 5",
+  "AMD Ryzen AI 7",
+  "AMD Ryzen AI 9",
+
+  // ============================================================
+  // AMD ATHLON
+  // ============================================================
+
+  "AMD Athlon",
+  "AMD Athlon Silver",
+  "AMD Athlon Gold",
+
+  // ============================================================
+  // AMD A-SERIES
+  // ============================================================
+
+  "AMD A4",
+  "AMD A6",
+  "AMD A8",
+  "AMD A9",
+  "AMD A10",
+  "AMD A12",
+
+  // ============================================================
+  // AMD FX
+  // ============================================================
+
+  "AMD FX",
+
+  // ============================================================
+  // QUALCOMM
+  // ============================================================
+
+  "Qualcomm Snapdragon X",
+  "Qualcomm Snapdragon X Plus",
+  "Qualcomm Snapdragon X Elite",
+  "Qualcomm Snapdragon X2 Plus",
+  "Qualcomm Snapdragon X2 Elite",
+
+  // ============================================================
+  // MEDIA-TEK
+  // ============================================================
+
+  "MediaTek Kompanio",
+
+  // ============================================================
+  // SAMSUNG
+  // ============================================================
+
+  "Samsung Exynos",
+
+  // ============================================================
+  // OTHER
+  // ============================================================
+
+  "Other",
+  "Unknown"
 ];
 
 // ─── RAM options ─────────────────────────────────────────────────
@@ -241,52 +474,163 @@ export const STORAGE_OPTIONS = ['128GB', '256GB', '512GB', '1TB', '2TB', '4TB'];
 
 // ─── Screen size options ─────────────────────────────────────────
 export const SCREEN_SIZE_OPTIONS = [
-  '11"',
-  '12"',
+  '11.6"',
+  '12.0"',
+  '12.4"',
+  '12.5"',
+  '13.0"',
   '13.3"',
-  '14"',
+  '13.4"',
+  '13.5"',
+  '13.6"',
+  '13.8"',
+  '14.0"',
+  '14.2"',
+  '14.5"',
+  '15.0"',
+  '15.3"',
   '15.6"',
-  '16"',
+  '16.0"',
+  '16.1"',
+  '16.2"',
+  '17.0"',
   '17.3"',
-  '18"',
+  '18.0"',
+  '18.4"',
+  'Other',
 ];
 
 // ─── Graphics options ────────────────────────────────────────────
 export const GRAPHICS_OPTIONS = [
-  'Integrated Graphics',
-  'Intel Iris Xe',
-  'Intel UHD Graphics',
-  'NVIDIA GeForce GTX 1650',
-  'NVIDIA GeForce GTX 1660 Ti',
-  'NVIDIA GeForce RTX 2050',
-  'NVIDIA GeForce RTX 3050',
-  'NVIDIA GeForce RTX 3060',
-  'NVIDIA GeForce RTX 3070',
-  'NVIDIA GeForce RTX 3080',
-  'NVIDIA GeForce RTX 4050',
-  'NVIDIA GeForce RTX 4060',
-  'NVIDIA GeForce RTX 4070',
-  'NVIDIA GeForce RTX 4080',
-  'NVIDIA GeForce RTX 4090',
-  'AMD Radeon Graphics',
-  'AMD Radeon RX 6500M',
-  'AMD Radeon RX 6600M',
-  'AMD Radeon RX 6700M',
-  'AMD Radeon RX 6800M',
-  'Apple M1 7-core GPU',
-  'Apple M1 8-core GPU',
-  'Apple M2 8-core GPU',
-  'Apple M2 10-core GPU',
-  'Apple M3 8-core GPU',
-  'Apple M3 10-core GPU',
-  'Apple M3 Pro 14-core GPU',
-  'Apple M3 Pro 18-core GPU',
-  'Apple M3 Max 30-core GPU',
-  'Apple M3 Max 40-core GPU',
-  'Apple M4 10-core GPU',     // ✅ Added for MacBook Neo
-  'Apple M4 Pro 16-core GPU',
-  'Apple M4 Max 32-core GPU',
-  'Other',
+  // ─── Apple ─────────────────────────────
+  // MacBook Neo
+  "Apple GPU (MacBook Neo)",
+  "Apple Integrated Graphics",
+  "Apple 7-core GPU",
+  "Apple 8-core GPU",
+  "Apple 9-core GPU",
+  "Apple 10-core GPU",
+  "Apple 14-core GPU",
+  "Apple 16-core GPU",
+  "Apple 18-core GPU",
+  "Apple 19-core GPU",
+  "Apple 20-core GPU",
+  "Apple 24-core GPU",
+  "Apple 30-core GPU",
+  "Apple 38-core GPU",
+  "Apple 40-core GPU",
+
+  // ─── Intel Integrated ──────────────────
+  "Intel UHD Graphics",
+  "Intel UHD Graphics 600",
+  "Intel UHD Graphics 605",
+  "Intel UHD Graphics 610",
+  "Intel UHD Graphics 615",
+  "Intel UHD Graphics 620",
+  "Intel UHD Graphics 630",
+  "Intel Iris Graphics",
+  "Intel Iris Plus Graphics",
+  "Intel Iris Xe Graphics",
+  "Intel Arc Graphics",
+
+  // ─── NVIDIA GeForce ────────────────────
+  "NVIDIA GeForce MX110",
+  "NVIDIA GeForce MX130",
+  "NVIDIA GeForce MX150",
+  "NVIDIA GeForce MX230",
+  "NVIDIA GeForce MX250",
+  "NVIDIA GeForce MX330",
+  "NVIDIA GeForce MX350",
+  "NVIDIA GeForce MX450",
+  "NVIDIA GeForce MX550",
+  "NVIDIA GeForce MX570",
+
+  "NVIDIA GeForce GTX 1050",
+  "NVIDIA GeForce GTX 1050 Ti",
+  "NVIDIA GeForce GTX 1060",
+  "NVIDIA GeForce GTX 1650",
+  "NVIDIA GeForce GTX 1650 Ti",
+  "NVIDIA GeForce GTX 1660",
+  "NVIDIA GeForce GTX 1660 Ti",
+
+  "NVIDIA GeForce RTX 2050",
+  "NVIDIA GeForce RTX 2060",
+  "NVIDIA GeForce RTX 2070",
+  "NVIDIA GeForce RTX 2080",
+
+  "NVIDIA GeForce RTX 3050",
+  "NVIDIA GeForce RTX 3050 Ti",
+  "NVIDIA GeForce RTX 3060",
+  "NVIDIA GeForce RTX 3070",
+  "NVIDIA GeForce RTX 3080",
+  "NVIDIA GeForce RTX 3080 Ti",
+  "NVIDIA GeForce RTX 3090",
+  "NVIDIA GeForce RTX 3090 Ti",
+
+  "NVIDIA GeForce RTX 4050",
+  "NVIDIA GeForce RTX 4060",
+  "NVIDIA GeForce RTX 4070",
+  "NVIDIA GeForce RTX 4080",
+  "NVIDIA GeForce RTX 4090",
+
+  "NVIDIA GeForce RTX 5050",
+  "NVIDIA GeForce RTX 5060",
+  "NVIDIA GeForce RTX 5070",
+  "NVIDIA GeForce RTX 5070 Ti",
+  "NVIDIA GeForce RTX 5080",
+  "NVIDIA GeForce RTX 5090",
+
+  // ─── NVIDIA Professional ───────────────
+  "NVIDIA RTX A1000",
+  "NVIDIA RTX A2000",
+  "NVIDIA RTX A3000",
+  "NVIDIA RTX A4000",
+  "NVIDIA RTX A4500",
+  "NVIDIA RTX A5000",
+  "NVIDIA RTX A5500",
+
+  // ─── AMD Radeon ────────────────────────
+  "AMD Radeon Graphics",
+  "AMD Radeon Vega 3",
+  "AMD Radeon Vega 6",
+  "AMD Radeon Vega 7",
+  "AMD Radeon Vega 8",
+  "AMD Radeon Vega 10",
+  "AMD Radeon Vega 11",
+
+  "AMD Radeon RX 550",
+  "AMD Radeon RX 560",
+  "AMD Radeon RX 570",
+  "AMD Radeon RX 580",
+  "AMD Radeon RX 590",
+
+  "AMD Radeon RX 5500M",
+  "AMD Radeon RX 5600M",
+  "AMD Radeon RX 5700M",
+  "AMD Radeon RX 6600M",
+  "AMD Radeon RX 6700M",
+  "AMD Radeon RX 6800M",
+  "AMD Radeon RX 6850M XT",
+
+  "AMD Radeon RX 7600M",
+  "AMD Radeon RX 7600M XT",
+  "AMD Radeon RX 7700S",
+  "AMD Radeon RX 7800M",
+  "AMD Radeon RX 7900M",
+
+  "AMD Radeon RX 7600",
+  "AMD Radeon RX 7700 XT",
+  "AMD Radeon RX 7800 XT",
+  "AMD Radeon RX 7900 XT",
+  "AMD Radeon RX 7900 XTX",
+
+  // ─── Qualcomm ──────────────────────────
+  "Qualcomm Adreno GPU",
+
+  // ─── Other ─────────────────────────────
+  "Integrated Graphics",
+  "Dedicated Graphics",
+  "Other",
 ];
 
 // ─── Condition options ───────────────────────────────────────────
@@ -294,7 +638,7 @@ export const CONDITION_OPTIONS = [
   'Brand New',
   'Like New',
   'Excellent',
-  'Good',
+  'Uk Used',
   'Fair',
   'Poor',
 ];
