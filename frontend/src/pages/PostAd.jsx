@@ -19,7 +19,7 @@ import TabletForm, {
 import GameConsoleForm from "../components/GameConsoleForm";
 
 // ============================================================
-// LOCATION DATA (unchanged, same as before)
+// LOCATION DATA
 // ============================================================
 
 const countries = ["Ghana"];
@@ -444,7 +444,7 @@ const PostAd = () => {
     tablets: "Tablets",
     accessories: "Accessories",
     electronics: "Electronics",
-    gameConsoles: "Game Consoles",
+    gameConsoles: "Electronics",   // ✅ WORKAROUND – maps to existing category
   };
 
   // ==========================================================
@@ -1393,7 +1393,7 @@ const PostAd = () => {
               </div>
             )}
 
-            {/* CONSOLE BRAND – hardcoded list to avoid import issues */}
+            {/* CONSOLE BRAND – hardcoded list */}
 
             {isGameConsole && (
               <div className="form-group">
