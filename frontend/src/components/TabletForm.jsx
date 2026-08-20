@@ -203,30 +203,23 @@ export const getTabletModelsByBrand = (brand) => {
   switch (brand) {
     case 'Apple':
       return IPAD_MODELS;
-
     case 'Samsung':
       return SAMSUNG_TAB_MODELS;
-
     case 'Lenovo':
       return LENOVO_TAB_MODELS;
-
     case 'Huawei':
       return HUAWEI_TAB_MODELS;
-
     case 'Microsoft':
       return MICROSOFT_TAB_MODELS;
-
     case 'Amazon':
       return AMAZON_TAB_MODELS;
-
     case 'Google':
       return GOOGLE_TAB_MODELS;
-
     case 'Xiaomi':
       return XIAOMI_TAB_MODELS;
-
     default:
-      return [];
+      // ✅ FIX: return an array with "Other" so the model dropdown isn't empty
+      return ['Other'];
   }
 };
 

@@ -588,6 +588,74 @@ const formatProduct = (product) => {
 
     color:
       data.color || "",
+
+    // ─── Console fields ──────────────────────────────────────
+    consoleType:
+      data.consoleType || "",
+    edition:
+      data.edition || "",
+    discDrive:
+      data.discDrive || "",
+    controllersIncluded:
+      data.controllersIncluded || "",
+    battery:
+      data.battery || "",
+    videoOutput:
+      data.videoOutput || "",
+    region:
+      data.region || "",
+
+    // ─── Smartwatch fields ───────────────────────────────────
+    watchSize:
+      data.watchSize || "",
+
+    // ─── TV fields ────────────────────────────────────────────
+    tvType:
+      data.tvType || "",
+    displayTechnology:
+      data.displayTechnology || "",
+    refreshRate:
+      data.refreshRate || "",
+    operatingSystem:
+      data.operatingSystem || "",
+    hdr:
+      data.hdr || "",
+    hdmiPorts:
+      data.hdmiPorts || "",
+    usbPorts:
+      data.usbPorts || "",
+    smartTV:
+      data.smartTV === true,
+    voiceControl:
+      data.voiceControl === true,
+    wallMountable:
+      data.wallMountable === true,
+
+    // ─── Car fields ───────────────────────────────────────────
+    mileage:
+      data.mileage !== undefined &&
+      data.mileage !== null
+        ? Number(data.mileage)
+        : null,
+    bodyType:
+      data.bodyType || "",
+    fuelType:
+      data.fuelType || "",
+    transmission:
+      data.transmission || "",
+    driveType:
+      data.driveType || "",
+    engineSize:
+      data.engineSize || "",
+    seatingCapacity:
+      data.seatingCapacity !== undefined &&
+      data.seatingCapacity !== null
+        ? Number(data.seatingCapacity)
+        : null,
+    exteriorColor:
+      data.exteriorColor || "",
+    interiorColor:
+      data.interiorColor || "",
   };
 };
 
@@ -734,7 +802,6 @@ exports.getProducts = async (
       products,
       total,
     ] = await Promise.all([
-      // ─── UPDATED: ALL POSSIBLE IMAGE FIELDS + lastActive ──
       Product.find(query)
         .populate(
           "sellerId",
@@ -817,7 +884,6 @@ exports.getProductById =
         });
       }
 
-      // ─── UPDATED: ALL POSSIBLE IMAGE FIELDS + lastActive ──
       const product =
         await Product.findById(
           id
@@ -912,6 +978,37 @@ exports.createProduct =
         year,
         connectivity,
         warranty,
+        // ─── Console ──────────────────────────────────────────
+        consoleType,
+        edition,
+        discDrive,
+        controllersIncluded,
+        battery,
+        videoOutput,
+        region,
+        // ─── Smartwatch ──────────────────────────────────────
+        watchSize,
+        // ─── TV ──────────────────────────────────────────────
+        tvType,
+        displayTechnology,
+        refreshRate,
+        operatingSystem,
+        hdr,
+        hdmiPorts,
+        usbPorts,
+        smartTV,
+        voiceControl,
+        wallMountable,
+        // ─── Car ──────────────────────────────────────────────
+        mileage,
+        bodyType,
+        fuelType,
+        transmission,
+        driveType,
+        engineSize,
+        seatingCapacity,
+        exteriorColor,
+        interiorColor,
       } = req.body;
 
       // ─── Validation ──────────────────────────────────────────
@@ -1171,6 +1268,78 @@ exports.createProduct =
 
         status:
           "active",
+
+        // ─── Console ──────────────────────────────────────────
+        consoleType:
+          consoleType?.trim() || "",
+        edition:
+          edition?.trim() || "",
+        discDrive:
+          discDrive?.trim() || "",
+        controllersIncluded:
+          controllersIncluded?.trim() || "",
+        battery:
+          battery?.trim() || "",
+        videoOutput:
+          videoOutput?.trim() || "",
+        region:
+          region?.trim() || "",
+
+        // ─── Smartwatch ──────────────────────────────────────
+        watchSize:
+          watchSize?.trim() || "",
+
+        // ─── TV ──────────────────────────────────────────────
+        tvType:
+          tvType?.trim() || "",
+        displayTechnology:
+          displayTechnology?.trim() || "",
+        refreshRate:
+          refreshRate?.trim() || "",
+        operatingSystem:
+          operatingSystem?.trim() || "",
+        hdr:
+          hdr?.trim() || "",
+        hdmiPorts:
+          hdmiPorts?.trim() || "",
+        usbPorts:
+          usbPorts?.trim() || "",
+        smartTV:
+          parseBoolean(
+            smartTV
+          ),
+        voiceControl:
+          parseBoolean(
+            voiceControl
+          ),
+        wallMountable:
+          parseBoolean(
+            wallMountable
+          ),
+
+        // ─── Car ──────────────────────────────────────────────
+        mileage:
+          mileage !== undefined
+            ? parseNumber(mileage)
+            : null,
+        bodyType:
+          bodyType?.trim() || "",
+        fuelType:
+          fuelType?.trim() || "",
+        transmission:
+          transmission?.trim() || "",
+        driveType:
+          driveType?.trim() || "",
+        engineSize:
+          engineSize?.trim() || "",
+        seatingCapacity:
+          seatingCapacity !== undefined
+            ? parseNumber(seatingCapacity)
+            : null,
+        exteriorColor:
+          exteriorColor?.trim() || "",
+        interiorColor:
+          interiorColor?.trim() || "",
       };
 
       // ─── Save ────────────────────────────────────────────────
@@ -1337,6 +1506,37 @@ exports.updateProduct =
         year,
         connectivity,
         warranty,
+        // ─── Console ──────────────────────────────────────────
+        consoleType,
+        edition,
+        discDrive,
+        controllersIncluded,
+        battery,
+        videoOutput,
+        region,
+        // ─── Smartwatch ──────────────────────────────────────
+        watchSize,
+        // ─── TV ──────────────────────────────────────────────
+        tvType,
+        displayTechnology,
+        refreshRate,
+        operatingSystem,
+        hdr,
+        hdmiPorts,
+        usbPorts,
+        smartTV,
+        voiceControl,
+        wallMountable,
+        // ─── Car ──────────────────────────────────────────────
+        mileage,
+        bodyType,
+        fuelType,
+        transmission,
+        driveType,
+        engineSize,
+        seatingCapacity,
+        exteriorColor,
+        interiorColor,
       } = req.body;
 
       if (
@@ -1660,6 +1860,184 @@ exports.updateProduct =
 
         product.status =
           status;
+      }
+
+      // ─── Console fields ──────────────────────────────────────
+
+      if (
+        consoleType !== undefined
+      ) {
+        product.consoleType =
+          consoleType.trim();
+      }
+      if (
+        edition !== undefined
+      ) {
+        product.edition =
+          edition.trim();
+      }
+      if (
+        discDrive !== undefined
+      ) {
+        product.discDrive =
+          discDrive.trim();
+      }
+      if (
+        controllersIncluded !==
+        undefined
+      ) {
+        product.controllersIncluded =
+          controllersIncluded.trim();
+      }
+      if (
+        battery !== undefined
+      ) {
+        product.battery =
+          battery.trim();
+      }
+      if (
+        videoOutput !== undefined
+      ) {
+        product.videoOutput =
+          videoOutput.trim();
+      }
+      if (
+        region !== undefined
+      ) {
+        product.region =
+          region.trim();
+      }
+
+      // ─── Smartwatch field ────────────────────────────────────
+
+      if (
+        watchSize !== undefined
+      ) {
+        product.watchSize =
+          watchSize.trim();
+      }
+
+      // ─── TV fields ───────────────────────────────────────────
+
+      if (
+        tvType !== undefined
+      ) {
+        product.tvType =
+          tvType.trim();
+      }
+      if (
+        displayTechnology !==
+        undefined
+      ) {
+        product.displayTechnology =
+          displayTechnology.trim();
+      }
+      if (
+        refreshRate !== undefined
+      ) {
+        product.refreshRate =
+          refreshRate.trim();
+      }
+      if (
+        operatingSystem !==
+        undefined
+      ) {
+        product.operatingSystem =
+          operatingSystem.trim();
+      }
+      if (
+        hdr !== undefined
+      ) {
+        product.hdr =
+          hdr.trim();
+      }
+      if (
+        hdmiPorts !== undefined
+      ) {
+        product.hdmiPorts =
+          hdmiPorts.trim();
+      }
+      if (
+        usbPorts !== undefined
+      ) {
+        product.usbPorts =
+          usbPorts.trim();
+      }
+      if (
+        smartTV !== undefined
+      ) {
+        product.smartTV =
+          parseBoolean(
+            smartTV
+          );
+      }
+      if (
+        voiceControl !== undefined
+      ) {
+        product.voiceControl =
+          parseBoolean(
+            voiceControl
+          );
+      }
+      if (
+        wallMountable !== undefined
+      ) {
+        product.wallMountable =
+          parseBoolean(
+            wallMountable
+          );
+      }
+
+      // ─── Car fields ──────────────────────────────────────────
+
+      if (mileage !== undefined) {
+        if (mileage === "") {
+          product.mileage = null;
+        } else {
+          const parsedMileage = parseNumber(mileage);
+          if (parsedMileage === null || parsedMileage < 0) {
+            return res.status(400).json({
+              success: false,
+              message: "Mileage must be a non‑negative number",
+            });
+          }
+          product.mileage = parsedMileage;
+        }
+      }
+      if (bodyType !== undefined) {
+        product.bodyType = bodyType.trim();
+      }
+      if (fuelType !== undefined) {
+        product.fuelType = fuelType.trim();
+      }
+      if (transmission !== undefined) {
+        product.transmission = transmission.trim();
+      }
+      if (driveType !== undefined) {
+        product.driveType = driveType.trim();
+      }
+      if (engineSize !== undefined) {
+        product.engineSize = engineSize.trim();
+      }
+      if (seatingCapacity !== undefined) {
+        if (seatingCapacity === "") {
+          product.seatingCapacity = null;
+        } else {
+          const parsedSeating = parseNumber(seatingCapacity);
+          if (parsedSeating === null || parsedSeating < 0) {
+            return res.status(400).json({
+              success: false,
+              message: "Seating capacity must be a non‑negative number",
+            });
+          }
+          product.seatingCapacity = parsedSeating;
+        }
+      }
+      if (exteriorColor !== undefined) {
+        product.exteriorColor = exteriorColor.trim();
+      }
+      if (interiorColor !== undefined) {
+        product.interiorColor = interiorColor.trim();
       }
 
       // ─── Existing images ────────────────────────────────────
@@ -2038,7 +2416,6 @@ exports.getSellerProducts =
         });
       }
 
-      // ─── UPDATED: ALL POSSIBLE IMAGE FIELDS + lastActive ──
       const products =
         await Product.find({
           sellerId: userId,

@@ -27,6 +27,9 @@ require("./config/passport")(passport);
 // Activity tracking middleware
 const activityMiddleware = require("./middleware/activity");
 
+// ✅ Category controller (for seeding)
+const { ensureDefaultCategories } = require("./controllers/categoryController");
+
 const app = express();
 
 // ============================================================
@@ -46,7 +49,6 @@ if (missing.length > 0) {
   console.error(
     `❌ Missing environment variables: ${missing.join(", ")}`
   );
-
   process.exit(1);
 }
 
@@ -64,7 +66,6 @@ app.use((req, res, next) => {
   req.baseUrl =
     process.env.BASE_URL ||
     `${req.protocol}://${req.get("host")}`;
-
   next();
 });
 
@@ -97,86 +98,41 @@ app.use(
 const allowedOrigins = [
   "http://localhost:5173",
   "http://127.0.0.1:5173",
-
   "https://sell-platform2.vercel.app",
-
   "https://sell-platform2-mcv0eniwt-nanaskatty13s-projects.vercel.app",
-
   "https://buyukused-2w4b8fl3w-nanaskatty13s-projects.vercel.app",
-
   process.env.FRONTEND_URL,
 ].filter(Boolean);
 
-console.log(
-  "🟢 Allowed Origins:",
-  allowedOrigins
-);
+console.log("🟢 Allowed Origins:", allowedOrigins);
 
 const corsOptions = {
   origin: (origin, callback) => {
-    console.log(
-      "🔍 Incoming origin:",
-      origin
-    );
+    console.log("🔍 Incoming origin:", origin);
 
-    // Requests without Origin:
-    // curl, Render health checks,
-    // server-to-server requests, etc.
     if (!origin) {
       return callback(null, true);
     }
 
-    // Explicitly allowed origins
     if (allowedOrigins.includes(origin)) {
       return callback(null, true);
     }
 
-    // Allow Vercel preview deployments
-    if (
-      /^https:\/\/[a-zA-Z0-9-]+\.vercel\.app$/.test(
-        origin
-      )
-    ) {
+    if (/^https:\/\/[a-zA-Z0-9-]+\.vercel\.app$/.test(origin)) {
       return callback(null, true);
     }
 
-    console.log(
-      "🚫 Blocked CORS:",
-      origin
-    );
-
-    return callback(
-      new Error(
-        "CORS not allowed for this origin"
-      )
-    );
+    console.log("🚫 Blocked CORS:", origin);
+    return callback(new Error("CORS not allowed for this origin"));
   },
-
   credentials: true,
-
-  methods: [
-    "GET",
-    "POST",
-    "PUT",
-    "PATCH",
-    "DELETE",
-    "OPTIONS",
-  ],
-
-  allowedHeaders: [
-    "Content-Type",
-    "Authorization",
-  ],
-
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
   optionsSuccessStatus: 204,
 };
 
 app.use(cors(corsOptions));
-
-app.options(
-  "*",
-  cors(corsOptions)
-);
+app.options("*", cors(corsOptions));
 
 // ============================================================
 // BODY PARSERS
@@ -205,691 +161,355 @@ const uploadsDirectory = path.join(
   "uploads"
 );
 
-app.use(
-  "/uploads",
-  express.static(uploadsDirectory)
-);
-
-console.log(
-  "📁 Static uploads directory:",
-  uploadsDirectory
-);
+app.use("/uploads", express.static(uploadsDirectory));
+console.log("📁 Static uploads directory:", uploadsDirectory);
 
 // ============================================================
 // PASSPORT
 // ============================================================
 
-app.use(
-  passport.initialize()
-);
+app.use(passport.initialize());
 
 // ============================================================
 // ACTIVITY TRACKING
 // ============================================================
-//
-// IMPORTANT:
-// This middleware checks the Bearer JWT and updates
-// the authenticated user's lastActive timestamp.
-//
-// It does NOT block unauthenticated requests.
-//
-// This allows authenticated sellers to have their
-// "Active now" / "Last seen" information updated
-// automatically.
-//
 
-app.use(
-  activityMiddleware
-);
-
-console.log(
-  "🟢 Seller/user activity tracking enabled"
-);
+app.use(activityMiddleware);
+console.log("🟢 Seller/user activity tracking enabled");
 
 // ============================================================
 // RATE LIMITING
 // ============================================================
 
-const skipIfAdmin = (
-  req,
-  res,
-  next
-) => {
-  const authHeader =
-    req.headers.authorization;
+const skipIfAdmin = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith("Bearer ")) return next();
 
-  if (
-    !authHeader ||
-    !authHeader.startsWith("Bearer ")
-  ) {
-    return next();
-  }
-
-  const token =
-    authHeader.split(" ")[1];
-
+  const token = authHeader.split(" ")[1];
   try {
-    const decoded =
-      jwt.verify(
-        token,
-        process.env.JWT_SECRET
-      );
-
-    if (
-      decoded.role === "admin"
-    ) {
-      req.skipRateLimit = true;
-    }
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    if (decoded.role === "admin") req.skipRateLimit = true;
   } catch (error) {
-    // Invalid token.
-    // Continue normally.
+    // ignore
   }
-
   next();
 };
 
 app.use(skipIfAdmin);
 
-const limiter =
-  rateLimit({
-    windowMs:
-      15 * 60 * 1000,
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: process.env.NODE_ENV === "production" ? 100 : 500,
+  skip: (req) => {
+    if (req.skipRateLimit) return true;
+    if (process.env.NODE_ENV === "development") return true;
+    return false;
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: "Too many requests, please try again later.",
+  },
+});
 
-    max:
-      process.env.NODE_ENV ===
-      "production"
-        ? 100
-        : 500,
-
-    skip: (req) => {
-      if (
-        req.skipRateLimit
-      ) {
-        return true;
-      }
-
-      if (
-        process.env.NODE_ENV ===
-        "development"
-      ) {
-        return true;
-      }
-
-      return false;
-    },
-
-    standardHeaders: true,
-    legacyHeaders: false,
-
-    message: {
-      success: false,
-      message:
-        "Too many requests, please try again later.",
-    },
-  });
-
-app.use(
-  "/api",
-  limiter
-);
-
-app.use(
-  "/auth",
-  limiter
-);
+app.use("/api", limiter);
+app.use("/auth", limiter);
 
 // ============================================================
 // ROOT API CHECK
 // ============================================================
 
-app.get(
-  "/",
-  (req, res) => {
-    res.status(200).json({
-      success: true,
-      message:
-        "BuyUKUsed API is running",
-      environment:
-        process.env.NODE_ENV ||
-        "development",
-    });
-  }
-);
+app.get("/", (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "BuyUKUsed API is running",
+    environment: process.env.NODE_ENV || "development",
+  });
+});
 
 // ============================================================
 // HEALTH CHECK
 // ============================================================
 
-const healthResponse = (
-  req,
-  res
-) => {
+const healthResponse = (req, res) => {
   res.status(200).json({
     success: true,
     status: "ok",
-    timestamp:
-      new Date().toISOString(),
+    timestamp: new Date().toISOString(),
   });
 };
 
-app.get(
-  "/health",
-  healthResponse
-);
-
-app.get(
-  "/api/health",
-  healthResponse
-);
+app.get("/health", healthResponse);
+app.get("/api/health", healthResponse);
 
 // ============================================================
 // LOAD ROUTES
 // ============================================================
 
-const passwordRoutes =
-  require("./routes/passwordRoutes");
+const passwordRoutes = require("./routes/passwordRoutes");
+const authRoutes = require("./routes/auth");
+const productRoutes = require("./routes/products");
+const notificationRoutes = require("./routes/notifications");
+const userRoutes = require("./routes/users");
+const messageRoutes = require("./routes/messages");
+const adminRoutes = require("./routes/admin");
+const deliveryRoutes = require("./routes/deliveryRoutes");
+const uploadRoutes = require("./routes/upload");
+const sellerRoutes = require("./routes/sellers");
+const categoryRoutes = require("./routes/categories"); // ✅ New
 
-const authRoutes =
-  require("./routes/auth");
-
-const productRoutes =
-  require("./routes/products");
-
-const notificationRoutes =
-  require("./routes/notifications");
-
-const userRoutes =
-  require("./routes/users");
-
-const messageRoutes =
-  require("./routes/messages");
-
-const adminRoutes =
-  require("./routes/admin");
-
-const deliveryRoutes =
-  require("./routes/deliveryRoutes");
-
-const uploadRoutes =
-  require("./routes/upload");
-
-const sellerRoutes =
-  require("./routes/sellers");
-
-console.log(
-  "✅ Routes loaded successfully"
-);
+console.log("✅ Routes loaded successfully");
 
 // ============================================================
 // PASSWORD RESET
 // ============================================================
 
-app.use(
-  "/api/password",
-  passwordRoutes
-);
+app.use("/api/password", passwordRoutes);
 
 // ============================================================
 // AUTHENTICATION
 // ============================================================
 
-app.use(
-  "/auth",
-  authRoutes
-);
+app.use("/auth", authRoutes);
 
 // ============================================================
 // SELLER ROUTES
 // ============================================================
 
-app.use(
-  "/sellers",
-  sellerRoutes
-);
+app.use("/sellers", sellerRoutes);
 
 // ============================================================
 // PRODUCTS
 // ============================================================
 
-app.use(
-  "/api/products",
-  productRoutes
-);
+app.use("/api/products", productRoutes);
 
 // ============================================================
 // NOTIFICATIONS
 // ============================================================
 
-app.use(
-  "/api/notifications",
-  notificationRoutes
-);
+app.use("/api/notifications", notificationRoutes);
 
 // ============================================================
 // USERS
 // ============================================================
 
-app.use(
-  "/api/users",
-  userRoutes
-);
+app.use("/api/users", userRoutes);
 
 // ============================================================
 // MESSAGES
 // ============================================================
 
-app.use(
-  "/api/messages",
-  messageRoutes
-);
+app.use("/api/messages", messageRoutes);
 
 // ============================================================
 // ADMIN
 // ============================================================
 
-app.use(
-  "/api/admin",
-  adminRoutes
-);
+app.use("/api/admin", adminRoutes);
 
 // ============================================================
 // DELIVERY / RIDER
 // ============================================================
 
-app.use(
-  "/api/deliveries",
-  deliveryRoutes
-);
+app.use("/api/deliveries", deliveryRoutes);
 
 // ============================================================
 // UPLOAD
 // ============================================================
 
-app.use(
-  "/api/upload",
-  uploadRoutes
-);
+app.use("/api/upload", uploadRoutes);
+console.log("📤 Upload API mounted at: /api/upload");
 
-console.log(
-  "📤 Upload API mounted at: /api/upload"
-);
+// ============================================================
+// CATEGORIES ✅ NEW
+// ============================================================
+
+app.use("/api/categories", categoryRoutes);
+console.log("📂 Categories API mounted at: /api/categories");
 
 // ============================================================
 // ROUTE DEBUG
 // ============================================================
 
-console.log(
-  "🔐 Admin API mounted at: /api/admin"
-);
-
-console.log(
-  "🚴 Delivery API mounted at: /api/deliveries"
-);
-
-console.log(
-  "🛒 Seller API mounted at: /sellers"
-);
+console.log("🔐 Admin API mounted at: /api/admin");
+console.log("🚴 Delivery API mounted at: /api/deliveries");
+console.log("🛒 Seller API mounted at: /sellers");
 
 // ============================================================
 // 404 HANDLER
 // ============================================================
 
-app.use(
-  (req, res) => {
-    console.log(
-      `❌ 404: ${req.method} ${req.originalUrl}`
-    );
+app.use((req, res) => {
+  console.log(`❌ 404: ${req.method} ${req.originalUrl}`);
 
-    if (
-      req.path.startsWith("/api") ||
-      req.path.startsWith("/auth") ||
-      req.path.startsWith("/sellers")
-    ) {
-      return res.status(404).json({
-        success: false,
-        message:
-          "API endpoint not found",
-        path: req.originalUrl,
-      });
-    }
-
-    return res
-      .status(404)
-      .send("Not Found");
+  if (
+    req.path.startsWith("/api") ||
+    req.path.startsWith("/auth") ||
+    req.path.startsWith("/sellers")
+  ) {
+    return res.status(404).json({
+      success: false,
+      message: "API endpoint not found",
+      path: req.originalUrl,
+    });
   }
-);
+
+  return res.status(404).send("Not Found");
+});
 
 // ============================================================
 // GLOBAL ERROR HANDLER
 // ============================================================
 
-app.use(
-  (
-    err,
-    req,
-    res,
-    next
-  ) => {
-    console.error(
-      "❌ Error:",
-      err
-    );
+app.use((err, req, res, next) => {
+  console.error("❌ Error:", err);
 
-    // --------------------------------------------------------
-    // CORS ERROR
-    // --------------------------------------------------------
-
-    if (
-      err &&
-      err.message ===
-        "CORS not allowed for this origin"
-    ) {
-      return res.status(403).json({
-        success: false,
-        message:
-          err.message,
-      });
-    }
-
-    // --------------------------------------------------------
-    // MULTER ERROR
-    // --------------------------------------------------------
-
-    if (
-      err &&
-      err.name ===
-        "MulterError"
-    ) {
-      if (
-        err.code ===
-        "LIMIT_FILE_SIZE"
-      ) {
-        return res
-          .status(413)
-          .json({
-            success: false,
-            message:
-              "File too large. Maximum size is 5MB.",
-          });
-      }
-
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message:
-            err.message ||
-            "File upload error.",
-        });
-    }
-
-    // --------------------------------------------------------
-    // DUPLICATE MONGODB FIELD
-    // --------------------------------------------------------
-
-    if (
-      err &&
-      err.code === 11000
-    ) {
-      const field =
-        Object.keys(
-          err.keyPattern || {}
-        )[0] || "field";
-
-      return res
-        .status(409)
-        .json({
-          success: false,
-          message:
-            `${field} already exists`,
-        });
-    }
-
-    // --------------------------------------------------------
-    // MONGOOSE VALIDATION
-    // --------------------------------------------------------
-
-    if (
-      err &&
-      err.name ===
-        "ValidationError"
-    ) {
-      const messages =
-        Object.values(
-          err.errors || {}
-        ).map(
-          (error) =>
-            error.message
-        );
-
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message:
-            "Validation error",
-          errors:
-            messages,
-        });
-    }
-
-    // --------------------------------------------------------
-    // GENERIC ERROR
-    // --------------------------------------------------------
-
-    return res
-      .status(
-        err?.status || 500
-      )
-      .json({
-        success: false,
-        message:
-          err?.message ||
-          "Internal Server Error",
-      });
+  if (err && err.message === "CORS not allowed for this origin") {
+    return res.status(403).json({
+      success: false,
+      message: err.message,
+    });
   }
-);
+
+  if (err && err.name === "MulterError") {
+    if (err.code === "LIMIT_FILE_SIZE") {
+      return res.status(413).json({
+        success: false,
+        message: "File too large. Maximum size is 5MB.",
+      });
+    }
+    return res.status(400).json({
+      success: false,
+      message: err.message || "File upload error.",
+    });
+  }
+
+  if (err && err.code === 11000) {
+    const field = Object.keys(err.keyPattern || {})[0] || "field";
+    return res.status(409).json({
+      success: false,
+      message: `${field} already exists`,
+    });
+  }
+
+  if (err && err.name === "ValidationError") {
+    const messages = Object.values(err.errors || {}).map((error) => error.message);
+    return res.status(400).json({
+      success: false,
+      message: "Validation error",
+      errors: messages,
+    });
+  }
+
+  return res.status(err?.status || 500).json({
+    success: false,
+    message: err?.message || "Internal Server Error",
+  });
+});
 
 // ============================================================
 // UNHANDLED REJECTION
 // ============================================================
 
-process.on(
-  "unhandledRejection",
-  (error) => {
-    console.error(
-      "❌ Unhandled Rejection:",
-      error
-    );
-
-    process.exit(1);
-  }
-);
+process.on("unhandledRejection", (error) => {
+  console.error("❌ Unhandled Rejection:", error);
+  process.exit(1);
+});
 
 // ============================================================
 // UNCAUGHT EXCEPTION
 // ============================================================
 
-process.on(
-  "uncaughtException",
-  (error) => {
-    console.error(
-      "❌ Uncaught Exception:",
-      error
-    );
-
-    process.exit(1);
-  }
-);
+process.on("uncaughtException", (error) => {
+  console.error("❌ Uncaught Exception:", error);
+  process.exit(1);
+});
 
 // ============================================================
 // PORT
 // ============================================================
 
-const PORT =
-  process.env.PORT ||
-  5000;
+const PORT = process.env.PORT || 5000;
 
 // ============================================================
 // DEFAULT ADMIN
 // ============================================================
 
-const createDefaultAdmin =
-  async () => {
-    try {
-      const User =
-        require("./models/User");
+const createDefaultAdmin = async () => {
+  try {
+    const User = require("./models/User");
 
-      const adminEmail =
-        process.env.ADMIN_EMAIL;
+    const adminEmail = process.env.ADMIN_EMAIL;
+    const adminPassword = process.env.ADMIN_PASSWORD;
 
-      const adminPassword =
-        process.env.ADMIN_PASSWORD;
-
-      if (
-        !adminEmail ||
-        !adminPassword
-      ) {
-        console.log(
-          "ℹ️ ADMIN_EMAIL or ADMIN_PASSWORD not configured. Skipping default admin creation."
-        );
-
-        return;
-      }
-
-      const normalizedEmail =
-        adminEmail
-          .trim()
-          .toLowerCase();
-
-      let user =
-        await User.findOne({
-          email:
-            normalizedEmail,
-        });
-
-      if (!user) {
-        user =
-          new User({
-            name: "Admin",
-            email:
-              normalizedEmail,
-            password:
-              adminPassword,
-            phone: "",
-            role: "admin",
-            isActive: true,
-          });
-
-        await user.save();
-
-        console.log(
-          `✅ Default admin created: ${normalizedEmail}`
-        );
-      } else if (
-        user.role !== "admin"
-      ) {
-        user.role =
-          "admin";
-
-        await user.save();
-
-        console.log(
-          `✅ User ${normalizedEmail} promoted to admin`
-        );
-      } else {
-        console.log(
-          `ℹ️ Admin user already exists: ${normalizedEmail}`
-        );
-      }
-    } catch (error) {
-      console.warn(
-        "⚠️ Could not create admin:",
-        error.message
-      );
+    if (!adminEmail || !adminPassword) {
+      console.log("ℹ️ ADMIN_EMAIL or ADMIN_PASSWORD not configured. Skipping default admin creation.");
+      return;
     }
-  };
+
+    const normalizedEmail = adminEmail.trim().toLowerCase();
+    let user = await User.findOne({ email: normalizedEmail });
+
+    if (!user) {
+      user = new User({
+        name: "Admin",
+        email: normalizedEmail,
+        password: adminPassword,
+        phone: "",
+        role: "admin",
+        isActive: true,
+      });
+      await user.save();
+      console.log(`✅ Default admin created: ${normalizedEmail}`);
+    } else if (user.role !== "admin") {
+      user.role = "admin";
+      await user.save();
+      console.log(`✅ User ${normalizedEmail} promoted to admin`);
+    } else {
+      console.log(`ℹ️ Admin user already exists: ${normalizedEmail}`);
+    }
+  } catch (error) {
+    console.warn("⚠️ Could not create admin:", error.message);
+  }
+};
 
 // ============================================================
 // START SERVER
 // ============================================================
 
-const start =
-  async () => {
-    try {
-      const connection =
-        await connectDB();
+const start = async () => {
+  try {
+    const connection = await connectDB();
+    console.log(`✅ MongoDB connected to: ${connection.name}`);
 
-      console.log(
-        `✅ MongoDB connected to: ${connection.name}`
-      );
+    // ─── Seed default categories (if missing) ──────────────
+    await ensureDefaultCategories();
 
-      await createDefaultAdmin();
+    // ─── Create admin user ──────────────────────────────────
+    await createDefaultAdmin();
 
-      const server =
-        app.listen(
-          PORT,
-          () => {
-            console.log(
-              `🚀 Server running on port ${PORT}`
-            );
+    const server = app.listen(PORT, () => {
+      console.log(`🚀 Server running on port ${PORT}`);
+      console.log(`🌍 Environment: ${process.env.NODE_ENV || "development"}`);
+      console.log(`🔗 Base URL: ${process.env.BASE_URL || "(auto-detected)"}`);
+      console.log(`📁 Uploads: ${uploadsDirectory}`);
+      console.log("🔐 Admin API: /api/admin");
+      console.log("🚴 Delivery/Rider API: /api/deliveries");
+      console.log("📤 Upload API: /api/upload");
+      console.log("🛒 Seller API: /sellers");
+      console.log("📂 Categories API: /api/categories");
+      console.log("🟢 Activity tracking: ENABLED");
+    });
 
-            console.log(
-              `🌍 Environment: ${
-                process.env.NODE_ENV ||
-                "development"
-              }`
-            );
-
-            console.log(
-              `🔗 Base URL: ${
-                process.env.BASE_URL ||
-                "(auto-detected)"
-              }`
-            );
-
-            console.log(
-              `📁 Uploads: ${uploadsDirectory}`
-            );
-
-            console.log(
-              "🔐 Admin API: /api/admin"
-            );
-
-            console.log(
-              "🚴 Delivery/Rider API: /api/deliveries"
-            );
-
-            console.log(
-              "📤 Upload API: /api/upload"
-            );
-
-            console.log(
-              "🛒 Seller API: /sellers"
-            );
-
-            console.log(
-              "🟢 Activity tracking: ENABLED"
-            );
-          }
-        );
-
-      server.timeout =
-        120000;
-
-      server.keepAliveTimeout =
-        65000;
-
-      server.headersTimeout =
-        66000;
-    } catch (error) {
-      console.error(
-        "❌ Server failed:",
-        error
-      );
-
-      process.exit(1);
-    }
-  };
+    server.timeout = 120000;
+    server.keepAliveTimeout = 65000;
+    server.headersTimeout = 66000;
+  } catch (error) {
+    console.error("❌ Server failed:", error);
+    process.exit(1);
+  }
+};
 
 start();

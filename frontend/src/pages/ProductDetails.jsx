@@ -130,6 +130,104 @@ const REGION_OPTIONS = [
   'Other',
 ];
 
+// ─── Smartwatch‑specific option lists ──────────────────────────
+const WATCH_SIZE_OPTIONS = [
+  '38mm',
+  '40mm',
+  '41mm',
+  '42mm',
+  '44mm',
+  '45mm',
+  '46mm',
+  '47mm',
+  '49mm',
+  '51mm',
+  'Other',
+];
+
+// ─── TV‑specific option lists ──────────────────────────────────
+const TV_TYPES = [
+  'Smart TV',
+  'LED TV',
+  'LCD TV',
+  'OLED TV',
+  'QLED TV',
+  'Mini-LED TV',
+  'Plasma TV',
+  'Android TV',
+  'Google TV',
+  'Fire TV',
+  'Other',
+];
+
+const DISPLAY_TECHNOLOGIES = [
+  'LED',
+  'LCD',
+  'OLED',
+  'QLED',
+  'Neo QLED',
+  'Mini-LED',
+  'MicroLED',
+  'NanoCell',
+  'ULED',
+  'Plasma',
+  'Other',
+];
+
+const REFRESH_RATES = [
+  '50Hz',
+  '60Hz',
+  '75Hz',
+  '100Hz',
+  '120Hz',
+  '144Hz',
+  '165Hz',
+  '240Hz',
+  'Other',
+];
+
+const TV_OPERATING_SYSTEMS = [
+  'Tizen',
+  'webOS',
+  'Google TV',
+  'Android TV',
+  'Roku TV',
+  'Fire TV',
+  'VIDAA',
+  'My Home Screen',
+  'SmartCast',
+  'Other',
+];
+
+const HDR_OPTIONS = [
+  'HDR10',
+  'HDR10+',
+  'Dolby Vision',
+  'HLG',
+  'HDR10 + Dolby Vision',
+  'HDR10+ + Dolby Vision',
+  'No HDR',
+  'Other',
+];
+
+const HDMI_OPTIONS = [
+  '1 HDMI',
+  '2 HDMI',
+  '3 HDMI',
+  '4 HDMI',
+  '5 HDMI',
+  '6 HDMI',
+  'Other',
+];
+
+const USB_OPTIONS = [
+  '1 USB',
+  '2 USB',
+  '3 USB',
+  '4 USB',
+  'Other',
+];
+
 // ─── Helpers for image messages ──────────────────────────────────
 
 const isImageMessage = (text) => {
@@ -340,6 +438,19 @@ const ProductDetails = () => {
     resolution: "",
     videoOutput: "",
     region: "",
+    // ⌚ Smartwatch specific
+    watchSize: "",
+    // 📺 TV specific
+    tvType: "",
+    displayTechnology: "",
+    refreshRate: "",
+    operatingSystem: "",
+    hdr: "",
+    hdmiPorts: "",
+    usbPorts: "",
+    smartTV: false,
+    voiceControl: false,
+    wallMountable: false,
   });
 
   const [imagesToKeep, setImagesToKeep] = useState([]);
@@ -461,6 +572,19 @@ const ProductDetails = () => {
             resolution: p.resolution || "",
             videoOutput: p.videoOutput || "",
             region: p.region || "",
+            // Smartwatch field
+            watchSize: p.watchSize || "",
+            // TV fields
+            tvType: p.tvType || "",
+            displayTechnology: p.displayTechnology || "",
+            refreshRate: p.refreshRate || "",
+            operatingSystem: p.operatingSystem || "",
+            hdr: p.hdr || "",
+            hdmiPorts: p.hdmiPorts || "",
+            usbPorts: p.usbPorts || "",
+            smartTV: Boolean(p.smartTV),
+            voiceControl: Boolean(p.voiceControl),
+            wallMountable: Boolean(p.wallMountable),
           });
 
           const existingImages =
@@ -780,6 +904,17 @@ const ProductDetails = () => {
           resolution: updated.product.resolution || "",
           videoOutput: updated.product.videoOutput || "",
           region: updated.product.region || "",
+          watchSize: updated.product.watchSize || "",
+          tvType: updated.product.tvType || "",
+          displayTechnology: updated.product.displayTechnology || "",
+          refreshRate: updated.product.refreshRate || "",
+          operatingSystem: updated.product.operatingSystem || "",
+          hdr: updated.product.hdr || "",
+          hdmiPorts: updated.product.hdmiPorts || "",
+          usbPorts: updated.product.usbPorts || "",
+          smartTV: Boolean(updated.product.smartTV),
+          voiceControl: Boolean(updated.product.voiceControl),
+          wallMountable: Boolean(updated.product.wallMountable),
         });
       }
 
@@ -1254,6 +1389,7 @@ const ProductDetails = () => {
   const isConsole = product.category === "Game Consoles" || product.category === "Consoles";
   const isAccessory = product.category === "Accessories";
   const isPhone = product.category === "Phones";
+  const isSmartwatch = product.category === "Smartwatches";
 
   let specsTitle = "📋 Specifications";
   if (isLaptop) specsTitle = "💻 Laptop Specifications";
@@ -1262,6 +1398,7 @@ const ProductDetails = () => {
   else if (isConsole) specsTitle = "🎮 Game Console Specifications";
   else if (isAccessory) specsTitle = "🎧 Accessories Specifications";
   else if (isPhone) specsTitle = "📱 Phone Specifications";
+  else if (isSmartwatch) specsTitle = "⌚ Smartwatch Specifications";
 
   const SpecRow = ({ label, value, tooltip }) => (
     <div>
@@ -1367,8 +1504,20 @@ const ProductDetails = () => {
     } else if (isTV) {
       if (product.brand) specs.push(<SpecRow key="brand" label="Brand" value={product.brand} />);
       if (product.model) specs.push(<SpecRow key="model" label="Model" value={product.model} />);
+      if (product.tvType) specs.push(<SpecRow key="tvType" label="TV Type" value={product.tvType} />);
       if (product.screenSize) specs.push(<SpecRow key="screenSize" label="Screen Size" value={product.screenSize} />);
+      if (product.resolution) specs.push(<SpecRow key="resolution" label="Resolution" value={product.resolution} />);
+      if (product.displayTechnology) specs.push(<SpecRow key="displayTechnology" label="Display Technology" value={product.displayTechnology} />);
+      if (product.refreshRate) specs.push(<SpecRow key="refreshRate" label="Refresh Rate" value={product.refreshRate} />);
+      if (product.operatingSystem) specs.push(<SpecRow key="operatingSystem" label="Operating System" value={product.operatingSystem} />);
+      if (product.hdr) specs.push(<SpecRow key="hdr" label="HDR" value={product.hdr} />);
+      if (product.hdmiPorts) specs.push(<SpecRow key="hdmiPorts" label="HDMI Ports" value={product.hdmiPorts} />);
+      if (product.usbPorts) specs.push(<SpecRow key="usbPorts" label="USB Ports" value={product.usbPorts} />);
       if (product.connectivity) specs.push(<SpecRow key="connectivity" label="Connectivity" value={product.connectivity} />);
+      if (product.year) specs.push(<SpecRow key="year" label="Year" value={product.year} />);
+      if (product.smartTV) specs.push(<SpecRow key="smartTV" label="Smart TV" value="Yes" />);
+      if (product.voiceControl) specs.push(<SpecRow key="voiceControl" label="Voice Control" value="Yes" />);
+      if (product.wallMountable) specs.push(<SpecRow key="wallMountable" label="Wall Mountable" value="Yes" />);
     } else if (isConsole) {
       if (product.brand) specs.push(<SpecRow key="brand" label="Brand" value={product.brand} />);
       if (product.model) specs.push(<SpecRow key="model" label="Model" value={product.model} />);
@@ -1385,6 +1534,16 @@ const ProductDetails = () => {
       if (product.screenSize) specs.push(<SpecRow key="screenSize" label="Screen Size" value={product.screenSize} />);
       if (product.year) specs.push(<SpecRow key="year" label="Year" value={product.year} />);
       if (product.connectivity) specs.push(<SpecRow key="connectivity" label="Connectivity" value={product.connectivity} />);
+    } else if (isSmartwatch) {
+      if (product.brand) specs.push(<SpecRow key="brand" label="Brand" value={product.brand} />);
+      if (product.model) specs.push(<SpecRow key="model" label="Model" value={product.model} />);
+      if (product.watchSize) specs.push(<SpecRow key="watchSize" label="Watch Size" value={product.watchSize} />);
+      if (product.connectivity) specs.push(<SpecRow key="connectivity" label="Connectivity" value={product.connectivity} />);
+      if (product.color) specs.push(<SpecRow key="color" label="Color" value={product.color} />);
+      if (product.batteryHealth !== null && product.batteryHealth !== undefined) {
+        specs.push(<SpecRow key="battery" label="Battery Health" value={`${product.batteryHealth}%`} />);
+      }
+      if (product.warranty) specs.push(<SpecRow key="warranty" label="Warranty" value={product.warranty} />);
     } else if (isAccessory) {
       if (product.brand) specs.push(<SpecRow key="brand" label="Brand" value={product.brand} />);
       if (product.model) specs.push(<SpecRow key="model" label="Model" value={product.model} />);
@@ -2385,6 +2544,7 @@ const ProductDetails = () => {
                     <option value="Electronics">Electronics</option>
                     <option value="Fashion">Fashion</option>
                     <option value="Home">Home</option>
+                    <option value="Smartwatches">Smartwatches</option>
                     <option value="Other">Other</option>
                   </select>
                 </div>
@@ -2639,6 +2799,287 @@ const ProductDetails = () => {
                           <option key={reg} value={reg}>{reg}</option>
                         ))}
                       </select>
+                    </div>
+                  </>
+                )}
+
+                {/* ==================================================
+                    SMARTWATCH‑SPECIFIC FIELDS
+                ================================================== */}
+
+                {editForm.category === "Smartwatches" && (
+                  <div className="form-group" style={{ marginBottom: "12px" }}>
+                    <label style={{ display: "block", fontWeight: 600, fontSize: "13px", marginBottom: "4px" }}>
+                      Watch Size
+                    </label>
+                    <select
+                      name="watchSize"
+                      value={editForm.watchSize}
+                      onChange={handleEditChange}
+                      style={{
+                        width: "100%",
+                        padding: "10px 14px",
+                        border: "1.5px solid var(--gray-200)",
+                        borderRadius: "var(--radius-md)",
+                        fontSize: "14px",
+                      }}
+                    >
+                      <option value="">Select size</option>
+                      {WATCH_SIZE_OPTIONS.map(size => (
+                        <option key={size} value={size}>{size}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* ==================================================
+                    TV‑SPECIFIC FIELDS
+                ================================================== */}
+
+                {editForm.category === "TVs" && (
+                  <>
+                    <div
+                      style={{
+                        marginTop: "16px",
+                        paddingTop: "12px",
+                        borderTop: "1px solid #e5e7eb",
+                        marginBottom: "12px",
+                      }}
+                    >
+                      <h3 style={{ fontSize: "16px", fontWeight: 700, marginBottom: "8px" }}>
+                        📺 TV Details
+                      </h3>
+                    </div>
+
+                    {/* TV Type */}
+                    <div className="form-group" style={{ marginBottom: "12px" }}>
+                      <label style={{ display: "block", fontWeight: 600, fontSize: "13px", marginBottom: "4px" }}>
+                        TV Type
+                      </label>
+                      <select
+                        name="tvType"
+                        value={editForm.tvType}
+                        onChange={handleEditChange}
+                        style={{
+                          width: "100%",
+                          padding: "10px 14px",
+                          border: "1.5px solid var(--gray-200)",
+                          borderRadius: "var(--radius-md)",
+                          fontSize: "14px",
+                        }}
+                      >
+                        <option value="">Select TV type</option>
+                        {TV_TYPES.map(type => (
+                          <option key={type} value={type}>{type}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Display Technology */}
+                    <div className="form-group" style={{ marginBottom: "12px" }}>
+                      <label style={{ display: "block", fontWeight: 600, fontSize: "13px", marginBottom: "4px" }}>
+                        Display Technology
+                      </label>
+                      <select
+                        name="displayTechnology"
+                        value={editForm.displayTechnology}
+                        onChange={handleEditChange}
+                        style={{
+                          width: "100%",
+                          padding: "10px 14px",
+                          border: "1.5px solid var(--gray-200)",
+                          borderRadius: "var(--radius-md)",
+                          fontSize: "14px",
+                        }}
+                      >
+                        <option value="">Select technology</option>
+                        {DISPLAY_TECHNOLOGIES.map(tech => (
+                          <option key={tech} value={tech}>{tech}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Refresh Rate */}
+                    <div className="form-group" style={{ marginBottom: "12px" }}>
+                      <label style={{ display: "block", fontWeight: 600, fontSize: "13px", marginBottom: "4px" }}>
+                        Refresh Rate
+                      </label>
+                      <select
+                        name="refreshRate"
+                        value={editForm.refreshRate}
+                        onChange={handleEditChange}
+                        style={{
+                          width: "100%",
+                          padding: "10px 14px",
+                          border: "1.5px solid var(--gray-200)",
+                          borderRadius: "var(--radius-md)",
+                          fontSize: "14px",
+                        }}
+                      >
+                        <option value="">Select refresh rate</option>
+                        {REFRESH_RATES.map(rate => (
+                          <option key={rate} value={rate}>{rate}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Operating System */}
+                    <div className="form-group" style={{ marginBottom: "12px" }}>
+                      <label style={{ display: "block", fontWeight: 600, fontSize: "13px", marginBottom: "4px" }}>
+                        Operating System
+                      </label>
+                      <select
+                        name="operatingSystem"
+                        value={editForm.operatingSystem}
+                        onChange={handleEditChange}
+                        style={{
+                          width: "100%",
+                          padding: "10px 14px",
+                          border: "1.5px solid var(--gray-200)",
+                          borderRadius: "var(--radius-md)",
+                          fontSize: "14px",
+                        }}
+                      >
+                        <option value="">Select OS</option>
+                        {TV_OPERATING_SYSTEMS.map(os => (
+                          <option key={os} value={os}>{os}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* HDR */}
+                    <div className="form-group" style={{ marginBottom: "12px" }}>
+                      <label style={{ display: "block", fontWeight: 600, fontSize: "13px", marginBottom: "4px" }}>
+                        HDR
+                      </label>
+                      <select
+                        name="hdr"
+                        value={editForm.hdr}
+                        onChange={handleEditChange}
+                        style={{
+                          width: "100%",
+                          padding: "10px 14px",
+                          border: "1.5px solid var(--gray-200)",
+                          borderRadius: "var(--radius-md)",
+                          fontSize: "14px",
+                        }}
+                      >
+                        <option value="">Select HDR</option>
+                        {HDR_OPTIONS.map(hdr => (
+                          <option key={hdr} value={hdr}>{hdr}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* HDMI Ports */}
+                    <div className="form-group" style={{ marginBottom: "12px" }}>
+                      <label style={{ display: "block", fontWeight: 600, fontSize: "13px", marginBottom: "4px" }}>
+                        HDMI Ports
+                      </label>
+                      <select
+                        name="hdmiPorts"
+                        value={editForm.hdmiPorts}
+                        onChange={handleEditChange}
+                        style={{
+                          width: "100%",
+                          padding: "10px 14px",
+                          border: "1.5px solid var(--gray-200)",
+                          borderRadius: "var(--radius-md)",
+                          fontSize: "14px",
+                        }}
+                      >
+                        <option value="">Select HDMI ports</option>
+                        {HDMI_OPTIONS.map(option => (
+                          <option key={option} value={option}>{option}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* USB Ports */}
+                    <div className="form-group" style={{ marginBottom: "12px" }}>
+                      <label style={{ display: "block", fontWeight: 600, fontSize: "13px", marginBottom: "4px" }}>
+                        USB Ports
+                      </label>
+                      <select
+                        name="usbPorts"
+                        value={editForm.usbPorts}
+                        onChange={handleEditChange}
+                        style={{
+                          width: "100%",
+                          padding: "10px 14px",
+                          border: "1.5px solid var(--gray-200)",
+                          borderRadius: "var(--radius-md)",
+                          fontSize: "14px",
+                        }}
+                      >
+                        <option value="">Select USB ports</option>
+                        {USB_OPTIONS.map(option => (
+                          <option key={option} value={option}>{option}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Smart TV, Voice Control, Wall Mountable – checkboxes */}
+                    <div
+                      style={{
+                        display: "flex",
+                        flexWrap: "wrap",
+                        gap: "20px",
+                        marginTop: "8px",
+                        marginBottom: "12px",
+                      }}
+                    >
+                      <label
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "8px",
+                          fontWeight: 600,
+                          fontSize: "13px",
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          name="smartTV"
+                          checked={editForm.smartTV}
+                          onChange={handleEditChange}
+                        />
+                        Smart TV
+                      </label>
+                      <label
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "8px",
+                          fontWeight: 600,
+                          fontSize: "13px",
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          name="voiceControl"
+                          checked={editForm.voiceControl}
+                          onChange={handleEditChange}
+                        />
+                        Voice Control
+                      </label>
+                      <label
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "8px",
+                          fontWeight: 600,
+                          fontSize: "13px",
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          name="wallMountable"
+                          checked={editForm.wallMountable}
+                          onChange={handleEditChange}
+                        />
+                        Wall Mountable
+                      </label>
                     </div>
                   </>
                 )}

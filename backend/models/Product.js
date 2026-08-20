@@ -45,8 +45,9 @@ const productSchema = new mongoose.Schema(
         "Electronics",
         "Fashion",
         "Home",
-        "TVs",              // ✅ If missing, add this too
-        "Game Consoles",    // ✅ FIX: added to accept console category
+        "TVs",
+        "Game Consoles",
+        "Smartwatches",
         "Other",
       ],
       default: "Other",
@@ -94,19 +95,16 @@ const productSchema = new mongoose.Schema(
     // MEDIA
     // ========================================================
 
-    // Legacy single image
     image: {
       type: String,
       default: "",
     },
 
-    // Product images
     images: {
       type: [String],
       default: [],
     },
 
-    // Product videos
     videos: {
       type: [String],
       default: [],
@@ -154,7 +152,7 @@ const productSchema = new mongoose.Schema(
     },
 
     // ========================================================
-    // COMPUTER / TABLET / CONSOLE / TV DETAILS
+    // COMPUTER / TABLET / CONSOLE / TV / SMARTWATCH / CAR DETAILS
     // ========================================================
 
     storage: {
@@ -199,7 +197,7 @@ const productSchema = new mongoose.Schema(
       trim: true,
     },
 
-    // ─── Console‑specific (added for Game Consoles) ──────────
+    // ─── Console‑specific ──────────────────────────────────────
     videoOutput: {
       type: String,
       default: "",
@@ -248,8 +246,125 @@ const productSchema = new mongoose.Schema(
       trim: true,
     },
 
-    // ─── TV‑specific (optional) ──────────────────────────────
-    // Add any TV fields here if needed
+    // ─── Smartwatch‑specific ──────────────────────────────────
+    watchSize: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    // ─── TV‑specific ──────────────────────────────────────────
+    tvType: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    displayTechnology: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    refreshRate: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    operatingSystem: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    hdr: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    hdmiPorts: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    usbPorts: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    smartTV: {
+      type: Boolean,
+      default: false,
+    },
+
+    voiceControl: {
+      type: Boolean,
+      default: false,
+    },
+
+    wallMountable: {
+      type: Boolean,
+      default: false,
+    },
+
+    // ─── Car‑specific ──────────────────────────────────────────
+    mileage: {
+      type: Number,
+      default: null,
+      min: 0,
+    },
+
+    bodyType: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    fuelType: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    transmission: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    driveType: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    engineSize: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    seatingCapacity: {
+      type: Number,
+      default: null,
+      min: 0,
+    },
+
+    exteriorColor: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    interiorColor: {
+      type: String,
+      default: "",
+      trim: true,
+    },
 
     // ========================================================
     // ACCESSORY DETAILS
@@ -537,7 +652,7 @@ productSchema.index({
 });
 
 // ============================================================
-// CONSOLE / TV FILTERS (optional)
+// CONSOLE / TV / SMARTWATCH FILTERS
 // ============================================================
 
 productSchema.index({
@@ -550,6 +665,54 @@ productSchema.index({
 
 productSchema.index({
   resolution: 1,
+});
+
+productSchema.index({
+  watchSize: 1,
+});
+
+// ─── TV indexes ────────────────────────────────────────────────
+
+productSchema.index({
+  tvType: 1,
+});
+
+productSchema.index({
+  displayTechnology: 1,
+});
+
+productSchema.index({
+  refreshRate: 1,
+});
+
+productSchema.index({
+  operatingSystem: 1,
+});
+
+productSchema.index({
+  hdr: 1,
+});
+
+productSchema.index({
+  smartTV: 1,
+});
+
+// ─── Car indexes ────────────────────────────────────────────────
+
+productSchema.index({
+  mileage: 1,
+});
+
+productSchema.index({
+  fuelType: 1,
+});
+
+productSchema.index({
+  transmission: 1,
+});
+
+productSchema.index({
+  bodyType: 1,
 });
 
 // ============================================================

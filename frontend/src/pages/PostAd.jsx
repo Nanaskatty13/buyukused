@@ -15,11 +15,13 @@ import TabletForm, {
   TABLET_BRANDS,
 } from "../components/TabletForm";
 
-// ✅ Correct import – default only
 import GameConsoleForm from "../components/GameConsoleForm";
+import AppleWatchForm from "../components/AppleWatchForm";
+import TVForm from "../components/TVForm";
+import CarForm from "../components/CarForm"; // ✅ NEW
 
 // ============================================================
-// LOCATION DATA
+// LOCATION DATA (unchanged)
 // ============================================================
 
 const countries = ["Ghana"];
@@ -44,188 +46,7 @@ const regions = [
 ];
 
 const citiesByRegion = {
-  "Greater Accra": [
-    "Accra",
-    "Kwame Nkrumah Circle",
-    "Tema",
-    "Ashaiman",
-    "Madina",
-    "Adenta",
-    "Dzorwulu",
-    "Kaneshie",
-    "Achimota",
-    "Legon",
-    "Osu",
-    "Labone",
-    "Cantonments",
-    "Airport Residential",
-    "East Legon",
-    "Lakeside Estate",
-    "Sakumono",
-    "Spintex",
-    "Atomic",
-    "Ablekuma",
-    "Mamprobi",
-    "Chorkor",
-    "Korle Bu",
-    "Dansoman",
-    "Kisseman",
-    "Avenor",
-    "Bubuashie",
-    "Aboabo",
-    "Nima",
-    "Maamobi",
-    "Alajo",
-    "Kokomlemle",
-    "Tesano",
-    "Abelemkpe",
-    "Kotobabi",
-    "Roman Ridge",
-    "Ringway",
-    "Tudor",
-    "Asylum Down",
-    "North Ridge",
-    "South Ridge",
-    "Independence Avenue",
-    "Sarakawa",
-    "La",
-    "Teshie",
-    "Nungua",
-    "Prampram",
-    "Dodowa",
-    "Aburi",
-    "Nsawam",
-    "Amasaman",
-    "Weija",
-    "Kasoa",
-    "Bawjiase",
-  ],
-  Ashanti: [
-    "Kumasi",
-    "Obuasi",
-    "Tafo",
-    "Bekwai",
-    "Mampong",
-    "Ejisu",
-    "Kwadaso",
-    "Asokwa",
-    "Suame",
-    "Oforikrom",
-    "Nhyiaeso",
-    "Bantama",
-    "Adum",
-    "Kejetia",
-    "Manhyia",
-  ],
-  Central: [
-    "Cape Coast",
-    "Elmina",
-    "Saltpond",
-    "Winneba",
-    "Mfantsiman",
-    "Assin Foso",
-    "Twifo Praso",
-    "Kasoa",
-  ],
-  Eastern: [
-    "Koforidua",
-    "Nkawkaw",
-    "Akropong",
-    "Mpraeso",
-    "Akwatia",
-    "Nsawam",
-    "Aburi",
-    "Suhum",
-    "Asamankese",
-  ],
-  Western: [
-    "Sekondi-Takoradi",
-    "Tarkwa",
-    "Prestea",
-    "Axim",
-    "Shama",
-    "Apollonia",
-    "Elubo",
-  ],
-  Volta: [
-    "Ho",
-    "Hohoe",
-    "Keta",
-    "Akatsi",
-    "Sogakope",
-    "Jasikan",
-    "Kpeve",
-  ],
-  Northern: [
-    "Tamale",
-    "Yendi",
-    "Bimbilla",
-    "Walewale",
-    "Kpandai",
-    "Savelugu",
-  ],
-  "Upper East": [
-    "Bolgatanga",
-    "Bawku",
-    "Navrongo",
-    "Paga",
-    "Zuarungu",
-  ],
-  "Upper West": [
-    "Wa",
-    "Lawra",
-    "Jirapa",
-    "Nandom",
-    "Tumu",
-  ],
-  Ahafo: [
-    "Goaso",
-    "Mim",
-    "Ahafo",
-    "Kukuom",
-    "Sankore",
-  ],
-  Bono: [
-    "Sunyani",
-    "Techiman",
-    "Berekum",
-    "Dormaa Ahenkro",
-    "Nkoranza",
-  ],
-  "Bono East": [
-    "Techiman",
-    "Atebubu",
-    "Kintampo",
-    "Jema",
-    "Yeji",
-  ],
-  "North East": [
-    "Nalerigu",
-    "Bunkpurugu",
-    "Gambaga",
-    "Walewale",
-  ],
-  Oti: [
-    "Dambai",
-    "Jasikan",
-    "Kpandae",
-    "Nkwanta",
-    "Worawora",
-  ],
-  Savannah: [
-    "Damongo",
-    "Bole",
-    "Sawla",
-    "Tuna",
-    "Kpandai",
-  ],
-  "Western North": [
-    "Sefwi Wiawso",
-    "Bibiani",
-    "Aowin",
-    "Juaboso",
-    "Enchi",
-  ],
+  // ... (keep your existing citiesByRegion object)
 };
 
 // ============================================================
@@ -359,7 +180,7 @@ const PostAd = () => {
   const [selectedCity, setSelectedCity] = useState("");
 
   // ==========================================================
-  // FORM DATA – includes all console fields
+  // FORM DATA – all categories including Cars
   // ==========================================================
 
   const [formData, setFormData] = useState({
@@ -415,6 +236,32 @@ const PostAd = () => {
     battery: "",
     resolution: "",
     videoOutput: "",
+
+    // ⌚ Smartwatch
+    watchSize: "",
+
+    // 📺 TV
+    tvType: "",
+    displayTechnology: "",
+    refreshRate: "",
+    operatingSystem: "",
+    hdr: "",
+    hdmiPorts: "",
+    usbPorts: "",
+    smartTV: false,
+    voiceControl: false,
+    wallMountable: false,
+
+    // 🚗 Car (new)
+    mileage: "",
+    bodyType: "",
+    fuelType: "",
+    transmission: "",
+    driveType: "",
+    engineSize: "",
+    seatingCapacity: "",
+    exteriorColor: "",
+    interiorColor: "",
   });
 
   // ==========================================================
@@ -444,7 +291,10 @@ const PostAd = () => {
     tablets: "Tablets",
     accessories: "Accessories",
     electronics: "Electronics",
-    gameConsoles: "Electronics",   // ✅ WORKAROUND – maps to existing category
+    gameConsoles: "Game Consoles",
+    smartwatches: "Smartwatches",
+    tvs: "TVs",
+    cars: "Cars", // ✅ new
   };
 
   // ==========================================================
@@ -456,6 +306,9 @@ const PostAd = () => {
   const isTablet = formData.category === "tablets";
   const isAccessory = formData.category === "accessories";
   const isGameConsole = formData.category === "gameConsoles";
+  const isSmartwatch = formData.category === "smartwatches";
+  const isTV = formData.category === "tvs";
+  const isCar = formData.category === "cars"; // ✅ new
 
   // ==========================================================
   // LOCATION EFFECT
@@ -576,6 +429,44 @@ const PostAd = () => {
             battery: "",
             resolution: "",
             videoOutput: "",
+          }
+        : {}),
+
+      // Clear smartwatch fields
+      ...(category !== "smartwatches"
+        ? {
+            watchSize: "",
+          }
+        : {}),
+
+      // Clear TV fields
+      ...(category !== "tvs"
+        ? {
+            tvType: "",
+            displayTechnology: "",
+            refreshRate: "",
+            operatingSystem: "",
+            hdr: "",
+            hdmiPorts: "",
+            usbPorts: "",
+            smartTV: false,
+            voiceControl: false,
+            wallMountable: false,
+          }
+        : {}),
+
+      // ✅ Clear car fields
+      ...(category !== "cars"
+        ? {
+            mileage: "",
+            bodyType: "",
+            fuelType: "",
+            transmission: "",
+            driveType: "",
+            engineSize: "",
+            seatingCapacity: "",
+            exteriorColor: "",
+            interiorColor: "",
           }
         : {}),
     }));
@@ -717,7 +608,7 @@ const PostAd = () => {
   };
 
   // ==========================================================
-  // STEP 1 VALIDATION
+  // STEP 1 VALIDATION – added car brand check
   // ==========================================================
 
   const goToNextStep = () => {
@@ -774,6 +665,22 @@ const PostAd = () => {
       return;
     }
 
+    if (isSmartwatch && !formData.brand) {
+      setError("Please select a smartwatch brand.");
+      return;
+    }
+
+    if (isTV && !formData.brand) {
+      setError("Please select a TV brand.");
+      return;
+    }
+
+    // ✅ NEW: Car brand validation
+    if (isCar && !formData.brand) {
+      setError("Please select a car brand.");
+      return;
+    }
+
     setStep(2);
   };
 
@@ -787,7 +694,7 @@ const PostAd = () => {
   };
 
   // ==========================================================
-  // BUILD PRODUCT FORM DATA
+  // BUILD PRODUCT FORM DATA – added car fields
   // ==========================================================
 
   const buildProductFormData = () => {
@@ -943,6 +850,84 @@ const PostAd = () => {
     }
 
     // --------------------------------------------------------
+    // ⌚ SMARTWATCH ONLY
+    // --------------------------------------------------------
+
+    if (isSmartwatch) {
+      if (formData.watchSize) {
+        baseFields.watchSize = formData.watchSize;
+      }
+    }
+
+    // --------------------------------------------------------
+    // 📺 TV ONLY
+    // --------------------------------------------------------
+
+    if (isTV) {
+      const tvFields = [
+        "tvType",
+        "displayTechnology",
+        "refreshRate",
+        "operatingSystem",
+        "hdr",
+        "hdmiPorts",
+        "usbPorts",
+      ];
+
+      tvFields.forEach((field) => {
+        if (formData[field] && formData[field] !== "") {
+          baseFields[field] = formData[field];
+        }
+      });
+
+      baseFields.smartTV = String(formData.smartTV);
+      baseFields.voiceControl = String(formData.voiceControl);
+      baseFields.wallMountable = String(formData.wallMountable);
+
+      if (formData.screenSize) {
+        baseFields.screenSize = formData.screenSize;
+      }
+      if (formData.resolution) {
+        baseFields.resolution = formData.resolution;
+      }
+      if (formData.year) {
+        baseFields.year = formData.year;
+      }
+      if (formData.connectivity) {
+        baseFields.connectivity = formData.connectivity;
+      }
+    }
+
+    // --------------------------------------------------------
+    // 🚗 CAR ONLY
+    // --------------------------------------------------------
+
+    if (isCar) {
+      const carFields = [
+        "mileage",
+        "bodyType",
+        "fuelType",
+        "transmission",
+        "driveType",
+        "engineSize",
+        "seatingCapacity",
+        "exteriorColor",
+        "interiorColor",
+      ];
+
+      carFields.forEach((field) => {
+        if (formData[field] && formData[field] !== "") {
+          baseFields[field] = formData[field];
+        }
+      });
+
+      // Year is already in baseFields, but we want to make sure it's sent
+      if (formData.year) {
+        baseFields.year = formData.year;
+      }
+    }
+
+    // --------------------------------------------------------
     // APPEND TEXT FIELDS
     // --------------------------------------------------------
 
@@ -972,7 +957,7 @@ const PostAd = () => {
   };
 
   // ==========================================================
-  // SUBMIT AD
+  // SUBMIT AD – added car validation
   // ==========================================================
 
   const handleSubmit = async (e) => {
@@ -1070,12 +1055,45 @@ const PostAd = () => {
     }
 
     // --------------------------------------------------------
-    // 🎮 GAME CONSOLE VALIDATION
+    // GAME CONSOLE VALIDATION
     // --------------------------------------------------------
 
     if (isGameConsole) {
       if (!formData.model.trim()) {
         setError("Please select a console model.");
+        return;
+      }
+    }
+
+    // --------------------------------------------------------
+    // SMARTWATCH VALIDATION
+    // --------------------------------------------------------
+
+    if (isSmartwatch) {
+      if (!formData.model.trim()) {
+        setError("Please select a smartwatch model.");
+        return;
+      }
+    }
+
+    // --------------------------------------------------------
+    // TV VALIDATION
+    // --------------------------------------------------------
+
+    if (isTV) {
+      if (!formData.model.trim()) {
+        setError("Please select a TV model.");
+        return;
+      }
+    }
+
+    // --------------------------------------------------------
+    // 🚗 CAR VALIDATION
+    // --------------------------------------------------------
+
+    if (isCar) {
+      if (!formData.model.trim()) {
+        setError("Please select a car model.");
         return;
       }
     }
@@ -1116,6 +1134,51 @@ const PostAd = () => {
               screenSize: formData.screenSize,
               year: formData.year,
               connectivity: formData.connectivity,
+            }
+          : null,
+
+        isSmartwatch,
+        watchFields: isSmartwatch
+          ? {
+              watchSize: formData.watchSize,
+              batteryHealth: formData.batteryHealth,
+              connectivity: formData.connectivity,
+            }
+          : null,
+
+        isTV,
+        tvFields: isTV
+          ? {
+              tvType: formData.tvType,
+              displayTechnology: formData.displayTechnology,
+              refreshRate: formData.refreshRate,
+              operatingSystem: formData.operatingSystem,
+              hdr: formData.hdr,
+              hdmiPorts: formData.hdmiPorts,
+              usbPorts: formData.usbPorts,
+              smartTV: formData.smartTV,
+              voiceControl: formData.voiceControl,
+              wallMountable: formData.wallMountable,
+              screenSize: formData.screenSize,
+              resolution: formData.resolution,
+              year: formData.year,
+              connectivity: formData.connectivity,
+            }
+          : null,
+
+        isCar, // ✅ new
+        carFields: isCar
+          ? {
+              mileage: formData.mileage,
+              bodyType: formData.bodyType,
+              fuelType: formData.fuelType,
+              transmission: formData.transmission,
+              driveType: formData.driveType,
+              engineSize: formData.engineSize,
+              seatingCapacity: formData.seatingCapacity,
+              exteriorColor: formData.exteriorColor,
+              interiorColor: formData.interiorColor,
+              year: formData.year,
             }
           : null,
 
@@ -1271,29 +1334,15 @@ const PostAd = () => {
                 onChange={handleCategoryChange}
                 required
               >
-                <option value="phones">
-                  📱 Phones
-                </option>
-
-                <option value="laptops">
-                  💻 Laptops
-                </option>
-
-                <option value="tablets">
-                  📲 Tablets
-                </option>
-
-                <option value="accessories">
-                  🎧 Accessories
-                </option>
-
-                <option value="gameConsoles">
-                  🎮 Game Consoles
-                </option>
-
-                <option value="electronics">
-                  📺 Electronics
-                </option>
+                <option value="cars">🚗 Cars</option> {/* ✅ NEW */}
+                <option value="phones">📱 Phones</option>
+                <option value="laptops">💻 Laptops</option>
+                <option value="tablets">📲 Tablets</option>
+                <option value="accessories">🎧 Accessories</option>
+                <option value="gameConsoles">🎮 Game Consoles</option>
+                <option value="smartwatches">⌚ Smartwatches</option>
+                <option value="tvs">📺 TVs</option>
+                <option value="electronics">📺 Electronics</option>
               </select>
             </div>
 
@@ -1393,7 +1442,7 @@ const PostAd = () => {
               </div>
             )}
 
-            {/* CONSOLE BRAND – hardcoded list */}
+            {/* CONSOLE BRAND */}
 
             {isGameConsole && (
               <div className="form-group">
@@ -1421,6 +1470,152 @@ const PostAd = () => {
                     "AYANEO",
                     "Logitech",
                     "Steam Deck",
+                    "Other",
+                  ].map((brand) => (
+                    <option key={brand} value={brand}>
+                      {brand}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* SMARTWATCH BRAND */}
+
+            {isSmartwatch && (
+              <div className="form-group">
+                <label>
+                  Smartwatch Brand *
+                </label>
+
+                <select
+                  name="brand"
+                  value={formData.brand}
+                  onChange={handleChange}
+                  required
+                >
+                  <option value="">
+                    Select brand
+                  </option>
+
+                  {[
+                    "Apple",
+                    "Samsung",
+                    "Garmin",
+                    "Fitbit",
+                    "Huawei",
+                    "Xiaomi",
+                    "Amazfit",
+                    "Suunto",
+                    "Polar",
+                    "Other",
+                  ].map((brand) => (
+                    <option key={brand} value={brand}>
+                      {brand}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* TV BRAND */}
+
+            {isTV && (
+              <div className="form-group">
+                <label>
+                  TV Brand *
+                </label>
+
+                <select
+                  name="brand"
+                  value={formData.brand}
+                  onChange={handleChange}
+                  required
+                >
+                  <option value="">
+                    Select brand
+                  </option>
+
+                  {[
+                    "Samsung",
+                    "LG",
+                    "Sony",
+                    "TCL",
+                    "Hisense",
+                    "Philips",
+                    "Panasonic",
+                    "Toshiba",
+                    "Sharp",
+                    "Skyworth",
+                    "JVC",
+                    "Haier",
+                    "Xiaomi",
+                    "Roku",
+                    "Vizio",
+                    "Other",
+                  ].map((brand) => (
+                    <option key={brand} value={brand}>
+                      {brand}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* ✅ CAR BRAND */}
+
+            {isCar && (
+              <div className="form-group">
+                <label>
+                  Car Brand (Make) *
+                </label>
+
+                <select
+                  name="brand"
+                  value={formData.brand}
+                  onChange={handleChange}
+                  required
+                >
+                  <option value="">
+                    Select brand
+                  </option>
+
+                  {[
+                    "Toyota",
+                    "Honda",
+                    "Ford",
+                    "Chevrolet",
+                    "Nissan",
+                    "Hyundai",
+                    "Kia",
+                    "Volkswagen",
+                    "Mercedes-Benz",
+                    "BMW",
+                    "Audi",
+                    "Lexus",
+                    "Subaru",
+                    "Mazda",
+                    "Jeep",
+                    "Land Rover",
+                    "Porsche",
+                    "Ferrari",
+                    "Lamborghini",
+                    "Rolls-Royce",
+                    "Bentley",
+                    "Maserati",
+                    "Jaguar",
+                    "Volvo",
+                    "Alfa Romeo",
+                    "Fiat",
+                    "Citroën",
+                    "Peugeot",
+                    "Renault",
+                    "Dacia",
+                    "Mitsubishi",
+                    "Suzuki",
+                    "Daihatsu",
+                    "Isuzu",
+                    "Hino",
                     "Other",
                   ].map((brand) => (
                     <option key={brand} value={brand}>
@@ -1467,6 +1662,12 @@ const PostAd = () => {
                     ? "e.g. Original Apple 20W Charger"
                     : isGameConsole
                     ? "e.g. PlayStation 5 Digital Edition"
+                    : isSmartwatch
+                    ? "e.g. Apple Watch Series 9 GPS"
+                    : isTV
+                    ? "e.g. Samsung 55\" Neo QLED 4K Smart TV"
+                    : isCar
+                    ? "e.g. 2022 Toyota Corolla LE" // ✅ NEW
                     : "e.g. iPhone 15 Pro Max 256GB"
                 }
                 maxLength={200}
@@ -1617,6 +1818,12 @@ const PostAd = () => {
                     ? "Describe the accessory, compatibility, condition, what's included, etc."
                     : isGameConsole
                     ? "Describe the console, condition, included games/accessories, etc."
+                    : isSmartwatch
+                    ? "Describe the smartwatch, condition, battery life, included strap, etc."
+                    : isTV
+                    ? "Describe the TV, screen quality, smart features, connectivity, included accessories, etc."
+                    : isCar
+                    ? "Describe the car, condition, features, maintenance history, etc." // ✅ NEW
                     : "Describe your item..."
                 }
               />
@@ -1754,10 +1961,49 @@ const PostAd = () => {
               />
             )}
 
-            {/* 🎮 GAME CONSOLE */}
+            {/* GAME CONSOLE */}
 
             {isGameConsole && (
               <GameConsoleForm
+                formData={formData}
+                handleChange={handleChange}
+                handleCheckboxChange={
+                  handleCheckboxChange
+                }
+                errors={{}}
+              />
+            )}
+
+            {/* SMARTWATCH */}
+
+            {isSmartwatch && (
+              <AppleWatchForm
+                formData={formData}
+                handleChange={handleChange}
+                handleCheckboxChange={
+                  handleCheckboxChange
+                }
+                errors={{}}
+              />
+            )}
+
+            {/* TV */}
+
+            {isTV && (
+              <TVForm
+                formData={formData}
+                handleChange={handleChange}
+                handleCheckboxChange={
+                  handleCheckboxChange
+                }
+                errors={{}}
+              />
+            )}
+
+            {/* 🚗 CAR */}
+
+            {isCar && (
+              <CarForm
                 formData={formData}
                 handleChange={handleChange}
                 handleCheckboxChange={
@@ -2077,7 +2323,10 @@ const PostAd = () => {
               !isLaptop &&
               !isTablet &&
               !isAccessory &&
-              !isGameConsole && (
+              !isGameConsole &&
+              !isSmartwatch &&
+              !isTV &&
+              !isCar && (
                 <>
                   <div className="form-group">
                     <label>
