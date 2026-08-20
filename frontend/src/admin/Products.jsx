@@ -1,38 +1,67 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
-import { getProducts } from '../../api';
+import { useSearchParams } from 'react-router-dom';
+import { getProducts, getCategories, getLocations } from '../../api';
 import ProductCard from '../../components/ProductCard';
 import Loader from '../../components/Loader';
 
 const Products = () => {
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // Filter states – added simStatus
+  // ─── Filters ──────────────────────────────────────────────
   const [filters, setFilters] = useState({
     category: searchParams.get('category') || '',
     location: searchParams.get('location') || '',
     search: searchParams.get('search') || '',
     minPrice: searchParams.get('minPrice') || '',
     maxPrice: searchParams.get('maxPrice') || '',
-    simStatus: searchParams.get('simStatus') || '',   // ✅ NEW
-    page: parseInt(searchParams.get('page')) || 1,
-    limit: 12,
+    simStatus: searchParams.get('simStatus') || '',
+    // ✅ Fetch ALL products in one go
+    limit: 0,
   });
 
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
 
-  // Available categories (hardcoded – can be fetched from API later)
-  const categories = ['Phones', 'Laptops', 'Tablets', 'Electronics', 'Accessories', 'TV & Game Consoles', 'Other'];
-  const locations = ['Ghana', 'Accra', 'Kumasi', 'Takoradi', 'Tamale', 'Tema', 'Cape Coast'];
+  // ─── Dynamic categories ──────────────────────────────────
+  const [categories, setCategories] = useState([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
 
-  // SIM status options
+  // ─── Dynamic locations ──────────────────────────────────
+  const [locations, setLocations] = useState([]);
+  const [locationsLoading, setLocationsLoading] = useState(true);
+
   const simStatusOptions = ['eSIM Unlocked', 'SIM Unlocked', 'Locked', 'Bypass'];
 
-  // Fetch products
+  // ─── Fetch categories and locations ────────────────────
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const catData = await getCategories();
+        const categoryNames = catData.categories.map(cat => cat.name);
+        setCategories(categoryNames);
+      } catch (err) {
+        console.error('Failed to fetch categories:', err);
+        setCategories(['Phones', 'Laptops', 'Tablets', 'Electronics', 'Accessories', 'TV & Game Consoles', 'Other']);
+      } finally {
+        setCategoriesLoading(false);
+      }
+
+      try {
+        const locData = await getLocations();
+        setLocations(locData.locations || []);
+      } catch (err) {
+        console.error('Failed to fetch locations:', err);
+        setLocations(['Ghana', 'Accra', 'Kumasi', 'Takoradi', 'Tamale', 'Tema', 'Cape Coast']);
+      } finally {
+        setLocationsLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+  // ─── Fetch products ──────────────────────────────────────
   const fetchProducts = useCallback(async () => {
     setLoading(true);
     setError('');
@@ -47,7 +76,6 @@ const Products = () => {
       const data = await getProducts(params);
       setProducts(data.products || []);
       setTotal(data.total || 0);
-      setTotalPages(data.totalPages || 1);
     } catch (err) {
       setError(err.message || 'Failed to load products');
       setProducts([]);
@@ -60,7 +88,7 @@ const Products = () => {
     fetchProducts();
   }, [fetchProducts]);
 
-  // Update URL when filters change
+  // ─── Update URL on filter change ────────────────────────
   useEffect(() => {
     const params = {};
     Object.keys(filters).forEach(key => {
@@ -73,12 +101,11 @@ const Products = () => {
 
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
-    setFilters(prev => ({ ...prev, [name]: value, page: 1 }));
+    setFilters(prev => ({ ...prev, [name]: value }));
   };
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
-    setFilters(prev => ({ ...prev, page: 1 }));
   };
 
   const clearFilters = () => {
@@ -88,23 +115,16 @@ const Products = () => {
       search: '',
       minPrice: '',
       maxPrice: '',
-      simStatus: '',    // ✅ also cleared
-      page: 1,
-      limit: 12,
+      simStatus: '',
+      limit: 0,
     });
-  };
-
-  const goToPage = (page) => {
-    if (page < 1 || page > totalPages) return;
-    setFilters(prev => ({ ...prev, page }));
-    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   return (
     <div className="container" style={{ padding: '40px 20px' }}>
       <h1 style={{ fontSize: '32px', fontWeight: 800, marginBottom: '8px' }}>🛒 Browse Products</h1>
       <p style={{ color: 'var(--gray-500)', marginBottom: '24px' }}>
-        {total > 0 ? `Showing ${products.length} of ${total} products` : 'No products found'}
+        {total > 0 ? `Showing all ${total} products` : 'No products found'}
       </p>
 
       {/* Filter Bar */}
@@ -147,9 +167,13 @@ const Products = () => {
             }}
           >
             <option value="">All Categories</option>
-            {categories.map(cat => (
-              <option key={cat} value={cat}>{cat}</option>
-            ))}
+            {categoriesLoading ? (
+              <option disabled>Loading...</option>
+            ) : (
+              categories.map(cat => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))
+            )}
           </select>
           <select
             name="location"
@@ -164,12 +188,15 @@ const Products = () => {
             }}
           >
             <option value="">All Locations</option>
-            {locations.map(loc => (
-              <option key={loc} value={loc}>{loc}</option>
-            ))}
+            {locationsLoading ? (
+              <option disabled>Loading...</option>
+            ) : (
+              locations.map(loc => (
+                <option key={loc} value={loc}>{loc}</option>
+              ))
+            )}
           </select>
 
-          {/* ✅ NEW: SIM Status filter */}
           <select
             name="simStatus"
             value={filters.simStatus}
@@ -259,7 +286,7 @@ const Products = () => {
         </div>
       )}
 
-      {/* Product Grid */}
+      {/* Product Grid – no pagination */}
       {!loading && !error && (
         <>
           {products.length === 0 ? (
@@ -278,68 +305,10 @@ const Products = () => {
               ))}
             </div>
           )}
-
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div style={{
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center',
-              gap: '8px',
-              marginTop: '40px',
-              flexWrap: 'wrap',
-            }}>
-              <button
-                onClick={() => goToPage(filters.page - 1)}
-                disabled={filters.page === 1}
-                style={{
-                  padding: '8px 16px',
-                  border: '1.5px solid var(--gray-200)',
-                  borderRadius: 'var(--radius-md)',
-                  background: 'white',
-                  cursor: filters.page === 1 ? 'not-allowed' : 'pointer',
-                  opacity: filters.page === 1 ? 0.5 : 1,
-                }}
-              >
-                ← Prev
-              </button>
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                <button
-                  key={page}
-                  onClick={() => goToPage(page)}
-                  style={{
-                    padding: '8px 14px',
-                    border: '1.5px solid var(--gray-200)',
-                    borderRadius: 'var(--radius-md)',
-                    background: page === filters.page ? 'var(--primary)' : 'white',
-                    color: page === filters.page ? 'white' : 'var(--gray-700)',
-                    fontWeight: page === filters.page ? 700 : 400,
-                    cursor: 'pointer',
-                  }}
-                >
-                  {page}
-                </button>
-              ))}
-              <button
-                onClick={() => goToPage(filters.page + 1)}
-                disabled={filters.page === totalPages}
-                style={{
-                  padding: '8px 16px',
-                  border: '1.5px solid var(--gray-200)',
-                  borderRadius: 'var(--radius-md)',
-                  background: 'white',
-                  cursor: filters.page === totalPages ? 'not-allowed' : 'pointer',
-                  opacity: filters.page === totalPages ? 0.5 : 1,
-                }}
-              >
-                Next →
-              </button>
-            </div>
-          )}
         </>
       )}
     </div>
   );
 };
 
-export default Products;backend/routes/upload.js
+export default Products;

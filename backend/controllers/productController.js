@@ -684,13 +684,18 @@ exports.getProducts = async (
       1
     );
 
-    const limitNumber = Math.min(
-      Math.max(
-        parseInt(limit, 10) || 20,
-        1
-      ),
-      100
-    );
+    // ─── MODIFICATION: allow unlimited results ──────────────
+    // If limit is "0" or "all", set a very high number (10000)
+    let limitNumber;
+    if (limit === "0" || limit === "all") {
+      limitNumber = 10000; // high enough to get all products
+    } else {
+      limitNumber = Math.min(
+        Math.max(parseInt(limit, 10) || 20, 1),
+        100
+      );
+    }
+    // ─── END MODIFICATION ────────────────────────────────────
 
     const query = {};
 
@@ -2550,6 +2555,30 @@ exports.updateProductStatus =
   };
 
 // ============================================================
+// GET DISTINCT LOCATIONS
+// ============================================================
+
+exports.getLocations = async (req, res) => {
+  try {
+    const locations = await Product.distinct('location');
+    // Filter out empty/null values and sort alphabetically
+    const cleaned = locations
+      .filter(loc => loc && typeof loc === 'string' && loc.trim())
+      .sort((a, b) => a.localeCompare(b));
+    res.json({
+      success: true,
+      locations: cleaned,
+    });
+  } catch (error) {
+    console.error('❌ Get locations error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to fetch locations',
+    });
+  }
+};
+
+// ============================================================
 // UPDATE STOCK (disabled)
 // ============================================================
 
@@ -2590,4 +2619,7 @@ module.exports = {
 
   updateProductStatus:
     exports.updateProductStatus,
+
+  getLocations:
+    exports.getLocations,
 };
