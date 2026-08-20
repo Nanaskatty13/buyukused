@@ -345,7 +345,7 @@ const Profile = () => {
               </span>
             )}
             {user.role && user.role !== 'admin' && (
-              <span style={{ background: '#525355', color: '#374151', fontSize: '12px', padding: '2px 12px', borderRadius: 'var(--radius-full)', fontWeight: 500 }}>
+              <span style={{ background: '#31f705', color: '#374151', fontSize: '12px', padding: '2px 12px', borderRadius: 'var(--radius-full)', fontWeight: 500 }}>
                 {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
               </span>
             )}
