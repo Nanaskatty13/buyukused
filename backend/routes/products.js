@@ -23,7 +23,6 @@ const router = express.Router();
 
 const MAX_IMAGES = 5;
 const MAX_VIDEOS = 1;
-const MAX_FILES = MAX_IMAGES + MAX_VIDEOS;
 
 const VALID_STATUSES = [
   "active",
@@ -66,34 +65,17 @@ const VALID_FACE_ID = [
 // HELPERS
 // ============================================================
 
+// ------------------------------------------------------------
+// ObjectId validation
+// ------------------------------------------------------------
+
 const isValidObjectId = (id) => {
   return mongoose.Types.ObjectId.isValid(id);
 };
 
-// ============================================================
-// GET USER ID
-// ============================================================
-
-const getCurrentUserId = (req) => {
-  return (
-    req.userId ||
-    req.user?.id ||
-    req.user?._id ||
-    null
-  );
-};
-
-// ============================================================
-// GET USER ROLE
-// ============================================================
-
-const getCurrentUserRole = (req) => {
-  return req.user?.role || null;
-};
-
-// ============================================================
-// BOOLEAN PARSER
-// ============================================================
+// ------------------------------------------------------------
+// Boolean parser
+// ------------------------------------------------------------
 
 const parseBoolean = (
   value,
@@ -108,22 +90,21 @@ const parseBoolean = (
   }
 
   if (typeof value === "string") {
-    const normalized = value
-      .trim()
-      .toLowerCase();
+    const normalized =
+      value.trim().toLowerCase();
 
     if (
-      ["true", "1", "yes", "on"].includes(
-        normalized
-      )
+      normalized === "true" ||
+      normalized === "1" ||
+      normalized === "yes"
     ) {
       return true;
     }
 
     if (
-      ["false", "0", "no", "off"].includes(
-        normalized
-      )
+      normalized === "false" ||
+      normalized === "0" ||
+      normalized === "no"
     ) {
       return false;
     }
@@ -132,9 +113,9 @@ const parseBoolean = (
   return defaultValue;
 };
 
-// ============================================================
-// NUMBER PARSER
-// ============================================================
+// ------------------------------------------------------------
+// Number parser
+// ------------------------------------------------------------
 
 const parseNumber = (
   value,
@@ -156,93 +137,213 @@ const parseNumber = (
 };
 
 // ============================================================
-// STRING HELPER
+// CATEGORY NORMALIZATION
 // ============================================================
 
-const cleanString = (
-  value,
-  defaultValue = ""
-) => {
+const normalizeCategory = (value) => {
+  if (
+    value === undefined ||
+    value === null ||
+    String(value).trim() === ""
+  ) {
+    return "Other";
+  }
+
+  const category = String(value)
+    .trim()
+    .toLowerCase();
+
+  const categoryMap = {
+    // Cars
+    car: "Cars",
+    cars: "Cars",
+    automobile: "Cars",
+    automobiles: "Cars",
+    vehicle: "Cars",
+    vehicles: "Cars",
+
+    // Phones
+    phone: "Phones",
+    phones: "Phones",
+    mobile: "Phones",
+    mobiles: "Phones",
+    mobilephone: "Phones",
+    mobilephones: "Phones",
+    smartphone: "Phones",
+    smartphones: "Phones",
+    iphone: "Phones",
+    iphones: "Phones",
+    android: "Phones",
+
+    // Laptops
+    laptop: "Laptops",
+    laptops: "Laptops",
+    notebook: "Laptops",
+    notebooks: "Laptops",
+    computer: "Laptops",
+    computers: "Laptops",
+    pc: "Laptops",
+
+    // Tablets
+    tablet: "Tablets",
+    tablets: "Tablets",
+    ipad: "Tablets",
+    ipads: "Tablets",
+
+    // Accessories
+    accessory: "Accessories",
+    accessories: "Accessories",
+
+    // Real Estate
+    "real estate": "Real Estate",
+    realestate: "Real Estate",
+    property: "Real Estate",
+    properties: "Real Estate",
+    land: "Real Estate",
+    house: "Real Estate",
+    houses: "Real Estate",
+    apartment: "Real Estate",
+    apartments: "Real Estate",
+
+    // Jobs
+    job: "Jobs",
+    jobs: "Jobs",
+    employment: "Jobs",
+    career: "Jobs",
+    careers: "Jobs",
+
+    // Electronics
+    electronic: "Electronics",
+    electronics: "Electronics",
+
+    // Fashion
+    fashion: "Fashion",
+    clothing: "Fashion",
+    clothes: "Fashion",
+
+    // Home
+    home: "Home",
+    household: "Home",
+    furniture: "Home",
+
+    // Other
+    other: "Other",
+  };
+
+  return categoryMap[category] || null;
+};
+
+// ============================================================
+// CONDITION NORMALIZATION
+// ============================================================
+
+const normalizeCondition = (value) => {
+  if (
+    value === undefined ||
+    value === null ||
+    String(value).trim() === ""
+  ) {
+    return "Good";
+  }
+
+  const condition = String(value)
+    .trim()
+    .toLowerCase();
+
+  const conditionMap = {
+    "brand new": "Brand New",
+    brandnew: "Brand New",
+    new: "Brand New",
+
+    "like new": "Like New",
+    likenew: "Like New",
+
+    excellent: "Excellent",
+    excellentcondition: "Excellent",
+
+    good: "Good",
+    goodcondition: "Good",
+
+    fair: "Fair",
+    faircondition: "Fair",
+
+    poor: "Poor",
+    poorcondition: "Poor",
+  };
+
+  return conditionMap[condition] || null;
+};
+
+// ============================================================
+// FACE ID NORMALIZATION
+// ============================================================
+
+const normalizeFaceId = (value) => {
+  if (
+    value === undefined ||
+    value === null ||
+    String(value).trim() === ""
+  ) {
+    return "";
+  }
+
+  const faceId = String(value)
+    .trim()
+    .toLowerCase();
+
+  if (faceId === "working") {
+    return "Working";
+  }
+
+  if (
+    faceId === "not working" ||
+    faceId === "notworking"
+  ) {
+    return "Not Working";
+  }
+
+  if (
+    faceId === "not available" ||
+    faceId === "notavailable"
+  ) {
+    return "Not Available";
+  }
+
+  return null;
+};
+
+// ============================================================
+// STATUS NORMALIZATION
+// ============================================================
+
+const normalizeStatus = (value) => {
   if (
     value === undefined ||
     value === null
   ) {
-    return defaultValue;
-  }
-
-  return String(value).trim();
-};
-
-// ============================================================
-// ESCAPE REGEX
-// ============================================================
-
-const escapeRegex = (value) => {
-  return String(value).replace(
-    /[.*+?^${}()|[\]\\]/g,
-    "\\$&"
-  );
-};
-
-// ============================================================
-// PARSE JSON ARRAY
-// ============================================================
-
-const parseJsonArray = (
-  value,
-  fieldName
-) => {
-  if (
-    value === undefined ||
-    value === null ||
-    value === ""
-  ) {
     return null;
   }
 
-  try {
-    const parsed =
-      typeof value === "string"
-        ? JSON.parse(value)
-        : value;
+  const status = String(value)
+    .trim()
+    .toLowerCase();
 
-    if (!Array.isArray(parsed)) {
-      throw new Error(
-        `${fieldName} must be an array`
-      );
-    }
-
-    return parsed;
-  } catch (error) {
-    throw new Error(
-      `${fieldName} must be valid JSON`
-    );
+  if (
+    VALID_STATUSES.includes(status)
+  ) {
+    return status;
   }
+
+  return null;
 };
 
 // ============================================================
-// NORMALIZE URL ARRAY
+// CLOUDINARY HELPERS
 // ============================================================
 
-const normalizeUrlArray = (
-  value
-) => {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-
-  return value
-    .filter(
-      (url) =>
-        typeof url === "string" &&
-        url.trim()
-    )
-    .map((url) => url.trim());
-};
-
-// ============================================================
-// CLOUDINARY PUBLIC ID
-// ============================================================
+// ------------------------------------------------------------
+// Extract Cloudinary public ID
+// ------------------------------------------------------------
 
 const getCloudinaryPublicId = (
   url
@@ -256,7 +357,8 @@ const getCloudinaryPublicId = (
       return null;
     }
 
-    const uploadMarker = "/upload/";
+    const uploadMarker =
+      "/upload/";
 
     const uploadIndex =
       url.indexOf(uploadMarker);
@@ -270,14 +372,20 @@ const getCloudinaryPublicId = (
         uploadMarker.length
     );
 
-    const parts = publicId.split("/");
+    const parts =
+      publicId.split("/");
 
     // Remove transformations.
     while (
       parts.length > 0 &&
       (
         parts[0].includes("_") ||
-        parts[0].includes(",")
+        parts[0].includes(",") ||
+        parts[0].startsWith("c_") ||
+        parts[0].startsWith("w_") ||
+        parts[0].startsWith("h_") ||
+        parts[0].startsWith("q_") ||
+        parts[0].startsWith("f_")
       )
     ) {
       parts.shift();
@@ -286,21 +394,23 @@ const getCloudinaryPublicId = (
     publicId = parts.join("/");
 
     // Remove version.
-    publicId = publicId.replace(
-      /^v\d+\//,
-      ""
-    );
+    publicId =
+      publicId.replace(
+        /^v\d+\//,
+        ""
+      );
 
     // Remove extension.
-    publicId = publicId.replace(
-      /\.[^/.]+$/,
-      ""
-    );
+    publicId =
+      publicId.replace(
+        /\.[^/.]+$/,
+        ""
+      );
 
     return publicId || null;
   } catch (error) {
     console.error(
-      "❌ Cloudinary public ID error:",
+      "❌ Failed to extract Cloudinary public ID:",
       error.message
     );
 
@@ -308,9 +418,9 @@ const getCloudinaryPublicId = (
   }
 };
 
-// ============================================================
-// DELETE CLOUDINARY FILE
-// ============================================================
+// ------------------------------------------------------------
+// Delete Cloudinary file
+// ------------------------------------------------------------
 
 const deleteFromCloudinary = async (
   fileUrl,
@@ -318,7 +428,9 @@ const deleteFromCloudinary = async (
 ) => {
   try {
     const publicId =
-      getCloudinaryPublicId(fileUrl);
+      getCloudinaryPublicId(
+        fileUrl
+      );
 
     if (!publicId) {
       return;
@@ -327,12 +439,13 @@ const deleteFromCloudinary = async (
     await cloudinary.uploader.destroy(
       publicId,
       {
-        resource_type: resourceType,
+        resource_type:
+          resourceType,
       }
     );
 
     console.log(
-      `🗑️ Cloudinary deleted: ${publicId}`
+      `🗑️ Cloudinary file deleted: ${publicId}`
     );
   } catch (error) {
     console.error(
@@ -342,9 +455,9 @@ const deleteFromCloudinary = async (
   }
 };
 
-// ============================================================
-// UPLOAD BUFFER TO CLOUDINARY
-// ============================================================
+// ------------------------------------------------------------
+// Upload buffer to Cloudinary
+// ------------------------------------------------------------
 
 const uploadToCloudinary = (
   file
@@ -363,11 +476,9 @@ const uploadToCloudinary = (
           );
         }
 
-        const mimetype =
-          file.mimetype || "";
-
         const isVideo =
-          mimetype.startsWith(
+          file.mimetype &&
+          file.mimetype.startsWith(
             "video/"
           );
 
@@ -381,27 +492,32 @@ const uploadToCloudinary = (
             ? "kn-classifieds/videos"
             : "kn-classifieds/images";
 
-        const publicId =
-          `${Date.now()}-${Math.round(
-            Math.random() * 1e9
-          )}`;
-
         const uploadStream =
           cloudinary.uploader.upload_stream(
             {
               folder,
               resource_type:
                 resourceType,
-              public_id: publicId,
+
+              public_id:
+                `${Date.now()}-${Math.round(
+                  Math.random() * 1e9
+                )}`,
             },
-            (error, result) => {
+
+            (
+              error,
+              result
+            ) => {
               if (error) {
                 console.error(
                   "❌ Cloudinary upload error:",
                   error
                 );
 
-                return reject(error);
+                return reject(
+                  error
+                );
               }
 
               resolve({
@@ -423,23 +539,25 @@ const uploadToCloudinary = (
   );
 };
 
-// ============================================================
-// UPLOAD MULTIPLE FILES
-// ============================================================
+// ------------------------------------------------------------
+// Upload multiple files
+// ------------------------------------------------------------
 
 const uploadFiles = async (
-  files = []
+  files
 ) => {
-  const safeFiles =
+  const allFiles =
     Array.isArray(files)
       ? files
       : [];
 
   const imageFiles =
-    safeFiles
+    allFiles
       .filter(
         (file) =>
-          file?.mimetype?.startsWith(
+          file &&
+          file.mimetype &&
+          file.mimetype.startsWith(
             "image/"
           )
       )
@@ -449,10 +567,12 @@ const uploadFiles = async (
       );
 
   const videoFiles =
-    safeFiles
+    allFiles
       .filter(
         (file) =>
-          file?.mimetype?.startsWith(
+          file &&
+          file.mimetype &&
+          file.mimetype.startsWith(
             "video/"
           )
       )
@@ -461,28 +581,32 @@ const uploadFiles = async (
         MAX_VIDEOS
       );
 
-  const [
-    imageResults,
-    videoResults,
-  ] = await Promise.all([
-    Promise.all(
+  const imageResults =
+    await Promise.all(
       imageFiles.map(
-        uploadToCloudinary
+        (file) =>
+          uploadToCloudinary(
+            file
+          )
       )
-    ),
+    );
 
-    Promise.all(
+  const videoResults =
+    await Promise.all(
       videoFiles.map(
-        uploadToCloudinary
+        (file) =>
+          uploadToCloudinary(
+            file
+          )
       )
-    ),
-  ]);
+    );
 
   const images =
     imageResults
       .map(
         (item) =>
-          item.result?.secure_url
+          item.result &&
+          item.result.secure_url
       )
       .filter(Boolean);
 
@@ -490,7 +614,8 @@ const uploadFiles = async (
     videoResults
       .map(
         (item) =>
-          item.result?.secure_url
+          item.result &&
+          item.result.secure_url
       )
       .filter(Boolean);
 
@@ -501,89 +626,115 @@ const uploadFiles = async (
 };
 
 // ============================================================
-// VALIDATE FILE COUNT
+// ARRAY PARSER
 // ============================================================
 
-const validateFiles = (
-  files = []
+const parseJsonArray = (
+  value,
+  fieldName
 ) => {
-  const imageCount =
-    files.filter((file) =>
-      file?.mimetype?.startsWith(
-        "image/"
-      )
-    ).length;
-
-  const videoCount =
-    files.filter((file) =>
-      file?.mimetype?.startsWith(
-        "video/"
-      )
-    ).length;
-
-  if (imageCount > MAX_IMAGES) {
-    return {
-      valid: false,
-      message: `Maximum ${MAX_IMAGES} images are allowed.`,
-    };
+  if (
+    value === undefined ||
+    value === null ||
+    value === ""
+  ) {
+    return null;
   }
 
-  if (videoCount > MAX_VIDEOS) {
-    return {
-      valid: false,
-      message: `Maximum ${MAX_VIDEOS} video is allowed.`,
-    };
-  }
+  try {
+    const parsed =
+      typeof value === "string"
+        ? JSON.parse(value)
+        : value;
 
-  return {
-    valid: true,
-  };
-};
+    if (!Array.isArray(parsed)) {
+      throw new Error();
+    }
 
-// ============================================================
-// SYNC LEGACY IMAGE FIELD
-// ============================================================
-
-const syncLegacyImage = (
-  product
-) => {
-  const images =
-    normalizeUrlArray(
-      product.images
+    return parsed;
+  } catch {
+    throw new Error(
+      `${fieldName} must be a valid JSON array`
     );
-
-  product.images = images;
-
-  product.image =
-    images.length > 0
-      ? images[0]
-      : "";
+  }
 };
 
 // ============================================================
-// GET PRODUCT PUBLIC DATA
-// ============================================================
-//
-// IMPORTANT:
-// We do NOT inject iPhone/laptop specs here.
-// The product is returned exactly according to
-// the information stored for that product.
+// CLEAN URL ARRAY
 // ============================================================
 
-const getProductResponse = (
-  product
+const cleanUrlArray = (
+  value
 ) => {
-  return product;
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .filter(
+      (url) =>
+        typeof url ===
+          "string" &&
+        url.trim() !== ""
+    )
+    .map((url) =>
+      url.trim()
+    );
 };
 
 // ============================================================
-// TEST ROUTE
+// GET USER ID
+// ============================================================
+
+const getCurrentUserId = (
+  req
+) => {
+  return (
+    req.userId ||
+    req.user?.id ||
+    req.user?._id ||
+    null
+  );
+};
+
+// ============================================================
+// CHECK PRODUCT OWNER
+// ============================================================
+
+const isProductOwnerOrAdmin = (
+  product,
+  req
+) => {
+  const currentUserId =
+    getCurrentUserId(req);
+
+  if (!currentUserId) {
+    return false;
+  }
+
+  const isOwner =
+    product.sellerId &&
+    product.sellerId
+      .toString() ===
+      currentUserId.toString();
+
+  const isAdmin =
+    req.user?.role === "admin";
+
+  return (
+    isOwner ||
+    isAdmin
+  );
+};
+
+// ============================================================
+// TEST
 // ============================================================
 
 router.get(
   "/test",
   (req, res) => {
-    return res.json({
+    res.json({
       success: true,
       message:
         "Products router is alive!",
@@ -612,31 +763,34 @@ router.get(
       const filter = {};
 
       // --------------------------------------------------------
-      // CATEGORY
+      // Category
       // --------------------------------------------------------
 
       if (
         category &&
         category !== "all"
       ) {
-        if (
-          !VALID_CATEGORIES.includes(
+        const normalizedCategory =
+          normalizeCategory(
             category
-          )
-        ) {
+          );
+
+        if (!normalizedCategory) {
           return res.status(400).json({
             success: false,
             message:
               "Invalid product category",
+            allowedCategories:
+              VALID_CATEGORIES,
           });
         }
 
         filter.category =
-          category;
+          normalizedCategory;
       }
 
       // --------------------------------------------------------
-      // LOCATION
+      // Location
       // --------------------------------------------------------
 
       if (
@@ -644,11 +798,11 @@ router.get(
         location !== "all"
       ) {
         filter.location =
-          cleanString(location);
+          String(location).trim();
       }
 
       // --------------------------------------------------------
-      // SELLER
+      // Seller
       // --------------------------------------------------------
 
       if (sellerId) {
@@ -669,38 +823,44 @@ router.get(
       }
 
       // --------------------------------------------------------
-      // STATUS
+      // Status
       // --------------------------------------------------------
 
       if (status) {
-        if (
-          !VALID_STATUSES.includes(
+        const normalizedStatus =
+          normalizeStatus(
             status
-          )
-        ) {
+          );
+
+        if (!normalizedStatus) {
           return res.status(400).json({
             success: false,
             message:
               "Invalid product status",
+            allowedStatuses:
+              VALID_STATUSES,
           });
         }
 
         filter.status =
-          status;
+          normalizedStatus;
       }
 
       // --------------------------------------------------------
-      // SEARCH
+      // Search
       // --------------------------------------------------------
 
       if (
         search &&
-        search.trim()
+        String(search).trim()
       ) {
         const escapedSearch =
-          escapeRegex(
-            search.trim()
-          );
+          String(search)
+            .trim()
+            .replace(
+              /[.*+?^${}()|[\]\\]/g,
+              "\\$&"
+            );
 
         filter.$or = [
           {
@@ -710,7 +870,6 @@ router.get(
               $options: "i",
             },
           },
-
           {
             description: {
               $regex:
@@ -718,7 +877,6 @@ router.get(
               $options: "i",
             },
           },
-
           {
             brand: {
               $regex:
@@ -726,7 +884,6 @@ router.get(
               $options: "i",
             },
           },
-
           {
             model: {
               $regex:
@@ -734,7 +891,6 @@ router.get(
               $options: "i",
             },
           },
-
           {
             category: {
               $regex:
@@ -746,28 +902,36 @@ router.get(
       }
 
       // --------------------------------------------------------
-      // PAGINATION
+      // Pagination
       // --------------------------------------------------------
 
-      const parsedLimit = Math.min(
-        Math.max(
-          parseInt(limit, 10) || 20,
-          1
-        ),
-        100
-      );
+      const parsedLimit =
+        Math.min(
+          Math.max(
+            parseInt(
+              limit,
+              10
+            ) || 20,
+            1
+          ),
+          100
+        );
 
-      const parsedPage = Math.max(
-        parseInt(page, 10) || 1,
-        1
-      );
+      const parsedPage =
+        Math.max(
+          parseInt(
+            page,
+            10
+          ) || 1,
+          1
+        );
 
       const skip =
         (parsedPage - 1) *
         parsedLimit;
 
       // --------------------------------------------------------
-      // QUERY
+      // Query
       // --------------------------------------------------------
 
       const [
@@ -793,20 +957,16 @@ router.get(
 
       const totalPages =
         Math.ceil(
-          total / parsedLimit
+          total /
+            parsedLimit
         );
 
-      return res.json({
+      res.json({
         success: true,
-
         products,
-
         total,
-
         page: parsedPage,
-
         limit: parsedLimit,
-
         totalPages,
 
         pagination: {
@@ -828,15 +988,11 @@ router.get(
         error
       );
 
-      return res.status(500).json({
+      res.status(500).json({
         success: false,
         message:
+          error.message ||
           "Failed to fetch products",
-        error:
-          process.env.NODE_ENV ===
-          "development"
-            ? error.message
-            : undefined,
       });
     }
   }
@@ -879,22 +1035,15 @@ router.get(
         });
       }
 
-      // --------------------------------------------------------
-      // Increment views safely
-      // --------------------------------------------------------
-
+      // Increment views.
       product.views =
-        Number(product.views || 0) +
-        1;
+        (product.views || 0) + 1;
 
       await product.save();
 
-      return res.json({
+      res.json({
         success: true,
-        product:
-          getProductResponse(
-            product
-          ),
+        product,
       });
     } catch (error) {
       console.error(
@@ -902,9 +1051,10 @@ router.get(
         error
       );
 
-      return res.status(500).json({
+      res.status(500).json({
         success: false,
         message:
+          error.message ||
           "Failed to fetch product",
       });
     }
@@ -919,23 +1069,26 @@ router.post(
   "/",
   verifyToken,
   isSeller,
+
   upload.array(
     "files",
-    MAX_FILES
+    6
   ),
 
   async (req, res) => {
-    const uploadedImages = [];
-    const uploadedVideos = [];
+    let uploadedImages = [];
+    let uploadedVideos = [];
 
     try {
       console.log(
-        "📩 POST /api/products"
+        "📩 POST /api/products received"
       );
 
       console.log(
         "👤 User:",
-        req.userId
+        req.userId ||
+          req.user?.id ||
+          req.user?._id
       );
 
       console.log(
@@ -944,7 +1097,7 @@ router.post(
       );
 
       // --------------------------------------------------------
-      // AUTHENTICATION
+      // Authentication
       // --------------------------------------------------------
 
       const sellerId =
@@ -958,37 +1111,8 @@ router.post(
         });
       }
 
-      if (
-        !isValidObjectId(
-          sellerId
-        )
-      ) {
-        return res.status(401).json({
-          success: false,
-          message:
-            "Invalid authenticated user",
-        });
-      }
-
       // --------------------------------------------------------
-      // FILE VALIDATION
-      // --------------------------------------------------------
-
-      const fileValidation =
-        validateFiles(
-          req.files || []
-        );
-
-      if (!fileValidation.valid) {
-        return res.status(400).json({
-          success: false,
-          message:
-            fileValidation.message,
-        });
-      }
-
-      // --------------------------------------------------------
-      // BODY
+      // Request body
       // --------------------------------------------------------
 
       const {
@@ -1010,17 +1134,16 @@ router.post(
         simStatus,
         batteryHealth,
         faceId,
-        oldPrice,
       } = req.body;
 
       // --------------------------------------------------------
-      // TITLE
+      // Title
       // --------------------------------------------------------
 
-      const cleanTitle =
-        cleanString(title);
-
-      if (!cleanTitle) {
+      if (
+        !title ||
+        !String(title).trim()
+      ) {
         return res.status(400).json({
           success: false,
           message:
@@ -1028,16 +1151,8 @@ router.post(
         });
       }
 
-      if (cleanTitle.length > 200) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Product title cannot exceed 200 characters",
-        });
-      }
-
       // --------------------------------------------------------
-      // PRICE
+      // Price
       // --------------------------------------------------------
 
       const parsedPrice =
@@ -1055,42 +1170,13 @@ router.post(
       }
 
       // --------------------------------------------------------
-      // OLD PRICE
+      // Seller phone
       // --------------------------------------------------------
-
-      let parsedOldPrice = null;
 
       if (
-        oldPrice !== undefined &&
-        oldPrice !== ""
+        !sellerPhone ||
+        !String(sellerPhone).trim()
       ) {
-        parsedOldPrice =
-          parseNumber(
-            oldPrice
-          );
-
-        if (
-          parsedOldPrice === null ||
-          parsedOldPrice < 0
-        ) {
-          return res.status(400).json({
-            success: false,
-            message:
-              "Invalid old price",
-          });
-        }
-      }
-
-      // --------------------------------------------------------
-      // PHONE
-      // --------------------------------------------------------
-
-      const cleanSellerPhone =
-        cleanString(
-          sellerPhone
-        );
-
-      if (!cleanSellerPhone) {
         return res.status(400).json({
           success: false,
           message:
@@ -1103,20 +1189,17 @@ router.post(
       // --------------------------------------------------------
 
       const selectedCategory =
-        cleanString(
-          category,
-          "Other"
-        ) || "Other";
+        normalizeCategory(
+          category
+        );
 
-      if (
-        !VALID_CATEGORIES.includes(
-          selectedCategory
-        )
-      ) {
+      if (!selectedCategory) {
         return res.status(400).json({
           success: false,
           message:
-            "Invalid product category",
+            `Invalid product category: ${category}`,
+          allowedCategories:
+            VALID_CATEGORIES,
         });
       }
 
@@ -1125,25 +1208,22 @@ router.post(
       // --------------------------------------------------------
 
       const selectedCondition =
-        cleanString(
-          condition,
-          "Good"
-        ) || "Good";
+        normalizeCondition(
+          condition
+        );
 
-      if (
-        !VALID_CONDITIONS.includes(
-          selectedCondition
-        )
-      ) {
+      if (!selectedCondition) {
         return res.status(400).json({
           success: false,
           message:
-            "Invalid product condition",
+            `Invalid product condition: ${condition}`,
+          allowedConditions:
+            VALID_CONDITIONS,
         });
       }
 
       // --------------------------------------------------------
-      // BATTERY HEALTH
+      // Battery health
       // --------------------------------------------------------
 
       let parsedBatteryHealth =
@@ -1155,13 +1235,14 @@ router.post(
         batteryHealth !== ""
       ) {
         parsedBatteryHealth =
-          parseNumber(
+          Number(
             batteryHealth
           );
 
         if (
-          parsedBatteryHealth ===
-            null ||
+          !Number.isFinite(
+            parsedBatteryHealth
+          ) ||
           parsedBatteryHealth < 0 ||
           parsedBatteryHealth > 100
         ) {
@@ -1174,28 +1255,28 @@ router.post(
       }
 
       // --------------------------------------------------------
-      // FACE ID
+      // Face ID
       // --------------------------------------------------------
 
       const selectedFaceId =
-        cleanString(
+        normalizeFaceId(
           faceId
         );
 
       if (
-        !VALID_FACE_ID.includes(
-          selectedFaceId
-        )
+        selectedFaceId === null
       ) {
         return res.status(400).json({
           success: false,
           message:
-            "Invalid Face ID status",
+            `Invalid Face ID status: ${faceId}`,
+          allowedFaceId:
+            VALID_FACE_ID,
         });
       }
 
       // --------------------------------------------------------
-      // UPLOAD FILES
+      // Upload files
       // --------------------------------------------------------
 
       const {
@@ -1205,13 +1286,11 @@ router.post(
         req.files || []
       );
 
-      uploadedImages.push(
-        ...images
-      );
+      uploadedImages =
+        images;
 
-      uploadedVideos.push(
-        ...videos
-      );
+      uploadedVideos =
+        videos;
 
       console.log(
         "🖼️ Images uploaded:",
@@ -1224,75 +1303,83 @@ router.post(
       );
 
       // --------------------------------------------------------
-      // PRODUCT DATA
-      // --------------------------------------------------------
-      //
-      // IMPORTANT:
-      // These fields come ONLY from the submitted product.
-      //
-      // A laptop will not receive iPhone values.
-      // A phone will not receive laptop values unless
-      // the frontend actually sends them.
+      // Product data
       // --------------------------------------------------------
 
       const productData = {
-        title: cleanTitle,
+        title:
+          String(title).trim(),
 
-        price: parsedPrice,
-
-        oldPrice: parsedOldPrice,
+        price:
+          parsedPrice,
 
         category:
           selectedCategory,
 
         location:
-          cleanString(
-            location,
-            "Ghana"
-          ) || "Ghana",
+          location &&
+          String(location).trim()
+            ? String(
+                location
+              ).trim()
+            : "Ghana",
 
         description:
-          cleanString(
-            description
-          ),
+          description
+            ? String(
+                description
+              ).trim()
+            : "",
 
         sellerId,
 
         sellerName:
-          cleanString(
-            sellerName
-          ) ||
-          cleanString(
-            req.user?.name
-          ),
+          sellerName &&
+          String(sellerName).trim()
+            ? String(
+                sellerName
+              ).trim()
+            : req.user?.name || "",
 
         sellerPhone:
-          cleanSellerPhone,
+          String(
+            sellerPhone
+          ).trim(),
 
         brand:
-          cleanString(
-            brand
-          ),
+          brand
+            ? String(
+                brand
+              ).trim()
+            : "",
 
         model:
-          cleanString(
-            model
-          ),
+          model
+            ? String(
+                model
+              ).trim()
+            : "",
 
         ram:
-          cleanString(
-            ram
-          ),
+          ram
+            ? String(
+                ram
+              ).trim()
+            : "",
 
         storage:
-          cleanString(
-            storage
-          ),
+          storage
+            ? String(
+                storage
+              ).trim()
+            : "",
 
         color:
-          cleanString(
-            color
-          ),
+          color
+            ? String(
+                color
+              ).trim()
+            : "",
 
         condition:
           selectedCondition,
@@ -1308,9 +1395,11 @@ router.post(
           ),
 
         simStatus:
-          cleanString(
-            simStatus
-          ),
+          simStatus
+            ? String(
+                simStatus
+              ).trim()
+            : "",
 
         batteryHealth:
           parsedBatteryHealth,
@@ -1322,16 +1411,18 @@ router.post(
 
         videos,
 
+        // Legacy image field.
         image:
           images.length > 0
             ? images[0]
             : "",
 
-        status: "active",
+        status:
+          "active",
       };
 
       // --------------------------------------------------------
-      // CREATE
+      // Save
       // --------------------------------------------------------
 
       const product =
@@ -1343,12 +1434,10 @@ router.post(
         `✅ Product created: ${product._id}`
       );
 
-      return res.status(201).json({
+      res.status(201).json({
         success: true,
-
         message:
           "Product created successfully",
-
         product,
       });
     } catch (error) {
@@ -1358,7 +1447,7 @@ router.post(
       );
 
       // --------------------------------------------------------
-      // CLEAN UP CLOUDINARY IF DATABASE SAVE FAILS
+      // Cleanup uploaded files if DB save fails
       // --------------------------------------------------------
 
       for (
@@ -1381,36 +1470,31 @@ router.post(
         );
       }
 
-      // --------------------------------------------------------
-      // MONGOOSE VALIDATION
-      // --------------------------------------------------------
-
       if (
+        error &&
         error.name ===
-        "ValidationError"
+          "ValidationError"
       ) {
         return res.status(400).json({
           success: false,
           message:
             "Product validation failed",
-          errors:
-            Object.fromEntries(
-              Object.entries(
-                error.errors
-              ).map(
-                ([
-                  key,
-                  value,
-                ]) => [
-                  key,
-                  value.message,
-                ]
-              )
-            ),
+          errors: Object.keys(
+            error.errors || {}
+          ).reduce(
+            (acc, key) => {
+              acc[key] =
+                error.errors[key]
+                  .message;
+
+              return acc;
+            },
+            {}
+          ),
         });
       }
 
-      return res.status(500).json({
+      res.status(500).json({
         success: false,
         message:
           error.message ||
@@ -1427,21 +1511,22 @@ router.post(
 router.put(
   "/:id",
   verifyToken,
+
   upload.array(
     "files",
-    MAX_FILES
+    6
   ),
 
   async (req, res) => {
-    const uploadedImages = [];
-    const uploadedVideos = [];
+    let newlyUploadedImages = [];
+    let newlyUploadedVideos = [];
 
     try {
       const { id } =
         req.params;
 
       // --------------------------------------------------------
-      // VALIDATE ID
+      // Validate ID
       // --------------------------------------------------------
 
       if (
@@ -1455,24 +1540,7 @@ router.put(
       }
 
       // --------------------------------------------------------
-      // FILE VALIDATION
-      // --------------------------------------------------------
-
-      const fileValidation =
-        validateFiles(
-          req.files || []
-        );
-
-      if (!fileValidation.valid) {
-        return res.status(400).json({
-          success: false,
-          message:
-            fileValidation.message,
-        });
-      }
-
-      // --------------------------------------------------------
-      // FIND PRODUCT
+      // Find product
       // --------------------------------------------------------
 
       const product =
@@ -1489,7 +1557,7 @@ router.put(
       }
 
       // --------------------------------------------------------
-      // AUTHENTICATION
+      // Authentication
       // --------------------------------------------------------
 
       const currentUserId =
@@ -1504,22 +1572,14 @@ router.put(
       }
 
       // --------------------------------------------------------
-      // AUTHORIZATION
+      // Authorization
       // --------------------------------------------------------
 
-      const isOwner =
-        product.sellerId &&
-        product.sellerId
-          .toString() ===
-          currentUserId.toString();
-
-      const isAdmin =
-        getCurrentUserRole(req) ===
-        "admin";
-
       if (
-        !isOwner &&
-        !isAdmin
+        !isProductOwnerOrAdmin(
+          product,
+          req
+        )
       ) {
         return res.status(403).json({
           success: false,
@@ -1529,13 +1589,12 @@ router.put(
       }
 
       // --------------------------------------------------------
-      // BODY
+      // Request body
       // --------------------------------------------------------
 
       const {
         title,
         price,
-        oldPrice,
         category,
         location,
         description,
@@ -1553,19 +1612,24 @@ router.put(
         batteryHealth,
         faceId,
         status,
+        oldPrice,
       } = req.body;
 
+      // ========================================================
+      // BASIC FIELDS
+      // ========================================================
+
       // --------------------------------------------------------
-      // TITLE
+      // Title
       // --------------------------------------------------------
 
       if (
         title !== undefined
       ) {
-        const cleanTitle =
-          cleanString(title);
+        const newTitle =
+          String(title).trim();
 
-        if (!cleanTitle) {
+        if (!newTitle) {
           return res.status(400).json({
             success: false,
             message:
@@ -1573,22 +1637,12 @@ router.put(
           });
         }
 
-        if (
-          cleanTitle.length > 200
-        ) {
-          return res.status(400).json({
-            success: false,
-            message:
-              "Product title cannot exceed 200 characters",
-          });
-        }
-
         product.title =
-          cleanTitle;
+          newTitle;
       }
 
       // --------------------------------------------------------
-      // PRICE
+      // Price
       // --------------------------------------------------------
 
       if (
@@ -1614,7 +1668,7 @@ router.put(
       }
 
       // --------------------------------------------------------
-      // OLD PRICE
+      // Old price
       // --------------------------------------------------------
 
       if (
@@ -1648,84 +1702,84 @@ router.put(
         }
       }
 
-      // --------------------------------------------------------
+      // ========================================================
       // CATEGORY
-      // --------------------------------------------------------
+      // ========================================================
 
       if (
         category !== undefined
       ) {
-        const selectedCategory =
-          cleanString(
+        const normalizedCategory =
+          normalizeCategory(
             category
           );
 
         if (
-          !VALID_CATEGORIES.includes(
-            selectedCategory
-          )
+          !normalizedCategory
         ) {
           return res.status(400).json({
             success: false,
             message:
-              "Invalid product category",
+              `Invalid product category: ${category}`,
+            allowedCategories:
+              VALID_CATEGORIES,
           });
         }
 
         product.category =
-          selectedCategory;
+          normalizedCategory;
       }
 
       // --------------------------------------------------------
-      // LOCATION
+      // Location
       // --------------------------------------------------------
 
       if (
         location !== undefined
       ) {
         product.location =
-          cleanString(
+          String(
             location
-          );
+          ).trim();
       }
 
       // --------------------------------------------------------
-      // DESCRIPTION
+      // Description
       // --------------------------------------------------------
 
       if (
         description !== undefined
       ) {
         product.description =
-          cleanString(
+          String(
             description
-          );
+          ).trim();
       }
 
       // --------------------------------------------------------
-      // SELLER NAME
+      // Seller name
       // --------------------------------------------------------
 
       if (
         sellerName !== undefined
       ) {
         product.sellerName =
-          cleanString(
+          String(
             sellerName
-          );
+          ).trim();
       }
 
       // --------------------------------------------------------
-      // SELLER PHONE
+      // Seller phone
       // --------------------------------------------------------
 
       if (
         sellerPhone !== undefined
       ) {
         const phone =
-          cleanString(
+          String(
             sellerPhone
-          );
+          ).trim();
 
         if (!phone) {
           return res.status(400).json({
@@ -1740,29 +1794,29 @@ router.put(
       }
 
       // --------------------------------------------------------
-      // BRAND
+      // Brand
       // --------------------------------------------------------
 
       if (
         brand !== undefined
       ) {
         product.brand =
-          cleanString(
+          String(
             brand
-          );
+          ).trim();
       }
 
       // --------------------------------------------------------
-      // MODEL
+      // Model
       // --------------------------------------------------------
 
       if (
         model !== undefined
       ) {
         product.model =
-          cleanString(
+          String(
             model
-          );
+          ).trim();
       }
 
       // --------------------------------------------------------
@@ -1773,67 +1827,67 @@ router.put(
         ram !== undefined
       ) {
         product.ram =
-          cleanString(
+          String(
             ram
-          );
+          ).trim();
       }
 
       // --------------------------------------------------------
-      // STORAGE
+      // Storage
       // --------------------------------------------------------
 
       if (
         storage !== undefined
       ) {
         product.storage =
-          cleanString(
+          String(
             storage
-          );
+          ).trim();
       }
 
       // --------------------------------------------------------
-      // COLOR
+      // Color
       // --------------------------------------------------------
 
       if (
         color !== undefined
       ) {
         product.color =
-          cleanString(
+          String(
             color
-          );
+          ).trim();
       }
 
-      // --------------------------------------------------------
+      // ========================================================
       // CONDITION
-      // --------------------------------------------------------
+      // ========================================================
 
       if (
         condition !== undefined
       ) {
-        const selectedCondition =
-          cleanString(
+        const normalizedCondition =
+          normalizeCondition(
             condition
           );
 
         if (
-          !VALID_CONDITIONS.includes(
-            selectedCondition
-          )
+          !normalizedCondition
         ) {
           return res.status(400).json({
             success: false,
             message:
-              "Invalid product condition",
+              `Invalid product condition: ${condition}`,
+            allowedConditions:
+              VALID_CONDITIONS,
           });
         }
 
         product.condition =
-          selectedCondition;
+          normalizedCondition;
       }
 
       // --------------------------------------------------------
-      // NEGOTIATION
+      // Negotiation
       // --------------------------------------------------------
 
       if (
@@ -1846,7 +1900,7 @@ router.put(
       }
 
       // --------------------------------------------------------
-      // SWAP
+      // Swap
       // --------------------------------------------------------
 
       if (
@@ -1860,21 +1914,21 @@ router.put(
       }
 
       // --------------------------------------------------------
-      // SIM STATUS
+      // SIM status
       // --------------------------------------------------------
 
       if (
         simStatus !== undefined
       ) {
         product.simStatus =
-          cleanString(
+          String(
             simStatus
-          );
+          ).trim();
       }
 
-      // --------------------------------------------------------
+      // ========================================================
       // BATTERY HEALTH
-      // --------------------------------------------------------
+      // ========================================================
 
       if (
         batteryHealth !==
@@ -1887,13 +1941,14 @@ router.put(
             null;
         } else {
           const parsedBatteryHealth =
-            parseNumber(
+            Number(
               batteryHealth
             );
 
           if (
-            parsedBatteryHealth ===
-              null ||
+            !Number.isFinite(
+              parsedBatteryHealth
+            ) ||
             parsedBatteryHealth < 0 ||
             parsedBatteryHealth > 100
           ) {
@@ -1909,55 +1964,59 @@ router.put(
         }
       }
 
-      // --------------------------------------------------------
+      // ========================================================
       // FACE ID
-      // --------------------------------------------------------
+      // ========================================================
 
       if (
         faceId !== undefined
       ) {
-        const selectedFaceId =
-          cleanString(
+        const normalizedFaceId =
+          normalizeFaceId(
             faceId
           );
 
         if (
-          !VALID_FACE_ID.includes(
-            selectedFaceId
-          )
+          normalizedFaceId ===
+          null
         ) {
           return res.status(400).json({
             success: false,
             message:
-              "Invalid Face ID status",
+              `Invalid Face ID status: ${faceId}`,
+            allowedFaceId:
+              VALID_FACE_ID,
           });
         }
 
         product.faceId =
-          selectedFaceId;
+          normalizedFaceId;
       }
 
-      // --------------------------------------------------------
+      // ========================================================
       // STATUS
-      // --------------------------------------------------------
+      // ========================================================
 
       if (
         status !== undefined
       ) {
-        if (
-          !VALID_STATUSES.includes(
+        const normalizedStatus =
+          normalizeStatus(
             status
-          )
-        ) {
+          );
+
+        if (!normalizedStatus) {
           return res.status(400).json({
             success: false,
             message:
-              "Invalid product status",
+              `Invalid product status: ${status}`,
+            allowedStatuses:
+              VALID_STATUSES,
           });
         }
 
         product.status =
-          status;
+          normalizedStatus;
       }
 
       // ========================================================
@@ -1975,8 +2034,8 @@ router.put(
           imagesToKeep
         )
       ) {
-        const normalizedImages =
-          normalizeUrlArray(
+        const cleanedImages =
+          cleanUrlArray(
             imagesToKeep
           ).slice(
             0,
@@ -1984,16 +2043,17 @@ router.put(
           );
 
         const oldImages =
-          normalizeUrlArray(
+          cleanUrlArray(
             product.images
           );
 
-        // Delete images removed by seller.
+        // Delete removed images.
         for (
-          const oldImage of oldImages
+          const oldImage of
+            oldImages
         ) {
           if (
-            !normalizedImages.includes(
+            !cleanedImages.includes(
               oldImage
             )
           ) {
@@ -2005,7 +2065,7 @@ router.put(
         }
 
         product.images =
-          normalizedImages;
+          cleanedImages;
       }
 
       // ========================================================
@@ -2023,8 +2083,8 @@ router.put(
           videosToKeep
         )
       ) {
-        const normalizedVideos =
-          normalizeUrlArray(
+        const cleanedVideos =
+          cleanUrlArray(
             videosToKeep
           ).slice(
             0,
@@ -2032,15 +2092,17 @@ router.put(
           );
 
         const oldVideos =
-          normalizeUrlArray(
+          cleanUrlArray(
             product.videos
           );
 
+        // Delete removed videos.
         for (
-          const oldVideo of oldVideos
+          const oldVideo of
+            oldVideos
         ) {
           if (
-            !normalizedVideos.includes(
+            !cleanedVideos.includes(
               oldVideo
             )
           ) {
@@ -2052,11 +2114,11 @@ router.put(
         }
 
         product.videos =
-          normalizedVideos;
+          cleanedVideos;
       }
 
       // ========================================================
-      // NEW FILES
+      // UPLOAD NEW FILES
       // ========================================================
 
       const newFiles =
@@ -2072,74 +2134,52 @@ router.put(
           newFiles
         );
 
-        uploadedImages.push(
-          ...images
-        );
+        newlyUploadedImages =
+          images;
 
-        uploadedVideos.push(
-          ...videos
-        );
+        newlyUploadedVideos =
+          videos;
 
         // ------------------------------------------------------
-        // ADD NEW IMAGES
+        // Images
         // ------------------------------------------------------
 
         if (
           images.length > 0
         ) {
           const currentImages =
-            normalizeUrlArray(
+            cleanUrlArray(
               product.images
-            );
-
-          const remainingSlots =
-            Math.max(
-              MAX_IMAGES -
-                currentImages.length,
-              0
-            );
-
-          const imagesToAdd =
-            images.slice(
-              0,
-              remainingSlots
             );
 
           product.images = [
             ...currentImages,
-            ...imagesToAdd,
-          ];
+            ...images,
+          ].slice(
+            0,
+            MAX_IMAGES
+          );
         }
 
         // ------------------------------------------------------
-        // ADD NEW VIDEOS
+        // Videos
         // ------------------------------------------------------
 
         if (
           videos.length > 0
         ) {
           const currentVideos =
-            normalizeUrlArray(
+            cleanUrlArray(
               product.videos
-            );
-
-          const remainingVideoSlots =
-            Math.max(
-              MAX_VIDEOS -
-                currentVideos.length,
-              0
-            );
-
-          const videosToAdd =
-            videos.slice(
-              0,
-              remainingVideoSlots
             );
 
           product.videos = [
             ...currentVideos,
-            ...videosToAdd,
-          ];
+            ...videos,
+          ].slice(
+            0,
+            MAX_VIDEOS
+          );
         }
       }
 
@@ -2147,9 +2187,11 @@ router.put(
       // SYNCHRONIZE LEGACY IMAGE
       // ========================================================
 
-      syncLegacyImage(
-        product
-      );
+      product.image =
+        product.images &&
+        product.images.length > 0
+          ? product.images[0]
+          : "";
 
       // ========================================================
       // SAVE
@@ -2161,12 +2203,10 @@ router.put(
         `✅ Product updated: ${product._id}`
       );
 
-      return res.json({
+      res.json({
         success: true,
-
         message:
           "Product updated successfully",
-
         product,
       });
     } catch (error) {
@@ -2176,12 +2216,12 @@ router.put(
       );
 
       // --------------------------------------------------------
-      // CLEAN UP NEWLY UPLOADED FILES
+      // Cleanup newly uploaded files if update fails
       // --------------------------------------------------------
 
       for (
         const image of
-          uploadedImages
+          newlyUploadedImages
       ) {
         await deleteFromCloudinary(
           image,
@@ -2191,7 +2231,7 @@ router.put(
 
       for (
         const video of
-          uploadedVideos
+          newlyUploadedVideos
       ) {
         await deleteFromCloudinary(
           video,
@@ -2199,36 +2239,31 @@ router.put(
         );
       }
 
-      // --------------------------------------------------------
-      // MONGOOSE VALIDATION
-      // --------------------------------------------------------
-
       if (
+        error &&
         error.name ===
-        "ValidationError"
+          "ValidationError"
       ) {
         return res.status(400).json({
           success: false,
           message:
             "Product validation failed",
-          errors:
-            Object.fromEntries(
-              Object.entries(
-                error.errors
-              ).map(
-                ([
-                  key,
-                  value,
-                ]) => [
-                  key,
-                  value.message,
-                ]
-              )
-            ),
+          errors: Object.keys(
+            error.errors || {}
+          ).reduce(
+            (acc, key) => {
+              acc[key] =
+                error.errors[key]
+                  .message;
+
+              return acc;
+            },
+            {}
+          ),
         });
       }
 
-      return res.status(500).json({
+      res.status(500).json({
         success: false,
         message:
           error.message ||
@@ -2252,7 +2287,7 @@ router.delete(
         req.params;
 
       // --------------------------------------------------------
-      // VALIDATE ID
+      // Validate ID
       // --------------------------------------------------------
 
       if (
@@ -2266,7 +2301,7 @@ router.delete(
       }
 
       // --------------------------------------------------------
-      // FIND PRODUCT
+      // Find product
       // --------------------------------------------------------
 
       const product =
@@ -2283,7 +2318,7 @@ router.delete(
       }
 
       // --------------------------------------------------------
-      // AUTHENTICATION
+      // Authentication
       // --------------------------------------------------------
 
       const currentUserId =
@@ -2298,22 +2333,14 @@ router.delete(
       }
 
       // --------------------------------------------------------
-      // AUTHORIZATION
+      // Authorization
       // --------------------------------------------------------
 
-      const isOwner =
-        product.sellerId &&
-        product.sellerId
-          .toString() ===
-          currentUserId.toString();
-
-      const isAdmin =
-        getCurrentUserRole(req) ===
-        "admin";
-
       if (
-        !isOwner &&
-        !isAdmin
+        !isProductOwnerOrAdmin(
+          product,
+          req
+        )
       ) {
         return res.status(403).json({
           success: false,
@@ -2323,11 +2350,11 @@ router.delete(
       }
 
       // --------------------------------------------------------
-      // DELETE IMAGES
+      // Delete images
       // --------------------------------------------------------
 
       const images =
-        normalizeUrlArray(
+        cleanUrlArray(
           product.images
         );
 
@@ -2341,11 +2368,11 @@ router.delete(
       }
 
       // --------------------------------------------------------
-      // DELETE VIDEOS
+      // Delete videos
       // --------------------------------------------------------
 
       const videos =
-        normalizeUrlArray(
+        cleanUrlArray(
           product.videos
         );
 
@@ -2359,7 +2386,7 @@ router.delete(
       }
 
       // --------------------------------------------------------
-      // DELETE DATABASE RECORD
+      // Delete DB record
       // --------------------------------------------------------
 
       await product.deleteOne();
@@ -2368,9 +2395,8 @@ router.delete(
         `🗑️ Product deleted: ${id}`
       );
 
-      return res.json({
+      res.json({
         success: true,
-
         message:
           "Product deleted successfully",
       });
@@ -2380,7 +2406,7 @@ router.delete(
         error
       );
 
-      return res.status(500).json({
+      res.status(500).json({
         success: false,
         message:
           error.message ||
@@ -2407,24 +2433,7 @@ router.patch(
         req.body;
 
       // --------------------------------------------------------
-      // VALIDATE STATUS
-      // --------------------------------------------------------
-
-      if (
-        !status ||
-        !VALID_STATUSES.includes(
-          status
-        )
-      ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Invalid status. Allowed: active, pending, inactive, sold",
-        });
-      }
-
-      // --------------------------------------------------------
-      // VALIDATE ID
+      // Validate ID
       // --------------------------------------------------------
 
       if (
@@ -2438,7 +2447,26 @@ router.patch(
       }
 
       // --------------------------------------------------------
-      // FIND PRODUCT
+      // Normalize status
+      // --------------------------------------------------------
+
+      const normalizedStatus =
+        normalizeStatus(
+          status
+        );
+
+      if (!normalizedStatus) {
+        return res.status(400).json({
+          success: false,
+          message:
+            `Invalid status: ${status}`,
+          allowedStatuses:
+            VALID_STATUSES,
+        });
+      }
+
+      // --------------------------------------------------------
+      // Find product
       // --------------------------------------------------------
 
       const product =
@@ -2455,7 +2483,7 @@ router.patch(
       }
 
       // --------------------------------------------------------
-      // AUTHENTICATION
+      // Authentication
       // --------------------------------------------------------
 
       const currentUserId =
@@ -2470,22 +2498,14 @@ router.patch(
       }
 
       // --------------------------------------------------------
-      // AUTHORIZATION
+      // Authorization
       // --------------------------------------------------------
 
-      const isOwner =
-        product.sellerId &&
-        product.sellerId
-          .toString() ===
-          currentUserId.toString();
-
-      const isAdmin =
-        getCurrentUserRole(req) ===
-        "admin";
-
       if (
-        !isOwner &&
-        !isAdmin
+        !isProductOwnerOrAdmin(
+          product,
+          req
+        )
       ) {
         return res.status(403).json({
           success: false,
@@ -2495,24 +2515,22 @@ router.patch(
       }
 
       // --------------------------------------------------------
-      // UPDATE STATUS
+      // Update
       // --------------------------------------------------------
 
       product.status =
-        status;
+        normalizedStatus;
 
       await product.save();
 
       console.log(
-        `✅ Product ${id} status changed to ${status}`
+        `✅ Product ${id} status updated to ${normalizedStatus}`
       );
 
-      return res.json({
+      res.json({
         success: true,
-
         message:
-          `Product status updated to ${status}`,
-
+          `Product status updated to ${normalizedStatus}`,
         product,
       });
     } catch (error) {
@@ -2521,7 +2539,7 @@ router.patch(
         error
       );
 
-      return res.status(500).json({
+      res.status(500).json({
         success: false,
         message:
           error.message ||
