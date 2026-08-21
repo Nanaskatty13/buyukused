@@ -4,7 +4,51 @@
 // ============================================================
 
 const mongoose = require("mongoose");
-const PRODUCT_CATEGORIES = require("../constants/productCategories");
+
+// ============================================================
+// PRODUCT CATEGORIES
+// ============================================================
+
+const PRODUCT_CATEGORIES = [
+  "Cars",
+  "Phones",
+  "Laptops",
+  "Tablets",
+  "Accessories",
+  "Real Estate",
+  "Jobs",
+  "Electronics",
+  "Fashion",
+  "Home",
+  "TVs",
+  "Game Consoles",
+  "Smartwatches",
+  "Other",
+];
+
+// ============================================================
+// PRODUCT STATUSES
+// ============================================================
+
+const PRODUCT_STATUSES = [
+  "active",
+  "pending",
+  "inactive",
+  "sold",
+];
+
+// ============================================================
+// PRODUCT CONDITIONS
+// ============================================================
+
+const PRODUCT_CONDITIONS = [
+  "Brand New",
+  "Like New",
+  "Excellent",
+  "Good",
+  "Fair",
+  "Poor",
+];
 
 // ============================================================
 // PRODUCT SCHEMA
@@ -57,7 +101,7 @@ const productSchema = new mongoose.Schema(
     },
 
     // ========================================================
-    // SELLER INFORMATION
+    // SELLER
     // ========================================================
 
     sellerId: {
@@ -122,15 +166,9 @@ const productSchema = new mongoose.Schema(
 
     condition: {
       type: String,
-      enum: [
-        "Brand New",
-        "Like New",
-        "Excellent",
-        "Good",
-        "Fair",
-        "Poor",
-      ],
+      enum: PRODUCT_CONDITIONS,
       default: "Good",
+      trim: true,
     },
 
     warranty: {
@@ -140,7 +178,7 @@ const productSchema = new mongoose.Schema(
     },
 
     // ========================================================
-    // COMPUTER / TABLET / CONSOLE / TV / WATCH DETAILS
+    // COMPUTER / TABLET / CONSOLE / TV / WATCH
     // ========================================================
 
     storage: {
@@ -186,7 +224,7 @@ const productSchema = new mongoose.Schema(
     },
 
     // ========================================================
-    // GAME CONSOLE DETAILS
+    // GAME CONSOLE
     // ========================================================
 
     videoOutput: {
@@ -238,7 +276,7 @@ const productSchema = new mongoose.Schema(
     },
 
     // ========================================================
-    // SMARTWATCH / WATCH DETAILS
+    // SMARTWATCH
     // ========================================================
 
     watchSize: {
@@ -248,7 +286,7 @@ const productSchema = new mongoose.Schema(
     },
 
     // ========================================================
-    // TV DETAILS
+    // TV
     // ========================================================
 
     tvType: {
@@ -309,7 +347,7 @@ const productSchema = new mongoose.Schema(
     },
 
     // ========================================================
-    // CAR DETAILS
+    // CAR
     // ========================================================
 
     mileage: {
@@ -367,7 +405,7 @@ const productSchema = new mongoose.Schema(
     },
 
     // ========================================================
-    // ACCESSORY DETAILS
+    // ACCESSORIES
     // ========================================================
 
     accessoryType: {
@@ -501,12 +539,7 @@ const productSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: [
-        "active",
-        "pending",
-        "inactive",
-        "sold",
-      ],
+      enum: PRODUCT_STATUSES,
       default: "active",
       index: true,
     },
@@ -566,7 +599,7 @@ productSchema.pre("save", function (next) {
 });
 
 // ============================================================
-// TEXT SEARCH INDEX
+// TEXT SEARCH
 // ============================================================
 
 productSchema.index({
@@ -651,7 +684,7 @@ productSchema.index({
 });
 
 // ============================================================
-// CONSOLE / TV / SMARTWATCH / WATCH FILTERS
+// CONSOLE / TV / SMARTWATCH FILTERS
 // ============================================================
 
 productSchema.index({
@@ -695,7 +728,7 @@ productSchema.index({
 });
 
 // ============================================================
-// CAR FILTERS
+// CAR INDEXES
 // ============================================================
 
 productSchema.index({

@@ -18,10 +18,10 @@ import TabletForm, {
 import GameConsoleForm from "../components/GameConsoleForm";
 import AppleWatchForm from "../components/AppleWatchForm";
 import TVForm from "../components/TVForm";
-import CarForm from "../components/CarForm"; // ✅ NEW
+import CarForm from "../components/CarForm";
 
 // ============================================================
-// LOCATION DATA
+// LOCATION DATA (FULL)
 // ============================================================
 
 const countries = ["Ghana"];
@@ -45,10 +45,7 @@ const regions = [
   "Western North",
 ];
 
-// ============================================================
-// ✅ CITIES BY REGION (FIXED – FULL LIST)
-// ============================================================
-
+// ✅ FIX: Complete citiesByRegion (all 16 regions)
 const citiesByRegion = {
   "Ahafo": ["Goaso", "Mim", "Hwidiem", "Bechem", "Kenyasi", "Duayaw Nkwanta", "Tepa"],
   "Ashanti": [
@@ -272,7 +269,7 @@ const PostAd = () => {
     accessoryColor: "",
     accessoryMaterial: "",
 
-    // 🎮 Game Console
+    // Game Console
     consoleType: "",
     edition: "",
     discDrive: "",
@@ -281,10 +278,10 @@ const PostAd = () => {
     resolution: "",
     videoOutput: "",
 
-    // ⌚ Smartwatch
+    // Smartwatch
     watchSize: "",
 
-    // 📺 TV
+    // TV
     tvType: "",
     displayTechnology: "",
     refreshRate: "",
@@ -296,7 +293,7 @@ const PostAd = () => {
     voiceControl: false,
     wallMountable: false,
 
-    // 🚗 Car (new)
+    // Car
     mileage: "",
     bodyType: "",
     fuelType: "",
@@ -326,7 +323,7 @@ const PostAd = () => {
   const [authLoading, setAuthLoading] = useState(false);
 
   // ==========================================================
-  // CATEGORY MAP
+  // CATEGORY MAP – maps internal keys to backend‑expected strings
   // ==========================================================
 
   const categoryMap = {
@@ -338,7 +335,7 @@ const PostAd = () => {
     gameConsoles: "Game Consoles",
     smartwatches: "Smartwatches",
     tvs: "TVs",
-    cars: "Cars", // ✅ new
+    cars: "Cars",   // ✅ matches the backend enum
   };
 
   // ==========================================================
@@ -352,7 +349,7 @@ const PostAd = () => {
   const isGameConsole = formData.category === "gameConsoles";
   const isSmartwatch = formData.category === "smartwatches";
   const isTV = formData.category === "tvs";
-  const isCar = formData.category === "cars"; // ✅ new
+  const isCar = formData.category === "cars";
 
   // ==========================================================
   // LOCATION EFFECT
@@ -499,7 +496,7 @@ const PostAd = () => {
           }
         : {}),
 
-      // ✅ Clear car fields
+      // Clear car fields
       ...(category !== "cars"
         ? {
             mileage: "",
@@ -652,7 +649,7 @@ const PostAd = () => {
   };
 
   // ==========================================================
-  // STEP 1 VALIDATION – added car brand check
+  // STEP 1 VALIDATION
   // ==========================================================
 
   const goToNextStep = () => {
@@ -719,7 +716,6 @@ const PostAd = () => {
       return;
     }
 
-    // ✅ NEW: Car brand validation
     if (isCar && !formData.brand) {
       setError("Please select a car brand.");
       return;
@@ -738,15 +734,14 @@ const PostAd = () => {
   };
 
   // ==========================================================
-  // BUILD PRODUCT FORM DATA – added car fields
+  // BUILD PRODUCT FORM DATA – ✅ FIX: use categoryMap
   // ==========================================================
 
   const buildProductFormData = () => {
     const form = new FormData();
 
-    const mappedCategory =
-      categoryMap[formData.category] ||
-      formData.category;
+    // ✅ Send the backend‑expected category string
+    const mappedCategory = categoryMap[formData.category] || formData.category;
 
     // --------------------------------------------------------
     // COMMON FIELDS
@@ -755,7 +750,7 @@ const PostAd = () => {
     const baseFields = {
       title: formData.title.trim(),
       price: formData.price,
-      category: mappedCategory,
+      category: mappedCategory,               // <-- corrected
       location: formData.location,
 
       description: formData.description.trim(),
@@ -867,7 +862,7 @@ const PostAd = () => {
     }
 
     // --------------------------------------------------------
-    // 🎮 GAME CONSOLE ONLY
+    // GAME CONSOLE ONLY
     // --------------------------------------------------------
 
     if (isGameConsole) {
@@ -894,7 +889,7 @@ const PostAd = () => {
     }
 
     // --------------------------------------------------------
-    // ⌚ SMARTWATCH ONLY
+    // SMARTWATCH ONLY
     // --------------------------------------------------------
 
     if (isSmartwatch) {
@@ -904,7 +899,7 @@ const PostAd = () => {
     }
 
     // --------------------------------------------------------
-    // 📺 TV ONLY
+    // TV ONLY
     // --------------------------------------------------------
 
     if (isTV) {
@@ -943,7 +938,7 @@ const PostAd = () => {
     }
 
     // --------------------------------------------------------
-    // 🚗 CAR ONLY
+    // CAR ONLY
     // --------------------------------------------------------
 
     if (isCar) {
@@ -965,7 +960,6 @@ const PostAd = () => {
         }
       });
 
-      // Year is already in baseFields, but we want to make sure it's sent
       if (formData.year) {
         baseFields.year = formData.year;
       }
@@ -1001,7 +995,7 @@ const PostAd = () => {
   };
 
   // ==========================================================
-  // SUBMIT AD – added car validation
+  // SUBMIT AD
   // ==========================================================
 
   const handleSubmit = async (e) => {
@@ -1132,7 +1126,7 @@ const PostAd = () => {
     }
 
     // --------------------------------------------------------
-    // 🚗 CAR VALIDATION
+    // CAR VALIDATION
     // --------------------------------------------------------
 
     if (isCar) {
@@ -1151,89 +1145,8 @@ const PostAd = () => {
     try {
       const form = buildProductFormData();
 
-      console.log("📤 Posting product:", {
-        category:
-          categoryMap[formData.category] ||
-          formData.category,
-
-        title: formData.title,
-
-        brand: formData.brand,
-
-        model: formData.model,
-
-        isGameConsole,
-        consoleFields: isGameConsole
-          ? {
-              consoleType: formData.consoleType,
-              edition: formData.edition,
-              discDrive: formData.discDrive,
-              controllersIncluded:
-                formData.controllersIncluded,
-              battery: formData.battery,
-              resolution: formData.resolution,
-              videoOutput: formData.videoOutput,
-              storage: formData.storage,
-              ram: formData.ram,
-              screenSize: formData.screenSize,
-              year: formData.year,
-              connectivity: formData.connectivity,
-            }
-          : null,
-
-        isSmartwatch,
-        watchFields: isSmartwatch
-          ? {
-              watchSize: formData.watchSize,
-              batteryHealth: formData.batteryHealth,
-              connectivity: formData.connectivity,
-            }
-          : null,
-
-        isTV,
-        tvFields: isTV
-          ? {
-              tvType: formData.tvType,
-              displayTechnology: formData.displayTechnology,
-              refreshRate: formData.refreshRate,
-              operatingSystem: formData.operatingSystem,
-              hdr: formData.hdr,
-              hdmiPorts: formData.hdmiPorts,
-              usbPorts: formData.usbPorts,
-              smartTV: formData.smartTV,
-              voiceControl: formData.voiceControl,
-              wallMountable: formData.wallMountable,
-              screenSize: formData.screenSize,
-              resolution: formData.resolution,
-              year: formData.year,
-              connectivity: formData.connectivity,
-            }
-          : null,
-
-        isCar, // ✅ new
-        carFields: isCar
-          ? {
-              mileage: formData.mileage,
-              bodyType: formData.bodyType,
-              fuelType: formData.fuelType,
-              transmission: formData.transmission,
-              driveType: formData.driveType,
-              engineSize: formData.engineSize,
-              seatingCapacity: formData.seatingCapacity,
-              exteriorColor: formData.exteriorColor,
-              interiorColor: formData.interiorColor,
-              year: formData.year,
-            }
-          : null,
-
-        images: mediaItems.filter(
-          (item) => item.type === "image"
-        ).length,
-
-        videos: mediaItems.filter(
-          (item) => item.type === "video"
-        ).length,
-      });
+      // Log the actual category being sent for debugging
+      console.log("📤 Posting product with category:", form.get("category"));
 
       const data = await createProductWithFiles(
         form,
@@ -1350,8 +1263,6 @@ const PostAd = () => {
           : "Step 2 of 2 – Additional details"}
       </p>
 
-      {/* ERROR */}
-
       {error && (
         <div className="error-banner">
           {error}
@@ -1378,7 +1289,7 @@ const PostAd = () => {
                 onChange={handleCategoryChange}
                 required
               >
-                <option value="cars">🚗 Cars</option> {/* ✅ NEW */}
+                <option value="cars">🚗 Cars</option>
                 <option value="phones">📱 Phones</option>
                 <option value="laptops">💻 Laptops</option>
                 <option value="tablets">📲 Tablets</option>
@@ -1606,7 +1517,7 @@ const PostAd = () => {
               </div>
             )}
 
-            {/* ✅ CAR BRAND */}
+            {/* CAR BRAND */}
 
             {isCar && (
               <div className="form-group">
@@ -1711,7 +1622,7 @@ const PostAd = () => {
                     : isTV
                     ? "e.g. Samsung 55\" Neo QLED 4K Smart TV"
                     : isCar
-                    ? "e.g. 2022 Toyota Corolla LE" // ✅ NEW
+                    ? "e.g. 2022 Toyota Corolla LE"
                     : "e.g. iPhone 15 Pro Max 256GB"
                 }
                 maxLength={200}
@@ -1867,7 +1778,7 @@ const PostAd = () => {
                     : isTV
                     ? "Describe the TV, screen quality, smart features, connectivity, included accessories, etc."
                     : isCar
-                    ? "Describe the car, condition, features, maintenance history, etc." // ✅ NEW
+                    ? "Describe the car, condition, features, maintenance history, etc."
                     : "Describe your item..."
                 }
               />
@@ -2044,7 +1955,7 @@ const PostAd = () => {
               />
             )}
 
-            {/* 🚗 CAR */}
+            {/* CAR */}
 
             {isCar && (
               <CarForm
