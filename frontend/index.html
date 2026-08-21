@@ -60,10 +60,34 @@
     <!-- Fallback for very old browsers (Internet Explorer) -->
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
 
-    <!-- Android Chrome (if you have a manifest.json) -->
-    <!-- <link rel="manifest" href="/site.webmanifest" /> -->
-
     <!-- ─── END FAVICON ─── -->
+
+    <!--
+      ─── FIX: Prevent DevTools from breaking React Refresh ───
+
+      This ensures the DevTools extension does not interfere with Vite's HMR.
+      It preserves the original hook so that React Refresh can still function.
+    -->
+    <script>
+      (function() {
+        // If DevTools has already created a hook, keep it but mark it as disabled.
+        if (window.__REACT_DEVTOOLS_GLOBAL_HOOK__) {
+          window.__REACT_DEVTOOLS_GLOBAL_HOOK__.isDisabled = true;
+        } else {
+          // Otherwise, create a minimal hook that prevents the extension from overriding it.
+          window.__REACT_DEVTOOLS_GLOBAL_HOOK__ = {
+            isDisabled: true,
+            // Preserve the essential methods that React Refresh needs.
+            inject: function() {},
+            on: function() {},
+            off: function() {},
+            sub: function() {},
+            supportsFiber: true,
+            checkDCE: function() {},
+          };
+        }
+      })();
+    </script>
 
   </head>
 

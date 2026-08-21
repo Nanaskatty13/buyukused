@@ -1,4 +1,3 @@
-// ============================================================
 // frontend/src/App.jsx
 // ============================================================
 
@@ -15,6 +14,12 @@ import { CartProvider } from "./context/CartContext";
 import Navbar from "./components/Navbar";
 import FloatingPhone from "./components/FloatingPhone";
 import BackToTop from "./components/BackToTop";
+
+// ============================================================
+// ROBOT GREETER (added)
+// ============================================================
+
+import RobotGreeter from "./components/RobotGreeter";
 
 // ============================================================
 // PAGES
@@ -87,6 +92,12 @@ function App() {
   return (
     <AuthProvider>
       <CartProvider>
+
+        {/* ======================================================
+            ROBOT GREETER – appears on first visit of session
+        ====================================================== */}
+
+        <RobotGreeter />
 
         {/* ======================================================
             NAVBAR
@@ -345,8 +356,6 @@ function App() {
 
           {/* ====================================================
               PUBLIC SELLER PROFILE
-              SellerPage.jsx handles the sign-in/register
-              requirement before showing the profile.
           ==================================================== */}
 
           <Route
