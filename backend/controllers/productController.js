@@ -4,6 +4,7 @@
 // ============================================================
 
 const Product = require("../models/Product");
+const PRODUCT_CATEGORIES = require("../constants/productCategories");
 const cloudinary = require("../config/cloudinary");
 const streamifier = require("streamifier");
 
@@ -11,22 +12,7 @@ const streamifier = require("streamifier");
 // CONSTANTS
 // ============================================================
 
-const VALID_CATEGORIES = [
-  "Cars",
-  "Phones",
-  "Laptops",
-  "Tablets",
-  "Accessories",
-  "Real Estate",
-  "Jobs",
-  "Electronics",
-  "Fashion",
-  "Home",
-  "TVs",
-  "Game Consoles",
-  "Smartwatches",
-  "Other",
-];
+const VALID_CATEGORIES = PRODUCT_CATEGORIES;
 
 const VALID_STATUSES = [
   "active",
@@ -36,11 +22,68 @@ const VALID_STATUSES = [
 ];
 
 // ============================================================
+// CATEGORY ALIASES
+// ============================================================
+//
+// Allows older/newer frontend values to resolve to the
+// official database category names.
+//
+
+const CATEGORY_ALIASES = {
+  cars: "Cars",
+  car: "Cars",
+
+  phones: "Phones",
+  phone: "Phones",
+
+  laptops: "Laptops",
+  laptop: "Laptops",
+
+  tablets: "Tablets",
+  tablet: "Tablets",
+
+  accessories: "Accessories",
+  accessory: "Accessories",
+
+  "real estate": "Real Estate",
+
+  jobs: "Jobs",
+
+  electronics: "Electronics",
+
+  fashion: "Fashion",
+
+  home: "Home",
+
+  tv: "TVs",
+  tvs: "TVs",
+  television: "TVs",
+  televisions: "TVs",
+
+  console: "Game Consoles",
+  consoles: "Game Consoles",
+  "game console": "Game Consoles",
+  "game consoles": "Game Consoles",
+
+  smartwatch: "Smartwatches",
+  smartwatches: "Smartwatches",
+
+  watch: "Watches",
+  watches: "Watches",
+
+  other: "Other",
+};
+
+// ============================================================
 // HELPERS
 // ============================================================
 
 const toBoolean = (value, defaultValue = false) => {
-  if (value === undefined || value === null || value === "") {
+  if (
+    value === undefined ||
+    value === null ||
+    value === ""
+  ) {
     return defaultValue;
   }
 
@@ -54,6 +97,10 @@ const toBoolean = (value, defaultValue = false) => {
 
   return Boolean(value);
 };
+
+// ============================================================
+// NUMBER HELPER
+// ============================================================
 
 const toNumberOrNull = (value) => {
   if (
@@ -71,7 +118,14 @@ const toNumberOrNull = (value) => {
     : null;
 };
 
-const cleanString = (value, defaultValue = "") => {
+// ============================================================
+// STRING HELPER
+// ============================================================
+
+const cleanString = (
+  value,
+  defaultValue = ""
+) => {
   if (
     value === undefined ||
     value === null
@@ -84,6 +138,40 @@ const cleanString = (value, defaultValue = "") => {
     : String(value).trim();
 };
 
+// ============================================================
+// RESOLVE CATEGORY
+// ============================================================
+
+const resolveCategory = (value) => {
+  const category = cleanString(value);
+
+  if (!category) {
+    return "Other";
+  }
+
+  // Exact official category
+  if (
+    VALID_CATEGORIES.includes(category)
+  ) {
+    return category;
+  }
+
+  // Case-insensitive alias
+  const normalized = category.toLowerCase();
+
+  if (
+    CATEGORY_ALIASES[normalized]
+  ) {
+    return CATEGORY_ALIASES[normalized];
+  }
+
+  return null;
+};
+
+// ============================================================
+// GET USER ID
+// ============================================================
+
 const getUserId = (req) => {
   return (
     req.user?.id ||
@@ -92,6 +180,10 @@ const getUserId = (req) => {
     null
   );
 };
+
+// ============================================================
+// GET USER ROLE
+// ============================================================
 
 const getUserRole = (req) => {
   return req.user?.role || "";
@@ -161,29 +253,7 @@ const deleteFromCloudinary = async (
       ""
     );
 
-    // Remove transformations
-    const parts = publicId.split("/");
-
-    if (parts.length > 1) {
-      const lastPart =
-        parts[parts.length - 1];
-
-      if (
-        lastPart.includes(",") ||
-        lastPart.includes("_") ||
-        lastPart.startsWith("c_") ||
-        lastPart.startsWith("w_") ||
-        lastPart.startsWith("h_") ||
-        lastPart.startsWith("q_") ||
-        lastPart.startsWith("f_")
-      ) {
-        // Do not aggressively remove folders.
-        // Cloudinary public IDs normally retain
-        // the folder path.
-      }
-    }
-
-    // Remove file extension
+    // Remove extension
     publicId = publicId.replace(
       /\.[^/.]+$/,
       ""
@@ -207,11 +277,16 @@ const deleteFromCloudinary = async (
 // UPLOAD REQUEST FILES
 // ============================================================
 
-const uploadProductFiles = async (files) => {
+const uploadProductFiles = async (
+  files
+) => {
   const imageUrls = [];
   const videoUrls = [];
 
-  if (!files || files.length === 0) {
+  if (
+    !files ||
+    files.length === 0
+  ) {
     return {
       imageUrls,
       videoUrls,
@@ -219,7 +294,10 @@ const uploadProductFiles = async (files) => {
   }
 
   for (const file of files) {
-    if (!file || !file.buffer) {
+    if (
+      !file ||
+      !file.buffer
+    ) {
       continue;
     }
 
@@ -265,124 +343,163 @@ const uploadProductFiles = async (files) => {
 // ============================================================
 // BUILD PRODUCT DATA
 // ============================================================
-//
-// This list intentionally matches the Product.js model.
-// It allows the frontend forms for:
-// - Phones
-// - Laptops
-// - Tablets
-// - Accessories
-// - TVs
-// - Game Consoles
-// - Smartwatches
-// - Cars
-// to save their fields correctly.
-// ============================================================
 
-const buildProductData = (body, req) => {
+const buildProductData = (
+  body,
+  req
+) => {
+  const rawCategory =
+    cleanString(body.category);
+
+  const resolvedCategory =
+    resolveCategory(rawCategory);
+
   const data = {
-    // --------------------------------------------------------
+    // ========================================================
     // BASIC
-    // --------------------------------------------------------
+    // ========================================================
 
-    title: cleanString(body.title),
+    title: cleanString(
+      body.title
+    ),
 
-    price: toNumberOrNull(body.price),
+    price: toNumberOrNull(
+      body.price
+    ),
 
     oldPrice: toNumberOrNull(
       body.oldPrice
     ),
 
     category:
-      VALID_CATEGORIES.includes(
-        cleanString(body.category)
-      )
-        ? cleanString(body.category)
-        : "Other",
+      resolvedCategory,
 
     location:
-      cleanString(body.location) ||
-      "Ghana",
+      cleanString(
+        body.location
+      ) || "Ghana",
 
     description:
-      cleanString(body.description),
+      cleanString(
+        body.description
+      ),
 
-    // --------------------------------------------------------
+    // ========================================================
     // SELLER
-    // --------------------------------------------------------
+    // ========================================================
 
-    sellerId: getUserId(req),
+    sellerId:
+      getUserId(req),
 
     sellerName:
-      cleanString(body.sellerName) ||
-      cleanString(req.user?.name),
+      cleanString(
+        body.sellerName
+      ) ||
+      cleanString(
+        req.user?.name
+      ),
 
     sellerPhone:
-      cleanString(body.sellerPhone),
+      cleanString(
+        body.sellerPhone
+      ),
 
-    // --------------------------------------------------------
+    // ========================================================
     // GENERAL
-    // --------------------------------------------------------
+    // ========================================================
 
     brand:
-      cleanString(body.brand),
+      cleanString(
+        body.brand
+      ),
 
     model:
-      cleanString(body.model),
+      cleanString(
+        body.model
+      ),
 
     color:
-      cleanString(body.color),
+      cleanString(
+        body.color
+      ),
 
     condition:
-      cleanString(body.condition) ||
-      "Good",
+      cleanString(
+        body.condition
+      ) || "Good",
 
     warranty:
-      cleanString(body.warranty),
+      cleanString(
+        body.warranty
+      ),
 
-    // --------------------------------------------------------
+    // ========================================================
     // COMPUTER / TABLET / CONSOLE / TV / WATCH
-    // --------------------------------------------------------
+    // ========================================================
 
     storage:
-      cleanString(body.storage),
+      cleanString(
+        body.storage
+      ),
 
     ram:
-      cleanString(body.ram),
+      cleanString(
+        body.ram
+      ),
 
     processor:
-      cleanString(body.processor),
+      cleanString(
+        body.processor
+      ),
 
     graphics:
-      cleanString(body.graphics),
+      cleanString(
+        body.graphics
+      ),
 
     screenSize:
-      cleanString(body.screenSize),
+      cleanString(
+        body.screenSize
+      ),
 
     year:
-      cleanString(body.year),
+      cleanString(
+        body.year
+      ),
 
     connectivity:
-      cleanString(body.connectivity),
+      cleanString(
+        body.connectivity
+      ),
 
-    // --------------------------------------------------------
+    // ========================================================
     // GAME CONSOLE
-    // --------------------------------------------------------
+    // ========================================================
 
     videoOutput:
-      cleanString(body.videoOutput),
+      cleanString(
+        body.videoOutput
+      ),
 
     region:
-      cleanString(body.region),
+      cleanString(
+        body.region
+      ),
 
     consoleType:
-      cleanString(body.consoleType),
+      cleanString(
+        body.consoleType
+      ),
 
     edition:
-      cleanString(body.edition),
+      cleanString(
+        body.edition
+      ),
 
     discDrive:
-      cleanString(body.discDrive),
+      cleanString(
+        body.discDrive
+      ),
 
     controllersIncluded:
       cleanString(
@@ -390,24 +507,32 @@ const buildProductData = (body, req) => {
       ),
 
     battery:
-      cleanString(body.battery),
+      cleanString(
+        body.battery
+      ),
 
     resolution:
-      cleanString(body.resolution),
+      cleanString(
+        body.resolution
+      ),
 
-    // --------------------------------------------------------
-    // SMARTWATCH
-    // --------------------------------------------------------
+    // ========================================================
+    // SMARTWATCH / WATCH
+    // ========================================================
 
     watchSize:
-      cleanString(body.watchSize),
+      cleanString(
+        body.watchSize
+      ),
 
-    // --------------------------------------------------------
+    // ========================================================
     // TV
-    // --------------------------------------------------------
+    // ========================================================
 
     tvType:
-      cleanString(body.tvType),
+      cleanString(
+        body.tvType
+      ),
 
     displayTechnology:
       cleanString(
@@ -415,7 +540,9 @@ const buildProductData = (body, req) => {
       ),
 
     refreshRate:
-      cleanString(body.refreshRate),
+      cleanString(
+        body.refreshRate
+      ),
 
     operatingSystem:
       cleanString(
@@ -423,44 +550,68 @@ const buildProductData = (body, req) => {
       ),
 
     hdr:
-      cleanString(body.hdr),
+      cleanString(
+        body.hdr
+      ),
 
     hdmiPorts:
-      cleanString(body.hdmiPorts),
+      cleanString(
+        body.hdmiPorts
+      ),
 
     usbPorts:
-      cleanString(body.usbPorts),
+      cleanString(
+        body.usbPorts
+      ),
 
     smartTV:
-      toBoolean(body.smartTV),
+      toBoolean(
+        body.smartTV
+      ),
 
     voiceControl:
-      toBoolean(body.voiceControl),
+      toBoolean(
+        body.voiceControl
+      ),
 
     wallMountable:
-      toBoolean(body.wallMountable),
+      toBoolean(
+        body.wallMountable
+      ),
 
-    // --------------------------------------------------------
+    // ========================================================
     // CAR
-    // --------------------------------------------------------
+    // ========================================================
 
     mileage:
-      toNumberOrNull(body.mileage),
+      toNumberOrNull(
+        body.mileage
+      ),
 
     bodyType:
-      cleanString(body.bodyType),
+      cleanString(
+        body.bodyType
+      ),
 
     fuelType:
-      cleanString(body.fuelType),
+      cleanString(
+        body.fuelType
+      ),
 
     transmission:
-      cleanString(body.transmission),
+      cleanString(
+        body.transmission
+      ),
 
     driveType:
-      cleanString(body.driveType),
+      cleanString(
+        body.driveType
+      ),
 
     engineSize:
-      cleanString(body.engineSize),
+      cleanString(
+        body.engineSize
+      ),
 
     seatingCapacity:
       toNumberOrNull(
@@ -477,46 +628,68 @@ const buildProductData = (body, req) => {
         body.interiorColor
       ),
 
-    // --------------------------------------------------------
+    // ========================================================
     // ACCESSORIES
-    // --------------------------------------------------------
+    // ========================================================
 
     accessoryType:
-      cleanString(body.accessoryType),
+      cleanString(
+        body.accessoryType
+      ),
 
     compatibleWith:
-      cleanString(body.compatibleWith),
+      cleanString(
+        body.compatibleWith
+      ),
 
     compatibility:
-      cleanString(body.compatibility),
+      cleanString(
+        body.compatibility
+      ),
 
     material:
-      cleanString(body.material),
+      cleanString(
+        body.material
+      ),
 
     cableType:
-      cleanString(body.cableType),
+      cleanString(
+        body.cableType
+      ),
 
     connectorType:
-      cleanString(body.connectorType),
+      cleanString(
+        body.connectorType
+      ),
 
     powerOutput:
-      cleanString(body.powerOutput),
+      cleanString(
+        body.powerOutput
+      ),
 
     capacity:
-      cleanString(body.capacity),
+      cleanString(
+        body.capacity
+      ),
 
     batteryCapacity:
-      cleanString(body.batteryCapacity),
+      cleanString(
+        body.batteryCapacity
+      ),
 
     wireless:
-      toBoolean(body.wireless),
+      toBoolean(
+        body.wireless
+      ),
 
     original:
-      toBoolean(body.original),
+      toBoolean(
+        body.original
+      ),
 
-    // --------------------------------------------------------
+    // ========================================================
     // PHONE
-    // --------------------------------------------------------
+    // ========================================================
 
     batteryHealth:
       toNumberOrNull(
@@ -524,30 +697,42 @@ const buildProductData = (body, req) => {
       ),
 
     faceId:
-      cleanString(body.faceId),
+      cleanString(
+        body.faceId
+      ),
 
     simStatus:
-      cleanString(body.simStatus),
+      cleanString(
+        body.simStatus
+      ),
 
-    // --------------------------------------------------------
+    // ========================================================
     // SELLING OPTIONS
-    // --------------------------------------------------------
+    // ========================================================
 
     negotiation:
-      toBoolean(body.negotiation),
+      toBoolean(
+        body.negotiation
+      ),
 
     swapAccepted:
-      toBoolean(body.swapAccepted),
+      toBoolean(
+        body.swapAccepted
+      ),
 
-    // --------------------------------------------------------
+    // ========================================================
     // STATUS
-    // --------------------------------------------------------
+    // ========================================================
 
     status:
       VALID_STATUSES.includes(
-        cleanString(body.status)
+        cleanString(
+          body.status
+        )
       )
-        ? cleanString(body.status)
+        ? cleanString(
+            body.status
+          )
         : "active",
   };
 
@@ -558,7 +743,9 @@ const buildProductData = (body, req) => {
 // VALIDATE PRODUCT
 // ============================================================
 
-const validateProductData = (data) => {
+const validateProductData = (
+  data
+) => {
   const errors = [];
 
   if (
@@ -572,7 +759,9 @@ const validateProductData = (data) => {
 
   if (
     data.price === null ||
-    !Number.isFinite(data.price) ||
+    !Number.isFinite(
+      data.price
+    ) ||
     data.price < 0
   ) {
     errors.push(
@@ -590,13 +779,15 @@ const validateProductData = (data) => {
   }
 
   if (
-    data.category &&
+    !data.category ||
     !VALID_CATEGORIES.includes(
       data.category
     )
   ) {
     errors.push(
-      "Invalid product category"
+      `Invalid product category. Allowed categories: ${VALID_CATEGORIES.join(
+        ", "
+      )}`
     );
   }
 
@@ -638,73 +829,81 @@ exports.getProducts = async (
       sellerId,
     } = req.query;
 
-    const pageNumber = Math.max(
-      Number(page) || 1,
-      1
-    );
-
-    const limitNumber = Math.min(
+    const pageNumber =
       Math.max(
-        Number(limit) || 12,
+        Number(page) || 1,
         1
-      ),
-      100
-    );
+      );
+
+    const limitNumber =
+      Math.min(
+        Math.max(
+          Number(limit) || 12,
+          1
+        ),
+        100
+      );
 
     const query = {};
 
-    // --------------------------------------------------------
+    // ========================================================
     // STATUS
-    // --------------------------------------------------------
+    // ========================================================
 
     if (status) {
       if (
-        VALID_STATUSES.includes(status)
+        VALID_STATUSES.includes(
+          status
+        )
       ) {
         query.status = status;
       }
     } else {
-      // Public product listing defaults
-      // to active products.
       query.status = "active";
     }
 
-    // --------------------------------------------------------
+    // ========================================================
     // CATEGORY
-    // --------------------------------------------------------
+    // ========================================================
 
     if (category) {
-      if (
-        VALID_CATEGORIES.includes(
+      const resolvedCategory =
+        resolveCategory(
           category
-        )
+        );
+
+      if (
+        resolvedCategory
       ) {
-        query.category = category;
+        query.category =
+          resolvedCategory;
       }
     }
 
-    // --------------------------------------------------------
+    // ========================================================
     // LOCATION
-    // --------------------------------------------------------
+    // ========================================================
 
     if (location) {
       query.location = {
-        $regex: location,
+        $regex:
+          location,
         $options: "i",
       };
     }
 
-    // --------------------------------------------------------
+    // ========================================================
     // CONDITION
-    // --------------------------------------------------------
+    // ========================================================
 
     if (condition) {
-      query.condition = condition;
+      query.condition =
+        condition;
     }
 
-    // --------------------------------------------------------
+    // ========================================================
     // BRAND
-    // --------------------------------------------------------
+    // ========================================================
 
     if (brand) {
       query.brand = {
@@ -713,9 +912,9 @@ exports.getProducts = async (
       };
     }
 
-    // --------------------------------------------------------
+    // ========================================================
     // MODEL
-    // --------------------------------------------------------
+    // ========================================================
 
     if (model) {
       query.model = {
@@ -724,23 +923,28 @@ exports.getProducts = async (
       };
     }
 
-    // --------------------------------------------------------
+    // ========================================================
     // SELLER
-    // --------------------------------------------------------
+    // ========================================================
 
     if (sellerId) {
-      query.sellerId = sellerId;
+      query.sellerId =
+        sellerId;
     }
 
-    // --------------------------------------------------------
+    // ========================================================
     // PRICE
-    // --------------------------------------------------------
+    // ========================================================
 
     const min =
-      toNumberOrNull(minPrice);
+      toNumberOrNull(
+        minPrice
+      );
 
     const max =
-      toNumberOrNull(maxPrice);
+      toNumberOrNull(
+        maxPrice
+      );
 
     if (
       min !== null ||
@@ -749,17 +953,19 @@ exports.getProducts = async (
       query.price = {};
 
       if (min !== null) {
-        query.price.$gte = min;
+        query.price.$gte =
+          min;
       }
 
       if (max !== null) {
-        query.price.$lte = max;
+        query.price.$lte =
+          max;
       }
     }
 
-    // --------------------------------------------------------
+    // ========================================================
     // SEARCH
-    // --------------------------------------------------------
+    // ========================================================
 
     if (search) {
       const safeSearch =
@@ -774,73 +980,95 @@ exports.getProducts = async (
         query.$or = [
           {
             title: {
-              $regex: safeSearch,
-              $options: "i",
+              $regex:
+                safeSearch,
+              $options:
+                "i",
             },
           },
           {
             description: {
-              $regex: safeSearch,
-              $options: "i",
+              $regex:
+                safeSearch,
+              $options:
+                "i",
             },
           },
           {
             brand: {
-              $regex: safeSearch,
-              $options: "i",
+              $regex:
+                safeSearch,
+              $options:
+                "i",
             },
           },
           {
             model: {
-              $regex: safeSearch,
-              $options: "i",
+              $regex:
+                safeSearch,
+              $options:
+                "i",
             },
           },
           {
             accessoryType: {
-              $regex: safeSearch,
-              $options: "i",
+              $regex:
+                safeSearch,
+              $options:
+                "i",
             },
           },
           {
             compatibleWith: {
-              $regex: safeSearch,
-              $options: "i",
+              $regex:
+                safeSearch,
+              $options:
+                "i",
             },
           },
           {
             compatibility: {
-              $regex: safeSearch,
-              $options: "i",
+              $regex:
+                safeSearch,
+              $options:
+                "i",
             },
           },
           {
             tvType: {
-              $regex: safeSearch,
-              $options: "i",
+              $regex:
+                safeSearch,
+              $options:
+                "i",
             },
           },
           {
             consoleType: {
-              $regex: safeSearch,
-              $options: "i",
+              $regex:
+                safeSearch,
+              $options:
+                "i",
             },
           },
         ];
       }
     }
 
-    // --------------------------------------------------------
-    // QUERY
-    // --------------------------------------------------------
+    // ========================================================
+    // QUERY DATABASE
+    // ========================================================
 
     const products =
-      await Product.find(query)
+      await Product.find(
+        query
+      )
         .populate(
           "sellerId",
           "name email phone location avatar"
         )
-        .limit(limitNumber)
+        .limit(
+          limitNumber
+        )
         .skip(
           (pageNumber - 1) *
             limitNumber
@@ -854,16 +1082,21 @@ exports.getProducts = async (
         query
       );
 
-    res.json({
+    return res.json({
       success: true,
       products,
       pagination: {
-        currentPage: pageNumber,
-        totalPages: Math.ceil(
-          total / limitNumber
-        ),
-        totalProducts: total,
-        limit: limitNumber,
+        currentPage:
+          pageNumber,
+        totalPages:
+          Math.ceil(
+            total /
+              limitNumber
+          ),
+        totalProducts:
+          total,
+        limit:
+          limitNumber,
       },
     });
   } catch (error) {
@@ -872,7 +1105,7 @@ exports.getProducts = async (
       error
     );
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message:
         error.message ||
@@ -890,7 +1123,8 @@ exports.getProductById = async (
   res
 ) => {
   try {
-    const { id } = req.params;
+    const { id } =
+      req.params;
 
     if (!id) {
       return res.status(400).json({
@@ -901,22 +1135,20 @@ exports.getProductById = async (
     }
 
     const product =
-      await Product.findById(id)
-        .populate(
-          "sellerId",
-          "name email phone location avatar"
-        );
+      await Product.findById(
+        id
+      ).populate(
+        "sellerId",
+        "name email phone location avatar"
+      );
 
     if (!product) {
       return res.status(404).json({
         success: false,
-        message: "Product not found",
+        message:
+          "Product not found",
       });
     }
-
-    // --------------------------------------------------------
-    // INCREMENT VIEWS
-    // --------------------------------------------------------
 
     await Product.findByIdAndUpdate(
       id,
@@ -927,11 +1159,11 @@ exports.getProductById = async (
       }
     );
 
-    // Keep returned object synchronized
     product.views =
-      (product.views || 0) + 1;
+      (product.views || 0) +
+      1;
 
-    res.json({
+    return res.json({
       success: true,
       product,
     });
@@ -941,7 +1173,7 @@ exports.getProductById = async (
       error
     );
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message:
         error.message ||
@@ -959,9 +1191,9 @@ exports.createProduct = async (
   res
 ) => {
   try {
-    // --------------------------------------------------------
+    // ========================================================
     // AUTHENTICATION
-    // --------------------------------------------------------
+    // ========================================================
 
     const userId =
       getUserId(req);
@@ -974,9 +1206,18 @@ exports.createProduct = async (
       });
     }
 
-    // --------------------------------------------------------
+    // ========================================================
+    // DEBUG CATEGORY
+    // ========================================================
+
+    console.log(
+      "📥 Raw product category:",
+      req.body.category
+    );
+
+    // ========================================================
     // BUILD DATA
-    // --------------------------------------------------------
+    // ========================================================
 
     const productData =
       buildProductData(
@@ -984,14 +1225,17 @@ exports.createProduct = async (
         req
       );
 
-    // Always force seller ID
-    // from authenticated user.
     productData.sellerId =
       userId;
 
-    // --------------------------------------------------------
+    console.log(
+      "📦 Resolved product category:",
+      productData.category
+    );
+
+    // ========================================================
     // VALIDATION
-    // --------------------------------------------------------
+    // ========================================================
 
     const validationErrors =
       validateProductData(
@@ -999,7 +1243,8 @@ exports.createProduct = async (
       );
 
     if (
-      validationErrors.length > 0
+      validationErrors.length >
+      0
     ) {
       return res.status(400).json({
         success: false,
@@ -1010,9 +1255,9 @@ exports.createProduct = async (
       });
     }
 
-    // --------------------------------------------------------
+    // ========================================================
     // UPLOAD FILES
-    // --------------------------------------------------------
+    // ========================================================
 
     const {
       imageUrls,
@@ -1022,9 +1267,9 @@ exports.createProduct = async (
         req.files
       );
 
-    // --------------------------------------------------------
+    // ========================================================
     // MEDIA
-    // --------------------------------------------------------
+    // ========================================================
 
     productData.images =
       imageUrls;
@@ -1032,13 +1277,12 @@ exports.createProduct = async (
     productData.videos =
       videoUrls;
 
-    // Legacy single-image support
     productData.image =
       imageUrls[0] || "";
 
-    // --------------------------------------------------------
+    // ========================================================
     // CREATE
-    // --------------------------------------------------------
+    // ========================================================
 
     const product =
       await Product.create(
@@ -1065,7 +1309,7 @@ exports.createProduct = async (
       videoUrls.length
     );
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       message:
         "Product created successfully",
@@ -1095,16 +1339,17 @@ exports.createProduct = async (
         success: false,
         message:
           "Product validation failed",
-        errors: Object.values(
-          error.errors || {}
-        ).map(
-          (err) =>
-            err.message
-        ),
+        errors:
+          Object.values(
+            error.errors || {}
+          ).map(
+            (err) =>
+              err.message
+          ),
       });
     }
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message:
         error.message ||
@@ -1134,7 +1379,9 @@ exports.updateProduct = async (
     }
 
     const product =
-      await Product.findById(id);
+      await Product.findById(
+        id
+      );
 
     if (!product) {
       return res.status(404).json({
@@ -1144,9 +1391,9 @@ exports.updateProduct = async (
       });
     }
 
-    // --------------------------------------------------------
+    // ========================================================
     // AUTHORIZATION
-    // --------------------------------------------------------
+    // ========================================================
 
     const userId =
       getUserId(req);
@@ -1170,7 +1417,10 @@ exports.updateProduct = async (
       product.sellerId.toString() ===
         userId.toString();
 
-    if (!isAdmin && !isOwner) {
+    if (
+      !isAdmin &&
+      !isOwner
+    ) {
       return res.status(403).json({
         success: false,
         message:
@@ -1178,12 +1428,11 @@ exports.updateProduct = async (
       });
     }
 
-    // --------------------------------------------------------
+    // ========================================================
     // ALLOWED FIELDS
-    // --------------------------------------------------------
+    // ========================================================
 
     const allowedFields = [
-      // Basic
       "title",
       "price",
       "oldPrice",
@@ -1191,18 +1440,15 @@ exports.updateProduct = async (
       "location",
       "description",
 
-      // Seller
       "sellerName",
       "sellerPhone",
 
-      // General
       "brand",
       "model",
       "color",
       "condition",
       "warranty",
 
-      // Computer / Tablet / Console / TV
       "storage",
       "ram",
       "processor",
@@ -1211,7 +1457,6 @@ exports.updateProduct = async (
       "year",
       "connectivity",
 
-      // Console
       "videoOutput",
       "region",
       "consoleType",
@@ -1221,10 +1466,8 @@ exports.updateProduct = async (
       "battery",
       "resolution",
 
-      // Smartwatch
       "watchSize",
 
-      // TV
       "tvType",
       "displayTechnology",
       "refreshRate",
@@ -1236,7 +1479,6 @@ exports.updateProduct = async (
       "voiceControl",
       "wallMountable",
 
-      // Car
       "mileage",
       "bodyType",
       "fuelType",
@@ -1247,7 +1489,6 @@ exports.updateProduct = async (
       "exteriorColor",
       "interiorColor",
 
-      // Accessories
       "accessoryType",
       "compatibleWith",
       "compatibility",
@@ -1260,22 +1501,19 @@ exports.updateProduct = async (
       "wireless",
       "original",
 
-      // Phone
       "batteryHealth",
       "faceId",
       "simStatus",
 
-      // Selling
       "negotiation",
       "swapAccepted",
 
-      // Status
       "status",
     ];
 
-    // --------------------------------------------------------
+    // ========================================================
     // NUMERIC FIELDS
-    // --------------------------------------------------------
+    // ========================================================
 
     const numericFields = [
       "price",
@@ -1285,9 +1523,9 @@ exports.updateProduct = async (
       "seatingCapacity",
     ];
 
-    // --------------------------------------------------------
+    // ========================================================
     // BOOLEAN FIELDS
-    // --------------------------------------------------------
+    // ========================================================
 
     const booleanFields = [
       "negotiation",
@@ -1299,9 +1537,9 @@ exports.updateProduct = async (
       "original",
     ];
 
-    // --------------------------------------------------------
+    // ========================================================
     // UPDATE FIELDS
-    // --------------------------------------------------------
+    // ========================================================
 
     for (
       const field of allowedFields
@@ -1316,6 +1554,10 @@ exports.updateProduct = async (
       const value =
         req.body[field];
 
+      // ------------------------------------------------------
+      // BOOLEAN
+      // ------------------------------------------------------
+
       if (
         booleanFields.includes(
           field
@@ -1323,8 +1565,13 @@ exports.updateProduct = async (
       ) {
         product[field] =
           toBoolean(value);
+
         continue;
       }
+
+      // ------------------------------------------------------
+      // NUMBER
+      // ------------------------------------------------------
 
       if (
         numericFields.includes(
@@ -1332,39 +1579,56 @@ exports.updateProduct = async (
         )
       ) {
         product[field] =
-          toNumberOrNull(value);
+          toNumberOrNull(
+            value
+          );
+
         continue;
       }
 
+      // ------------------------------------------------------
+      // CATEGORY
+      // ------------------------------------------------------
+
       if (
-        field === "category"
+        field ===
+        "category"
       ) {
-        const category =
-          cleanString(value);
+        const resolvedCategory =
+          resolveCategory(
+            value
+          );
 
         if (
-          !VALID_CATEGORIES.includes(
-            category
-          )
+          !resolvedCategory
         ) {
           return res.status(400).json({
             success: false,
             message:
-              "Invalid product category",
+              `Invalid product category. Allowed categories: ${VALID_CATEGORIES.join(
+                ", "
+              )}`,
           });
         }
 
         product.category =
-          category;
+          resolvedCategory;
 
         continue;
       }
 
+      // ------------------------------------------------------
+      // STATUS
+      // ------------------------------------------------------
+
       if (
-        field === "status"
+        field ===
+        "status"
       ) {
         const status =
-          cleanString(value);
+          cleanString(
+            value
+          );
 
         if (
           !VALID_STATUSES.includes(
@@ -1384,6 +1648,10 @@ exports.updateProduct = async (
         continue;
       }
 
+      // ------------------------------------------------------
+      // STRING
+      // ------------------------------------------------------
+
       if (
         typeof value ===
         "string"
@@ -1396,11 +1664,12 @@ exports.updateProduct = async (
       }
     }
 
-    // --------------------------------------------------------
+    // ========================================================
     // KEEP EXISTING IMAGES
-    // --------------------------------------------------------
+    // ========================================================
 
-    let imagesToKeep = null;
+    let imagesToKeep =
+      null;
 
     if (
       req.body.imagesToKeep !==
@@ -1411,9 +1680,11 @@ exports.updateProduct = async (
           Array.isArray(
             req.body.imagesToKeep
           )
-            ? req.body.imagesToKeep
+            ? req.body
+                .imagesToKeep
             : JSON.parse(
-                req.body.imagesToKeep
+                req.body
+                  .imagesToKeep
               );
       } catch (error) {
         return res.status(400).json({
@@ -1454,11 +1725,12 @@ exports.updateProduct = async (
         imagesToKeep[0] || "";
     }
 
-    // --------------------------------------------------------
+    // ========================================================
     // KEEP EXISTING VIDEOS
-    // --------------------------------------------------------
+    // ========================================================
 
-    let videosToKeep = null;
+    let videosToKeep =
+      null;
 
     if (
       req.body.videosToKeep !==
@@ -1469,9 +1741,11 @@ exports.updateProduct = async (
           Array.isArray(
             req.body.videosToKeep
           )
-            ? req.body.videosToKeep
+            ? req.body
+                .videosToKeep
             : JSON.parse(
-                req.body.videosToKeep
+                req.body
+                  .videosToKeep
               );
       } catch (error) {
         return res.status(400).json({
@@ -1509,13 +1783,14 @@ exports.updateProduct = async (
         videosToKeep;
     }
 
-    // --------------------------------------------------------
+    // ========================================================
     // UPLOAD NEW FILES
-    // --------------------------------------------------------
+    // ========================================================
 
     if (
       req.files &&
-      req.files.length > 0
+      req.files.length >
+        0
     ) {
       const {
         imageUrls,
@@ -1526,7 +1801,8 @@ exports.updateProduct = async (
         );
 
       if (
-        imageUrls.length > 0
+        imageUrls.length >
+        0
       ) {
         if (
           !Array.isArray(
@@ -1543,7 +1819,8 @@ exports.updateProduct = async (
       }
 
       if (
-        videoUrls.length > 0
+        videoUrls.length >
+        0
       ) {
         if (
           !Array.isArray(
@@ -1559,15 +1836,14 @@ exports.updateProduct = async (
         );
       }
 
-      // Keep legacy image field
       product.image =
         product.images?.[0] ||
         "";
     }
 
-    // --------------------------------------------------------
+    // ========================================================
     // VALIDATE BEFORE SAVE
-    // --------------------------------------------------------
+    // ========================================================
 
     if (
       !product.title ||
@@ -1606,6 +1882,18 @@ exports.updateProduct = async (
       });
     }
 
+    if (
+      !VALID_CATEGORIES.includes(
+        product.category
+      )
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Invalid product category",
+      });
+    }
+
     await product.save();
 
     console.log(
@@ -1618,7 +1906,7 @@ exports.updateProduct = async (
       product.category
     );
 
-    res.json({
+    return res.json({
       success: true,
       message:
         "Product updated successfully",
@@ -1648,16 +1936,17 @@ exports.updateProduct = async (
         success: false,
         message:
           "Product validation failed",
-        errors: Object.values(
-          error.errors || {}
-        ).map(
-          (err) =>
-            err.message
-        ),
+        errors:
+          Object.values(
+            error.errors || {}
+          ).map(
+            (err) =>
+              err.message
+          ),
       });
     }
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message:
         error.message ||
@@ -1687,7 +1976,9 @@ exports.deleteProduct = async (
     }
 
     const product =
-      await Product.findById(id);
+      await Product.findById(
+        id
+      );
 
     if (!product) {
       return res.status(404).json({
@@ -1697,9 +1988,9 @@ exports.deleteProduct = async (
       });
     }
 
-    // --------------------------------------------------------
+    // ========================================================
     // AUTHORIZATION
-    // --------------------------------------------------------
+    // ========================================================
 
     const userId =
       getUserId(req);
@@ -1723,7 +2014,10 @@ exports.deleteProduct = async (
       product.sellerId.toString() ===
         userId.toString();
 
-    if (!isAdmin && !isOwner) {
+    if (
+      !isAdmin &&
+      !isOwner
+    ) {
       return res.status(403).json({
         success: false,
         message:
@@ -1731,9 +2025,9 @@ exports.deleteProduct = async (
       });
     }
 
-    // --------------------------------------------------------
+    // ========================================================
     // DELETE IMAGES
-    // --------------------------------------------------------
+    // ========================================================
 
     const images =
       product.images || [];
@@ -1747,9 +2041,9 @@ exports.deleteProduct = async (
       );
     }
 
-    // --------------------------------------------------------
+    // ========================================================
     // DELETE VIDEOS
-    // --------------------------------------------------------
+    // ========================================================
 
     const videos =
       product.videos || [];
@@ -1763,9 +2057,9 @@ exports.deleteProduct = async (
       );
     }
 
-    // --------------------------------------------------------
+    // ========================================================
     // DELETE PRODUCT
-    // --------------------------------------------------------
+    // ========================================================
 
     await product.deleteOne();
 
@@ -1774,7 +2068,7 @@ exports.deleteProduct = async (
       id
     );
 
-    res.json({
+    return res.json({
       success: true,
       message:
         "Product deleted successfully",
@@ -1785,7 +2079,7 @@ exports.deleteProduct = async (
       error
     );
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message:
         error.message ||
@@ -1796,11 +2090,6 @@ exports.deleteProduct = async (
 
 // ============================================================
 // UPDATE STOCK
-// ============================================================
-//
-// Your current Product.js does not contain a stock field.
-// Keep this endpoint for compatibility, but do not attempt
-// to save stock into the Product model.
 // ============================================================
 
 exports.updateStock = async (
@@ -1819,7 +2108,10 @@ exports.updateStock = async (
 // ============================================================
 
 exports.getSellerProducts =
-  async (req, res) => {
+  async (
+    req,
+    res
+  ) => {
     try {
       const userId =
         getUserId(req);
@@ -1834,7 +2126,8 @@ exports.getSellerProducts =
 
       const products =
         await Product.find({
-          sellerId: userId,
+          sellerId:
+            userId,
         })
           .populate(
             "sellerId",
@@ -1844,7 +2137,7 @@ exports.getSellerProducts =
             createdAt: -1,
           });
 
-      res.json({
+      return res.json({
         success: true,
         products,
       });
@@ -1854,7 +2147,7 @@ exports.getSellerProducts =
         error
       );
 
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         message:
           error.message ||
@@ -1868,7 +2161,10 @@ exports.getSellerProducts =
 // ============================================================
 
 exports.updateProductStatus =
-  async (req, res) => {
+  async (
+    req,
+    res
+  ) => {
     try {
       const { id } =
         req.params;
@@ -1898,7 +2194,9 @@ exports.updateProductStatus =
       }
 
       const product =
-        await Product.findById(id);
+        await Product.findById(
+          id
+        );
 
       if (!product) {
         return res.status(404).json({
@@ -1930,11 +2228,14 @@ exports.updateProductStatus =
         product.sellerId.toString() ===
           userId.toString();
 
-      if (!isAdmin && !isOwner) {
+      if (
+        !isAdmin &&
+        !isOwner
+      ) {
         return res.status(403).json({
           success: false,
           message:
-            "You are not authorized to update this product",
+            "You are not authorized to update this product status",
         });
       }
 
@@ -1947,7 +2248,7 @@ exports.updateProductStatus =
         `✅ Product ${id} status changed to ${status}`
       );
 
-      res.status(200).json({
+      return res.status(200).json({
         success: true,
         message:
           `Product status updated to ${status}`,
@@ -1959,7 +2260,7 @@ exports.updateProductStatus =
         error
       );
 
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         message:
           error.message ||

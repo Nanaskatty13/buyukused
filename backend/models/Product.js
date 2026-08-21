@@ -1,8 +1,10 @@
 // ============================================================
 // backend/models/Product.js
+// BuyUKUsed Product Model
 // ============================================================
 
 const mongoose = require("mongoose");
+const PRODUCT_CATEGORIES = require("../constants/productCategories");
 
 // ============================================================
 // PRODUCT SCHEMA
@@ -34,24 +36,10 @@ const productSchema = new mongoose.Schema(
 
     category: {
       type: String,
-      enum: [
-        "Cars",
-        "Phones",
-        "Laptops",
-        "Tablets",
-        "Accessories",
-        "Real Estate",
-        "Jobs",
-        "Electronics",
-        "Fashion",
-        "Home",
-        "TVs",
-        "Game Consoles",
-        "Smartwatches",
-        "Other",
-      ],
+      enum: PRODUCT_CATEGORIES,
       default: "Other",
       index: true,
+      trim: true,
     },
 
     location: {
@@ -152,7 +140,7 @@ const productSchema = new mongoose.Schema(
     },
 
     // ========================================================
-    // COMPUTER / TABLET / CONSOLE / TV / SMARTWATCH / CAR DETAILS
+    // COMPUTER / TABLET / CONSOLE / TV / WATCH DETAILS
     // ========================================================
 
     storage: {
@@ -197,7 +185,10 @@ const productSchema = new mongoose.Schema(
       trim: true,
     },
 
-    // ─── Console‑specific ──────────────────────────────────────
+    // ========================================================
+    // GAME CONSOLE DETAILS
+    // ========================================================
+
     videoOutput: {
       type: String,
       default: "",
@@ -246,14 +237,20 @@ const productSchema = new mongoose.Schema(
       trim: true,
     },
 
-    // ─── Smartwatch‑specific ──────────────────────────────────
+    // ========================================================
+    // SMARTWATCH / WATCH DETAILS
+    // ========================================================
+
     watchSize: {
       type: String,
       default: "",
       trim: true,
     },
 
-    // ─── TV‑specific ──────────────────────────────────────────
+    // ========================================================
+    // TV DETAILS
+    // ========================================================
+
     tvType: {
       type: String,
       default: "",
@@ -311,7 +308,10 @@ const productSchema = new mongoose.Schema(
       default: false,
     },
 
-    // ─── Car‑specific ──────────────────────────────────────────
+    // ========================================================
+    // CAR DETAILS
+    // ========================================================
+
     mileage: {
       type: Number,
       default: null,
@@ -542,7 +542,6 @@ const productSchema = new mongoose.Schema(
       trim: true,
     },
   },
-
   {
     timestamps: true,
     versionKey: false,
@@ -652,7 +651,7 @@ productSchema.index({
 });
 
 // ============================================================
-// CONSOLE / TV / SMARTWATCH FILTERS
+// CONSOLE / TV / SMARTWATCH / WATCH FILTERS
 // ============================================================
 
 productSchema.index({
@@ -670,8 +669,6 @@ productSchema.index({
 productSchema.index({
   watchSize: 1,
 });
-
-// ─── TV indexes ────────────────────────────────────────────────
 
 productSchema.index({
   tvType: 1,
@@ -697,7 +694,9 @@ productSchema.index({
   smartTV: 1,
 });
 
-// ─── Car indexes ────────────────────────────────────────────────
+// ============================================================
+// CAR FILTERS
+// ============================================================
 
 productSchema.index({
   mileage: 1,

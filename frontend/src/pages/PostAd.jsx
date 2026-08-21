@@ -21,7 +21,7 @@ import TVForm from "../components/TVForm";
 import CarForm from "../components/CarForm"; // ✅ NEW
 
 // ============================================================
-// LOCATION DATA (unchanged)
+// LOCATION DATA
 // ============================================================
 
 const countries = ["Ghana"];
@@ -45,8 +45,52 @@ const regions = [
   "Western North",
 ];
 
+// ============================================================
+// ✅ CITIES BY REGION (FIXED – FULL LIST)
+// ============================================================
+
 const citiesByRegion = {
-  // ... (keep your existing citiesByRegion object)
+  "Ahafo": ["Goaso", "Mim", "Hwidiem", "Bechem", "Kenyasi", "Duayaw Nkwanta", "Tepa"],
+  "Ashanti": [
+    "Kumasi", "Obuasi", "Tafo", "Bekwai", "Mampong", "Konongo", "Ejura", "Agogo",
+    "Offinso", "Nkawie", "Oforikrom", "Asokore Mampong", "Suame", "Atwima", "Kwadaso",
+    "Bantama", "Adum", "Bohyen", "Domeabra", "Mpatuam", "Effiduase", "Juaso",
+    "Nhyiaeso", "Tepa", "Duayaw Nkwanta", "Kenyasi", "Kukuom", "Fomena", "Ahensan"
+  ],
+  "Bono": ["Sunyani", "Berekum", "Dormaa Ahenkro", "Kintampo", "Japekrom", "Nsoatre", "Odumase", "Drobo"],
+  "Bono East": ["Techiman", "Yeji", "Kintampo", "Atebubu", "Pru", "Kwame Danso", "Sampa", "Badu", "Tuobodom"],
+  "Central": [
+    "Cape Coast", "Elmina", "Kasoa", "Winneba", "Mfantseman", "Abura Dunkwa", "Assin Fosu",
+    "Asikuma", "Ajumako", "Awutu", "Bawjiase", "Senya Beraku", "Gomoa Fetteh", "Budumburam"
+  ],
+  "Eastern": [
+    "Koforidua", "Nkawkaw", "Oda", "Asamankese", "Akwatia", "Kibi", "Suhum", "Mpraeso",
+    "Somanya", "Odumase", "Aburi", "Nsawam", "Akropong", "Begoro", "Hohoe", "Kpando",
+    "Ho", "Peki", "Denu", "Aflao", "Keta"
+  ],
+  "Greater Accra": [
+    "Accra", "Tema", "Ashaiman", "Madina", "Adenta", "Dansoman", "Kaneshie", "Osu",
+    "Labone", "Labadi", "Dzorwulu", "Achimota", "Legon", "Okponglo", "Bawaleshie",
+    "Nungua", "Teshie", "Sakumono", "Spintex", "Lashibi", "East Legon", "West Legon",
+    "Dodowa", "Prampram", "Afienya", "Tema New Town", "Amasaman", "Weija", "Gbawe",
+    "Mallam", "Bortianor", "Ablekuma", "Korle Bu", "Mamprobi", "Chorkor",
+    "James Town", "Ussher Town", "Adabraka", "Asylum Down", "Cantoments", "Airport"
+  ],
+  "North East": ["Nalerigu", "Walewale", "Bawku", "Gambaga", "Bunkpurugu", "Yunyoo", "Chereponi"],
+  "Northern": ["Tamale", "Savelugu", "Yendi", "Dalun", "Kpatinga", "Gushegu", "Karaga", "Zabzugu", "Tolon", "Kumbungu"],
+  "Oti": ["Dambai", "Kpando", "Jasikan", "Nkwanta", "Brewaniase", "Worawora", "Gbi", "Apesokubi"],
+  "Savannah": ["Damongo", "Bole", "Salaga", "Yapei", "Sawla", "Larabanga", "Daboya"],
+  "Upper East": ["Bolgatanga", "Bawku", "Navrongo", "Paga", "Sandema", "Zuarungu", "Tongo", "Garu", "Tempane", "Pusiga"],
+  "Upper West": ["Wa", "Jirapa", "Lawra", "Nandom", "Tumu", "Gwollu", "Kaleo", "Dere", "Duori"],
+  "Volta": [
+    "Ho", "Hohoe", "Keta", "Aflao", "Kpando", "Sogakope", "Anloga", "Kpedze", "Denu",
+    "Akatsi", "Abor", "Dzodze", "Anyako", "Togoville", "Kedzi", "Agbledomi", "Klikor"
+  ],
+  "Western": [
+    "Sekondi", "Takoradi", "Tarkwa", "Shama", "Essikado", "Aboadze", "Fijai", "Effiakuma",
+    "Kwesimintim", "Nkroful", "Axim", "Half Assini", "Agona", "Anyinam", "Enchi", "Juaboso"
+  ],
+  "Western North": ["Sefwi Wiawso", "Sefwi Debiso", "Bibiani", "Awiaso", "Asafo", "Sefwi Bekwai", "Akontombra"]
 };
 
 // ============================================================
