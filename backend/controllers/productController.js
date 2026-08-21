@@ -3,6 +3,7 @@
 // BuyUKUsed Product Controller
 // ============================================================
 
+const mongoose = require("mongoose");
 const Product = require("../models/Product");
 const cloudinary = require("../config/cloudinary");
 const streamifier = require("streamifier");
@@ -53,12 +54,11 @@ const normalizeCategory = (value) => {
     return "Other";
   }
 
-  // Handle arrays/objects safely
   if (Array.isArray(value)) {
     value = value[0];
   }
 
-  if (typeof value === "object") {
+  if (typeof value === "object" && value !== null) {
     value =
       value.value ||
       value.name ||
@@ -80,15 +80,8 @@ const normalizeCategory = (value) => {
     .replace(/\s+/g, " ")
     .trim();
 
-  // ----------------------------------------------------------
-  // CATEGORY ALIASES
-  // ----------------------------------------------------------
-
   const categoryMap = {
-    // ========================================================
-    // CARS
-    // ========================================================
-
+    // Cars
     car: "Cars",
     cars: "Cars",
     automobile: "Cars",
@@ -102,10 +95,7 @@ const normalizeCategory = (value) => {
     "motor vehicle": "Cars",
     "motor vehicles": "Cars",
 
-    // ========================================================
-    // PHONES
-    // ========================================================
-
+    // Phones
     phone: "Phones",
     phones: "Phones",
     mobile: "Phones",
@@ -123,10 +113,7 @@ const normalizeCategory = (value) => {
     "cell phone": "Phones",
     "cell phones": "Phones",
 
-    // ========================================================
-    // LAPTOPS
-    // ========================================================
-
+    // Laptops
     laptop: "Laptops",
     laptops: "Laptops",
     notebook: "Laptops",
@@ -138,10 +125,7 @@ const normalizeCategory = (value) => {
     macbook: "Laptops",
     macbooks: "Laptops",
 
-    // ========================================================
-    // TABLETS
-    // ========================================================
-
+    // Tablets
     tablet: "Tablets",
     tablets: "Tablets",
     ipad: "Tablets",
@@ -149,10 +133,7 @@ const normalizeCategory = (value) => {
     "tablet computer": "Tablets",
     "tablet computers": "Tablets",
 
-    // ========================================================
-    // ACCESSORIES
-    // ========================================================
-
+    // Accessories
     accessory: "Accessories",
     accessories: "Accessories",
     "phone accessory": "Accessories",
@@ -167,10 +148,7 @@ const normalizeCategory = (value) => {
     headphones: "Accessories",
     earbuds: "Accessories",
 
-    // ========================================================
-    // REAL ESTATE
-    // ========================================================
-
+    // Real Estate
     "real estate": "Real Estate",
     realestate: "Real Estate",
     property: "Real Estate",
@@ -182,10 +160,7 @@ const normalizeCategory = (value) => {
     apartment: "Real Estate",
     apartments: "Real Estate",
 
-    // ========================================================
-    // JOBS
-    // ========================================================
-
+    // Jobs
     job: "Jobs",
     jobs: "Jobs",
     employment: "Jobs",
@@ -194,10 +169,7 @@ const normalizeCategory = (value) => {
     career: "Jobs",
     careers: "Jobs",
 
-    // ========================================================
-    // ELECTRONICS
-    // ========================================================
-
+    // Electronics
     electronic: "Electronics",
     electronics: "Electronics",
     gadget: "Electronics",
@@ -205,10 +177,7 @@ const normalizeCategory = (value) => {
     device: "Electronics",
     devices: "Electronics",
 
-    // ========================================================
-    // FASHION
-    // ========================================================
-
+    // Fashion
     fashion: "Fashion",
     clothing: "Fashion",
     clothes: "Fashion",
@@ -217,10 +186,7 @@ const normalizeCategory = (value) => {
     bags: "Fashion",
     bag: "Fashion",
 
-    // ========================================================
-    // HOME
-    // ========================================================
-
+    // Home
     home: "Home",
     homes: "Home",
     furniture: "Home",
@@ -229,10 +195,7 @@ const normalizeCategory = (value) => {
     appliance: "Home",
     appliances: "Home",
 
-    // ========================================================
-    // TV
-    // ========================================================
-
+    // TVs
     tv: "TVs",
     tvs: "TVs",
     television: "TVs",
@@ -242,10 +205,7 @@ const normalizeCategory = (value) => {
     "smart television": "TVs",
     "smart televisions": "TVs",
 
-    // ========================================================
-    // GAME CONSOLES
-    // ========================================================
-
+    // Game Consoles
     console: "Game Consoles",
     consoles: "Game Consoles",
     gaming: "Game Consoles",
@@ -259,10 +219,7 @@ const normalizeCategory = (value) => {
     "xbox console": "Game Consoles",
     nintendo: "Game Consoles",
 
-    // ========================================================
-    // SMARTWATCHES
-    // ========================================================
-
+    // Smartwatches
     watch: "Smartwatches",
     watches: "Smartwatches",
     smartwatch: "Smartwatches",
@@ -274,32 +231,24 @@ const normalizeCategory = (value) => {
     applewatch: "Smartwatches",
     "apple watch": "Smartwatches",
 
-    // ========================================================
-    // OTHER
-    // ========================================================
-
+    // Other
     other: "Other",
   };
 
-  // Direct alias match
   if (categoryMap[normalized]) {
     return categoryMap[normalized];
   }
 
-  // Canonical category match
-  const canonicalCategory =
-    VALID_CATEGORIES.find(
-      (category) =>
-        category.toLowerCase() === normalized
-    );
+  const canonicalCategory = VALID_CATEGORIES.find(
+    (category) =>
+      category.toLowerCase() === normalized
+  );
 
   if (canonicalCategory) {
     return canonicalCategory;
   }
 
-  // ----------------------------------------------------------
-  // FUZZY CATEGORY MATCHING
-  // ----------------------------------------------------------
+  // Fuzzy matching
 
   if (
     normalized.includes("phone") ||
@@ -333,9 +282,7 @@ const normalizeCategory = (value) => {
     return "Cars";
   }
 
-  if (
-    normalized.includes("accessor")
-  ) {
+  if (normalized.includes("accessor")) {
     return "Accessories";
   }
 
@@ -444,8 +391,7 @@ const normalizeCondition = (value) => {
 
   const match = VALID_CONDITIONS.find(
     (condition) =>
-      condition.toLowerCase() ===
-      normalized
+      condition.toLowerCase() === normalized
   );
 
   return match || "Good";
@@ -476,8 +422,9 @@ const toBoolean = (
   }
 
   if (typeof value === "string") {
-    const normalized =
-      value.trim().toLowerCase();
+    const normalized = value
+      .trim()
+      .toLowerCase();
 
     if (
       [
@@ -518,9 +465,7 @@ const toNumberOrNull = (value) => {
     return null;
   }
 
-  if (
-    typeof value === "string"
-  ) {
+  if (typeof value === "string") {
     value = value
       .replace(/,/g, "")
       .trim();
@@ -553,7 +498,8 @@ const cleanString = (
   }
 
   if (
-    typeof value === "object"
+    typeof value === "object" &&
+    value !== null
   ) {
     value =
       value.value ||
@@ -637,9 +583,7 @@ const deleteFromCloudinary = async (
   try {
     if (
       !fileUrl ||
-      !fileUrl.includes(
-        "cloudinary.com"
-      )
+      !fileUrl.includes("cloudinary.com")
     ) {
       return;
     }
@@ -669,8 +613,7 @@ const deleteFromCloudinary = async (
     await cloudinary.uploader.destroy(
       publicId,
       {
-        resource_type:
-          resourceType,
+        resource_type: resourceType,
       }
     );
   } catch (error) {
@@ -703,19 +646,14 @@ const uploadProductFiles = async (
   }
 
   for (const file of files) {
-    if (
-      !file ||
-      !file.buffer
-    ) {
+    if (!file || !file.buffer) {
       continue;
     }
 
     try {
       if (
         file.mimetype &&
-        file.mimetype.startsWith(
-          "image/"
-        )
+        file.mimetype.startsWith("image/")
       ) {
         const result =
           await uploadToCloudinary(
@@ -730,9 +668,7 @@ const uploadProductFiles = async (
         }
       } else if (
         file.mimetype &&
-        file.mimetype.startsWith(
-          "video/"
-        )
+        file.mimetype.startsWith("video/")
       ) {
         const result =
           await uploadToCloudinary(
@@ -770,31 +706,24 @@ const buildProductData = (
   body,
   req
 ) => {
-  const rawCategory =
-    body?.category;
-
   const normalizedCategory =
     normalizeCategory(
-      rawCategory
+      body?.category
     );
 
   console.log(
     "📦 Category conversion:",
     {
-      received: rawCategory,
+      received: body?.category,
       normalized:
         normalizedCategory,
     }
   );
 
   return {
-    // --------------------------------------------------------
     // BASIC
-    // --------------------------------------------------------
 
-    title: cleanString(
-      body.title
-    ),
+    title: cleanString(body.title),
 
     price: toNumberOrNull(
       body.price
@@ -817,9 +746,7 @@ const buildProductData = (
         body.description
       ),
 
-    // --------------------------------------------------------
     // SELLER
-    // --------------------------------------------------------
 
     sellerId:
       getUserId(req),
@@ -840,9 +767,7 @@ const buildProductData = (
         req.user?.phone
       ),
 
-    // --------------------------------------------------------
     // GENERAL
-    // --------------------------------------------------------
 
     brand: cleanString(
       body.brand
@@ -865,9 +790,7 @@ const buildProductData = (
       body.warranty
     ),
 
-    // --------------------------------------------------------
     // COMPUTER / TABLET / WATCH
-    // --------------------------------------------------------
 
     storage: cleanString(
       body.storage
@@ -899,9 +822,7 @@ const buildProductData = (
         body.connectivity
       ),
 
-    // --------------------------------------------------------
     // CONSOLE
-    // --------------------------------------------------------
 
     videoOutput:
       cleanString(
@@ -940,18 +861,14 @@ const buildProductData = (
         body.resolution
       ),
 
-    // --------------------------------------------------------
     // SMARTWATCH
-    // --------------------------------------------------------
 
     watchSize:
       cleanString(
         body.watchSize
       ),
 
-    // --------------------------------------------------------
     // TV
-    // --------------------------------------------------------
 
     tvType: cleanString(
       body.tvType
@@ -1000,9 +917,7 @@ const buildProductData = (
         body.wallMountable
       ),
 
-    // --------------------------------------------------------
     // CAR
-    // --------------------------------------------------------
 
     mileage:
       toNumberOrNull(
@@ -1049,9 +964,7 @@ const buildProductData = (
         body.interiorColor
       ),
 
-    // --------------------------------------------------------
     // ACCESSORIES
-    // --------------------------------------------------------
 
     accessoryType:
       cleanString(
@@ -1106,9 +1019,7 @@ const buildProductData = (
       body.original
     ),
 
-    // --------------------------------------------------------
     // PHONE
-    // --------------------------------------------------------
 
     batteryHealth:
       toNumberOrNull(
@@ -1124,9 +1035,7 @@ const buildProductData = (
         body.simStatus
       ),
 
-    // --------------------------------------------------------
     // SELLING
-    // --------------------------------------------------------
 
     negotiation:
       toBoolean(
@@ -1138,9 +1047,7 @@ const buildProductData = (
         body.swapAccepted
       ),
 
-    // --------------------------------------------------------
     // STATUS
-    // --------------------------------------------------------
 
     status:
       normalizeStatus(
@@ -1179,9 +1086,7 @@ const validateProductData = (
     );
   }
 
-  if (
-    !data.sellerId
-  ) {
+  if (!data.sellerId) {
     errors.push(
       "Seller authentication is required"
     );
@@ -1268,40 +1173,25 @@ exports.getProducts =
 
       const query = {};
 
-      // ------------------------------------------------------
       // STATUS
-      // ------------------------------------------------------
 
       if (status) {
-        const normalizedStatus =
-          normalizeStatus(
-            status
-          );
-
         query.status =
-          normalizedStatus;
+          normalizeStatus(status);
       } else {
-        query.status =
-          "active";
+        query.status = "active";
       }
 
-      // ------------------------------------------------------
       // CATEGORY
-      // ------------------------------------------------------
 
       if (category) {
-        const normalizedCategory =
+        query.category =
           normalizeCategory(
             category
           );
-
-        query.category =
-          normalizedCategory;
       }
 
-      // ------------------------------------------------------
       // LOCATION
-      // ------------------------------------------------------
 
       if (location) {
         query.location = {
@@ -1313,9 +1203,7 @@ exports.getProducts =
         };
       }
 
-      // ------------------------------------------------------
       // CONDITION
-      // ------------------------------------------------------
 
       if (condition) {
         query.condition =
@@ -1324,9 +1212,7 @@ exports.getProducts =
           );
       }
 
-      // ------------------------------------------------------
       // BRAND
-      // ------------------------------------------------------
 
       if (brand) {
         query.brand = {
@@ -1338,9 +1224,7 @@ exports.getProducts =
         };
       }
 
-      // ------------------------------------------------------
       // MODEL
-      // ------------------------------------------------------
 
       if (model) {
         query.model = {
@@ -1352,18 +1236,26 @@ exports.getProducts =
         };
       }
 
-      // ------------------------------------------------------
       // SELLER
-      // ------------------------------------------------------
 
       if (sellerId) {
+        if (
+          !mongoose.Types.ObjectId.isValid(
+            sellerId
+          )
+        ) {
+          return res.status(400).json({
+            success: false,
+            message:
+              "Invalid seller ID",
+          });
+        }
+
         query.sellerId =
           sellerId;
       }
 
-      // ------------------------------------------------------
       // PRICE
-      // ------------------------------------------------------
 
       const min =
         toNumberOrNull(
@@ -1382,19 +1274,15 @@ exports.getProducts =
         query.price = {};
 
         if (min !== null) {
-          query.price.$gte =
-            min;
+          query.price.$gte = min;
         }
 
         if (max !== null) {
-          query.price.$lte =
-            max;
+          query.price.$lte = max;
         }
       }
 
-      // ------------------------------------------------------
       // SEARCH
-      // ------------------------------------------------------
 
       if (search) {
         const safeSearch =
@@ -1471,9 +1359,7 @@ exports.getProducts =
         }
       }
 
-      // ------------------------------------------------------
       // DATABASE QUERY
-      // ------------------------------------------------------
 
       const products =
         await Product.find(query)
@@ -1583,8 +1469,7 @@ exports.getProductById =
       );
 
       product.views =
-        (product.views || 0) +
-        1;
+        (product.views || 0) + 1;
 
       return res.json({
         success: true,
@@ -1644,10 +1529,6 @@ exports.createProduct =
         "========================================"
       );
 
-      // ------------------------------------------------------
-      // AUTHENTICATION
-      // ------------------------------------------------------
-
       const userId =
         getUserId(req);
 
@@ -1659,10 +1540,6 @@ exports.createProduct =
         });
       }
 
-      // ------------------------------------------------------
-      // BUILD PRODUCT
-      // ------------------------------------------------------
-
       const productData =
         buildProductData(
           req.body || {},
@@ -1671,10 +1548,6 @@ exports.createProduct =
 
       productData.sellerId =
         userId;
-
-      // ------------------------------------------------------
-      // LOG NORMALIZED DATA
-      // ------------------------------------------------------
 
       console.log(
         "📂 Normalized category:",
@@ -1686,18 +1559,13 @@ exports.createProduct =
         productData.sellerPhone
       );
 
-      // ------------------------------------------------------
-      // VALIDATION
-      // ------------------------------------------------------
-
       const validationErrors =
         validateProductData(
           productData
         );
 
       if (
-        validationErrors.length >
-        0
+        validationErrors.length > 0
       ) {
         console.error(
           "❌ Product validation:",
@@ -1713,10 +1581,6 @@ exports.createProduct =
         });
       }
 
-      // ------------------------------------------------------
-      // UPLOAD FILES
-      // ------------------------------------------------------
-
       const {
         imageUrls,
         videoUrls,
@@ -1724,10 +1588,6 @@ exports.createProduct =
         await uploadProductFiles(
           req.files
         );
-
-      // ------------------------------------------------------
-      // MEDIA
-      // ------------------------------------------------------
 
       productData.images =
         imageUrls;
@@ -1737,10 +1597,6 @@ exports.createProduct =
 
       productData.image =
         imageUrls[0] || "";
-
-      // ------------------------------------------------------
-      // CREATE PRODUCT
-      // ------------------------------------------------------
 
       const product =
         await Product.create(
@@ -1875,10 +1731,6 @@ exports.updateProduct =
         });
       }
 
-      // ------------------------------------------------------
-      // AUTHORIZATION
-      // ------------------------------------------------------
-
       const userId =
         getUserId(req);
 
@@ -1898,24 +1750,16 @@ exports.updateProduct =
 
       const isOwner =
         product.sellerId &&
-        product.sellerId
-          .toString() ===
+        product.sellerId.toString() ===
           userId.toString();
 
-      if (
-        !isAdmin &&
-        !isOwner
-      ) {
+      if (!isAdmin && !isOwner) {
         return res.status(403).json({
           success: false,
           message:
             "You are not authorized to update this product",
         });
       }
-
-      // ------------------------------------------------------
-      // ALLOWED FIELDS
-      // ------------------------------------------------------
 
       const allowedFields = [
         "title",
@@ -2014,10 +1858,6 @@ exports.updateProduct =
         "original",
       ];
 
-      // ------------------------------------------------------
-      // UPDATE FIELDS
-      // ------------------------------------------------------
-
       for (
         const field of allowedFields
       ) {
@@ -2031,7 +1871,6 @@ exports.updateProduct =
         const value =
           req.body[field];
 
-        // CATEGORY
         if (
           field === "category"
         ) {
@@ -2039,11 +1878,9 @@ exports.updateProduct =
             normalizeCategory(
               value
             );
-
           continue;
         }
 
-        // STATUS
         if (
           field === "status"
         ) {
@@ -2051,11 +1888,9 @@ exports.updateProduct =
             normalizeStatus(
               value
             );
-
           continue;
         }
 
-        // CONDITION
         if (
           field === "condition"
         ) {
@@ -2063,11 +1898,9 @@ exports.updateProduct =
             normalizeCondition(
               value
             );
-
           continue;
         }
 
-        // BOOLEAN
         if (
           booleanFields.includes(
             field
@@ -2075,11 +1908,9 @@ exports.updateProduct =
         ) {
           product[field] =
             toBoolean(value);
-
           continue;
         }
 
-        // NUMBER
         if (
           numericFields.includes(
             field
@@ -2089,18 +1920,16 @@ exports.updateProduct =
             toNumberOrNull(
               value
             );
-
           continue;
         }
 
-        // STRING
         product[field] =
           cleanString(value);
       }
 
-      // ------------------------------------------------------
+      // ======================================================
       // KEEP EXISTING IMAGES
-      // ------------------------------------------------------
+      // ======================================================
 
       let imagesToKeep = null;
 
@@ -2113,11 +1942,9 @@ exports.updateProduct =
             Array.isArray(
               req.body.imagesToKeep
             )
-              ? req.body
-                  .imagesToKeep
+              ? req.body.imagesToKeep
               : JSON.parse(
-                  req.body
-                    .imagesToKeep
+                  req.body.imagesToKeep
                 );
         } catch {
           return res.status(400).json({
@@ -2155,13 +1982,12 @@ exports.updateProduct =
           imagesToKeep;
 
         product.image =
-          imagesToKeep[0] ||
-          "";
+          imagesToKeep[0] || "";
       }
 
-      // ------------------------------------------------------
+      // ======================================================
       // KEEP EXISTING VIDEOS
-      // ------------------------------------------------------
+      // ======================================================
 
       let videosToKeep = null;
 
@@ -2174,11 +2000,9 @@ exports.updateProduct =
             Array.isArray(
               req.body.videosToKeep
             )
-              ? req.body
-                  .videosToKeep
+              ? req.body.videosToKeep
               : JSON.parse(
-                  req.body
-                    .videosToKeep
+                  req.body.videosToKeep
                 );
         } catch {
           return res.status(400).json({
@@ -2216,9 +2040,9 @@ exports.updateProduct =
           videosToKeep;
       }
 
-      // ------------------------------------------------------
+      // ======================================================
       // UPLOAD NEW FILES
-      // ------------------------------------------------------
+      // ======================================================
 
       if (
         req.files &&
@@ -2240,8 +2064,7 @@ exports.updateProduct =
               product.images
             )
           ) {
-            product.images =
-              [];
+            product.images = [];
           }
 
           product.images.push(
@@ -2257,8 +2080,7 @@ exports.updateProduct =
               product.videos
             )
           ) {
-            product.videos =
-              [];
+            product.videos = [];
           }
 
           product.videos.push(
@@ -2271,9 +2093,9 @@ exports.updateProduct =
           "";
       }
 
-      // ------------------------------------------------------
+      // ======================================================
       // FINAL VALIDATION
-      // ------------------------------------------------------
+      // ======================================================
 
       if (
         !product.title ||
@@ -2470,24 +2292,16 @@ exports.deleteProduct =
 
       const isOwner =
         product.sellerId &&
-        product.sellerId
-          .toString() ===
+        product.sellerId.toString() ===
           userId.toString();
 
-      if (
-        !isAdmin &&
-        !isOwner
-      ) {
+      if (!isAdmin && !isOwner) {
         return res.status(403).json({
           success: false,
           message:
             "You are not authorized to delete this product",
         });
       }
-
-      // ------------------------------------------------------
-      // DELETE IMAGES
-      // ------------------------------------------------------
 
       for (
         const image of
@@ -2498,10 +2312,6 @@ exports.deleteProduct =
           "image"
         );
       }
-
-      // ------------------------------------------------------
-      // DELETE VIDEOS
-      // ------------------------------------------------------
 
       for (
         const video of
@@ -2684,14 +2494,10 @@ exports.updateProductStatus =
 
       const isOwner =
         product.sellerId &&
-        product.sellerId
-          .toString() ===
+        product.sellerId.toString() ===
           userId.toString();
 
-      if (
-        !isAdmin &&
-        !isOwner
-      ) {
+      if (!isAdmin && !isOwner) {
         return res.status(403).json({
           success: false,
           message:
