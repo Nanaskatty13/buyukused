@@ -24,11 +24,7 @@ console.log("🔗 API_URL:", API_URL);
 // REQUEST CONFIG
 // ================================================================
 
-// Render services can take time to wake up.
-// Give the production API enough time to respond.
 const REQUEST_TIMEOUT = 30000;
-
-// Retry temporary network/time-out failures.
 const MAX_RETRIES = 2;
 
 // ================================================================
@@ -67,15 +63,10 @@ const handleResponse = async (response) => {
       response.headers.get("content-type") || "";
 
     try {
-      if (
-        contentType.includes(
-          "application/json"
-        )
-      ) {
+      if (contentType.includes("application/json")) {
         data = await response.json();
       } else {
-        const text =
-          await response.text();
+        const text = await response.text();
 
         if (text) {
           data = {
@@ -100,13 +91,9 @@ const handleResponse = async (response) => {
         `HTTP ${response.status}`
     );
 
-    error.status =
-      response.status;
-
+    error.status = response.status;
     error.data = data;
-
-    error.url =
-      response.url;
+    error.url = response.url;
 
     throw error;
   }
@@ -119,9 +106,9 @@ const handleResponse = async (response) => {
 // ================================================================
 
 const sleep = (ms) =>
-  new Promise((resolve) =>
-    setTimeout(resolve, ms)
-  );
+  new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
 
 // ================================================================
 // REQUEST HELPER
@@ -136,28 +123,24 @@ const request = async (
   let timeoutId;
 
   try {
-    controller =
-      new AbortController();
+    controller = new AbortController();
 
     timeoutId = setTimeout(() => {
       controller.abort();
     }, REQUEST_TIMEOUT);
 
-    const response =
-      await fetch(url, {
-        credentials: "include",
-        ...options,
+    const response = await fetch(url, {
+      credentials: "include",
+      ...options,
 
-        signal:
-          options.signal ||
-          controller.signal,
-      });
+      signal:
+        options.signal ||
+        controller.signal,
+    });
 
     clearTimeout(timeoutId);
 
-    return await handleResponse(
-      response
-    );
+    return await handleResponse(response);
   } catch (error) {
     if (timeoutId) {
       clearTimeout(timeoutId);
@@ -168,12 +151,11 @@ const request = async (
 
     const isNetworkError =
       error?.name === "TypeError" ||
-      error?.message ===
-        "Failed to fetch";
+      error?.message === "Failed to fetch";
 
-    // ------------------------------------------------------------
+    // ============================================================
     // TIMEOUT
-    // ------------------------------------------------------------
+    // ============================================================
 
     if (isAbortError) {
       if (retries > 0) {
@@ -191,14 +173,11 @@ const request = async (
         );
       }
 
-      const timeoutError =
-        new Error(
-          "The server took too long to respond."
-        );
+      const timeoutError = new Error(
+        "The server took too long to respond."
+      );
 
-      timeoutError.code =
-        "REQUEST_TIMEOUT";
-
+      timeoutError.code = "REQUEST_TIMEOUT";
       timeoutError.url = url;
 
       console.error(
@@ -209,9 +188,9 @@ const request = async (
       throw timeoutError;
     }
 
-    // ------------------------------------------------------------
+    // ============================================================
     // NETWORK ERROR
-    // ------------------------------------------------------------
+    // ============================================================
 
     if (
       isNetworkError &&
@@ -231,9 +210,9 @@ const request = async (
       );
     }
 
-    // ------------------------------------------------------------
+    // ============================================================
     // FINAL ERROR
-    // ------------------------------------------------------------
+    // ============================================================
 
     console.error(
       "❌ API request failed:",
@@ -249,11 +228,8 @@ const request = async (
 // QUERY BUILDER
 // ================================================================
 
-const buildQuery = (
-  params = {}
-) => {
-  const searchParams =
-    new URLSearchParams();
+const buildQuery = (params = {}) => {
+  const searchParams = new URLSearchParams();
 
   Object.entries(params).forEach(
     ([key, value]) => {
@@ -280,57 +256,42 @@ const buildQuery = (
     }
   );
 
-  const query =
-    searchParams.toString();
+  const query = searchParams.toString();
 
-  return query
-    ? `?${query}`
-    : "";
+  return query ? `?${query}` : "";
 };
 
 // ================================================================
 // IMAGE URL
 // ================================================================
 
-export const getImageUrl = (
-  path
-) => {
+export const getImageUrl = (path) => {
   if (!path) {
     return "/placeholder.png";
   }
 
-  if (
-    typeof path !== "string"
-  ) {
+  if (typeof path !== "string") {
     return "/placeholder.png";
   }
 
-  const cleanPath =
-    path.trim();
+  const cleanPath = path.trim();
 
   if (!cleanPath) {
     return "/placeholder.png";
   }
 
-  // --------------------------------------------------------------
+  // ==============================================================
   // EXTERNAL URL
-  // --------------------------------------------------------------
+  // ==============================================================
 
   if (
-    cleanPath.startsWith(
-      "http://"
-    ) ||
-    cleanPath.startsWith(
-      "https://"
-    )
+    cleanPath.startsWith("http://") ||
+    cleanPath.startsWith("https://")
   ) {
+    // Cloudinary optimization
     if (
-      cleanPath.includes(
-        "res.cloudinary.com"
-      ) &&
-      cleanPath.includes(
-        "/image/upload/"
-      )
+      cleanPath.includes("res.cloudinary.com") &&
+      cleanPath.includes("/image/upload/")
     ) {
       return cleanPath.replace(
         "/image/upload/",
@@ -341,33 +302,25 @@ export const getImageUrl = (
     return cleanPath;
   }
 
-  // --------------------------------------------------------------
+  // ==============================================================
   // BASE64
-  // --------------------------------------------------------------
+  // ==============================================================
 
-  if (
-    cleanPath.startsWith(
-      "data:"
-    )
-  ) {
+  if (cleanPath.startsWith("data:")) {
     return cleanPath;
   }
 
-  // --------------------------------------------------------------
+  // ==============================================================
   // BLOB
-  // --------------------------------------------------------------
+  // ==============================================================
 
-  if (
-    cleanPath.startsWith(
-      "blob:"
-    )
-  ) {
+  if (cleanPath.startsWith("blob:")) {
     return cleanPath;
   }
 
-  // --------------------------------------------------------------
+  // ==============================================================
   // BACKEND RELATIVE PATH
-  // --------------------------------------------------------------
+  // ==============================================================
 
   return `${API_URL}${
     cleanPath.startsWith("/")
@@ -386,9 +339,9 @@ export const health = {
       `${API_URL}/health`,
       {
         method: "GET",
+
         headers: {
-          Accept:
-            "application/json",
+          Accept: "application/json",
         },
       }
     );
@@ -420,9 +373,7 @@ export const auth = {
         },
 
         body: JSON.stringify({
-          email: String(
-            email || ""
-          )
+          email: String(email || "")
             .trim()
             .toLowerCase(),
 
@@ -457,8 +408,7 @@ export const auth = {
       ).trim(),
 
       role: String(
-        userData.role ||
-          "buyer"
+        userData.role || "buyer"
       )
         .trim()
         .toLowerCase(),
@@ -507,10 +457,9 @@ export const auth = {
     token = getToken()
   ) => {
     if (!token) {
-      const error =
-        new Error(
-          "Authentication token is missing."
-        );
+      const error = new Error(
+        "Authentication token is missing."
+      );
 
       error.status = 401;
 
@@ -643,6 +592,12 @@ export const products = {
     productData,
     token = getToken()
   ) => {
+    if (!id) {
+      throw new Error(
+        "Product ID is required"
+      );
+    }
+
     return request(
       `${API_URL}/api/products/${encodeURIComponent(
         id
@@ -665,6 +620,12 @@ export const products = {
     formData,
     token = getToken()
   ) => {
+    if (!id) {
+      throw new Error(
+        "Product ID is required"
+      );
+    }
+
     return request(
       `${API_URL}/api/products/${encodeURIComponent(
         id
@@ -684,6 +645,12 @@ export const products = {
     id,
     token = getToken()
   ) => {
+    if (!id) {
+      throw new Error(
+        "Product ID is required"
+      );
+    }
+
     return request(
       `${API_URL}/api/products/${encodeURIComponent(
         id
@@ -702,6 +669,12 @@ export const products = {
     status,
     token = getToken()
   ) => {
+    if (!productId) {
+      throw new Error(
+        "Product ID is required"
+      );
+    }
+
     return request(
       `${API_URL}/api/products/${encodeURIComponent(
         productId
@@ -747,6 +720,12 @@ export const users = {
     id,
     token = getToken()
   ) => {
+    if (!id) {
+      throw new Error(
+        "User ID is required"
+      );
+    }
+
     return request(
       `${API_URL}/api/users/${encodeURIComponent(
         id
@@ -765,6 +744,12 @@ export const users = {
     userData,
     token = getToken()
   ) => {
+    if (!id) {
+      throw new Error(
+        "User ID is required"
+      );
+    }
+
     return request(
       `${API_URL}/api/users/${encodeURIComponent(
         id
@@ -787,6 +772,12 @@ export const users = {
     formData,
     token = getToken()
   ) => {
+    if (!id) {
+      throw new Error(
+        "User ID is required"
+      );
+    }
+
     return request(
       `${API_URL}/api/users/${encodeURIComponent(
         id
@@ -806,6 +797,12 @@ export const users = {
     id,
     token = getToken()
   ) => {
+    if (!id) {
+      throw new Error(
+        "User ID is required"
+      );
+    }
+
     return request(
       `${API_URL}/api/users/${encodeURIComponent(
         id
@@ -843,6 +840,12 @@ export const notifications = {
     userId,
     token = getToken()
   ) => {
+    if (!userId) {
+      throw new Error(
+        "User ID is required"
+      );
+    }
+
     return request(
       `${API_URL}/api/notifications/${encodeURIComponent(
         userId
@@ -951,6 +954,12 @@ export const orders = {
     id,
     token = getToken()
   ) => {
+    if (!id) {
+      throw new Error(
+        "Order ID is required"
+      );
+    }
+
     return request(
       `${API_URL}/api/orders/${encodeURIComponent(
         id
@@ -988,6 +997,12 @@ export const orders = {
     updates,
     token = getToken()
   ) => {
+    if (!id) {
+      throw new Error(
+        "Order ID is required"
+      );
+    }
+
     return request(
       `${API_URL}/api/orders/${encodeURIComponent(
         id
@@ -1202,6 +1217,7 @@ export const admin = {
       `${API_URL}/api/admin/dashboard`,
       {
         method: "GET",
+
         headers:
           getHeaders(token),
       }
@@ -1219,6 +1235,7 @@ export const admin = {
       `${API_URL}/api/admin/users${query}`,
       {
         method: "GET",
+
         headers:
           getHeaders(token),
       }
@@ -1235,6 +1252,7 @@ export const admin = {
       )}`,
       {
         method: "GET",
+
         headers:
           getHeaders(token),
       }
@@ -1273,6 +1291,7 @@ export const admin = {
       )}`,
       {
         method: "DELETE",
+
         headers:
           getHeaders(token),
       }
@@ -1290,6 +1309,7 @@ export const admin = {
       `${API_URL}/api/admin/products${query}`,
       {
         method: "GET",
+
         headers:
           getHeaders(token),
       }
@@ -1306,6 +1326,7 @@ export const admin = {
       )}`,
       {
         method: "DELETE",
+
         headers:
           getHeaders(token),
       }
@@ -1323,6 +1344,7 @@ export const admin = {
       `${API_URL}/api/admin/orders${query}`,
       {
         method: "GET",
+
         headers:
           getHeaders(token),
       }
@@ -1362,6 +1384,7 @@ export const admin = {
       `${API_URL}/api/admin/riders${query}`,
       {
         method: "GET",
+
         headers:
           getHeaders(token),
       }
@@ -1378,6 +1401,7 @@ export const admin = {
       )}`,
       {
         method: "GET",
+
         headers:
           getHeaders(token),
       }
@@ -1394,6 +1418,7 @@ export const admin = {
       )}/approve`,
       {
         method: "PUT",
+
         headers:
           getHeaders(token),
       }
@@ -1410,6 +1435,7 @@ export const admin = {
       )}/reject`,
       {
         method: "PUT",
+
         headers:
           getHeaders(token),
       }
@@ -1449,6 +1475,7 @@ export const admin = {
       )}`,
       {
         method: "DELETE",
+
         headers:
           getHeaders(token),
       }
@@ -1466,6 +1493,7 @@ export const admin = {
       `${API_URL}/api/admin/deliveries${query}`,
       {
         method: "GET",
+
         headers:
           getHeaders(token),
       }
@@ -1482,6 +1510,7 @@ export const admin = {
       )}`,
       {
         method: "GET",
+
         headers:
           getHeaders(token),
       }
@@ -1535,19 +1564,19 @@ export const deliveries = {
     );
   },
 
-  getCustomerDeliveries:
-    async (
-      token = getToken()
-    ) => {
-      return request(
-        `${API_URL}/api/deliveries/customer`,
-        {
-          method: "GET",
-          headers:
-            getHeaders(token),
-        }
-      );
-    },
+  getCustomerDeliveries: async (
+    token = getToken()
+  ) => {
+    return request(
+      `${API_URL}/api/deliveries/customer`,
+      {
+        method: "GET",
+
+        headers:
+          getHeaders(token),
+      }
+    );
+  },
 
   getAvailable: async (
     token = getToken()
@@ -1556,6 +1585,7 @@ export const deliveries = {
       `${API_URL}/api/deliveries/available`,
       {
         method: "GET",
+
         headers:
           getHeaders(token),
       }
@@ -1569,67 +1599,66 @@ export const deliveries = {
       `${API_URL}/api/deliveries/my`,
       {
         method: "GET",
+
         headers:
           getHeaders(token),
       }
     );
   },
 
-  getRiderDeliveries:
-    async (
-      token = getToken()
-    ) => {
-      return request(
-        `${API_URL}/api/deliveries/rider`,
-        {
-          method: "GET",
-          headers:
-            getHeaders(token),
-        }
-      );
-    },
+  getRiderDeliveries: async (
+    token = getToken()
+  ) => {
+    return request(
+      `${API_URL}/api/deliveries/rider`,
+      {
+        method: "GET",
 
-  updateAvailability:
-    async (
-      isAvailable,
-      token = getToken()
-    ) => {
-      return request(
-        `${API_URL}/api/deliveries/rider/availability`,
-        {
-          method: "PATCH",
+        headers:
+          getHeaders(token),
+      }
+    );
+  },
 
-          headers:
-            getHeaders(token),
+  updateAvailability: async (
+    isAvailable,
+    token = getToken()
+  ) => {
+    return request(
+      `${API_URL}/api/deliveries/rider/availability`,
+      {
+        method: "PATCH",
 
-          body: JSON.stringify({
-            isAvailable:
-              Boolean(isAvailable),
-          }),
-        }
-      );
-    },
+        headers:
+          getHeaders(token),
 
-  toggleAvailability:
-    async (
-      isAvailable,
-      token = getToken()
-    ) => {
-      return request(
-        `${API_URL}/api/deliveries/rider/availability`,
-        {
-          method: "PATCH",
+        body: JSON.stringify({
+          isAvailable:
+            Boolean(isAvailable),
+        }),
+      }
+    );
+  },
 
-          headers:
-            getHeaders(token),
+  toggleAvailability: async (
+    isAvailable,
+    token = getToken()
+  ) => {
+    return request(
+      `${API_URL}/api/deliveries/rider/availability`,
+      {
+        method: "PATCH",
 
-          body: JSON.stringify({
-            isAvailable:
-              Boolean(isAvailable),
-          }),
-        }
-      );
-    },
+        headers:
+          getHeaders(token),
+
+        body: JSON.stringify({
+          isAvailable:
+            Boolean(isAvailable),
+        }),
+      }
+    );
+  },
 
   accept: async (
     id,
@@ -1641,6 +1670,7 @@ export const deliveries = {
       )}/accept`,
       {
         method: "PATCH",
+
         headers:
           getHeaders(token),
       }
@@ -1730,75 +1760,56 @@ export const deliveries = {
 // NAMED AUTH EXPORTS
 // ================================================================
 
-export const login =
-  auth.login;
-
-export const register =
-  auth.register;
-
-export const getMe =
-  auth.getMe;
-
-export const logout =
-  auth.logout;
+export const login = auth.login;
+export const register = auth.register;
+export const getMe = auth.getMe;
+export const logout = auth.logout;
 
 // ================================================================
 // PRODUCT EXPORTS
 // ================================================================
 
-export const getProducts =
-  products.getAll;
-
-export const getProduct =
-  products.getById;
-
-export const createProduct =
-  products.create;
-
+export const getProducts = products.getAll;
+export const getProduct = products.getById;
+export const createProduct = products.create;
 export const createProductWithFiles =
   products.createWithFiles;
-
-export const updateProduct =
-  products.update;
-
+export const updateProduct = products.update;
 export const updateProductWithFiles =
   products.updateWithFiles;
-
-export const deleteProduct =
-  products.delete;
-
+export const deleteProduct = products.delete;
 export const updateProductStatus =
   products.updateStatus;
 
-// ─── NEW: GET SELLER PRODUCTS (public profile) ──────────────
-export const getSellerProducts = async (sellerId) => {
+// ================================================================
+// SELLER PRODUCTS
+// ================================================================
+
+export const getSellerProducts = async (
+  sellerId
+) => {
   if (!sellerId) {
-    throw new Error("Seller ID is required");
+    throw new Error(
+      "Seller ID is required"
+    );
   }
-  return products.getAll({ sellerId });
+
+  return products.getAll({
+    sellerId,
+  });
 };
 
 // ================================================================
 // USER EXPORTS
 // ================================================================
 
-export const getUsers =
-  users.getAll;
-
-export const getUser =
-  users.getById;
-
-export const updateUser =
-  users.update;
-
+export const getUsers = users.getAll;
+export const getUser = users.getById;
+export const updateUser = users.update;
 export const updateUserWithFiles =
   users.updateWithFiles;
-
-export const deleteUser =
-  users.delete;
-
-export const getUserStats =
-  users.getStats;
+export const deleteUser = users.delete;
+export const getUserStats = users.getStats;
 
 // ================================================================
 // NOTIFICATION EXPORTS
@@ -1826,20 +1837,11 @@ export const deleteNotification =
 // ORDER EXPORTS
 // ================================================================
 
-export const getOrders =
-  orders.getAll;
-
-export const getOrder =
-  orders.getById;
-
-export const createOrder =
-  orders.create;
-
-export const updateOrder =
-  orders.update;
-
-export const deleteOrder =
-  orders.delete;
+export const getOrders = orders.getAll;
+export const getOrder = orders.getById;
+export const createOrder = orders.create;
+export const updateOrder = orders.update;
+export const deleteOrder = orders.delete;
 
 // ================================================================
 // MESSAGE EXPORTS
@@ -2025,7 +2027,7 @@ const api = {
 
   updateProductStatus,
 
-  getSellerProducts, // 👈 added
+  getSellerProducts,
 
   getUsers,
 
