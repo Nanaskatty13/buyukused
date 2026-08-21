@@ -6,7 +6,7 @@
 const mongoose = require("mongoose");
 
 // ============================================================
-// PRODUCT CATEGORIES
+// CONSTANTS
 // ============================================================
 
 const PRODUCT_CATEGORIES = [
@@ -26,20 +26,12 @@ const PRODUCT_CATEGORIES = [
   "Other",
 ];
 
-// ============================================================
-// PRODUCT STATUSES
-// ============================================================
-
 const PRODUCT_STATUSES = [
   "active",
   "pending",
   "inactive",
   "sold",
 ];
-
-// ============================================================
-// PRODUCT CONDITIONS
-// ============================================================
 
 const PRODUCT_CONDITIONS = [
   "Brand New",
@@ -64,6 +56,7 @@ const productSchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true,
+      maxlength: 200,
     },
 
     price: {
@@ -127,16 +120,20 @@ const productSchema = new mongoose.Schema(
     // MEDIA
     // ========================================================
 
+    // Legacy/main image
     image: {
       type: String,
       default: "",
+      trim: true,
     },
 
+    // Multiple images
     images: {
       type: [String],
       default: [],
     },
 
+    // Product videos
     videos: {
       type: [String],
       default: [],
@@ -178,7 +175,7 @@ const productSchema = new mongoose.Schema(
     },
 
     // ========================================================
-    // COMPUTER / TABLET / CONSOLE / TV / WATCH
+    // LAPTOP / TABLET / COMPUTER DETAILS
     // ========================================================
 
     storage: {
@@ -573,6 +570,7 @@ const productSchema = new mongoose.Schema(
       unique: true,
       sparse: true,
       trim: true,
+      index: true,
     },
   },
   {
@@ -592,14 +590,14 @@ productSchema.pre("save", function (next) {
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-+|-+$/g, "");
 
-    this.slug = `${baseSlug}-${Date.now()}`;
+    this.slug = `${baseSlug || "product"}-${Date.now()}`;
   }
 
   next();
 });
 
 // ============================================================
-// TEXT SEARCH
+// TEXT SEARCH INDEX
 // ============================================================
 
 productSchema.index({

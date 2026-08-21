@@ -1,74 +1,161 @@
+// ============================================================
 // backend/routes/productRoutes.js
+// BuyUKUsed Product Routes
+// ============================================================
 
 const express = require("express");
 const router = express.Router();
+
 const multer = require("multer");
 const path = require("path");
 
 // ============================================================
-// IMPORT CONTROLLER (full logic from productController.js)
+// CONTROLLER
 // ============================================================
 
-const productController = require("../controllers/productController");
+const productController =
+  require("../controllers/productController");
 
 // ============================================================
-// MULTER CONFIGURATION
+// VALIDATOR
 // ============================================================
 
-const storage = multer.memoryStorage();
+const {
+  productValidator,
+} = require("../src/validators/productValidator");
 
-const fileFilter = (req, file, cb) => {
-  const allowedTypes = /jpeg|jpg|png|gif|webp|mp4|mov|avi|webm/;
-  const extname = allowedTypes.test(
-    path.extname(file.originalname).toLowerCase()
-  );
-  const mimetype = allowedTypes.test(file.mimetype);
+// ============================================================
+// MULTER
+// ============================================================
 
-  if (extname && mimetype) {
+const storage =
+  multer.memoryStorage();
+
+const fileFilter = (
+  req,
+  file,
+  cb
+) => {
+  const allowedExtensions =
+    /jpeg|jpg|png|gif|webp|mp4|mov|avi|webm/;
+
+  const extension =
+    path
+      .extname(file.originalname)
+      .toLowerCase();
+
+  const extensionValid =
+    allowedExtensions.test(
+      extension
+    );
+
+  const mimeValid =
+    file.mimetype &&
+    (
+      file.mimetype.startsWith(
+        "image/"
+      ) ||
+      file.mimetype.startsWith(
+        "video/"
+      )
+    );
+
+  if (
+    extensionValid &&
+    mimeValid
+  ) {
     return cb(null, true);
   }
-  cb(new Error("Only images and videos are allowed"));
+
+  return cb(
+    new Error(
+      "Only images and videos are allowed"
+    )
+  );
 };
 
-const upload = multer({
-  storage,
-  limits: {
-    fileSize: 50 * 1024 * 1024, // 50MB max
-  },
-  fileFilter,
-});
+const upload =
+  multer({
+    storage,
+
+    limits: {
+      fileSize:
+        50 * 1024 * 1024,
+    },
+
+    fileFilter,
+  });
 
 // ============================================================
-// ROUTES
+// GET ALL PRODUCTS
 // ============================================================
 
-// GET all products (public)
-router.get("/", productController.getProducts);
+router.get(
+  "/",
+  productController.getProducts
+);
 
-// GET single product
-router.get("/:id", productController.getProductById);
+// ============================================================
+// GET SELLER PRODUCTS
+// IMPORTANT: MUST COME BEFORE /:id
+// ============================================================
 
-// CREATE product (with file uploads)
+router.get(
+  "/seller/me",
+  productController.getSellerProducts
+);
+
+// ============================================================
+// GET SINGLE PRODUCT
+// ============================================================
+
+router.get(
+  "/:id",
+  productController.getProductById
+);
+
+// ============================================================
+// CREATE PRODUCT
+// ============================================================
+
 router.post(
   "/",
-  upload.array("files", 10), // Accept up to 10 files (images + video)
+  upload.array("files", 10),
+  productValidator,
   productController.createProduct
 );
 
-// UPDATE product (with file uploads)
+// ============================================================
+// UPDATE PRODUCT
+// ============================================================
+
 router.put(
   "/:id",
   upload.array("files", 10),
+  productValidator,
   productController.updateProduct
 );
 
-// UPDATE product status
-router.patch("/:id/status", productController.updateProductStatus);
+// ============================================================
+// UPDATE PRODUCT STATUS
+// ============================================================
 
-// DELETE product
-router.delete("/:id", productController.deleteProduct);
+router.patch(
+  "/:id/status",
+  productController.updateProductStatus
+);
 
-// GET seller's products
-router.get("/seller/me", productController.getSellerProducts);
+// ============================================================
+// DELETE PRODUCT
+// ============================================================
+
+router.delete(
+  "/:id",
+  productController.deleteProduct
+);
+
+// ============================================================
+// EXPORT
+// ============================================================
 
 module.exports = router;
