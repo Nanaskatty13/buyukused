@@ -1,3 +1,7 @@
+// ============================================================
+// backend/routes/products.js
+// ============================================================
+
 const express = require("express");
 const mongoose = require("mongoose");
 const streamifier = require("streamifier");
@@ -19,6 +23,7 @@ const router = express.Router();
 
 const MAX_IMAGES = 5;
 const MAX_VIDEOS = 1;
+const MAX_FILES = MAX_IMAGES + MAX_VIDEOS;
 
 const VALID_STATUSES = [
   "active",
@@ -36,9 +41,9 @@ const VALID_CATEGORIES = [
   "Fashion",
   "Home",
   "Other",
-  "Laptops",      // ✅ Added
-  "Tablets",      // ✅ Added
-  "Accessories",  // ✅ Added
+  "Laptops",
+  "Tablets",
+  "Accessories",
 ];
 
 const VALID_CONDITIONS = [
@@ -65,27 +70,76 @@ const isValidObjectId = (id) => {
   return mongoose.Types.ObjectId.isValid(id);
 };
 
-// ------------------------------------------------------------
-// Boolean parser
-// ------------------------------------------------------------
+// ============================================================
+// GET USER ID
+// ============================================================
 
-const parseBoolean = (value, defaultValue = false) => {
+const getCurrentUserId = (req) => {
+  return (
+    req.userId ||
+    req.user?.id ||
+    req.user?._id ||
+    null
+  );
+};
+
+// ============================================================
+// GET USER ROLE
+// ============================================================
+
+const getCurrentUserRole = (req) => {
+  return req.user?.role || null;
+};
+
+// ============================================================
+// BOOLEAN PARSER
+// ============================================================
+
+const parseBoolean = (
+  value,
+  defaultValue = false
+) => {
   if (typeof value === "boolean") {
     return value;
   }
 
+  if (typeof value === "number") {
+    return value === 1;
+  }
+
   if (typeof value === "string") {
-    return value.toLowerCase() === "true";
+    const normalized = value
+      .trim()
+      .toLowerCase();
+
+    if (
+      ["true", "1", "yes", "on"].includes(
+        normalized
+      )
+    ) {
+      return true;
+    }
+
+    if (
+      ["false", "0", "no", "off"].includes(
+        normalized
+      )
+    ) {
+      return false;
+    }
   }
 
   return defaultValue;
 };
 
-// ------------------------------------------------------------
-// Number parser
-// ------------------------------------------------------------
+// ============================================================
+// NUMBER PARSER
+// ============================================================
 
-const parseNumber = (value, defaultValue = null) => {
+const parseNumber = (
+  value,
+  defaultValue = null
+) => {
   if (
     value === undefined ||
     value === null ||
@@ -101,262 +155,38 @@ const parseNumber = (value, defaultValue = null) => {
     : defaultValue;
 };
 
-// ------------------------------------------------------------
-// Cloudinary public ID extraction
-// ------------------------------------------------------------
+// ============================================================
+// STRING HELPER
+// ============================================================
 
-const getCloudinaryPublicId = (url) => {
-  try {
-    if (
-      !url ||
-      typeof url !== "string" ||
-      !url.includes("cloudinary.com")
-    ) {
-      return null;
-    }
-
-    const uploadMarker = "/upload/";
-
-    const uploadIndex =
-      url.indexOf(uploadMarker);
-
-    if (uploadIndex === -1) {
-      return null;
-    }
-
-    let publicId = url.substring(
-      uploadIndex + uploadMarker.length
-    );
-
-    // Remove transformation section.
-    // Example:
-    // /upload/w_500,h_500/v123/folder/file.jpg
-    const parts = publicId.split("/");
-
-    while (
-      parts.length > 0 &&
-      (
-        parts[0].includes("_") ||
-        parts[0].includes(",")
-      )
-    ) {
-      parts.shift();
-    }
-
-    publicId = parts.join("/");
-
-    // Remove version.
-    publicId = publicId.replace(
-      /^v\d+\//,
-      ""
-    );
-
-    // Remove extension.
-    publicId = publicId.replace(
-      /\.[^/.]+$/,
-      ""
-    );
-
-    return publicId || null;
-  } catch (error) {
-    console.error(
-      "❌ Failed to extract Cloudinary public ID:",
-      error.message
-    );
-
-    return null;
+const cleanString = (
+  value,
+  defaultValue = ""
+) => {
+  if (
+    value === undefined ||
+    value === null
+  ) {
+    return defaultValue;
   }
+
+  return String(value).trim();
 };
 
-// ------------------------------------------------------------
-// Delete Cloudinary file
-// ------------------------------------------------------------
+// ============================================================
+// ESCAPE REGEX
+// ============================================================
 
-const deleteFromCloudinary = async (
-  fileUrl,
-  resourceType = "image"
-) => {
-  try {
-    const publicId =
-      getCloudinaryPublicId(fileUrl);
-
-    if (!publicId) {
-      return;
-    }
-
-    await cloudinary.uploader.destroy(
-      publicId,
-      {
-        resource_type: resourceType,
-      }
-    );
-
-    console.log(
-      `🗑️ Cloudinary file deleted: ${publicId}`
-    );
-  } catch (error) {
-    console.error(
-      "❌ Cloudinary delete error:",
-      error.message
-    );
-  }
-};
-
-// ------------------------------------------------------------
-// Upload buffer to Cloudinary
-// ------------------------------------------------------------
-
-const uploadToCloudinary = (
-  file
-) => {
-  return new Promise(
-    (resolve, reject) => {
-      try {
-        if (
-          !file ||
-          !file.buffer
-        ) {
-          return reject(
-            new Error(
-              "Invalid file buffer"
-            )
-          );
-        }
-
-        const isVideo =
-          file.mimetype &&
-          file.mimetype.startsWith(
-            "video/"
-          );
-
-        const resourceType =
-          isVideo
-            ? "video"
-            : "image";
-
-        const folder =
-          isVideo
-            ? "kn-classifieds/videos"
-            : "kn-classifieds/images";
-
-        const uploadStream =
-          cloudinary.uploader.upload_stream(
-            {
-              folder,
-              resource_type:
-                resourceType,
-
-              public_id:
-                `${Date.now()}-${Math.round(
-                  Math.random() * 1e9
-                )}`,
-            },
-
-            (error, result) => {
-              if (error) {
-                console.error(
-                  "❌ Cloudinary upload error:",
-                  error
-                );
-
-                return reject(error);
-              }
-
-              resolve({
-                result,
-                resourceType,
-              });
-            }
-          );
-
-        streamifier
-          .createReadStream(
-            file.buffer
-          )
-          .pipe(uploadStream);
-      } catch (error) {
-        reject(error);
-      }
-    }
+const escapeRegex = (value) => {
+  return String(value).replace(
+    /[.*+?^${}()|[\]\\]/g,
+    "\\$&"
   );
 };
 
-// ------------------------------------------------------------
-// Upload multiple files
-// ------------------------------------------------------------
-
-const uploadFiles = async (
-  files
-) => {
-  const imageFiles = (
-    files || []
-  )
-    .filter(
-      (file) =>
-        file.mimetype &&
-        file.mimetype.startsWith(
-          "image/"
-        )
-    )
-    .slice(0, MAX_IMAGES);
-
-  const videoFiles = (
-    files || []
-  )
-    .filter(
-      (file) =>
-        file.mimetype &&
-        file.mimetype.startsWith(
-          "video/"
-        )
-    )
-    .slice(0, MAX_VIDEOS);
-
-  const imageResults =
-    await Promise.all(
-      imageFiles.map(
-        (file) =>
-          uploadToCloudinary(
-            file
-          )
-      )
-    );
-
-  const videoResults =
-    await Promise.all(
-      videoFiles.map(
-        (file) =>
-          uploadToCloudinary(
-            file
-          )
-      )
-    );
-
-  const images =
-    imageResults
-      .map(
-        (item) =>
-          item.result?.secure_url
-      )
-      .filter(Boolean);
-
-  const videos =
-    videoResults
-      .map(
-        (item) =>
-          item.result?.secure_url
-      )
-      .filter(Boolean);
-
-  return {
-    images,
-    videos,
-  };
-};
-
-// ------------------------------------------------------------
-// Parse JSON array safely
-// ------------------------------------------------------------
+// ============================================================
+// PARSE JSON ARRAY
+// ============================================================
 
 const parseJsonArray = (
   value,
@@ -391,13 +221,369 @@ const parseJsonArray = (
 };
 
 // ============================================================
-// TEST
+// NORMALIZE URL ARRAY
+// ============================================================
+
+const normalizeUrlArray = (
+  value
+) => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .filter(
+      (url) =>
+        typeof url === "string" &&
+        url.trim()
+    )
+    .map((url) => url.trim());
+};
+
+// ============================================================
+// CLOUDINARY PUBLIC ID
+// ============================================================
+
+const getCloudinaryPublicId = (
+  url
+) => {
+  try {
+    if (
+      !url ||
+      typeof url !== "string" ||
+      !url.includes("cloudinary.com")
+    ) {
+      return null;
+    }
+
+    const uploadMarker = "/upload/";
+
+    const uploadIndex =
+      url.indexOf(uploadMarker);
+
+    if (uploadIndex === -1) {
+      return null;
+    }
+
+    let publicId = url.substring(
+      uploadIndex +
+        uploadMarker.length
+    );
+
+    const parts = publicId.split("/");
+
+    // Remove transformations.
+    while (
+      parts.length > 0 &&
+      (
+        parts[0].includes("_") ||
+        parts[0].includes(",")
+      )
+    ) {
+      parts.shift();
+    }
+
+    publicId = parts.join("/");
+
+    // Remove version.
+    publicId = publicId.replace(
+      /^v\d+\//,
+      ""
+    );
+
+    // Remove extension.
+    publicId = publicId.replace(
+      /\.[^/.]+$/,
+      ""
+    );
+
+    return publicId || null;
+  } catch (error) {
+    console.error(
+      "❌ Cloudinary public ID error:",
+      error.message
+    );
+
+    return null;
+  }
+};
+
+// ============================================================
+// DELETE CLOUDINARY FILE
+// ============================================================
+
+const deleteFromCloudinary = async (
+  fileUrl,
+  resourceType = "image"
+) => {
+  try {
+    const publicId =
+      getCloudinaryPublicId(fileUrl);
+
+    if (!publicId) {
+      return;
+    }
+
+    await cloudinary.uploader.destroy(
+      publicId,
+      {
+        resource_type: resourceType,
+      }
+    );
+
+    console.log(
+      `🗑️ Cloudinary deleted: ${publicId}`
+    );
+  } catch (error) {
+    console.error(
+      "❌ Cloudinary delete error:",
+      error.message
+    );
+  }
+};
+
+// ============================================================
+// UPLOAD BUFFER TO CLOUDINARY
+// ============================================================
+
+const uploadToCloudinary = (
+  file
+) => {
+  return new Promise(
+    (resolve, reject) => {
+      try {
+        if (
+          !file ||
+          !file.buffer
+        ) {
+          return reject(
+            new Error(
+              "Invalid file buffer"
+            )
+          );
+        }
+
+        const mimetype =
+          file.mimetype || "";
+
+        const isVideo =
+          mimetype.startsWith(
+            "video/"
+          );
+
+        const resourceType =
+          isVideo
+            ? "video"
+            : "image";
+
+        const folder =
+          isVideo
+            ? "kn-classifieds/videos"
+            : "kn-classifieds/images";
+
+        const publicId =
+          `${Date.now()}-${Math.round(
+            Math.random() * 1e9
+          )}`;
+
+        const uploadStream =
+          cloudinary.uploader.upload_stream(
+            {
+              folder,
+              resource_type:
+                resourceType,
+              public_id: publicId,
+            },
+            (error, result) => {
+              if (error) {
+                console.error(
+                  "❌ Cloudinary upload error:",
+                  error
+                );
+
+                return reject(error);
+              }
+
+              resolve({
+                result,
+                resourceType,
+              });
+            }
+          );
+
+        streamifier
+          .createReadStream(
+            file.buffer
+          )
+          .pipe(uploadStream);
+      } catch (error) {
+        reject(error);
+      }
+    }
+  );
+};
+
+// ============================================================
+// UPLOAD MULTIPLE FILES
+// ============================================================
+
+const uploadFiles = async (
+  files = []
+) => {
+  const safeFiles =
+    Array.isArray(files)
+      ? files
+      : [];
+
+  const imageFiles =
+    safeFiles
+      .filter(
+        (file) =>
+          file?.mimetype?.startsWith(
+            "image/"
+          )
+      )
+      .slice(
+        0,
+        MAX_IMAGES
+      );
+
+  const videoFiles =
+    safeFiles
+      .filter(
+        (file) =>
+          file?.mimetype?.startsWith(
+            "video/"
+          )
+      )
+      .slice(
+        0,
+        MAX_VIDEOS
+      );
+
+  const [
+    imageResults,
+    videoResults,
+  ] = await Promise.all([
+    Promise.all(
+      imageFiles.map(
+        uploadToCloudinary
+      )
+    ),
+
+    Promise.all(
+      videoFiles.map(
+        uploadToCloudinary
+      )
+    ),
+  ]);
+
+  const images =
+    imageResults
+      .map(
+        (item) =>
+          item.result?.secure_url
+      )
+      .filter(Boolean);
+
+  const videos =
+    videoResults
+      .map(
+        (item) =>
+          item.result?.secure_url
+      )
+      .filter(Boolean);
+
+  return {
+    images,
+    videos,
+  };
+};
+
+// ============================================================
+// VALIDATE FILE COUNT
+// ============================================================
+
+const validateFiles = (
+  files = []
+) => {
+  const imageCount =
+    files.filter((file) =>
+      file?.mimetype?.startsWith(
+        "image/"
+      )
+    ).length;
+
+  const videoCount =
+    files.filter((file) =>
+      file?.mimetype?.startsWith(
+        "video/"
+      )
+    ).length;
+
+  if (imageCount > MAX_IMAGES) {
+    return {
+      valid: false,
+      message: `Maximum ${MAX_IMAGES} images are allowed.`,
+    };
+  }
+
+  if (videoCount > MAX_VIDEOS) {
+    return {
+      valid: false,
+      message: `Maximum ${MAX_VIDEOS} video is allowed.`,
+    };
+  }
+
+  return {
+    valid: true,
+  };
+};
+
+// ============================================================
+// SYNC LEGACY IMAGE FIELD
+// ============================================================
+
+const syncLegacyImage = (
+  product
+) => {
+  const images =
+    normalizeUrlArray(
+      product.images
+    );
+
+  product.images = images;
+
+  product.image =
+    images.length > 0
+      ? images[0]
+      : "";
+};
+
+// ============================================================
+// GET PRODUCT PUBLIC DATA
+// ============================================================
+//
+// IMPORTANT:
+// We do NOT inject iPhone/laptop specs here.
+// The product is returned exactly according to
+// the information stored for that product.
+// ============================================================
+
+const getProductResponse = (
+  product
+) => {
+  return product;
+};
+
+// ============================================================
+// TEST ROUTE
 // ============================================================
 
 router.get(
   "/test",
   (req, res) => {
-    res.json({
+    return res.json({
       success: true,
       message:
         "Products router is alive!",
@@ -426,19 +612,31 @@ router.get(
       const filter = {};
 
       // --------------------------------------------------------
-      // Category
+      // CATEGORY
       // --------------------------------------------------------
 
       if (
         category &&
         category !== "all"
       ) {
+        if (
+          !VALID_CATEGORIES.includes(
+            category
+          )
+        ) {
+          return res.status(400).json({
+            success: false,
+            message:
+              "Invalid product category",
+          });
+        }
+
         filter.category =
           category;
       }
 
       // --------------------------------------------------------
-      // Location
+      // LOCATION
       // --------------------------------------------------------
 
       if (
@@ -446,11 +644,11 @@ router.get(
         location !== "all"
       ) {
         filter.location =
-          location;
+          cleanString(location);
       }
 
       // --------------------------------------------------------
-      // Seller
+      // SELLER
       // --------------------------------------------------------
 
       if (sellerId) {
@@ -471,7 +669,7 @@ router.get(
       }
 
       // --------------------------------------------------------
-      // Status
+      // STATUS
       // --------------------------------------------------------
 
       if (status) {
@@ -492,7 +690,7 @@ router.get(
       }
 
       // --------------------------------------------------------
-      // Search
+      // SEARCH
       // --------------------------------------------------------
 
       if (
@@ -500,12 +698,9 @@ router.get(
         search.trim()
       ) {
         const escapedSearch =
-          search
-            .trim()
-            .replace(
-              /[.*+?^${}()|[\]\\]/g,
-              "\\$&"
-            );
+          escapeRegex(
+            search.trim()
+          );
 
         filter.$or = [
           {
@@ -539,17 +734,24 @@ router.get(
               $options: "i",
             },
           },
+
+          {
+            category: {
+              $regex:
+                escapedSearch,
+              $options: "i",
+            },
+          },
         ];
       }
 
       // --------------------------------------------------------
-      // Pagination
+      // PAGINATION
       // --------------------------------------------------------
 
       const parsedLimit = Math.min(
         Math.max(
-          parseInt(limit, 10) ||
-            20,
+          parseInt(limit, 10) || 20,
           1
         ),
         100
@@ -565,7 +767,7 @@ router.get(
         parsedLimit;
 
       // --------------------------------------------------------
-      // Query
+      // QUERY
       // --------------------------------------------------------
 
       const [
@@ -589,7 +791,12 @@ router.get(
         ),
       ]);
 
-      res.json({
+      const totalPages =
+        Math.ceil(
+          total / parsedLimit
+        );
+
+      return res.json({
         success: true,
 
         products,
@@ -600,21 +807,13 @@ router.get(
 
         limit: parsedLimit,
 
-        totalPages:
-          Math.ceil(
-            total /
-              parsedLimit
-          ),
+        totalPages,
 
         pagination: {
           currentPage:
             parsedPage,
 
-          totalPages:
-            Math.ceil(
-              total /
-                parsedLimit
-            ),
+          totalPages,
 
           totalProducts:
             total,
@@ -629,11 +828,15 @@ router.get(
         error
       );
 
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         message:
-          error.message ||
           "Failed to fetch products",
+        error:
+          process.env.NODE_ENV ===
+          "development"
+            ? error.message
+            : undefined,
       });
     }
   }
@@ -677,17 +880,21 @@ router.get(
       }
 
       // --------------------------------------------------------
-      // Increment views
+      // Increment views safely
       // --------------------------------------------------------
 
       product.views =
-        (product.views || 0) + 1;
+        Number(product.views || 0) +
+        1;
 
       await product.save();
 
-      res.json({
+      return res.json({
         success: true,
-        product,
+        product:
+          getProductResponse(
+            product
+          ),
       });
     } catch (error) {
       console.error(
@@ -695,10 +902,9 @@ router.get(
         error
       );
 
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         message:
-          error.message ||
           "Failed to fetch product",
       });
     }
@@ -715,13 +921,16 @@ router.post(
   isSeller,
   upload.array(
     "files",
-    6
+    MAX_FILES
   ),
 
   async (req, res) => {
+    const uploadedImages = [];
+    const uploadedVideos = [];
+
     try {
       console.log(
-        "📩 POST /api/products received"
+        "📩 POST /api/products"
       );
 
       console.log(
@@ -735,13 +944,11 @@ router.post(
       );
 
       // --------------------------------------------------------
-      // Authentication
+      // AUTHENTICATION
       // --------------------------------------------------------
 
       const sellerId =
-        req.userId ||
-        req.user?.id ||
-        req.user?._id;
+        getCurrentUserId(req);
 
       if (!sellerId) {
         return res.status(401).json({
@@ -751,8 +958,37 @@ router.post(
         });
       }
 
+      if (
+        !isValidObjectId(
+          sellerId
+        )
+      ) {
+        return res.status(401).json({
+          success: false,
+          message:
+            "Invalid authenticated user",
+        });
+      }
+
       // --------------------------------------------------------
-      // Request body
+      // FILE VALIDATION
+      // --------------------------------------------------------
+
+      const fileValidation =
+        validateFiles(
+          req.files || []
+        );
+
+      if (!fileValidation.valid) {
+        return res.status(400).json({
+          success: false,
+          message:
+            fileValidation.message,
+        });
+      }
+
+      // --------------------------------------------------------
+      // BODY
       // --------------------------------------------------------
 
       const {
@@ -774,16 +1010,17 @@ router.post(
         simStatus,
         batteryHealth,
         faceId,
+        oldPrice,
       } = req.body;
 
       // --------------------------------------------------------
-      // Validate title
+      // TITLE
       // --------------------------------------------------------
 
-      if (
-        !title ||
-        !title.trim()
-      ) {
+      const cleanTitle =
+        cleanString(title);
+
+      if (!cleanTitle) {
         return res.status(400).json({
           success: false,
           message:
@@ -791,20 +1028,23 @@ router.post(
         });
       }
 
+      if (cleanTitle.length > 200) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Product title cannot exceed 200 characters",
+        });
+      }
+
       // --------------------------------------------------------
-      // Validate price
+      // PRICE
       // --------------------------------------------------------
 
       const parsedPrice =
-        Number(price);
+        parseNumber(price);
 
       if (
-        price === undefined ||
-        price === null ||
-        price === "" ||
-        !Number.isFinite(
-          parsedPrice
-        ) ||
+        parsedPrice === null ||
         parsedPrice < 0
       ) {
         return res.status(400).json({
@@ -815,13 +1055,42 @@ router.post(
       }
 
       // --------------------------------------------------------
-      // Validate phone
+      // OLD PRICE
       // --------------------------------------------------------
 
+      let parsedOldPrice = null;
+
       if (
-        !sellerPhone ||
-        !sellerPhone.trim()
+        oldPrice !== undefined &&
+        oldPrice !== ""
       ) {
+        parsedOldPrice =
+          parseNumber(
+            oldPrice
+          );
+
+        if (
+          parsedOldPrice === null ||
+          parsedOldPrice < 0
+        ) {
+          return res.status(400).json({
+            success: false,
+            message:
+              "Invalid old price",
+          });
+        }
+      }
+
+      // --------------------------------------------------------
+      // PHONE
+      // --------------------------------------------------------
+
+      const cleanSellerPhone =
+        cleanString(
+          sellerPhone
+        );
+
+      if (!cleanSellerPhone) {
         return res.status(400).json({
           success: false,
           message:
@@ -830,11 +1099,14 @@ router.post(
       }
 
       // --------------------------------------------------------
-      // Validate category
+      // CATEGORY
       // --------------------------------------------------------
 
       const selectedCategory =
-        category || "Other";
+        cleanString(
+          category,
+          "Other"
+        ) || "Other";
 
       if (
         !VALID_CATEGORIES.includes(
@@ -849,11 +1121,14 @@ router.post(
       }
 
       // --------------------------------------------------------
-      // Validate condition
+      // CONDITION
       // --------------------------------------------------------
 
       const selectedCondition =
-        condition || "Good";
+        cleanString(
+          condition,
+          "Good"
+        ) || "Good";
 
       if (
         !VALID_CONDITIONS.includes(
@@ -868,7 +1143,7 @@ router.post(
       }
 
       // --------------------------------------------------------
-      // Battery health
+      // BATTERY HEALTH
       // --------------------------------------------------------
 
       let parsedBatteryHealth =
@@ -880,18 +1155,15 @@ router.post(
         batteryHealth !== ""
       ) {
         parsedBatteryHealth =
-          Number(
+          parseNumber(
             batteryHealth
           );
 
         if (
-          !Number.isFinite(
-            parsedBatteryHealth
-          ) ||
-          parsedBatteryHealth <
-            0 ||
-          parsedBatteryHealth >
-            100
+          parsedBatteryHealth ===
+            null ||
+          parsedBatteryHealth < 0 ||
+          parsedBatteryHealth > 100
         ) {
           return res.status(400).json({
             success: false,
@@ -902,11 +1174,13 @@ router.post(
       }
 
       // --------------------------------------------------------
-      // Face ID
+      // FACE ID
       // --------------------------------------------------------
 
       const selectedFaceId =
-        faceId || "";
+        cleanString(
+          faceId
+        );
 
       if (
         !VALID_FACE_ID.includes(
@@ -921,7 +1195,7 @@ router.post(
       }
 
       // --------------------------------------------------------
-      // Upload files
+      // UPLOAD FILES
       // --------------------------------------------------------
 
       const {
@@ -929,6 +1203,14 @@ router.post(
         videos,
       } = await uploadFiles(
         req.files || []
+      );
+
+      uploadedImages.push(
+        ...images
+      );
+
+      uploadedVideos.push(
+        ...videos
       );
 
       console.log(
@@ -942,56 +1224,75 @@ router.post(
       );
 
       // --------------------------------------------------------
-      // Product data
+      // PRODUCT DATA
+      // --------------------------------------------------------
+      //
+      // IMPORTANT:
+      // These fields come ONLY from the submitted product.
+      //
+      // A laptop will not receive iPhone values.
+      // A phone will not receive laptop values unless
+      // the frontend actually sends them.
       // --------------------------------------------------------
 
       const productData = {
-        title:
-          title.trim(),
+        title: cleanTitle,
 
-        price:
-          parsedPrice,
+        price: parsedPrice,
+
+        oldPrice: parsedOldPrice,
 
         category:
           selectedCategory,
 
         location:
-          location?.trim() ||
-          "Ghana",
+          cleanString(
+            location,
+            "Ghana"
+          ) || "Ghana",
 
         description:
-          description?.trim() ||
-          "",
+          cleanString(
+            description
+          ),
 
         sellerId,
 
         sellerName:
-          sellerName?.trim() ||
-          req.user?.name ||
-          "",
+          cleanString(
+            sellerName
+          ) ||
+          cleanString(
+            req.user?.name
+          ),
 
         sellerPhone:
-          sellerPhone.trim(),
+          cleanSellerPhone,
 
         brand:
-          brand?.trim() ||
-          "",
+          cleanString(
+            brand
+          ),
 
         model:
-          model?.trim() ||
-          "",
+          cleanString(
+            model
+          ),
 
         ram:
-          ram?.trim() ||
-          "",
+          cleanString(
+            ram
+          ),
 
         storage:
-          storage?.trim() ||
-          "",
+          cleanString(
+            storage
+          ),
 
         color:
-          color?.trim() ||
-          "",
+          cleanString(
+            color
+          ),
 
         condition:
           selectedCondition,
@@ -1007,8 +1308,9 @@ router.post(
           ),
 
         simStatus:
-          simStatus?.trim() ||
-          "",
+          cleanString(
+            simStatus
+          ),
 
         batteryHealth:
           parsedBatteryHealth,
@@ -1021,16 +1323,15 @@ router.post(
         videos,
 
         image:
-          images.length
+          images.length > 0
             ? images[0]
             : "",
 
-        status:
-          "active",
+        status: "active",
       };
 
       // --------------------------------------------------------
-      // Save
+      // CREATE
       // --------------------------------------------------------
 
       const product =
@@ -1042,7 +1343,7 @@ router.post(
         `✅ Product created: ${product._id}`
       );
 
-      res.status(201).json({
+      return res.status(201).json({
         success: true,
 
         message:
@@ -1056,7 +1357,60 @@ router.post(
         error
       );
 
-      res.status(500).json({
+      // --------------------------------------------------------
+      // CLEAN UP CLOUDINARY IF DATABASE SAVE FAILS
+      // --------------------------------------------------------
+
+      for (
+        const image of
+          uploadedImages
+      ) {
+        await deleteFromCloudinary(
+          image,
+          "image"
+        );
+      }
+
+      for (
+        const video of
+          uploadedVideos
+      ) {
+        await deleteFromCloudinary(
+          video,
+          "video"
+        );
+      }
+
+      // --------------------------------------------------------
+      // MONGOOSE VALIDATION
+      // --------------------------------------------------------
+
+      if (
+        error.name ===
+        "ValidationError"
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Product validation failed",
+          errors:
+            Object.fromEntries(
+              Object.entries(
+                error.errors
+              ).map(
+                ([
+                  key,
+                  value,
+                ]) => [
+                  key,
+                  value.message,
+                ]
+              )
+            ),
+        });
+      }
+
+      return res.status(500).json({
         success: false,
         message:
           error.message ||
@@ -1075,16 +1429,19 @@ router.put(
   verifyToken,
   upload.array(
     "files",
-    6
+    MAX_FILES
   ),
 
   async (req, res) => {
+    const uploadedImages = [];
+    const uploadedVideos = [];
+
     try {
       const { id } =
         req.params;
 
       // --------------------------------------------------------
-      // Validate ID
+      // VALIDATE ID
       // --------------------------------------------------------
 
       if (
@@ -1098,7 +1455,24 @@ router.put(
       }
 
       // --------------------------------------------------------
-      // Find product
+      // FILE VALIDATION
+      // --------------------------------------------------------
+
+      const fileValidation =
+        validateFiles(
+          req.files || []
+        );
+
+      if (!fileValidation.valid) {
+        return res.status(400).json({
+          success: false,
+          message:
+            fileValidation.message,
+        });
+      }
+
+      // --------------------------------------------------------
+      // FIND PRODUCT
       // --------------------------------------------------------
 
       const product =
@@ -1115,13 +1489,11 @@ router.put(
       }
 
       // --------------------------------------------------------
-      // Authentication
+      // AUTHENTICATION
       // --------------------------------------------------------
 
       const currentUserId =
-        req.userId ||
-        req.user?.id ||
-        req.user?._id;
+        getCurrentUserId(req);
 
       if (!currentUserId) {
         return res.status(401).json({
@@ -1132,7 +1504,7 @@ router.put(
       }
 
       // --------------------------------------------------------
-      // Ownership
+      // AUTHORIZATION
       // --------------------------------------------------------
 
       const isOwner =
@@ -1142,7 +1514,7 @@ router.put(
           currentUserId.toString();
 
       const isAdmin =
-        req.user?.role ===
+        getCurrentUserRole(req) ===
         "admin";
 
       if (
@@ -1157,12 +1529,13 @@ router.put(
       }
 
       // --------------------------------------------------------
-      // Update text fields
+      // BODY
       // --------------------------------------------------------
 
       const {
         title,
         price,
+        oldPrice,
         category,
         location,
         description,
@@ -1180,16 +1553,19 @@ router.put(
         batteryHealth,
         faceId,
         status,
-        oldPrice,
       } = req.body;
 
-      // Title
+      // --------------------------------------------------------
+      // TITLE
+      // --------------------------------------------------------
+
       if (
         title !== undefined
       ) {
-        if (
-          !String(title).trim()
-        ) {
+        const cleanTitle =
+          cleanString(title);
+
+        if (!cleanTitle) {
           return res.status(400).json({
             success: false,
             message:
@@ -1197,22 +1573,33 @@ router.put(
           });
         }
 
+        if (
+          cleanTitle.length > 200
+        ) {
+          return res.status(400).json({
+            success: false,
+            message:
+              "Product title cannot exceed 200 characters",
+          });
+        }
+
         product.title =
-          String(title).trim();
+          cleanTitle;
       }
 
-      // Price
+      // --------------------------------------------------------
+      // PRICE
+      // --------------------------------------------------------
+
       if (
         price !== undefined &&
         price !== ""
       ) {
         const parsedPrice =
-          Number(price);
+          parseNumber(price);
 
         if (
-          !Number.isFinite(
-            parsedPrice
-          ) ||
+          parsedPrice === null ||
           parsedPrice < 0
         ) {
           return res.status(400).json({
@@ -1226,7 +1613,10 @@ router.put(
           parsedPrice;
       }
 
-      // Old price
+      // --------------------------------------------------------
+      // OLD PRICE
+      // --------------------------------------------------------
+
       if (
         oldPrice !== undefined
       ) {
@@ -1237,12 +1627,13 @@ router.put(
             null;
         } else {
           const parsedOldPrice =
-            Number(oldPrice);
+            parseNumber(
+              oldPrice
+            );
 
           if (
-            !Number.isFinite(
-              parsedOldPrice
-            ) ||
+            parsedOldPrice ===
+              null ||
             parsedOldPrice < 0
           ) {
             return res.status(400).json({
@@ -1257,13 +1648,21 @@ router.put(
         }
       }
 
-      // Category
+      // --------------------------------------------------------
+      // CATEGORY
+      // --------------------------------------------------------
+
       if (
         category !== undefined
       ) {
+        const selectedCategory =
+          cleanString(
+            category
+          );
+
         if (
           !VALID_CATEGORIES.includes(
-            category
+            selectedCategory
           )
         ) {
           return res.status(400).json({
@@ -1274,104 +1673,152 @@ router.put(
         }
 
         product.category =
-          category;
+          selectedCategory;
       }
 
-      // Location
+      // --------------------------------------------------------
+      // LOCATION
+      // --------------------------------------------------------
+
       if (
         location !== undefined
       ) {
         product.location =
-          String(location).trim();
+          cleanString(
+            location
+          );
       }
 
-      // Description
+      // --------------------------------------------------------
+      // DESCRIPTION
+      // --------------------------------------------------------
+
       if (
         description !== undefined
       ) {
         product.description =
-          String(
+          cleanString(
             description
-          ).trim();
+          );
       }
 
-      // Seller name
+      // --------------------------------------------------------
+      // SELLER NAME
+      // --------------------------------------------------------
+
       if (
         sellerName !== undefined
       ) {
         product.sellerName =
-          String(
+          cleanString(
             sellerName
-          ).trim();
+          );
       }
 
-      // Seller phone
+      // --------------------------------------------------------
+      // SELLER PHONE
+      // --------------------------------------------------------
+
       if (
         sellerPhone !== undefined
       ) {
-        product.sellerPhone =
-          String(
+        const phone =
+          cleanString(
             sellerPhone
-          ).trim();
+          );
+
+        if (!phone) {
+          return res.status(400).json({
+            success: false,
+            message:
+              "Seller phone number cannot be empty",
+          });
+        }
+
+        product.sellerPhone =
+          phone;
       }
 
-      // Brand
+      // --------------------------------------------------------
+      // BRAND
+      // --------------------------------------------------------
+
       if (
         brand !== undefined
       ) {
         product.brand =
-          String(
+          cleanString(
             brand
-          ).trim();
+          );
       }
 
-      // Model
+      // --------------------------------------------------------
+      // MODEL
+      // --------------------------------------------------------
+
       if (
         model !== undefined
       ) {
         product.model =
-          String(
+          cleanString(
             model
-          ).trim();
+          );
       }
 
+      // --------------------------------------------------------
       // RAM
+      // --------------------------------------------------------
+
       if (
         ram !== undefined
       ) {
         product.ram =
-          String(
+          cleanString(
             ram
-          ).trim();
+          );
       }
 
-      // Storage
+      // --------------------------------------------------------
+      // STORAGE
+      // --------------------------------------------------------
+
       if (
         storage !== undefined
       ) {
         product.storage =
-          String(
+          cleanString(
             storage
-          ).trim();
+          );
       }
 
-      // Color
+      // --------------------------------------------------------
+      // COLOR
+      // --------------------------------------------------------
+
       if (
         color !== undefined
       ) {
         product.color =
-          String(
+          cleanString(
             color
-          ).trim();
+          );
       }
 
-      // Condition
+      // --------------------------------------------------------
+      // CONDITION
+      // --------------------------------------------------------
+
       if (
         condition !== undefined
       ) {
+        const selectedCondition =
+          cleanString(
+            condition
+          );
+
         if (
           !VALID_CONDITIONS.includes(
-            condition
+            selectedCondition
           )
         ) {
           return res.status(400).json({
@@ -1382,10 +1829,13 @@ router.put(
         }
 
         product.condition =
-          condition;
+          selectedCondition;
       }
 
-      // Negotiation
+      // --------------------------------------------------------
+      // NEGOTIATION
+      // --------------------------------------------------------
+
       if (
         negotiation !== undefined
       ) {
@@ -1395,7 +1845,10 @@ router.put(
           );
       }
 
-      // Swap
+      // --------------------------------------------------------
+      // SWAP
+      // --------------------------------------------------------
+
       if (
         swapAccepted !==
         undefined
@@ -1406,17 +1859,23 @@ router.put(
           );
       }
 
-      // SIM
+      // --------------------------------------------------------
+      // SIM STATUS
+      // --------------------------------------------------------
+
       if (
         simStatus !== undefined
       ) {
         product.simStatus =
-          String(
+          cleanString(
             simStatus
-          ).trim();
+          );
       }
 
-      // Battery
+      // --------------------------------------------------------
+      // BATTERY HEALTH
+      // --------------------------------------------------------
+
       if (
         batteryHealth !==
         undefined
@@ -1428,18 +1887,15 @@ router.put(
             null;
         } else {
           const parsedBatteryHealth =
-            Number(
+            parseNumber(
               batteryHealth
             );
 
           if (
-            !Number.isFinite(
-              parsedBatteryHealth
-            ) ||
-            parsedBatteryHealth <
-              0 ||
-            parsedBatteryHealth >
-              100
+            parsedBatteryHealth ===
+              null ||
+            parsedBatteryHealth < 0 ||
+            parsedBatteryHealth > 100
           ) {
             return res.status(400).json({
               success: false,
@@ -1453,13 +1909,21 @@ router.put(
         }
       }
 
-      // Face ID
+      // --------------------------------------------------------
+      // FACE ID
+      // --------------------------------------------------------
+
       if (
         faceId !== undefined
       ) {
+        const selectedFaceId =
+          cleanString(
+            faceId
+          );
+
         if (
           !VALID_FACE_ID.includes(
-            faceId
+            selectedFaceId
           )
         ) {
           return res.status(400).json({
@@ -1470,10 +1934,13 @@ router.put(
         }
 
         product.faceId =
-          faceId;
+          selectedFaceId;
       }
 
-      // Status
+      // --------------------------------------------------------
+      // STATUS
+      // --------------------------------------------------------
+
       if (
         status !== undefined
       ) {
@@ -1493,9 +1960,9 @@ router.put(
           status;
       }
 
-      // --------------------------------------------------------
-      // Existing images to keep
-      // --------------------------------------------------------
+      // ========================================================
+      // EXISTING IMAGES
+      // ========================================================
 
       const imagesToKeep =
         parseJsonArray(
@@ -1508,14 +1975,25 @@ router.put(
           imagesToKeep
         )
       ) {
-        const oldImages =
-          product.images || [];
+        const normalizedImages =
+          normalizeUrlArray(
+            imagesToKeep
+          ).slice(
+            0,
+            MAX_IMAGES
+          );
 
+        const oldImages =
+          normalizeUrlArray(
+            product.images
+          );
+
+        // Delete images removed by seller.
         for (
           const oldImage of oldImages
         ) {
           if (
-            !imagesToKeep.includes(
+            !normalizedImages.includes(
               oldImage
             )
           ) {
@@ -1527,22 +2005,12 @@ router.put(
         }
 
         product.images =
-          imagesToKeep
-            .filter(
-              (url) =>
-                typeof url ===
-                  "string" &&
-                url.trim()
-            )
-            .slice(
-              0,
-              MAX_IMAGES
-            );
+          normalizedImages;
       }
 
-      // --------------------------------------------------------
-      // Existing videos to keep
-      // --------------------------------------------------------
+      // ========================================================
+      // EXISTING VIDEOS
+      // ========================================================
 
       const videosToKeep =
         parseJsonArray(
@@ -1555,14 +2023,24 @@ router.put(
           videosToKeep
         )
       ) {
+        const normalizedVideos =
+          normalizeUrlArray(
+            videosToKeep
+          ).slice(
+            0,
+            MAX_VIDEOS
+          );
+
         const oldVideos =
-          product.videos || [];
+          normalizeUrlArray(
+            product.videos
+          );
 
         for (
           const oldVideo of oldVideos
         ) {
           if (
-            !videosToKeep.includes(
+            !normalizedVideos.includes(
               oldVideo
             )
           ) {
@@ -1574,22 +2052,12 @@ router.put(
         }
 
         product.videos =
-          videosToKeep
-            .filter(
-              (url) =>
-                typeof url ===
-                  "string" &&
-                url.trim()
-            )
-            .slice(
-              0,
-              MAX_VIDEOS
-            );
+          normalizedVideos;
       }
 
-      // --------------------------------------------------------
-      // Upload new files
-      // --------------------------------------------------------
+      // ========================================================
+      // NEW FILES
+      // ========================================================
 
       const newFiles =
         req.files || [];
@@ -1604,48 +2072,88 @@ router.put(
           newFiles
         );
 
-        // Add images
+        uploadedImages.push(
+          ...images
+        );
+
+        uploadedVideos.push(
+          ...videos
+        );
+
+        // ------------------------------------------------------
+        // ADD NEW IMAGES
+        // ------------------------------------------------------
+
         if (
           images.length > 0
         ) {
+          const currentImages =
+            normalizeUrlArray(
+              product.images
+            );
+
+          const remainingSlots =
+            Math.max(
+              MAX_IMAGES -
+                currentImages.length,
+              0
+            );
+
+          const imagesToAdd =
+            images.slice(
+              0,
+              remainingSlots
+            );
+
           product.images = [
-            ...(product.images ||
-              []),
-            ...images,
-          ].slice(
-            0,
-            MAX_IMAGES
-          );
+            ...currentImages,
+            ...imagesToAdd,
+          ];
         }
 
-        // Add videos
+        // ------------------------------------------------------
+        // ADD NEW VIDEOS
+        // ------------------------------------------------------
+
         if (
           videos.length > 0
         ) {
+          const currentVideos =
+            normalizeUrlArray(
+              product.videos
+            );
+
+          const remainingVideoSlots =
+            Math.max(
+              MAX_VIDEOS -
+                currentVideos.length,
+              0
+            );
+
+          const videosToAdd =
+            videos.slice(
+              0,
+              remainingVideoSlots
+            );
+
           product.videos = [
-            ...(product.videos ||
-              []),
-            ...videos,
-          ].slice(
-            0,
-            MAX_VIDEOS
-          );
+            ...currentVideos,
+            ...videosToAdd,
+          ];
         }
       }
 
-      // --------------------------------------------------------
-      // Keep legacy image field synchronized
-      // --------------------------------------------------------
+      // ========================================================
+      // SYNCHRONIZE LEGACY IMAGE
+      // ========================================================
 
-      product.image =
-        product.images &&
-        product.images.length
-          ? product.images[0]
-          : "";
+      syncLegacyImage(
+        product
+      );
 
-      // --------------------------------------------------------
-      // Save
-      // --------------------------------------------------------
+      // ========================================================
+      // SAVE
+      // ========================================================
 
       await product.save();
 
@@ -1653,7 +2161,7 @@ router.put(
         `✅ Product updated: ${product._id}`
       );
 
-      res.json({
+      return res.json({
         success: true,
 
         message:
@@ -1667,7 +2175,60 @@ router.put(
         error
       );
 
-      res.status(500).json({
+      // --------------------------------------------------------
+      // CLEAN UP NEWLY UPLOADED FILES
+      // --------------------------------------------------------
+
+      for (
+        const image of
+          uploadedImages
+      ) {
+        await deleteFromCloudinary(
+          image,
+          "image"
+        );
+      }
+
+      for (
+        const video of
+          uploadedVideos
+      ) {
+        await deleteFromCloudinary(
+          video,
+          "video"
+        );
+      }
+
+      // --------------------------------------------------------
+      // MONGOOSE VALIDATION
+      // --------------------------------------------------------
+
+      if (
+        error.name ===
+        "ValidationError"
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Product validation failed",
+          errors:
+            Object.fromEntries(
+              Object.entries(
+                error.errors
+              ).map(
+                ([
+                  key,
+                  value,
+                ]) => [
+                  key,
+                  value.message,
+                ]
+              )
+            ),
+        });
+      }
+
+      return res.status(500).json({
         success: false,
         message:
           error.message ||
@@ -1691,7 +2252,7 @@ router.delete(
         req.params;
 
       // --------------------------------------------------------
-      // Validate ID
+      // VALIDATE ID
       // --------------------------------------------------------
 
       if (
@@ -1705,7 +2266,7 @@ router.delete(
       }
 
       // --------------------------------------------------------
-      // Find product
+      // FIND PRODUCT
       // --------------------------------------------------------
 
       const product =
@@ -1722,13 +2283,11 @@ router.delete(
       }
 
       // --------------------------------------------------------
-      // Authentication
+      // AUTHENTICATION
       // --------------------------------------------------------
 
       const currentUserId =
-        req.userId ||
-        req.user?.id ||
-        req.user?._id;
+        getCurrentUserId(req);
 
       if (!currentUserId) {
         return res.status(401).json({
@@ -1739,7 +2298,7 @@ router.delete(
       }
 
       // --------------------------------------------------------
-      // Authorization
+      // AUTHORIZATION
       // --------------------------------------------------------
 
       const isOwner =
@@ -1749,7 +2308,7 @@ router.delete(
           currentUserId.toString();
 
       const isAdmin =
-        req.user?.role ===
+        getCurrentUserRole(req) ===
         "admin";
 
       if (
@@ -1764,12 +2323,16 @@ router.delete(
       }
 
       // --------------------------------------------------------
-      // Delete Cloudinary images
+      // DELETE IMAGES
       // --------------------------------------------------------
 
+      const images =
+        normalizeUrlArray(
+          product.images
+        );
+
       for (
-        const image of
-          product.images || []
+        const image of images
       ) {
         await deleteFromCloudinary(
           image,
@@ -1778,12 +2341,16 @@ router.delete(
       }
 
       // --------------------------------------------------------
-      // Delete Cloudinary videos
+      // DELETE VIDEOS
       // --------------------------------------------------------
 
+      const videos =
+        normalizeUrlArray(
+          product.videos
+        );
+
       for (
-        const video of
-          product.videos || []
+        const video of videos
       ) {
         await deleteFromCloudinary(
           video,
@@ -1792,7 +2359,7 @@ router.delete(
       }
 
       // --------------------------------------------------------
-      // Delete database record
+      // DELETE DATABASE RECORD
       // --------------------------------------------------------
 
       await product.deleteOne();
@@ -1801,8 +2368,9 @@ router.delete(
         `🗑️ Product deleted: ${id}`
       );
 
-      res.json({
+      return res.json({
         success: true,
+
         message:
           "Product deleted successfully",
       });
@@ -1812,7 +2380,7 @@ router.delete(
         error
       );
 
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         message:
           error.message ||
@@ -1839,7 +2407,7 @@ router.patch(
         req.body;
 
       // --------------------------------------------------------
-      // Validate status
+      // VALIDATE STATUS
       // --------------------------------------------------------
 
       if (
@@ -1856,7 +2424,7 @@ router.patch(
       }
 
       // --------------------------------------------------------
-      // Validate ID
+      // VALIDATE ID
       // --------------------------------------------------------
 
       if (
@@ -1870,7 +2438,7 @@ router.patch(
       }
 
       // --------------------------------------------------------
-      // Find product
+      // FIND PRODUCT
       // --------------------------------------------------------
 
       const product =
@@ -1887,13 +2455,11 @@ router.patch(
       }
 
       // --------------------------------------------------------
-      // Current user
+      // AUTHENTICATION
       // --------------------------------------------------------
 
       const currentUserId =
-        req.userId ||
-        req.user?.id ||
-        req.user?._id;
+        getCurrentUserId(req);
 
       if (!currentUserId) {
         return res.status(401).json({
@@ -1904,7 +2470,7 @@ router.patch(
       }
 
       // --------------------------------------------------------
-      // Authorization
+      // AUTHORIZATION
       // --------------------------------------------------------
 
       const isOwner =
@@ -1914,7 +2480,7 @@ router.patch(
           currentUserId.toString();
 
       const isAdmin =
-        req.user?.role ===
+        getCurrentUserRole(req) ===
         "admin";
 
       if (
@@ -1929,7 +2495,7 @@ router.patch(
       }
 
       // --------------------------------------------------------
-      // Update
+      // UPDATE STATUS
       // --------------------------------------------------------
 
       product.status =
@@ -1938,10 +2504,10 @@ router.patch(
       await product.save();
 
       console.log(
-        `✅ Product ${id} status updated to ${status}`
+        `✅ Product ${id} status changed to ${status}`
       );
 
-      res.json({
+      return res.json({
         success: true,
 
         message:
@@ -1955,7 +2521,7 @@ router.patch(
         error
       );
 
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         message:
           error.message ||

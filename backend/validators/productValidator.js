@@ -1,24 +1,16 @@
 // ============================================================
-// backend/src/validators/productValidator.js
-// BuyUKUsed - Product Validator
+// backend/validators/productValidator.js
+// BuyUKUsed Product Validator
 // ============================================================
 
-const VALID_CATEGORIES = [
-  "Cars",
-  "Phones",
-  "Laptops",
-  "Tablets",
-  "Accessories",
-  "Real Estate",
-  "Jobs",
-  "Electronics",
-  "Fashion",
-  "Home",
-  "TVs",
-  "Game Consoles",
-  "Smartwatches",
-  "Other",
-];
+const {
+  PRODUCT_CATEGORIES,
+  normalizeCategory,
+} = require("../constants/productCategories");
+
+// ============================================================
+// CONSTANTS
+// ============================================================
 
 const VALID_STATUSES = [
   "active",
@@ -27,180 +19,152 @@ const VALID_STATUSES = [
   "sold",
 ];
 
+const VALID_CONDITIONS = [
+  "Brand New",
+  "Like New",
+  "Excellent",
+  "Good",
+  "Fair",
+  "Poor",
+];
+
 // ============================================================
-// NORMALIZE CATEGORY
+// HELPERS
 // ============================================================
 
-const normalizeCategory = (value) => {
+const cleanString = (value, defaultValue = "") => {
   if (value === undefined || value === null) {
-    return "Other";
+    return defaultValue;
   }
 
-  const raw = String(value)
-    .trim()
-    .toLowerCase();
-
-  if (!raw) {
-    return "Other";
+  if (Array.isArray(value)) {
+    value = value[0];
   }
 
-  const normalized = raw
-    .replace(/[_-]+/g, " ")
-    .replace(/\s+/g, " ");
+  if (
+    typeof value === "object" &&
+    value !== null
+  ) {
+    value =
+      value.value ??
+      value.name ??
+      value.label ??
+      "";
+  }
 
-  const categoryMap = {
-    // --------------------------------------------------------
-    // CARS
-    // --------------------------------------------------------
+  return String(value).trim();
+};
 
-    car: "Cars",
-    cars: "Cars",
-    automobile: "Cars",
-    automobiles: "Cars",
+const toNumberOrNull = (value) => {
+  if (
+    value === undefined ||
+    value === null ||
+    value === ""
+  ) {
+    return null;
+  }
 
-    // --------------------------------------------------------
-    // PHONES
-    // --------------------------------------------------------
+  if (typeof value === "string") {
+    value = value.replace(/,/g, "").trim();
+  }
 
-    phone: "Phones",
-    phones: "Phones",
-    mobile: "Phones",
-    mobiles: "Phones",
-    smartphone: "Phones",
-    smartphones: "Phones",
+  const number = Number(value);
 
-    // --------------------------------------------------------
-    // LAPTOPS
-    // --------------------------------------------------------
+  return Number.isFinite(number)
+    ? number
+    : null;
+};
 
-    laptop: "Laptops",
-    laptops: "Laptops",
-    notebook: "Laptops",
-    notebooks: "Laptops",
+const toBoolean = (
+  value,
+  defaultValue = false
+) => {
+  if (
+    value === undefined ||
+    value === null ||
+    value === ""
+  ) {
+    return defaultValue;
+  }
 
-    // --------------------------------------------------------
-    // TABLETS
-    // --------------------------------------------------------
+  if (typeof value === "boolean") {
+    return value;
+  }
 
-    tablet: "Tablets",
-    tablets: "Tablets",
-    ipad: "Tablets",
-    ipads: "Tablets",
+  if (typeof value === "number") {
+    return value === 1;
+  }
 
-    // --------------------------------------------------------
-    // ACCESSORIES
-    // --------------------------------------------------------
+  if (typeof value === "string") {
+    const normalized = value
+      .trim()
+      .toLowerCase();
 
-    accessory: "Accessories",
-    accessories: "Accessories",
+    if (
+      ["true", "1", "yes", "on"].includes(
+        normalized
+      )
+    ) {
+      return true;
+    }
 
-    // --------------------------------------------------------
-    // REAL ESTATE
-    // --------------------------------------------------------
+    if (
+      ["false", "0", "no", "off"].includes(
+        normalized
+      )
+    ) {
+      return false;
+    }
+  }
 
-    "real estate": "Real Estate",
-    realestate: "Real Estate",
-    property: "Real Estate",
-    properties: "Real Estate",
-
-    // --------------------------------------------------------
-    // JOBS
-    // --------------------------------------------------------
-
-    job: "Jobs",
-    jobs: "Jobs",
-    employment: "Jobs",
-
-    // --------------------------------------------------------
-    // ELECTRONICS
-    // --------------------------------------------------------
-
-    electronic: "Electronics",
-    electronics: "Electronics",
-
-    // --------------------------------------------------------
-    // FASHION
-    // --------------------------------------------------------
-
-    fashion: "Fashion",
-    clothing: "Fashion",
-    clothes: "Fashion",
-
-    // --------------------------------------------------------
-    // HOME
-    // --------------------------------------------------------
-
-    home: "Home",
-    homes: "Home",
-
-    // --------------------------------------------------------
-    // TVS
-    // --------------------------------------------------------
-
-    tv: "TVs",
-    tvs: "TVs",
-    television: "TVs",
-    televisions: "TVs",
-
-    // --------------------------------------------------------
-    // GAME CONSOLES
-    // --------------------------------------------------------
-
-    console: "Game Consoles",
-    consoles: "Game Consoles",
-    "game console": "Game Consoles",
-    "game consoles": "Game Consoles",
-    gaming: "Game Consoles",
-
-    // --------------------------------------------------------
-    // SMARTWATCHES
-    // --------------------------------------------------------
-
-    watch: "Smartwatches",
-    watches: "Smartwatches",
-    smartwatch: "Smartwatches",
-    smartwatches: "Smartwatches",
-
-    "smart watch": "Smartwatches",
-    "smart watches": "Smartwatches",
-
-    // --------------------------------------------------------
-    // OTHER
-    // --------------------------------------------------------
-
-    other: "Other",
-  };
-
-  return (
-    categoryMap[normalized] ||
-    VALID_CATEGORIES.find(
-      (category) =>
-        category.toLowerCase() === normalized
-    ) ||
-    null
-  );
+  return Boolean(value);
 };
 
 // ============================================================
-// NORMALIZE STATUS
+// STATUS NORMALIZATION
 // ============================================================
 
 const normalizeStatus = (value) => {
   if (
     value === undefined ||
     value === null ||
-    String(value).trim() === ""
+    value === ""
   ) {
     return "active";
+  }
+
+  const status = String(value)
+    .trim()
+    .toLowerCase();
+
+  return VALID_STATUSES.includes(status)
+    ? status
+    : "active";
+};
+
+// ============================================================
+// CONDITION NORMALIZATION
+// ============================================================
+
+const normalizeCondition = (value) => {
+  if (
+    value === undefined ||
+    value === null ||
+    value === ""
+  ) {
+    return "Good";
   }
 
   const normalized = String(value)
     .trim()
     .toLowerCase();
 
-  return VALID_STATUSES.includes(normalized)
-    ? normalized
-    : null;
+  const match = VALID_CONDITIONS.find(
+    (condition) =>
+      condition.toLowerCase() === normalized
+  );
+
+  return match || "Good";
 };
 
 // ============================================================
@@ -208,147 +172,208 @@ const normalizeStatus = (value) => {
 // ============================================================
 
 const validateCategory = (value) => {
-  const category = normalizeCategory(value);
-
-  if (!category) {
-    return {
-      valid: false,
-      value: null,
-      message: "Invalid product category",
-    };
-  }
+  const normalized = normalizeCategory(value);
 
   return {
-    valid: true,
-    value: category,
-    message: null,
+    valid: PRODUCT_CATEGORIES.includes(
+      normalized
+    ),
+    category: normalized,
   };
 };
 
 // ============================================================
-// VALIDATE STATUS
+// VALIDATE PRODUCT
 // ============================================================
 
-const validateStatus = (value) => {
-  const status = normalizeStatus(value);
+const validateProduct = (data = {}) => {
+  const errors = [];
 
-  if (!status) {
-    return {
-      valid: false,
-      value: null,
-      message: "Invalid product status",
-    };
+  const categoryResult =
+    validateCategory(data.category);
+
+  const title = cleanString(data.title);
+
+  const price = toNumberOrNull(
+    data.price
+  );
+
+  const sellerPhone = cleanString(
+    data.sellerPhone
+  );
+
+  const status = normalizeStatus(
+    data.status
+  );
+
+  const condition = normalizeCondition(
+    data.condition
+  );
+
+  // ==========================================================
+  // TITLE
+  // ==========================================================
+
+  if (!title || title.length < 2) {
+    errors.push({
+      field: "title",
+      message:
+        "Product title is required",
+    });
+  }
+
+  // ==========================================================
+  // PRICE
+  // ==========================================================
+
+  if (
+    price === null ||
+    !Number.isFinite(price) ||
+    price < 0
+  ) {
+    errors.push({
+      field: "price",
+      message:
+        "A valid product price is required",
+    });
+  }
+
+  // ==========================================================
+  // SELLER
+  // ==========================================================
+
+  if (!data.sellerId) {
+    errors.push({
+      field: "sellerId",
+      message:
+        "Seller authentication is required",
+    });
+  }
+
+  if (!sellerPhone) {
+    errors.push({
+      field: "sellerPhone",
+      message:
+        "Seller phone number is required",
+    });
+  }
+
+  // ==========================================================
+  // CATEGORY
+  // ==========================================================
+
+  if (!categoryResult.valid) {
+    errors.push({
+      field: "category",
+      message:
+        `Invalid product category: ${categoryResult.category}`,
+    });
+  }
+
+  // ==========================================================
+  // STATUS
+  // ==========================================================
+
+  if (!VALID_STATUSES.includes(status)) {
+    errors.push({
+      field: "status",
+      message:
+        `Invalid product status: ${status}`,
+    });
+  }
+
+  // ==========================================================
+  // CONDITION
+  // ==========================================================
+
+  if (!VALID_CONDITIONS.includes(condition)) {
+    errors.push({
+      field: "condition",
+      message:
+        `Invalid product condition: ${condition}`,
+    });
   }
 
   return {
-    valid: true,
-    value: status,
-    message: null,
+    valid: errors.length === 0,
+    errors,
+    data: {
+      ...data,
+      title,
+      price,
+      category: categoryResult.category,
+      sellerPhone,
+      status,
+      condition,
+    },
   };
 };
 
 // ============================================================
-// VALIDATE PRODUCT BODY
+// EXPRESS MIDDLEWARE
 // ============================================================
 
-const validateProduct = (req, res, next) => {
+const validateProductMiddleware = (
+  req,
+  res,
+  next
+) => {
   try {
     const body = req.body || {};
 
-    const errors = [];
-
-    // --------------------------------------------------------
-    // TITLE
-    // --------------------------------------------------------
-
-    if (
-      body.title !== undefined &&
-      String(body.title).trim().length < 2
-    ) {
-      errors.push("Product title must be at least 2 characters");
-    }
-
-    // --------------------------------------------------------
-    // PRICE
-    // --------------------------------------------------------
-
-    if (
-      body.price !== undefined &&
-      body.price !== ""
-    ) {
-      const price = Number(body.price);
-
-      if (!Number.isFinite(price) || price < 0) {
-        errors.push("A valid product price is required");
-      }
-    }
-
-    // --------------------------------------------------------
-    // CATEGORY
-    // --------------------------------------------------------
-
-    if (body.category !== undefined) {
-      const categoryResult = validateCategory(
+    const category =
+      normalizeCategory(
         body.category
       );
 
-      if (!categoryResult.valid) {
-        errors.push(categoryResult.message);
-      } else {
-        // IMPORTANT:
-        // Replace the incoming value with the canonical
-        // category used by the database.
-        body.category = categoryResult.value;
-      }
-    }
+    // IMPORTANT:
+    // Write the canonical category back to req.body.
+    //
+    // Therefore:
+    // "game consoles"
+    // "Game Consoles"
+    // "game-console"
+    // "game_consoles"
+    // "PS5"
+    //
+    // all become:
+    //
+    // "Game Consoles"
 
-    // --------------------------------------------------------
-    // STATUS
-    // --------------------------------------------------------
+    req.body.category = category;
 
-    if (body.status !== undefined) {
-      const statusResult = validateStatus(
-        body.status
-      );
+    const result =
+      validateProduct({
+        ...req.body,
+        sellerId:
+          req.user?.id ||
+          req.user?._id ||
+          req.user?.userId,
+      });
 
-      if (!statusResult.valid) {
-        errors.push(statusResult.message);
-      } else {
-        body.status = statusResult.value;
-      }
-    }
-
-    // --------------------------------------------------------
-    // SELLER PHONE
-    // --------------------------------------------------------
-
-    if (
-      body.sellerPhone !== undefined &&
-      String(body.sellerPhone).trim() === ""
-    ) {
-      errors.push("Seller phone number is required");
-    }
-
-    // --------------------------------------------------------
-    // RETURN VALIDATION ERRORS
-    // --------------------------------------------------------
-
-    if (errors.length > 0) {
-      console.error(
-        "❌ Product validator errors:",
-        errors
-      );
-
-      console.error(
-        "📦 Received category:",
-        body.category
-      );
-
+    if (!result.valid) {
       return res.status(400).json({
         success: false,
-        message: errors[0],
-        errors,
+        message:
+          result.errors[0]?.message ||
+          "Product validation failed",
+        errors: result.errors,
       });
+    }
+
+    // Put normalized values back into body
+    req.body.category =
+      result.data.category;
+
+    req.body.status =
+      result.data.status;
+
+    req.body.condition =
+      result.data.condition;
+
+    if (result.data.price !== null) {
+      req.body.price =
+        result.data.price;
     }
 
     next();
@@ -360,8 +385,8 @@ const validateProduct = (req, res, next) => {
 
     return res.status(400).json({
       success: false,
-      message: "Invalid product data",
-      error: error.message,
+      message:
+        "Product validation failed",
     });
   }
 };
@@ -371,11 +396,30 @@ const validateProduct = (req, res, next) => {
 // ============================================================
 
 module.exports = {
-  VALID_CATEGORIES,
+  PRODUCT_CATEGORIES,
+
+  VALID_CATEGORIES:
+    PRODUCT_CATEGORIES,
+
   VALID_STATUSES,
+
+  VALID_CONDITIONS,
+
   normalizeCategory,
+
   normalizeStatus,
+
+  normalizeCondition,
+
   validateCategory,
-  validateStatus,
+
   validateProduct,
+
+  validateProductMiddleware,
+
+  cleanString,
+
+  toNumberOrNull,
+
+  toBoolean,
 };
