@@ -1,56 +1,150 @@
-// ============================================================
 // frontend/src/components/RobotGreeter.jsx
+// ============================================================
+// BUYUKUSED ROBOT GREETER
+// Floating robot + voice greeting
 // ============================================================
 
 import React, {
-  useState,
   useEffect,
+  useState,
   Suspense,
   lazy,
 } from "react";
 
-// ============================================================
-// LAZY LOAD ROBOT
-// ============================================================
-
-const RobotCanvas = lazy(() => import("./RobotCanvas"));
-
-// ============================================================
-// COMPONENT
-// ============================================================
+const RobotCanvas = lazy(
+  () => import("./RobotCanvas")
+);
 
 export default function RobotGreeter() {
+
   const [visible, setVisible] = useState(false);
-  const [robotError, setRobotError] = useState(false);
+  const [speaking, setSpeaking] = useState(false);
 
   // ==========================================================
-  // SHOW ONLY ONCE PER SESSION
+  // SHOW ONCE PER SESSION
   // ==========================================================
 
   useEffect(() => {
+
     try {
-      const hasSeen = sessionStorage.getItem(
-        "robotGreeterSeen"
-      );
+
+      const hasSeen =
+        sessionStorage.getItem(
+          "buyukusedRobotSeen"
+        );
 
       if (!hasSeen) {
+
         setVisible(true);
 
         sessionStorage.setItem(
-          "robotGreeterSeen",
+          "buyukusedRobotSeen",
           "true"
         );
+
       }
+
     } catch (error) {
+
       console.warn(
-        "RobotGreeter sessionStorage unavailable:",
+        "Robot sessionStorage unavailable:",
         error
       );
 
-      // If sessionStorage is unavailable, still show it.
       setVisible(true);
     }
+
   }, []);
+
+  // ==========================================================
+  // SPEAK
+  // ==========================================================
+
+  useEffect(() => {
+
+    if (!visible) return;
+
+    // Give the robot a moment to appear
+    const timer = setTimeout(() => {
+
+      speakWelcome();
+
+    }, 900);
+
+    return () => {
+
+      clearTimeout(timer);
+
+      if (
+        "speechSynthesis" in window
+      ) {
+        window.speechSynthesis.cancel();
+      }
+
+    };
+
+  }, [visible]);
+
+  // ==========================================================
+  // WELCOME VOICE
+  // ==========================================================
+
+  const speakWelcome = () => {
+
+    if (
+      !("speechSynthesis" in window)
+    ) {
+
+      console.warn(
+        "Speech synthesis is not supported."
+      );
+
+      return;
+    }
+
+    window.speechSynthesis.cancel();
+
+    const message =
+      new SpeechSynthesisUtterance(
+        "Welcome to BuyUKUsed. Find great deals, buy with confidence, and enjoy your shopping experience."
+      );
+
+    message.rate = 0.88;
+    message.pitch = 1.05;
+    message.volume = 1;
+
+    message.onstart = () => {
+      setSpeaking(true);
+    };
+
+    message.onend = () => {
+      setSpeaking(false);
+    };
+
+    message.onerror = () => {
+      setSpeaking(false);
+    };
+
+    window.speechSynthesis.speak(
+      message
+    );
+  };
+
+  // ==========================================================
+  // CLOSE
+  // ==========================================================
+
+  const closeRobot = () => {
+
+    setVisible(false);
+
+    if (
+      "speechSynthesis" in window
+    ) {
+      window.speechSynthesis.cancel();
+    }
+
+  };
 
   // ==========================================================
   // HIDDEN
@@ -61,118 +155,84 @@ export default function RobotGreeter() {
   }
 
   // ==========================================================
-  // CLOSE
-  // ==========================================================
-
-  const handleClose = () => {
-    setVisible(false);
-  };
-
-  // ==========================================================
-  // ROBOT ERROR FALLBACK
-  // ==========================================================
-
-  const handleRobotError = () => {
-    console.error(
-      "RobotCanvas failed to load."
-    );
-
-    setRobotError(true);
-  };
-
-  // ==========================================================
-  // RENDER
+  // UI
   // ==========================================================
 
   return (
     <div style={styles.overlay}>
 
-      {/* ======================================================
+      {/* ====================================================
           SPEECH BUBBLE
-      ====================================================== */}
+      ==================================================== */}
 
       <div style={styles.bubble}>
-        <span style={styles.text}>
-          👋 WELCOME TO BUYUKUSED
-        </span>
+
+        <div style={styles.bubbleContent}>
+
+          <div style={styles.robotName}>
+            🤖 BUYUKUSED
+          </div>
+
+          <div style={styles.message}>
+            {speaking
+              ? "🔊 Welcome to BuyUKUsed..."
+              : "👋 Welcome to BuyUKUsed!"}
+          </div>
+
+        </div>
 
         <button
           type="button"
-          style={styles.closeBtn}
-          onClick={handleClose}
-          aria-label="Close welcome message"
+          onClick={closeRobot}
+          style={styles.closeButton}
+          aria-label="Close robot"
         >
-          ✕
+          ×
         </button>
+
       </div>
 
-      {/* ======================================================
+      {/* ====================================================
           ROBOT
-      ====================================================== */}
+      ==================================================== */}
 
-      {!robotError && (
-        <div style={styles.canvasWrapper}>
-          <ErrorBoundary
-            onError={handleRobotError}
-          >
-            <Suspense
-              fallback={
-                <div style={styles.loading}>
-                  Loading robot...
-                </div>
-              }
-            >
-              <RobotCanvas />
-            </Suspense>
-          </ErrorBoundary>
-        </div>
-      )}
+      <div style={styles.robotContainer}>
+
+        <Suspense
+          fallback={
+            <div style={styles.loading}>
+              <div style={styles.loadingRobot}>
+                🤖
+              </div>
+
+              <span>
+                Loading...
+              </span>
+            </div>
+          }
+        >
+
+          <RobotCanvas />
+
+        </Suspense>
+
+      </div>
+
+      {/* ====================================================
+          REPLAY BUTTON
+      ==================================================== */}
+
+      <button
+        type="button"
+        onClick={speakWelcome}
+        style={styles.speakButton}
+        aria-label="Play welcome message"
+      >
+        🔊
+      </button>
+
     </div>
   );
-}
-
-// ============================================================
-// ERROR BOUNDARY
-// ============================================================
-
-class ErrorBoundary extends React.Component {
-  constructor(props) {
-    super(props);
-
-    this.state = {
-      hasError: false,
-    };
-  }
-
-  static getDerivedStateFromError() {
-    return {
-      hasError: true,
-    };
-  }
-
-  componentDidCatch(error, errorInfo) {
-    console.error(
-      "RobotCanvas error:",
-      error
-    );
-
-    console.error(
-      "RobotCanvas error info:",
-      errorInfo
-    );
-
-    if (this.props.onError) {
-      this.props.onError(error);
-    }
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return null;
-    }
-
-    return this.props.children;
-  }
 }
 
 // ============================================================
@@ -180,132 +240,153 @@ class ErrorBoundary extends React.Component {
 // ============================================================
 
 const styles = {
+
   overlay: {
     position: "fixed",
-    top: 0,
-    left: 0,
+    inset: 0,
     width: "100vw",
     height: "100vh",
-
     pointerEvents: "none",
-
     zIndex: 9999,
   },
 
-  // ==========================================================
-  // ROBOT CANVAS
-  // ==========================================================
-
-  canvasWrapper: {
-    width: "280px",
-    height: "280px",
-
+  bubble: {
     position: "absolute",
+    right: "35px",
+    bottom: "330px",
 
-    bottom: "30px",
-    right: "30px",
+    display: "flex",
+    alignItems: "center",
+
+    minWidth: "280px",
+    maxWidth: "390px",
+
+    padding: "18px 22px",
+
+    background:
+      "rgba(255, 255, 255, 0.97)",
+
+    border:
+      "1px solid rgba(37, 99, 235, 0.18)",
+
+    borderRadius: "22px",
+
+    boxShadow:
+      "0 18px 60px rgba(0, 0, 0, 0.18)",
 
     pointerEvents: "auto",
 
-    background: "rgba(0, 0, 0, 0.05)",
+    backdropFilter: "blur(14px)",
+
+    animation:
+      "buyukusedRobotBubble 0.5s ease-out",
+  },
+
+  bubbleContent: {
+    flex: 1,
+  },
+
+  robotName: {
+    fontSize: "12px",
+    fontWeight: "800",
+    letterSpacing: "1.2px",
+    color: "#2563eb",
+    marginBottom: "6px",
+  },
+
+  message: {
+    fontSize: "17px",
+    fontWeight: "700",
+    color: "#111827",
+    lineHeight: 1.4,
+  },
+
+  closeButton: {
+    width: "32px",
+    height: "32px",
+
+    marginLeft: "12px",
+
+    border: "none",
+    borderRadius: "50%",
+
+    background: "#f3f4f6",
+    color: "#6b7280",
+
+    fontSize: "22px",
+    lineHeight: "1",
+
+    cursor: "pointer",
+
+    pointerEvents: "auto",
+  },
+
+  robotContainer: {
+    position: "absolute",
+
+    right: "20px",
+    bottom: "15px",
+
+    width: "300px",
+    height: "300px",
+
+    pointerEvents: "auto",
 
     borderRadius: "50%",
 
     overflow: "hidden",
 
-    boxShadow:
-      "0 8px 32px rgba(0, 0, 0, 0.25)",
+    background:
+      "radial-gradient(circle at center, rgba(37,99,235,0.12), rgba(255,255,255,0) 70%)",
+
+    filter:
+      "drop-shadow(0 20px 25px rgba(0,0,0,0.15))",
   },
 
-  // ==========================================================
-  // SPEECH BUBBLE
-  // ==========================================================
-
-  bubble: {
-    position: "absolute",
-
-    top: "20%",
-    left: "50%",
-
-    transform: "translateX(-50%)",
-
-    background: "#ffffff",
-
-    padding: "16px 32px",
-
-    borderRadius: "40px",
-
-    boxShadow:
-      "0 8px 32px rgba(0, 0, 0, 0.2)",
+  loading: {
+    width: "100%",
+    height: "100%",
 
     display: "flex",
+    flexDirection: "column",
 
     alignItems: "center",
+    justifyContent: "center",
 
-    gap: "16px",
+    color: "#374151",
 
-    pointerEvents: "auto",
-
-    border:
-      "2px solid #ff6b6b",
-
-    maxWidth: "90vw",
+    fontSize: "13px",
+    fontWeight: "600",
   },
 
-  // ==========================================================
-  // TEXT
-  // ==========================================================
-
-  text: {
-    fontSize: "1.5rem",
-
-    fontWeight: "bold",
-
-    color: "#333333",
-
-    fontFamily:
-      "Arial, sans-serif",
-
-    whiteSpace: "nowrap",
+  loadingRobot: {
+    fontSize: "50px",
+    marginBottom: "8px",
   },
 
-  // ==========================================================
-  // CLOSE BUTTON
-  // ==========================================================
+  speakButton: {
+    position: "absolute",
 
-  closeBtn: {
-    background: "transparent",
+    right: "255px",
+    bottom: "35px",
+
+    width: "46px",
+    height: "46px",
 
     border: "none",
+    borderRadius: "50%",
 
-    fontSize: "1.2rem",
+    background: "#2563eb",
+    color: "#ffffff",
+
+    fontSize: "20px",
 
     cursor: "pointer",
 
-    color: "#999999",
+    pointerEvents: "auto",
 
-    padding: "4px 8px",
-
-    borderRadius: "50%",
+    boxShadow:
+      "0 8px 25px rgba(37,99,235,0.35)",
   },
 
-  // ==========================================================
-  // LOADING
-  // ==========================================================
-
-  loading: {
-    color: "#555555",
-
-    fontSize: "1rem",
-
-    display: "flex",
-
-    alignItems: "center",
-
-    justifyContent: "center",
-
-    height: "100%",
-
-    width: "100%",
-  },
 };

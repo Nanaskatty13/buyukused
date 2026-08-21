@@ -4098,3 +4098,44 @@ img {
     display: none !important;
   }
 }
+/* ============================================================
+   BUYUKUSED ROBOT
+   ============================================================ */
+
+@keyframes buyukusedRobotFloat {
+  0% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-12px);
+  }
+
+  100% {
+    transform: translateY(0);
+  }
+}
+
+@keyframes buyukusedRobotBubbleIn {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-20px)
+      scale(0.9);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0)
+      scale(1);
+  }
+}
+
+/* ============================================================
+   MOBILE
+   ============================================================ */
+
+@media (max-width: 600px) {
+  .buyukused-robot-mobile {
+    display: block;
+  }
+}
