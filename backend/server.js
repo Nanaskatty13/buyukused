@@ -82,11 +82,6 @@ app.use(
     crossOriginResourcePolicy: {
       policy: "cross-origin",
     },
-
-    // Allow cross-origin requests to API resources
-    crossOriginOpenerPolicy: {
-      policy: "same-origin-allow-popups",
-    },
   })
 );
 
@@ -103,13 +98,17 @@ app.use(
 // ============================================================
 // CORS
 // ============================================================
-
+//
 // IMPORTANT:
-// Your frontend is currently running at:
+// Origins MUST be plain URLs.
 //
-// http://localhost:5173
+// CORRECT:
+// "http://localhost:5173"
 //
-// Therefore this exact origin MUST be allowed.
+// WRONG:
+// "[http://localhost:5173](http://localhost:5173)"
+//
+// ============================================================
 
 const allowedOrigins = [
   // ----------------------------------------------------------
@@ -120,10 +119,14 @@ const allowedOrigins = [
   "http://127.0.0.1:5173",
 
   // ----------------------------------------------------------
-  // PRODUCTION / VERCEL
+  // MAIN VERCEL FRONTEND
   // ----------------------------------------------------------
 
   "https://sell-platform2.vercel.app",
+
+  // ----------------------------------------------------------
+  // VERCEL PREVIEW DEPLOYMENTS
+  // ----------------------------------------------------------
 
   "https://sell-platform2-mcv0eniwt-nanaskatty13s-projects.vercel.app",
 
@@ -131,11 +134,14 @@ const allowedOrigins = [
 
   "https://buyukused-ggapyipm3-nanaskatty13s-projects.vercel.app",
 
-  // Environment variable
+  // ----------------------------------------------------------
+  // ENVIRONMENT VARIABLE
+  // ----------------------------------------------------------
+
   process.env.FRONTEND_URL,
 ].filter(Boolean);
 
-// Remove duplicates
+// Remove accidental duplicate origins
 const uniqueAllowedOrigins = [
   ...new Set(allowedOrigins),
 ];
@@ -151,34 +157,36 @@ console.log(
 
 const corsOptions = {
   origin: (origin, callback) => {
-    console.log("🔍 Incoming origin:", origin);
+    console.log(
+      "🔍 Incoming origin:",
+      origin
+    );
 
     // --------------------------------------------------------
-    // Requests without Origin
+    // SERVER-TO-SERVER / HEALTH CHECK / CURL / POSTMAN
     // --------------------------------------------------------
-    //
-    // Examples:
-    // - Render health checks
-    // - curl
-    // - server-to-server requests
-    // - browser navigation in some situations
-    //
+
     if (!origin) {
       return callback(null, true);
     }
 
     // --------------------------------------------------------
-    // Exact allowed origins
+    // EXACT MATCH
     // --------------------------------------------------------
 
-    if (uniqueAllowedOrigins.includes(origin)) {
-      console.log("✅ CORS allowed:", origin);
+    if (
+      uniqueAllowedOrigins.includes(origin)
+    ) {
+      console.log(
+        "✅ CORS allowed:",
+        origin
+      );
 
       return callback(null, true);
     }
 
     // --------------------------------------------------------
-    // Allow Vercel preview deployments
+    // ALLOW VERCEL PREVIEW DEPLOYMENTS
     // --------------------------------------------------------
 
     if (
@@ -187,7 +195,7 @@ const corsOptions = {
       )
     ) {
       console.log(
-        "✅ CORS allowed Vercel preview:",
+        "✅ Vercel preview CORS allowed:",
         origin
       );
 
@@ -195,16 +203,18 @@ const corsOptions = {
     }
 
     // --------------------------------------------------------
-    // Block everything else
+    // BLOCK UNKNOWN ORIGINS
     // --------------------------------------------------------
 
     console.log(
-      "🚫 Blocked CORS origin:",
+      "🚫 Blocked CORS:",
       origin
     );
 
     return callback(
-      new Error("CORS not allowed for this origin")
+      new Error(
+        "CORS not allowed for this origin"
+      )
     );
   },
 
@@ -229,7 +239,7 @@ const corsOptions = {
 
   exposedHeaders: [
     "Content-Length",
-    "Content-Range",
+    "Content-Type",
   ],
 
   optionsSuccessStatus: 204,
@@ -241,8 +251,11 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 
-// Explicit preflight handling
-app.options("*", cors(corsOptions));
+// Explicit OPTIONS handling
+app.options(
+  "*",
+  cors(corsOptions)
+);
 
 // ============================================================
 // BODY PARSERS
@@ -273,19 +286,12 @@ const uploadsDirectory = path.join(
 
 app.use(
   "/uploads",
-  express.static(uploadsDirectory, {
-    setHeaders: (res) => {
-      res.setHeader(
-        "Access-Control-Allow-Origin",
-        "*"
-      );
-
-      res.setHeader(
-        "Cross-Origin-Resource-Policy",
-        "cross-origin"
-      );
-    },
-  })
+  express.static(
+    uploadsDirectory,
+    {
+      fallthrough: true,
+    }
+  )
 );
 
 console.log(
@@ -297,13 +303,17 @@ console.log(
 // PASSPORT
 // ============================================================
 
-app.use(passport.initialize());
+app.use(
+  passport.initialize()
+);
 
 // ============================================================
 // ACTIVITY TRACKING
 // ============================================================
 
-app.use(activityMiddleware);
+app.use(
+  activityMiddleware
+);
 
 console.log(
   "🟢 Seller/user activity tracking enabled"
@@ -313,7 +323,11 @@ console.log(
 // RATE LIMITING
 // ============================================================
 
-const skipIfAdmin = (req, res, next) => {
+const skipIfAdmin = (
+  req,
+  res,
+  next
+) => {
   const authHeader =
     req.headers.authorization;
 
@@ -328,16 +342,19 @@ const skipIfAdmin = (req, res, next) => {
     authHeader.split(" ")[1];
 
   try {
-    const decoded = jwt.verify(
-      token,
-      process.env.JWT_SECRET
-    );
+    const decoded =
+      jwt.verify(
+        token,
+        process.env.JWT_SECRET
+      );
 
-    if (decoded.role === "admin") {
+    if (
+      decoded.role === "admin"
+    ) {
       req.skipRateLimit = true;
     }
   } catch (error) {
-    // Ignore invalid tokens.
+    // Ignore invalid token.
   }
 
   next();
@@ -345,25 +362,25 @@ const skipIfAdmin = (req, res, next) => {
 
 app.use(skipIfAdmin);
 
-// ============================================================
-// API RATE LIMITER
-// ============================================================
-
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
 
   max:
-    process.env.NODE_ENV === "production"
+    process.env.NODE_ENV ===
+    "production"
       ? 100
       : 500,
 
   skip: (req) => {
-    if (req.skipRateLimit) {
+    if (
+      req.skipRateLimit
+    ) {
       return true;
     }
 
     if (
-      process.env.NODE_ENV === "development"
+      process.env.NODE_ENV ===
+      "development"
     ) {
       return true;
     }
@@ -382,36 +399,63 @@ const limiter = rateLimit({
   },
 });
 
-app.use("/api", limiter);
-app.use("/auth", limiter);
+app.use(
+  "/api",
+  limiter
+);
+
+app.use(
+  "/auth",
+  limiter
+);
 
 // ============================================================
 // ROOT API CHECK
 // ============================================================
 
-app.get("/", (req, res) => {
-  res.status(200).json({
-    success: true,
-    message: "BuyUKUsed API is running",
-    environment:
-      process.env.NODE_ENV || "development",
-  });
-});
+app.get(
+  "/",
+  (req, res) => {
+    res.status(200).json({
+      success: true,
+      message:
+        "BuyUKUsed API is running",
+      environment:
+        process.env.NODE_ENV ||
+        "development",
+      timestamp:
+        new Date().toISOString(),
+    });
+  }
+);
 
 // ============================================================
 // HEALTH CHECK
 // ============================================================
 
-const healthResponse = (req, res) => {
+const healthResponse = (
+  req,
+  res
+) => {
   res.status(200).json({
     success: true,
     status: "ok",
-    timestamp: new Date().toISOString(),
+    service:
+      "buyukused-backend",
+    timestamp:
+      new Date().toISOString(),
   });
 };
 
-app.get("/health", healthResponse);
-app.get("/api/health", healthResponse);
+app.get(
+  "/health",
+  healthResponse
+);
+
+app.get(
+  "/api/health",
+  healthResponse
+);
 
 // ============================================================
 // LOAD ROUTES
@@ -481,6 +525,10 @@ app.use(
   sellerRoutes
 );
 
+console.log(
+  "🛒 Seller API mounted at: /sellers"
+);
+
 // ============================================================
 // PRODUCTS
 // ============================================================
@@ -526,6 +574,10 @@ app.use(
   adminRoutes
 );
 
+console.log(
+  "🔐 Admin API mounted at: /api/admin"
+);
+
 // ============================================================
 // DELIVERY / RIDER
 // ============================================================
@@ -533,6 +585,10 @@ app.use(
 app.use(
   "/api/deliveries",
   deliveryRoutes
+);
+
+console.log(
+  "🚴 Delivery API mounted at: /api/deliveries"
 );
 
 // ============================================================
@@ -562,53 +618,46 @@ console.log(
 );
 
 // ============================================================
-// ROUTE DEBUG
-// ============================================================
-
-console.log(
-  "🔐 Admin API mounted at: /api/admin"
-);
-
-console.log(
-  "🚴 Delivery API mounted at: /api/deliveries"
-);
-
-console.log(
-  "🛒 Seller API mounted at: /sellers"
-);
-
-// ============================================================
 // 404 HANDLER
 // ============================================================
 
-app.use((req, res) => {
-  console.log(
-    `❌ 404: ${req.method} ${req.originalUrl}`
-  );
+app.use(
+  (req, res) => {
+    console.log(
+      `❌ 404: ${req.method} ${req.originalUrl}`
+    );
 
-  if (
-    req.path.startsWith("/api") ||
-    req.path.startsWith("/auth") ||
-    req.path.startsWith("/sellers")
-  ) {
-    return res.status(404).json({
-      success: false,
-      message: "API endpoint not found",
-      path: req.originalUrl,
-    });
+    if (
+      req.path.startsWith("/api") ||
+      req.path.startsWith("/auth") ||
+      req.path.startsWith("/sellers")
+    ) {
+      return res.status(404).json({
+        success: false,
+        message:
+          "API endpoint not found",
+        path:
+          req.originalUrl,
+      });
+    }
+
+    return res
+      .status(404)
+      .send("Not Found");
   }
-
-  return res
-    .status(404)
-    .send("Not Found");
-});
+);
 
 // ============================================================
 // GLOBAL ERROR HANDLER
 // ============================================================
 
 app.use(
-  (err, req, res, next) => {
+  (
+    err,
+    req,
+    res,
+    next
+  ) => {
     console.error(
       "❌ Error:",
       err
@@ -625,20 +674,23 @@ app.use(
     ) {
       return res.status(403).json({
         success: false,
-        message: err.message,
+        message:
+          "CORS not allowed for this origin",
       });
     }
 
     // --------------------------------------------------------
-    // MULTER ERRORS
+    // MULTER ERROR
     // --------------------------------------------------------
 
     if (
       err &&
-      err.name === "MulterError"
+      err.name ===
+        "MulterError"
     ) {
       if (
-        err.code === "LIMIT_FILE_SIZE"
+        err.code ===
+        "LIMIT_FILE_SIZE"
       ) {
         return res.status(413).json({
           success: false,
@@ -656,7 +708,7 @@ app.use(
     }
 
     // --------------------------------------------------------
-    // DUPLICATE MONGODB KEY
+    // DUPLICATE MONGODB FIELD
     // --------------------------------------------------------
 
     if (
@@ -666,7 +718,8 @@ app.use(
       const field =
         Object.keys(
           err.keyPattern || {}
-        )[0] || "field";
+        )[0] ||
+        "field";
 
       return res.status(409).json({
         success: false,
@@ -676,23 +729,26 @@ app.use(
     }
 
     // --------------------------------------------------------
-    // MONGOOSE VALIDATION
+    // MONGOOSE VALIDATION ERROR
     // --------------------------------------------------------
 
     if (
       err &&
-      err.name === "ValidationError"
+      err.name ===
+        "ValidationError"
     ) {
       const messages =
         Object.values(
           err.errors || {}
         ).map(
-          (error) => error.message
+          (error) =>
+            error.message
         );
 
       return res.status(400).json({
         success: false,
-        message: "Validation error",
+        message:
+          "Validation error",
         errors: messages,
       });
     }
@@ -701,14 +757,14 @@ app.use(
     // DEFAULT ERROR
     // --------------------------------------------------------
 
-    return res
-      .status(err?.status || 500)
-      .json({
-        success: false,
-        message:
-          err?.message ||
-          "Internal Server Error",
-      });
+    return res.status(
+      err?.status || 500
+    ).json({
+      success: false,
+      message:
+        err?.message ||
+        "Internal Server Error",
+    });
   }
 );
 
@@ -785,14 +841,17 @@ const createDefaultAdmin =
 
       let user =
         await User.findOne({
-          email: normalizedEmail,
+          email:
+            normalizedEmail,
         });
 
       if (!user) {
         user = new User({
           name: "Admin",
-          email: normalizedEmail,
-          password: adminPassword,
+          email:
+            normalizedEmail,
+          password:
+            adminPassword,
           phone: "",
           role: "admin",
           isActive: true,
@@ -844,14 +903,21 @@ const start = async () => {
     );
 
     // --------------------------------------------------------
-    // SEED CATEGORIES
+    // SEED DEFAULT CATEGORIES
     // --------------------------------------------------------
 
-    await ensureDefaultCategories();
+    try {
+      await ensureDefaultCategories();
 
-    console.log(
-      "✅ Default categories check completed"
-    );
+      console.log(
+        "✅ Default categories check completed"
+      );
+    } catch (error) {
+      console.warn(
+        "⚠️ Category seeding failed:",
+        error.message
+      );
+    }
 
     // --------------------------------------------------------
     // CREATE DEFAULT ADMIN
@@ -868,6 +934,10 @@ const start = async () => {
         PORT,
         "0.0.0.0",
         () => {
+          console.log(
+            "============================================================"
+          );
+
           console.log(
             `🚀 Server running on port ${PORT}`
           );
@@ -915,7 +985,7 @@ const start = async () => {
           );
 
           console.log(
-            "🌐 CORS: ENABLED"
+            "============================================================"
           );
         }
       );
@@ -932,6 +1002,20 @@ const start = async () => {
 
     server.headersTimeout =
       66000;
+
+    // --------------------------------------------------------
+    // SERVER ERROR
+    // --------------------------------------------------------
+
+    server.on(
+      "error",
+      (error) => {
+        console.error(
+          "❌ HTTP server error:",
+          error
+        );
+      }
+    );
   } catch (error) {
     console.error(
       "❌ Server failed:",
@@ -943,7 +1027,7 @@ const start = async () => {
 };
 
 // ============================================================
-// START
+// START APPLICATION
 // ============================================================
 
 start();
