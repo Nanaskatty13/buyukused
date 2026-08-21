@@ -24,6 +24,10 @@ const router = express.Router();
 const MAX_IMAGES = 5;
 const MAX_VIDEOS = 1;
 
+// ------------------------------------------------------------
+// Product statuses
+// ------------------------------------------------------------
+
 const VALID_STATUSES = [
   "active",
   "pending",
@@ -31,13 +35,20 @@ const VALID_STATUSES = [
   "sold",
 ];
 
+// ------------------------------------------------------------
+// Product categories
+// ------------------------------------------------------------
+// Keep this list synchronized with the frontend category list.
 // IMPORTANT:
-// Keep this list synchronized with Product.js
+// "Game Consoles" and "Smartwatches" are included.
+// ------------------------------------------------------------
+
 const VALID_CATEGORIES = [
   "Cars",
   "Phones",
   "Laptops",
   "Tablets",
+  "Smartwatches",
   "Game Consoles",
   "Accessories",
   "Electronics",
@@ -48,6 +59,10 @@ const VALID_CATEGORIES = [
   "Other",
 ];
 
+// ------------------------------------------------------------
+// Product conditions
+// ------------------------------------------------------------
+
 const VALID_CONDITIONS = [
   "Brand New",
   "Like New",
@@ -56,6 +71,10 @@ const VALID_CONDITIONS = [
   "Fair",
   "Poor",
 ];
+
+// ------------------------------------------------------------
+// Face ID statuses
+// ------------------------------------------------------------
 
 const VALID_FACE_ID = [
   "Working",
@@ -68,28 +87,38 @@ const VALID_FACE_ID = [
 // HELPERS
 // ============================================================
 
+// ------------------------------------------------------------
+// ObjectId validation
+// ------------------------------------------------------------
+
 const isValidObjectId = (id) => {
   return mongoose.Types.ObjectId.isValid(id);
 };
 
-// ============================================================
-// SAFE STRING
-// ============================================================
+// ------------------------------------------------------------
+// Get current authenticated user ID
+// ------------------------------------------------------------
 
-const cleanString = (value, defaultValue = "") => {
-  if (
-    value === undefined ||
-    value === null
-  ) {
-    return defaultValue;
-  }
-
-  return String(value).trim();
+const getCurrentUserId = (req) => {
+  return (
+    req.userId ||
+    req.user?.id ||
+    req.user?._id ||
+    null
+  );
 };
 
-// ============================================================
-// BOOLEAN PARSER
-// ============================================================
+// ------------------------------------------------------------
+// Get current authenticated user role
+// ------------------------------------------------------------
+
+const getCurrentUserRole = (req) => {
+  return req.user?.role || null;
+};
+
+// ------------------------------------------------------------
+// Boolean parser
+// ------------------------------------------------------------
 
 const parseBoolean = (
   value,
@@ -99,29 +128,40 @@ const parseBoolean = (
     return value;
   }
 
-  if (typeof value === "string") {
-    const normalized =
-      value.trim().toLowerCase();
+  if (typeof value === "number") {
+    return value === 1;
+  }
 
-    if (normalized === "true") {
+  if (typeof value === "string") {
+    const normalized = value
+      .trim()
+      .toLowerCase();
+
+    if (
+      normalized === "true" ||
+      normalized === "1" ||
+      normalized === "yes" ||
+      normalized === "on"
+    ) {
       return true;
     }
 
-    if (normalized === "false") {
+    if (
+      normalized === "false" ||
+      normalized === "0" ||
+      normalized === "no" ||
+      normalized === "off"
+    ) {
       return false;
     }
-  }
-
-  if (typeof value === "number") {
-    return value === 1;
   }
 
   return defaultValue;
 };
 
-// ============================================================
-// NUMBER PARSER
-// ============================================================
+// ------------------------------------------------------------
+// Number parser
+// ------------------------------------------------------------
 
 const parseNumber = (
   value,
@@ -142,96 +182,173 @@ const parseNumber = (
     : defaultValue;
 };
 
-// ============================================================
-// CATEGORY NORMALIZER
-// ============================================================
+// ------------------------------------------------------------
+// Clean string
+// ------------------------------------------------------------
 
-const normalizeCategory = (value) => {
-  const category =
-    cleanString(value);
-
-  if (!category) {
-    return "Other";
+const cleanString = (
+  value,
+  defaultValue = ""
+) => {
+  if (
+    value === undefined ||
+    value === null
+  ) {
+    return defaultValue;
   }
 
-  // Exact match first
+  return String(value).trim();
+};
+
+// ------------------------------------------------------------
+// Escape regex
+// ------------------------------------------------------------
+
+const escapeRegex = (value) => {
+  return String(value).replace(
+    /[.*+?^${}()|[\]\\]/g,
+    "\\$&"
+  );
+};
+
+// ============================================================
+// CATEGORY NORMALIZATION
+// ============================================================
+
+/*
+  Allows minor differences such as:
+
+  game consoles
+  Game Consoles
+  GAME CONSOLES
+
+  smartwatches
+  Smartwatches
+
+  smart watches
+  Smart Watches
+
+  The database still receives the official category name.
+*/
+
+const normalizeCategory = (value) => {
+  if (
+    value === undefined ||
+    value === null
+  ) {
+    return null;
+  }
+
+  const input = String(value).trim();
+
+  if (!input) {
+    return null;
+  }
+
   const exactMatch =
     VALID_CATEGORIES.find(
-      (item) => item === category
+      (category) =>
+        category.toLowerCase() ===
+        input.toLowerCase()
     );
 
   if (exactMatch) {
     return exactMatch;
   }
 
-  // Case-insensitive match
-  const caseInsensitiveMatch =
-    VALID_CATEGORIES.find(
-      (item) =>
-        item.toLowerCase() ===
-        category.toLowerCase()
-    );
+  const normalized = input
+    .toLowerCase()
+    .replace(/[-_]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 
-  if (caseInsensitiveMatch) {
-    return caseInsensitiveMatch;
-  }
+  const aliases = {
+    "smart watches":
+      "Smartwatches",
 
-  return null;
+    smartwatch:
+      "Smartwatches",
+
+    "game console":
+      "Game Consoles",
+
+    "gaming console":
+      "Game Consoles",
+
+    "gaming consoles":
+      "Game Consoles",
+
+    console:
+      "Game Consoles",
+
+    consoles:
+      "Game Consoles",
+
+    mobile:
+      "Phones",
+
+    mobiles:
+      "Phones",
+
+    smartphones:
+      "Phones",
+
+    smartphone:
+      "Phones",
+
+    laptop:
+      "Laptops",
+
+    tablet:
+      "Tablets",
+
+    accessories:
+      "Accessories",
+
+    accessory:
+      "Accessories",
+  };
+
+  return (
+    aliases[normalized] ||
+    null
+  );
 };
 
 // ============================================================
-// CONDITION NORMALIZER
+// CONDITION NORMALIZATION
 // ============================================================
 
-const normalizeCondition = (value) => {
-  const condition =
-    cleanString(value);
-
-  if (!condition) {
+const normalizeCondition = (
+  value
+) => {
+  if (
+    value === undefined ||
+    value === null ||
+    value === ""
+  ) {
     return "Good";
   }
 
+  const input = String(value).trim();
+
   const match =
     VALID_CONDITIONS.find(
-      (item) =>
-        item.toLowerCase() ===
-        condition.toLowerCase()
+      (condition) =>
+        condition.toLowerCase() ===
+        input.toLowerCase()
     );
 
   return match || null;
 };
 
 // ============================================================
-// FACE ID NORMALIZER
+// CLOUDINARY HELPERS
 // ============================================================
 
-const normalizeFaceId = (value) => {
-  if (
-    value === undefined ||
-    value === null ||
-    value === ""
-  ) {
-    return "";
-  }
-
-  const faceId =
-    cleanString(value);
-
-  const match =
-    VALID_FACE_ID.find(
-      (item) =>
-        item.toLowerCase() ===
-        faceId.toLowerCase()
-    );
-
-  return match !== undefined
-    ? match
-    : null;
-};
-
-// ============================================================
-// CLOUDINARY PUBLIC ID
-// ============================================================
+// ------------------------------------------------------------
+// Extract Cloudinary public ID
+// ------------------------------------------------------------
 
 const getCloudinaryPublicId = (
   url
@@ -240,7 +357,9 @@ const getCloudinaryPublicId = (
     if (
       !url ||
       typeof url !== "string" ||
-      !url.includes("cloudinary.com")
+      !url.includes(
+        "cloudinary.com"
+      )
     ) {
       return null;
     }
@@ -255,26 +374,20 @@ const getCloudinaryPublicId = (
       return null;
     }
 
-    let publicId =
-      url.substring(
-        uploadIndex +
-          uploadMarker.length
-      );
+    let publicId = url.substring(
+      uploadIndex +
+        uploadMarker.length
+    );
 
-    const parts =
+    let parts =
       publicId.split("/");
 
-    // Remove transformation parameters
+    // Remove transformation parameters.
     while (
       parts.length > 0 &&
       (
         parts[0].includes("_") ||
-        parts[0].includes(",") ||
-        /^w_\d+/.test(parts[0]) ||
-        /^h_\d+/.test(parts[0]) ||
-        /^c_/.test(parts[0]) ||
-        /^q_/.test(parts[0]) ||
-        /^f_/.test(parts[0])
+        parts[0].includes(",")
       )
     ) {
       parts.shift();
@@ -283,21 +396,21 @@ const getCloudinaryPublicId = (
     publicId =
       parts.join("/");
 
-    // Remove version
-    publicId =
-      publicId.replace(
-        /^v\d+\//,
-        ""
-      );
+    // Remove version.
+    publicId = publicId.replace(
+      /^v\d+\//,
+      ""
+    );
 
-    // Remove extension
-    publicId =
-      publicId.replace(
-        /\.[^/.]+$/,
-        ""
-      );
+    // Remove extension.
+    publicId = publicId.replace(
+      /\.[^/.]+$/,
+      ""
+    );
 
-    return publicId || null;
+    return (
+      publicId || null
+    );
   } catch (error) {
     console.error(
       "❌ Cloudinary public ID error:",
@@ -308,9 +421,9 @@ const getCloudinaryPublicId = (
   }
 };
 
-// ============================================================
-// DELETE CLOUDINARY FILE
-// ============================================================
+// ------------------------------------------------------------
+// Delete Cloudinary file
+// ------------------------------------------------------------
 
 const deleteFromCloudinary =
   async (
@@ -346,9 +459,9 @@ const deleteFromCloudinary =
     }
   };
 
-// ============================================================
-// UPLOAD BUFFER TO CLOUDINARY
-// ============================================================
+// ------------------------------------------------------------
+// Upload one file to Cloudinary
+// ------------------------------------------------------------
 
 const uploadToCloudinary = (
   file
@@ -429,9 +542,9 @@ const uploadToCloudinary = (
   );
 };
 
-// ============================================================
-// UPLOAD FILES
-// ============================================================
+// ------------------------------------------------------------
+// Upload multiple files
+// ------------------------------------------------------------
 
 const uploadFiles = async (
   files
@@ -445,8 +558,7 @@ const uploadFiles = async (
     safeFiles
       .filter(
         (file) =>
-          file &&
-          file.mimetype &&
+          file?.mimetype &&
           file.mimetype.startsWith(
             "image/"
           )
@@ -457,8 +569,7 @@ const uploadFiles = async (
     safeFiles
       .filter(
         (file) =>
-          file &&
-          file.mimetype &&
+          file?.mimetype &&
           file.mimetype.startsWith(
             "video/"
           )
@@ -468,20 +579,14 @@ const uploadFiles = async (
   const imageResults =
     await Promise.all(
       imageFiles.map(
-        (file) =>
-          uploadToCloudinary(
-            file
-          )
+        uploadToCloudinary
       )
     );
 
   const videoResults =
     await Promise.all(
       videoFiles.map(
-        (file) =>
-          uploadToCloudinary(
-            file
-          )
+        uploadToCloudinary
       )
     );
 
@@ -508,7 +613,7 @@ const uploadFiles = async (
 };
 
 // ============================================================
-// PARSE JSON ARRAY
+// JSON ARRAY PARSER
 // ============================================================
 
 const parseJsonArray = (
@@ -529,22 +634,45 @@ const parseJsonArray = (
         ? JSON.parse(value)
         : value;
 
-    if (
-      !Array.isArray(parsed)
-    ) {
-      throw new Error();
+    if (!Array.isArray(parsed)) {
+      throw new Error(
+        `${fieldName} must be an array`
+      );
     }
 
     return parsed;
-  } catch {
+  } catch (error) {
     throw new Error(
-      `${fieldName} must be a valid JSON array`
+      `${fieldName} must be valid JSON`
     );
   }
 };
 
 // ============================================================
-// GET ROUTE TEST
+// CLEAN URL ARRAY
+// ============================================================
+
+const cleanUrlArray = (
+  value
+) => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .filter(
+      (url) =>
+        typeof url ===
+          "string" &&
+        url.trim()
+    )
+    .map((url) =>
+      url.trim()
+    );
+};
+
+// ============================================================
+// TEST ROUTE
 // ============================================================
 
 router.get(
@@ -554,6 +682,21 @@ router.get(
       success: true,
       message:
         "Products router is alive!",
+      categories:
+        VALID_CATEGORIES,
+    });
+  }
+);
+
+// ============================================================
+// GET AVAILABLE CATEGORIES
+// ============================================================
+
+router.get(
+  "/categories",
+  (req, res) => {
+    res.json({
+      success: true,
       categories:
         VALID_CATEGORIES,
     });
@@ -574,33 +717,14 @@ router.get(
         search,
         sellerId,
         status,
+        page = 1,
+        limit = 20,
       } = req.query;
-
-      const page =
-        Math.max(
-          parseInt(
-            req.query.page,
-            10
-          ) || 1,
-          1
-        );
-
-      const limit =
-        Math.min(
-          Math.max(
-            parseInt(
-              req.query.limit,
-              10
-            ) || 20,
-            1
-          ),
-          100
-        );
 
       const filter = {};
 
       // --------------------------------------------------------
-      // CATEGORY
+      // Category
       // --------------------------------------------------------
 
       if (
@@ -618,8 +742,8 @@ router.get(
           return res.status(400).json({
             success: false,
             message:
-              "Invalid product category",
-            allowedCategories:
+              `Invalid product category: ${category}`,
+            validCategories:
               VALID_CATEGORIES,
           });
         }
@@ -629,7 +753,7 @@ router.get(
       }
 
       // --------------------------------------------------------
-      // LOCATION
+      // Location
       // --------------------------------------------------------
 
       if (
@@ -641,7 +765,7 @@ router.get(
       }
 
       // --------------------------------------------------------
-      // SELLER
+      // Seller
       // --------------------------------------------------------
 
       if (sellerId) {
@@ -662,7 +786,7 @@ router.get(
       }
 
       // --------------------------------------------------------
-      // STATUS
+      // Status
       // --------------------------------------------------------
 
       if (status) {
@@ -675,6 +799,8 @@ router.get(
             success: false,
             message:
               "Invalid product status",
+            validStatuses:
+              VALID_STATUSES,
           });
         }
 
@@ -683,20 +809,17 @@ router.get(
       }
 
       // --------------------------------------------------------
-      // SEARCH
+      // Search
       // --------------------------------------------------------
 
       if (
         search &&
-        search.trim()
+        String(search).trim()
       ) {
         const escapedSearch =
-          search
-            .trim()
-            .replace(
-              /[.*+?^${}()|[\]\\]/g,
-              "\\$&"
-            );
+          escapeRegex(
+            String(search).trim()
+          );
 
         filter.$or = [
           {
@@ -737,9 +860,38 @@ router.get(
         ];
       }
 
+      // --------------------------------------------------------
+      // Pagination
+      // --------------------------------------------------------
+
+      const parsedLimit =
+        Math.min(
+          Math.max(
+            parseInt(
+              limit,
+              10
+            ) || 20,
+            1
+          ),
+          100
+        );
+
+      const parsedPage =
+        Math.max(
+          parseInt(
+            page,
+            10
+          ) || 1,
+          1
+        );
+
       const skip =
-        (page - 1) *
-        limit;
+        (parsedPage - 1) *
+        parsedLimit;
+
+      // --------------------------------------------------------
+      // Query
+      // --------------------------------------------------------
 
       const [
         products,
@@ -754,7 +906,7 @@ router.get(
             createdAt: -1,
           })
           .skip(skip)
-          .limit(limit)
+          .limit(parsedLimit)
           .lean(),
 
         Product.countDocuments(
@@ -764,22 +916,25 @@ router.get(
 
       const totalPages =
         Math.ceil(
-          total / limit
+          total /
+            parsedLimit
         );
 
       res.json({
         success: true,
         products,
         total,
-        page,
-        limit,
+        page: parsedPage,
+        limit: parsedLimit,
         totalPages,
         pagination: {
-          currentPage: page,
+          currentPage:
+            parsedPage,
           totalPages,
           totalProducts:
             total,
-          limit,
+          limit:
+            parsedLimit,
         },
       });
     } catch (error) {
@@ -791,12 +946,8 @@ router.get(
       res.status(500).json({
         success: false,
         message:
+          error.message ||
           "Failed to fetch products",
-        error:
-          process.env.NODE_ENV ===
-          "development"
-            ? error.message
-            : undefined,
       });
     }
   }
@@ -839,6 +990,10 @@ router.get(
         });
       }
 
+      // --------------------------------------------------------
+      // Increment views
+      // --------------------------------------------------------
+
       product.views =
         (product.views || 0) + 1;
 
@@ -857,6 +1012,7 @@ router.get(
       res.status(500).json({
         success: false,
         message:
+          error.message ||
           "Failed to fetch product",
       });
     }
@@ -875,17 +1031,26 @@ router.post(
     "files",
     MAX_IMAGES + MAX_VIDEOS
   ),
-
   async (req, res) => {
     try {
       console.log(
-        "📩 POST /api/products"
+        "📩 POST /api/products received"
+      );
+
+      console.log(
+        "👤 User:",
+        req.userId ||
+          req.user?.id ||
+          req.user?._id
+      );
+
+      console.log(
+        "📦 Files:",
+        req.files?.length || 0
       );
 
       const sellerId =
-        req.userId ||
-        req.user?.id ||
-        req.user?._id;
+        getCurrentUserId(req);
 
       if (!sellerId) {
         return res.status(401).json({
@@ -898,6 +1063,7 @@ router.post(
       const {
         title,
         price,
+        oldPrice,
         category,
         location,
         description,
@@ -914,11 +1080,10 @@ router.post(
         simStatus,
         batteryHealth,
         faceId,
-        oldPrice,
       } = req.body;
 
       // --------------------------------------------------------
-      // TITLE
+      // Title
       // --------------------------------------------------------
 
       const cleanTitle =
@@ -933,7 +1098,7 @@ router.post(
       }
 
       // --------------------------------------------------------
-      // PRICE
+      // Price
       // --------------------------------------------------------
 
       const parsedPrice =
@@ -951,49 +1116,36 @@ router.post(
       }
 
       // --------------------------------------------------------
-      // CATEGORY
+      // Old price
       // --------------------------------------------------------
 
-      const selectedCategory =
-        normalizeCategory(
-          category
-        );
+      let parsedOldPrice = null;
 
       if (
-        !selectedCategory
+        oldPrice !==
+          undefined &&
+        oldPrice !== ""
       ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            `Invalid product category: ${category}`,
-          allowedCategories:
-            VALID_CATEGORIES,
-        });
+        parsedOldPrice =
+          parseNumber(
+            oldPrice
+          );
+
+        if (
+          parsedOldPrice ===
+            null ||
+          parsedOldPrice < 0
+        ) {
+          return res.status(400).json({
+            success: false,
+            message:
+              "Invalid old price",
+          });
+        }
       }
 
       // --------------------------------------------------------
-      // CONDITION
-      // --------------------------------------------------------
-
-      const selectedCondition =
-        normalizeCondition(
-          condition
-        );
-
-      if (
-        !selectedCondition
-      ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            `Invalid product condition: ${condition}`,
-          allowedConditions:
-            VALID_CONDITIONS,
-        });
-      }
-
-      // --------------------------------------------------------
-      // SELLER PHONE
+      // Seller phone
       // --------------------------------------------------------
 
       const cleanSellerPhone =
@@ -1010,7 +1162,45 @@ router.post(
       }
 
       // --------------------------------------------------------
-      // BATTERY HEALTH
+      // Category
+      // --------------------------------------------------------
+
+      const selectedCategory =
+        normalizeCategory(
+          category || "Other"
+        );
+
+      if (!selectedCategory) {
+        return res.status(400).json({
+          success: false,
+          message:
+            `Invalid product category: ${category}`,
+          validCategories:
+            VALID_CATEGORIES,
+        });
+      }
+
+      // --------------------------------------------------------
+      // Condition
+      // --------------------------------------------------------
+
+      const selectedCondition =
+        normalizeCondition(
+          condition
+        );
+
+      if (!selectedCondition) {
+        return res.status(400).json({
+          success: false,
+          message:
+            `Invalid product condition: ${condition}`,
+          validConditions:
+            VALID_CONDITIONS,
+        });
+      }
+
+      // --------------------------------------------------------
+      // Battery health
       // --------------------------------------------------------
 
       let parsedBatteryHealth =
@@ -1022,16 +1212,17 @@ router.post(
         batteryHealth !== ""
       ) {
         parsedBatteryHealth =
-          Number(
+          parseNumber(
             batteryHealth
           );
 
         if (
-          !Number.isFinite(
-            parsedBatteryHealth
-          ) ||
-          parsedBatteryHealth < 0 ||
-          parsedBatteryHealth > 100
+          parsedBatteryHealth ===
+            null ||
+          parsedBatteryHealth <
+            0 ||
+          parsedBatteryHealth >
+            100
         ) {
           return res.status(400).json({
             success: false,
@@ -1042,56 +1233,28 @@ router.post(
       }
 
       // --------------------------------------------------------
-      // FACE ID
+      // Face ID
       // --------------------------------------------------------
 
       const selectedFaceId =
-        normalizeFaceId(
+        cleanString(
           faceId
         );
 
       if (
-        selectedFaceId === null
+        !VALID_FACE_ID.includes(
+          selectedFaceId
+        )
       ) {
         return res.status(400).json({
           success: false,
           message:
-            `Invalid Face ID status: ${faceId}`,
-          allowedFaceId:
-            VALID_FACE_ID,
+            "Invalid Face ID status",
         });
       }
 
       // --------------------------------------------------------
-      // OLD PRICE
-      // --------------------------------------------------------
-
-      let parsedOldPrice =
-        null;
-
-      if (
-        oldPrice !== undefined &&
-        oldPrice !== ""
-      ) {
-        parsedOldPrice =
-          Number(oldPrice);
-
-        if (
-          !Number.isFinite(
-            parsedOldPrice
-          ) ||
-          parsedOldPrice < 0
-        ) {
-          return res.status(400).json({
-            success: false,
-            message:
-              "Invalid old price",
-          });
-        }
-      }
-
-      // --------------------------------------------------------
-      // UPLOAD FILES
+      // Upload files
       // --------------------------------------------------------
 
       const {
@@ -1101,14 +1264,26 @@ router.post(
         req.files || []
       );
 
+      console.log(
+        "🖼️ Images uploaded:",
+        images.length
+      );
+
+      console.log(
+        "🎬 Videos uploaded:",
+        videos.length
+      );
+
       // --------------------------------------------------------
-      // PRODUCT DATA
+      // Product data
       // --------------------------------------------------------
 
       const productData = {
-        title: cleanTitle,
+        title:
+          cleanTitle,
 
-        price: parsedPrice,
+        price:
+          parsedPrice,
 
         oldPrice:
           parsedOldPrice,
@@ -1120,7 +1295,7 @@ router.post(
           cleanString(
             location,
             "Ghana"
-          ),
+          ) || "Ghana",
 
         description:
           cleanString(
@@ -1131,27 +1306,39 @@ router.post(
 
         sellerName:
           cleanString(
-            sellerName,
-            req.user?.name || ""
+            sellerName
+          ) ||
+          cleanString(
+            req.user?.name
           ),
 
         sellerPhone:
           cleanSellerPhone,
 
         brand:
-          cleanString(brand),
+          cleanString(
+            brand
+          ),
 
         model:
-          cleanString(model),
+          cleanString(
+            model
+          ),
 
         ram:
-          cleanString(ram),
+          cleanString(
+            ram
+          ),
 
         storage:
-          cleanString(storage),
+          cleanString(
+            storage
+          ),
 
         color:
-          cleanString(color),
+          cleanString(
+            color
+          ),
 
         condition:
           selectedCondition,
@@ -1181,6 +1368,7 @@ router.post(
 
         videos,
 
+        // Legacy single image field.
         image:
           images.length > 0
             ? images[0]
@@ -1191,7 +1379,7 @@ router.post(
       };
 
       // --------------------------------------------------------
-      // CREATE
+      // Save
       // --------------------------------------------------------
 
       const product =
@@ -1215,24 +1403,24 @@ router.post(
         error
       );
 
-      // Mongoose validation
+      // --------------------------------------------------------
+      // Mongoose validation error
+      // --------------------------------------------------------
+
       if (
         error.name ===
         "ValidationError"
       ) {
-        const validationErrors =
-          Object.values(
-            error.errors
-          ).map(
-            (err) => err.message
-          );
-
         return res.status(400).json({
           success: false,
           message:
             "Product validation failed",
           errors:
-            validationErrors,
+            Object.values(
+              error.errors
+            ).map(
+              (err) => err.message
+            ),
         });
       }
 
@@ -1257,7 +1445,6 @@ router.put(
     "files",
     MAX_IMAGES + MAX_VIDEOS
   ),
-
   async (req, res) => {
     try {
       const { id } =
@@ -1287,9 +1474,7 @@ router.put(
       }
 
       const currentUserId =
-        req.userId ||
-        req.user?.id ||
-        req.user?._id;
+        getCurrentUserId(req);
 
       if (!currentUserId) {
         return res.status(401).json({
@@ -1306,7 +1491,7 @@ router.put(
           currentUserId.toString();
 
       const isAdmin =
-        req.user?.role ===
+        getCurrentUserRole(req) ===
         "admin";
 
       if (
@@ -1344,16 +1529,16 @@ router.put(
       } = req.body;
 
       // --------------------------------------------------------
-      // TITLE
+      // Title
       // --------------------------------------------------------
 
       if (
         title !== undefined
       ) {
-        const value =
+        const cleanTitle =
           cleanString(title);
 
-        if (!value) {
+        if (!cleanTitle) {
           return res.status(400).json({
             success: false,
             message:
@@ -1362,11 +1547,11 @@ router.put(
         }
 
         product.title =
-          value;
+          cleanTitle;
       }
 
       // --------------------------------------------------------
-      // PRICE
+      // Price
       // --------------------------------------------------------
 
       if (
@@ -1374,12 +1559,11 @@ router.put(
         price !== ""
       ) {
         const parsedPrice =
-          Number(price);
+          parseNumber(price);
 
         if (
-          !Number.isFinite(
-            parsedPrice
-          ) ||
+          parsedPrice ===
+            null ||
           parsedPrice < 0
         ) {
           return res.status(400).json({
@@ -1394,25 +1578,24 @@ router.put(
       }
 
       // --------------------------------------------------------
-      // OLD PRICE
+      // Old price
       // --------------------------------------------------------
 
       if (
         oldPrice !== undefined
       ) {
-        if (
-          oldPrice === ""
-        ) {
+        if (oldPrice === "") {
           product.oldPrice =
             null;
         } else {
           const parsedOldPrice =
-            Number(oldPrice);
+            parseNumber(
+              oldPrice
+            );
 
           if (
-            !Number.isFinite(
-              parsedOldPrice
-            ) ||
+            parsedOldPrice ===
+              null ||
             parsedOldPrice < 0
           ) {
             return res.status(400).json({
@@ -1428,35 +1611,35 @@ router.put(
       }
 
       // --------------------------------------------------------
-      // CATEGORY
+      // Category
       // --------------------------------------------------------
 
       if (
         category !== undefined
       ) {
-        const selectedCategory =
+        const normalizedCategory =
           normalizeCategory(
             category
           );
 
         if (
-          !selectedCategory
+          !normalizedCategory
         ) {
           return res.status(400).json({
             success: false,
             message:
               `Invalid product category: ${category}`,
-            allowedCategories:
+            validCategories:
               VALID_CATEGORIES,
           });
         }
 
         product.category =
-          selectedCategory;
+          normalizedCategory;
       }
 
       // --------------------------------------------------------
-      // LOCATION
+      // Location
       // --------------------------------------------------------
 
       if (
@@ -1469,11 +1652,12 @@ router.put(
       }
 
       // --------------------------------------------------------
-      // DESCRIPTION
+      // Description
       // --------------------------------------------------------
 
       if (
-        description !== undefined
+        description !==
+        undefined
       ) {
         product.description =
           cleanString(
@@ -1482,11 +1666,12 @@ router.put(
       }
 
       // --------------------------------------------------------
-      // SELLER NAME
+      // Seller name
       // --------------------------------------------------------
 
       if (
-        sellerName !== undefined
+        sellerName !==
+        undefined
       ) {
         product.sellerName =
           cleanString(
@@ -1495,38 +1680,54 @@ router.put(
       }
 
       // --------------------------------------------------------
-      // SELLER PHONE
+      // Seller phone
       // --------------------------------------------------------
 
       if (
-        sellerPhone !== undefined
+        sellerPhone !==
+        undefined
       ) {
-        product.sellerPhone =
+        const phone =
           cleanString(
             sellerPhone
           );
+
+        if (!phone) {
+          return res.status(400).json({
+            success: false,
+            message:
+              "Seller phone number cannot be empty",
+          });
+        }
+
+        product.sellerPhone =
+          phone;
       }
 
       // --------------------------------------------------------
-      // BRAND
+      // Brand
       // --------------------------------------------------------
 
       if (
         brand !== undefined
       ) {
         product.brand =
-          cleanString(brand);
+          cleanString(
+            brand
+          );
       }
 
       // --------------------------------------------------------
-      // MODEL
+      // Model
       // --------------------------------------------------------
 
       if (
         model !== undefined
       ) {
         product.model =
-          cleanString(model);
+          cleanString(
+            model
+          );
       }
 
       // --------------------------------------------------------
@@ -1537,11 +1738,13 @@ router.put(
         ram !== undefined
       ) {
         product.ram =
-          cleanString(ram);
+          cleanString(
+            ram
+          );
       }
 
       // --------------------------------------------------------
-      // STORAGE
+      // Storage
       // --------------------------------------------------------
 
       if (
@@ -1554,50 +1757,53 @@ router.put(
       }
 
       // --------------------------------------------------------
-      // COLOR
+      // Color
       // --------------------------------------------------------
 
       if (
         color !== undefined
       ) {
         product.color =
-          cleanString(color);
+          cleanString(
+            color
+          );
       }
 
       // --------------------------------------------------------
-      // CONDITION
+      // Condition
       // --------------------------------------------------------
 
       if (
         condition !== undefined
       ) {
-        const selectedCondition =
+        const normalizedCondition =
           normalizeCondition(
             condition
           );
 
         if (
-          !selectedCondition
+          !normalizedCondition
         ) {
           return res.status(400).json({
             success: false,
             message:
               `Invalid product condition: ${condition}`,
-            allowedConditions:
+            validConditions:
               VALID_CONDITIONS,
           });
         }
 
         product.condition =
-          selectedCondition;
+          normalizedCondition;
       }
 
       // --------------------------------------------------------
-      // NEGOTIATION
+      // Negotiation
       // --------------------------------------------------------
 
       if (
-        negotiation !== undefined
+        negotiation !==
+        undefined
       ) {
         product.negotiation =
           parseBoolean(
@@ -1606,7 +1812,7 @@ router.put(
       }
 
       // --------------------------------------------------------
-      // SWAP
+      // Swap accepted
       // --------------------------------------------------------
 
       if (
@@ -1620,11 +1826,12 @@ router.put(
       }
 
       // --------------------------------------------------------
-      // SIM STATUS
+      // SIM status
       // --------------------------------------------------------
 
       if (
-        simStatus !== undefined
+        simStatus !==
+        undefined
       ) {
         product.simStatus =
           cleanString(
@@ -1633,7 +1840,7 @@ router.put(
       }
 
       // --------------------------------------------------------
-      // BATTERY HEALTH
+      // Battery health
       // --------------------------------------------------------
 
       if (
@@ -1647,16 +1854,17 @@ router.put(
             null;
         } else {
           const parsedBatteryHealth =
-            Number(
+            parseNumber(
               batteryHealth
             );
 
           if (
-            !Number.isFinite(
-              parsedBatteryHealth
-            ) ||
-            parsedBatteryHealth < 0 ||
-            parsedBatteryHealth > 100
+            parsedBatteryHealth ===
+              null ||
+            parsedBatteryHealth <
+              0 ||
+            parsedBatteryHealth >
+              100
           ) {
             return res.status(400).json({
               success: false,
@@ -1671,26 +1879,26 @@ router.put(
       }
 
       // --------------------------------------------------------
-      // FACE ID
+      // Face ID
       // --------------------------------------------------------
 
       if (
         faceId !== undefined
       ) {
         const selectedFaceId =
-          normalizeFaceId(
+          cleanString(
             faceId
           );
 
         if (
-          selectedFaceId === null
+          !VALID_FACE_ID.includes(
+            selectedFaceId
+          )
         ) {
           return res.status(400).json({
             success: false,
             message:
-              `Invalid Face ID status: ${faceId}`,
-            allowedFaceId:
-              VALID_FACE_ID,
+              "Invalid Face ID status",
           });
         }
 
@@ -1699,7 +1907,7 @@ router.put(
       }
 
       // --------------------------------------------------------
-      // STATUS
+      // Status
       // --------------------------------------------------------
 
       if (
@@ -1714,6 +1922,8 @@ router.put(
             success: false,
             message:
               "Invalid product status",
+            validStatuses:
+              VALID_STATUSES,
           });
         }
 
@@ -1721,9 +1931,9 @@ router.put(
           status;
       }
 
-      // --------------------------------------------------------
-      // EXISTING IMAGES
-      // --------------------------------------------------------
+      // ========================================================
+      // EXISTING IMAGES TO KEEP
+      // ========================================================
 
       const imagesToKeep =
         parseJsonArray(
@@ -1736,14 +1946,24 @@ router.put(
           imagesToKeep
         )
       ) {
+        const cleanImages =
+          cleanUrlArray(
+            imagesToKeep
+          ).slice(
+            0,
+            MAX_IMAGES
+          );
+
         const oldImages =
-          product.images || [];
+          cleanUrlArray(
+            product.images
+          );
 
         for (
           const oldImage of oldImages
         ) {
           if (
-            !imagesToKeep.includes(
+            !cleanImages.includes(
               oldImage
             )
           ) {
@@ -1755,22 +1975,12 @@ router.put(
         }
 
         product.images =
-          imagesToKeep
-            .filter(
-              (url) =>
-                typeof url ===
-                  "string" &&
-                url.trim()
-            )
-            .slice(
-              0,
-              MAX_IMAGES
-            );
+          cleanImages;
       }
 
-      // --------------------------------------------------------
-      // EXISTING VIDEOS
-      // --------------------------------------------------------
+      // ========================================================
+      // EXISTING VIDEOS TO KEEP
+      // ========================================================
 
       const videosToKeep =
         parseJsonArray(
@@ -1783,14 +1993,24 @@ router.put(
           videosToKeep
         )
       ) {
+        const cleanVideos =
+          cleanUrlArray(
+            videosToKeep
+          ).slice(
+            0,
+            MAX_VIDEOS
+          );
+
         const oldVideos =
-          product.videos || [];
+          cleanUrlArray(
+            product.videos
+          );
 
         for (
           const oldVideo of oldVideos
         ) {
           if (
-            !videosToKeep.includes(
+            !cleanVideos.includes(
               oldVideo
             )
           ) {
@@ -1802,22 +2022,12 @@ router.put(
         }
 
         product.videos =
-          videosToKeep
-            .filter(
-              (url) =>
-                typeof url ===
-                  "string" &&
-                url.trim()
-            )
-            .slice(
-              0,
-              MAX_VIDEOS
-            );
+          cleanVideos;
       }
 
-      // --------------------------------------------------------
-      // NEW FILES
-      // --------------------------------------------------------
+      // ========================================================
+      // UPLOAD NEW FILES
+      // ========================================================
 
       const newFiles =
         req.files || [];
@@ -1832,32 +2042,46 @@ router.put(
           newFiles
         );
 
-        const existingImages =
-          product.images || [];
+        // ------------------------------------------------------
+        // Images
+        // ------------------------------------------------------
 
-        const existingVideos =
-          product.videos || [];
+        if (
+          images.length > 0
+        ) {
+          product.images =
+            [
+              ...(product.images ||
+                []),
+              ...images,
+            ].slice(
+              0,
+              MAX_IMAGES
+            );
+        }
 
-        product.images = [
-          ...existingImages,
-          ...images,
-        ].slice(
-          0,
-          MAX_IMAGES
-        );
+        // ------------------------------------------------------
+        // Videos
+        // ------------------------------------------------------
 
-        product.videos = [
-          ...existingVideos,
-          ...videos,
-        ].slice(
-          0,
-          MAX_VIDEOS
-        );
+        if (
+          videos.length > 0
+        ) {
+          product.videos =
+            [
+              ...(product.videos ||
+                []),
+              ...videos,
+            ].slice(
+              0,
+              MAX_VIDEOS
+            );
+        }
       }
 
-      // --------------------------------------------------------
-      // LEGACY IMAGE FIELD
-      // --------------------------------------------------------
+      // ========================================================
+      // SYNCHRONIZE LEGACY IMAGE
+      // ========================================================
 
       product.image =
         product.images &&
@@ -1865,9 +2089,9 @@ router.put(
           ? product.images[0]
           : "";
 
-      // --------------------------------------------------------
+      // ========================================================
       // SAVE
-      // --------------------------------------------------------
+      // ========================================================
 
       await product.save();
 
@@ -1921,7 +2145,6 @@ router.put(
 router.delete(
   "/:id",
   verifyToken,
-
   async (req, res) => {
     try {
       const { id } =
@@ -1951,9 +2174,7 @@ router.delete(
       }
 
       const currentUserId =
-        req.userId ||
-        req.user?.id ||
-        req.user?._id;
+        getCurrentUserId(req);
 
       if (!currentUserId) {
         return res.status(401).json({
@@ -1970,7 +2191,7 @@ router.delete(
           currentUserId.toString();
 
       const isAdmin =
-        req.user?.role ===
+        getCurrentUserRole(req) ===
         "admin";
 
       if (
@@ -1984,7 +2205,10 @@ router.delete(
         });
       }
 
+      // --------------------------------------------------------
       // Delete images
+      // --------------------------------------------------------
+
       for (
         const image of
           product.images || []
@@ -1995,7 +2219,10 @@ router.delete(
         );
       }
 
+      // --------------------------------------------------------
       // Delete videos
+      // --------------------------------------------------------
+
       for (
         const video of
           product.videos || []
@@ -2005,6 +2232,10 @@ router.delete(
           "video"
         );
       }
+
+      // --------------------------------------------------------
+      // Delete product
+      // --------------------------------------------------------
 
       await product.deleteOne();
 
@@ -2040,7 +2271,6 @@ router.delete(
 router.patch(
   "/:id/status",
   verifyToken,
-
   async (req, res) => {
     try {
       const { id } =
@@ -2049,15 +2279,9 @@ router.patch(
       const { status } =
         req.body;
 
-      if (
-        !isValidObjectId(id)
-      ) {
-        return res.status(404).json({
-          success: false,
-          message:
-            "Product not found",
-        });
-      }
+      // --------------------------------------------------------
+      // Status
+      // --------------------------------------------------------
 
       if (
         !status ||
@@ -2069,10 +2293,28 @@ router.patch(
           success: false,
           message:
             "Invalid status",
-          allowedStatuses:
+          validStatuses:
             VALID_STATUSES,
         });
       }
+
+      // --------------------------------------------------------
+      // ID
+      // --------------------------------------------------------
+
+      if (
+        !isValidObjectId(id)
+      ) {
+        return res.status(404).json({
+          success: false,
+          message:
+            "Product not found",
+        });
+      }
+
+      // --------------------------------------------------------
+      // Product
+      // --------------------------------------------------------
 
       const product =
         await Product.findById(
@@ -2087,10 +2329,12 @@ router.patch(
         });
       }
 
+      // --------------------------------------------------------
+      // User
+      // --------------------------------------------------------
+
       const currentUserId =
-        req.userId ||
-        req.user?.id ||
-        req.user?._id;
+        getCurrentUserId(req);
 
       if (!currentUserId) {
         return res.status(401).json({
@@ -2100,6 +2344,10 @@ router.patch(
         });
       }
 
+      // --------------------------------------------------------
+      // Authorization
+      // --------------------------------------------------------
+
       const isOwner =
         product.sellerId &&
         product.sellerId
@@ -2107,7 +2355,7 @@ router.patch(
           currentUserId.toString();
 
       const isAdmin =
-        req.user?.role ===
+        getCurrentUserRole(req) ===
         "admin";
 
       if (
@@ -2121,10 +2369,18 @@ router.patch(
         });
       }
 
+      // --------------------------------------------------------
+      // Update
+      // --------------------------------------------------------
+
       product.status =
         status;
 
       await product.save();
+
+      console.log(
+        `✅ Product ${id} status updated to ${status}`
+      );
 
       res.json({
         success: true,
