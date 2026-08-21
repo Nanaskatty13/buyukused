@@ -21,7 +21,7 @@ import TVForm from "../components/TVForm";
 import CarForm from "../components/CarForm";
 
 // ============================================================
-// LOCATION DATA (FULL)
+// LOCATION DATA
 // ============================================================
 
 const countries = ["Ghana"];
@@ -45,7 +45,6 @@ const regions = [
   "Western North",
 ];
 
-// ✅ FIX: Complete citiesByRegion (all 16 regions)
 const citiesByRegion = {
   "Ahafo": ["Goaso", "Mim", "Hwidiem", "Bechem", "Kenyasi", "Duayaw Nkwanta", "Tepa"],
   "Ashanti": [
@@ -323,7 +322,7 @@ const PostAd = () => {
   const [authLoading, setAuthLoading] = useState(false);
 
   // ==========================================================
-  // CATEGORY MAP – maps internal keys to backend‑expected strings
+  // CATEGORY MAP – corrected for smartwatches
   // ==========================================================
 
   const categoryMap = {
@@ -333,9 +332,9 @@ const PostAd = () => {
     accessories: "Accessories",
     electronics: "Electronics",
     gameConsoles: "Game Consoles",
-    smartwatches: "Smartwatches",
+    smartwatches: "Smart Watches",   // ✅ changed to "Smart Watches"
     tvs: "TVs",
-    cars: "Cars",   // ✅ matches the backend enum
+    cars: "Cars",
   };
 
   // ==========================================================
@@ -734,13 +733,12 @@ const PostAd = () => {
   };
 
   // ==========================================================
-  // BUILD PRODUCT FORM DATA – ✅ FIX: use categoryMap
+  // BUILD PRODUCT FORM DATA – expanded smartwatch fields
   // ==========================================================
 
   const buildProductFormData = () => {
     const form = new FormData();
 
-    // ✅ Send the backend‑expected category string
     const mappedCategory = categoryMap[formData.category] || formData.category;
 
     // --------------------------------------------------------
@@ -750,7 +748,7 @@ const PostAd = () => {
     const baseFields = {
       title: formData.title.trim(),
       price: formData.price,
-      category: mappedCategory,               // <-- corrected
+      category: mappedCategory,
       location: formData.location,
 
       description: formData.description.trim(),
@@ -889,12 +887,34 @@ const PostAd = () => {
     }
 
     // --------------------------------------------------------
-    // SMARTWATCH ONLY
+    // SMARTWATCH ONLY – now sends all relevant fields
     // --------------------------------------------------------
 
     if (isSmartwatch) {
+      // Watch size
       if (formData.watchSize) {
         baseFields.watchSize = formData.watchSize;
+      }
+
+      // Battery health (optional for smartwatch)
+      if (formData.batteryHealth !== "") {
+        baseFields.batteryHealth =
+          String(formData.batteryHealth);
+      }
+
+      // Connectivity (Wi-Fi, GPS, Cellular)
+      if (formData.connectivity) {
+        baseFields.connectivity = formData.connectivity;
+      }
+
+      // Storage (if applicable)
+      if (formData.storage) {
+        baseFields.storage = formData.storage;
+      }
+
+      // Year (if applicable)
+      if (formData.year) {
+        baseFields.year = formData.year;
       }
     }
 
@@ -1145,7 +1165,6 @@ const PostAd = () => {
     try {
       const form = buildProductFormData();
 
-      // Log the actual category being sent for debugging
       console.log("📤 Posting product with category:", form.get("category"));
 
       const data = await createProductWithFiles(
