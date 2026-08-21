@@ -46,47 +46,273 @@ const regions = [
 ];
 
 const citiesByRegion = {
-  "Ahafo": ["Goaso", "Mim", "Hwidiem", "Bechem", "Kenyasi", "Duayaw Nkwanta", "Tepa"],
-  "Ashanti": [
-    "Kumasi", "Obuasi", "Tafo", "Bekwai", "Mampong", "Konongo", "Ejura", "Agogo",
-    "Offinso", "Nkawie", "Oforikrom", "Asokore Mampong", "Suame", "Atwima", "Kwadaso",
-    "Bantama", "Adum", "Bohyen", "Domeabra", "Mpatuam", "Effiduase", "Juaso",
-    "Nhyiaeso", "Tepa", "Duayaw Nkwanta", "Kenyasi", "Kukuom", "Fomena", "Ahensan"
+  Ahafo: [
+    "Goaso",
+    "Mim",
+    "Hwidiem",
+    "Bechem",
+    "Kenyasi",
+    "Duayaw Nkwanta",
+    "Tepa",
   ],
-  "Bono": ["Sunyani", "Berekum", "Dormaa Ahenkro", "Kintampo", "Japekrom", "Nsoatre", "Odumase", "Drobo"],
-  "Bono East": ["Techiman", "Yeji", "Kintampo", "Atebubu", "Pru", "Kwame Danso", "Sampa", "Badu", "Tuobodom"],
-  "Central": [
-    "Cape Coast", "Elmina", "Kasoa", "Winneba", "Mfantseman", "Abura Dunkwa", "Assin Fosu",
-    "Asikuma", "Ajumako", "Awutu", "Bawjiase", "Senya Beraku", "Gomoa Fetteh", "Budumburam"
+
+  Ashanti: [
+    "Kumasi",
+    "Obuasi",
+    "Tafo",
+    "Bekwai",
+    "Mampong",
+    "Konongo",
+    "Ejura",
+    "Agogo",
+    "Offinso",
+    "Nkawie",
+    "Oforikrom",
+    "Asokore Mampong",
+    "Suame",
+    "Atwima",
+    "Kwadaso",
+    "Bantama",
+    "Adum",
+    "Bohyen",
+    "Domeabra",
+    "Mpatuam",
+    "Effiduase",
+    "Juaso",
+    "Nhyiaeso",
+    "Tepa",
+    "Duayaw Nkwanta",
+    "Kenyasi",
+    "Kukuom",
+    "Fomena",
+    "Ahensan",
   ],
-  "Eastern": [
-    "Koforidua", "Nkawkaw", "Oda", "Asamankese", "Akwatia", "Kibi", "Suhum", "Mpraeso",
-    "Somanya", "Odumase", "Aburi", "Nsawam", "Akropong", "Begoro", "Hohoe", "Kpando",
-    "Ho", "Peki", "Denu", "Aflao", "Keta"
+
+  Bono: [
+    "Sunyani",
+    "Berekum",
+    "Dormaa Ahenkro",
+    "Kintampo",
+    "Japekrom",
+    "Nsoatre",
+    "Odumase",
+    "Drobo",
   ],
+
+  "Bono East": [
+    "Techiman",
+    "Yeji",
+    "Kintampo",
+    "Atebubu",
+    "Pru",
+    "Kwame Danso",
+    "Sampa",
+    "Badu",
+    "Tuobodom",
+  ],
+
+  Central: [
+    "Cape Coast",
+    "Elmina",
+    "Kasoa",
+    "Winneba",
+    "Mfantseman",
+    "Abura Dunkwa",
+    "Assin Fosu",
+    "Asikuma",
+    "Ajumako",
+    "Awutu",
+    "Bawjiase",
+    "Senya Beraku",
+    "Gomoa Fetteh",
+    "Budumburam",
+  ],
+
+  Eastern: [
+    "Koforidua",
+    "Nkawkaw",
+    "Oda",
+    "Asamankese",
+    "Akwatia",
+    "Kibi",
+    "Suhum",
+    "Mpraeso",
+    "Somanya",
+    "Odumase",
+    "Aburi",
+    "Nsawam",
+    "Akropong",
+    "Begoro",
+    "Hohoe",
+    "Kpando",
+    "Ho",
+    "Peki",
+    "Denu",
+    "Aflao",
+    "Keta",
+  ],
+
   "Greater Accra": [
-    "Accra", "Tema", "Ashaiman", "Madina", "Adenta", "Dansoman", "Kaneshie", "Osu",
-    "Labone", "Labadi", "Dzorwulu", "Achimota", "Legon", "Okponglo", "Bawaleshie",
-    "Nungua", "Teshie", "Sakumono", "Spintex", "Lashibi", "East Legon", "West Legon",
-    "Dodowa", "Prampram", "Afienya", "Tema New Town", "Amasaman", "Weija", "Gbawe",
-    "Mallam", "Bortianor", "Ablekuma", "Korle Bu", "Mamprobi", "Chorkor",
-    "James Town", "Ussher Town", "Adabraka", "Asylum Down", "Cantoments", "Airport"
+    "Accra",
+    "Tema",
+    "Ashaiman",
+    "Madina",
+    "Adenta",
+    "Dansoman",
+    "Kaneshie",
+    "Osu",
+    "Labone",
+    "Labadi",
+    "Dzorwulu",
+    "Achimota",
+    "Legon",
+    "Okponglo",
+    "Bawaleshie",
+    "Nungua",
+    "Teshie",
+    "Sakumono",
+    "Spintex",
+    "Lashibi",
+    "East Legon",
+    "West Legon",
+    "Dodowa",
+    "Prampram",
+    "Afienya",
+    "Tema New Town",
+    "Amasaman",
+    "Weija",
+    "Gbawe",
+    "Mallam",
+    "Bortianor",
+    "Ablekuma",
+    "Korle Bu",
+    "Mamprobi",
+    "Chorkor",
+    "James Town",
+    "Ussher Town",
+    "Adabraka",
+    "Asylum Down",
+    "Cantoments",
+    "Airport",
   ],
-  "North East": ["Nalerigu", "Walewale", "Bawku", "Gambaga", "Bunkpurugu", "Yunyoo", "Chereponi"],
-  "Northern": ["Tamale", "Savelugu", "Yendi", "Dalun", "Kpatinga", "Gushegu", "Karaga", "Zabzugu", "Tolon", "Kumbungu"],
-  "Oti": ["Dambai", "Kpando", "Jasikan", "Nkwanta", "Brewaniase", "Worawora", "Gbi", "Apesokubi"],
-  "Savannah": ["Damongo", "Bole", "Salaga", "Yapei", "Sawla", "Larabanga", "Daboya"],
-  "Upper East": ["Bolgatanga", "Bawku", "Navrongo", "Paga", "Sandema", "Zuarungu", "Tongo", "Garu", "Tempane", "Pusiga"],
-  "Upper West": ["Wa", "Jirapa", "Lawra", "Nandom", "Tumu", "Gwollu", "Kaleo", "Dere", "Duori"],
-  "Volta": [
-    "Ho", "Hohoe", "Keta", "Aflao", "Kpando", "Sogakope", "Anloga", "Kpedze", "Denu",
-    "Akatsi", "Abor", "Dzodze", "Anyako", "Togoville", "Kedzi", "Agbledomi", "Klikor"
+
+  "North East": [
+    "Nalerigu",
+    "Walewale",
+    "Bawku",
+    "Gambaga",
+    "Bunkpurugu",
+    "Yunyoo",
+    "Chereponi",
   ],
-  "Western": [
-    "Sekondi", "Takoradi", "Tarkwa", "Shama", "Essikado", "Aboadze", "Fijai", "Effiakuma",
-    "Kwesimintim", "Nkroful", "Axim", "Half Assini", "Agona", "Anyinam", "Enchi", "Juaboso"
+
+  Northern: [
+    "Tamale",
+    "Savelugu",
+    "Yendi",
+    "Dalun",
+    "Kpatinga",
+    "Gushegu",
+    "Karaga",
+    "Zabzugu",
+    "Tolon",
+    "Kumbungu",
   ],
-  "Western North": ["Sefwi Wiawso", "Sefwi Debiso", "Bibiani", "Awiaso", "Asafo", "Sefwi Bekwai", "Akontombra"]
+
+  Oti: [
+    "Dambai",
+    "Kpando",
+    "Jasikan",
+    "Nkwanta",
+    "Brewaniase",
+    "Worawora",
+    "Gbi",
+    "Apesokubi",
+  ],
+
+  Savannah: [
+    "Damongo",
+    "Bole",
+    "Salaga",
+    "Yapei",
+    "Sawla",
+    "Larabanga",
+    "Daboya",
+  ],
+
+  "Upper East": [
+    "Bolgatanga",
+    "Bawku",
+    "Navrongo",
+    "Paga",
+    "Sandema",
+    "Zuarungu",
+    "Tongo",
+    "Garu",
+    "Tempane",
+    "Pusiga",
+  ],
+
+  "Upper West": [
+    "Wa",
+    "Jirapa",
+    "Lawra",
+    "Nandom",
+    "Tumu",
+    "Gwollu",
+    "Kaleo",
+    "Dere",
+    "Duori",
+  ],
+
+  Volta: [
+    "Ho",
+    "Hohoe",
+    "Keta",
+    "Aflao",
+    "Kpando",
+    "Sogakope",
+    "Anloga",
+    "Kpedze",
+    "Denu",
+    "Akatsi",
+    "Abor",
+    "Dzodze",
+    "Anyako",
+    "Togoville",
+    "Kedzi",
+    "Agbledomi",
+    "Klikor",
+  ],
+
+  Western: [
+    "Sekondi",
+    "Takoradi",
+    "Tarkwa",
+    "Shama",
+    "Essikado",
+    "Aboadze",
+    "Fijai",
+    "Effiakuma",
+    "Kwesimintim",
+    "Nkroful",
+    "Axim",
+    "Half Assini",
+    "Agona",
+    "Anyinam",
+    "Enchi",
+    "Juaboso",
+  ],
+
+  "Western North": [
+    "Sefwi Wiawso",
+    "Sefwi Debiso",
+    "Bibiani",
+    "Awiaso",
+    "Asafo",
+    "Sefwi Bekwai",
+    "Akontombra",
+  ],
 };
 
 // ============================================================
@@ -220,6 +446,13 @@ const PostAd = () => {
   const [selectedCity, setSelectedCity] = useState("");
 
   // ==========================================================
+  // MULTI-SELECT COLOR / STORAGE STATE
+  // ==========================================================
+
+  const [selectedColors, setSelectedColors] = useState([]);
+  const [selectedStorage, setSelectedStorage] = useState([]);
+
+  // ==========================================================
   // FORM DATA – all categories including Cars
   // ==========================================================
 
@@ -332,7 +565,7 @@ const PostAd = () => {
     accessories: "Accessories",
     electronics: "Electronics",
     gameConsoles: "Game Consoles",
-    smartwatches: "Smartwatches",   // ✅ correct as per backend
+    smartwatches: "Smartwatches",
     tvs: "TVs",
     cars: "Cars",
   };
@@ -345,8 +578,10 @@ const PostAd = () => {
   const isLaptop = formData.category === "laptops";
   const isTablet = formData.category === "tablets";
   const isAccessory = formData.category === "accessories";
-  const isGameConsole = formData.category === "gameConsoles";
-  const isSmartwatch = formData.category === "smartwatches";
+  const isGameConsole =
+    formData.category === "gameConsoles";
+  const isSmartwatch =
+    formData.category === "smartwatches";
   const isTV = formData.category === "tvs";
   const isCar = formData.category === "cars";
 
@@ -369,7 +604,11 @@ const PostAd = () => {
       ...prev,
       location,
     }));
-  }, [selectedCountry, selectedRegion, selectedCity]);
+  }, [
+    selectedCountry,
+    selectedRegion,
+    selectedCity,
+  ]);
 
   // ==========================================================
   // CLEANUP MEDIA PREVIEWS
@@ -394,7 +633,10 @@ const PostAd = () => {
 
     setFormData((prev) => ({
       ...prev,
-      [name]: type === "checkbox" ? checked : value,
+      [name]:
+        type === "checkbox"
+          ? checked
+          : value,
     }));
   };
 
@@ -409,6 +651,103 @@ const PostAd = () => {
       ...prev,
       [name]: checked,
     }));
+  };
+
+  // ==========================================================
+  // MULTI-SELECT COLOR
+  // ==========================================================
+
+  const handleColorChange = (e) => {
+    const value = e.target.value;
+
+    if (!value) {
+      return;
+    }
+
+    setSelectedColors((prev) => {
+      if (prev.includes(value)) {
+        return prev;
+      }
+
+      const updated = [...prev, value];
+
+      setFormData((current) => ({
+        ...current,
+        color: updated.join(", "),
+      }));
+
+      return updated;
+    });
+
+    e.target.value = "";
+  };
+
+  // ==========================================================
+  // REMOVE SELECTED COLOR
+  // ==========================================================
+
+  const removeColor = (colorToRemove) => {
+    setSelectedColors((prev) => {
+      const updated = prev.filter(
+        (color) => color !== colorToRemove
+      );
+
+      setFormData((current) => ({
+        ...current,
+        color: updated.join(", "),
+      }));
+
+      return updated;
+    });
+  };
+
+  // ==========================================================
+  // MULTI-SELECT STORAGE
+  // ==========================================================
+
+  const handleStorageChange = (e) => {
+    const value = e.target.value;
+
+    if (!value) {
+      return;
+    }
+
+    setSelectedStorage((prev) => {
+      if (prev.includes(value)) {
+        return prev;
+      }
+
+      const updated = [...prev, value];
+
+      setFormData((current) => ({
+        ...current,
+        storage: updated.join(", "),
+      }));
+
+      return updated;
+    });
+
+    e.target.value = "";
+  };
+
+  // ==========================================================
+  // REMOVE SELECTED STORAGE
+  // ==========================================================
+
+  const removeStorage = (storageToRemove) => {
+    setSelectedStorage((prev) => {
+      const updated = prev.filter(
+        (storage) =>
+          storage !== storageToRemove
+      );
+
+      setFormData((current) => ({
+        ...current,
+        storage: updated.join(", "),
+      }));
+
+      return updated;
+    });
   };
 
   // ==========================================================
@@ -511,6 +850,18 @@ const PostAd = () => {
         : {}),
     }));
 
+    // Clear multi-select fields when leaving phones
+    if (category !== "phones") {
+      setSelectedColors([]);
+      setSelectedStorage([]);
+
+      setFormData((prev) => ({
+        ...prev,
+        color: "",
+        storage: "",
+      }));
+    }
+
     setError("");
   };
 
@@ -538,43 +889,62 @@ const PostAd = () => {
   // ==========================================================
 
   const handleFileChange = (e) => {
-    const selected = Array.from(e.target.files || []);
+    const selected = Array.from(
+      e.target.files || []
+    );
 
-    if (!selected.length) return;
+    if (!selected.length) {
+      return;
+    }
 
-    const imageFiles = selected.filter((file) =>
-      file.type.startsWith("image/")
+    const imageFiles = selected.filter(
+      (file) =>
+        file.type.startsWith("image/")
     );
 
     if (!imageFiles.length) {
-      setError("Please select valid image files.");
+      setError(
+        "Please select valid image files."
+      );
       e.target.value = "";
       return;
     }
 
-    const existingImages = mediaItems.filter(
-      (item) => item.type === "image"
-    ).length;
+    const existingImages =
+      mediaItems.filter(
+        (item) => item.type === "image"
+      ).length;
 
     const remaining = 5 - existingImages;
 
     if (remaining <= 0) {
-      setError("You can upload a maximum of 5 images.");
+      setError(
+        "You can upload a maximum of 5 images."
+      );
       e.target.value = "";
       return;
     }
 
-    const filesToAdd = imageFiles.slice(0, remaining);
+    const filesToAdd =
+      imageFiles.slice(0, remaining);
 
-    const newItems = filesToAdd.map((file) => ({
-      file,
-      preview: URL.createObjectURL(file),
-      type: "image",
-    }));
+    const newItems = filesToAdd.map(
+      (file) => ({
+        file,
+        preview:
+          URL.createObjectURL(file),
+        type: "image",
+      })
+    );
 
-    setMediaItems((prev) => [...prev, ...newItems]);
+    setMediaItems((prev) => [
+      ...prev,
+      ...newItems,
+    ]);
 
-    if (imageFiles.length > remaining) {
+    if (
+      imageFiles.length > remaining
+    ) {
       setError(
         `Only ${remaining} more image${
           remaining === 1 ? "" : "s"
@@ -594,26 +964,38 @@ const PostAd = () => {
   const handleVideoChange = (e) => {
     const file = e.target.files?.[0];
 
-    if (!file) return;
+    if (!file) {
+      return;
+    }
 
     if (!file.type.startsWith("video/")) {
-      setError("Please select a valid video file.");
+      setError(
+        "Please select a valid video file."
+      );
       e.target.value = "";
       return;
     }
 
-    const existingVideo = mediaItems.some(
-      (item) => item.type === "video"
-    );
+    const existingVideo =
+      mediaItems.some(
+        (item) => item.type === "video"
+      );
 
     if (existingVideo) {
-      setError("You can upload only one video.");
+      setError(
+        "You can upload only one video."
+      );
       e.target.value = "";
       return;
     }
 
-    if (file.size > 50 * 1024 * 1024) {
-      setError("Video must be smaller than 50MB.");
+    if (
+      file.size >
+      50 * 1024 * 1024
+    ) {
+      setError(
+        "Video must be smaller than 50MB."
+      );
       e.target.value = "";
       return;
     }
@@ -622,7 +1004,8 @@ const PostAd = () => {
       ...prev,
       {
         file,
-        preview: URL.createObjectURL(file),
+        preview:
+          URL.createObjectURL(file),
         type: "video",
       },
     ]);
@@ -655,7 +1038,9 @@ const PostAd = () => {
     setError("");
 
     if (!formData.title.trim()) {
-      setError("Please enter an ad title.");
+      setError(
+        "Please enter an ad title."
+      );
       return;
     }
 
@@ -664,59 +1049,101 @@ const PostAd = () => {
       formData.price === null ||
       formData.price === undefined
     ) {
-      setError("Please enter a price.");
+      setError(
+        "Please enter a price."
+      );
       return;
     }
 
     if (Number(formData.price) < 0) {
-      setError("Price cannot be negative.");
+      setError(
+        "Price cannot be negative."
+      );
       return;
     }
 
-    if (!formData.sellerPhone.trim()) {
-      setError("Please enter your phone number.");
+    if (
+      !formData.sellerPhone.trim()
+    ) {
+      setError(
+        "Please enter your phone number."
+      );
       return;
     }
 
-    if (isLaptop && !formData.brand) {
-      setError("Please select a laptop brand.");
+    if (
+      isLaptop &&
+      !formData.brand
+    ) {
+      setError(
+        "Please select a laptop brand."
+      );
       return;
     }
 
-    if (isTablet && !formData.brand) {
-      setError("Please select a tablet brand.");
+    if (
+      isTablet &&
+      !formData.brand
+    ) {
+      setError(
+        "Please select a tablet brand."
+      );
       return;
     }
 
     if (isAccessory) {
       if (!formData.accessoryType) {
-        setError("Please select the accessory type.");
+        setError(
+          "Please select the accessory type."
+        );
         return;
       }
 
       if (!formData.brand.trim()) {
-        setError("Please enter the accessory brand.");
+        setError(
+          "Please enter the accessory brand."
+        );
         return;
       }
     }
 
-    if (isGameConsole && !formData.brand) {
-      setError("Please select a console brand.");
+    if (
+      isGameConsole &&
+      !formData.brand
+    ) {
+      setError(
+        "Please select a console brand."
+      );
       return;
     }
 
-    if (isSmartwatch && !formData.brand) {
-      setError("Please select a smartwatch brand.");
+    if (
+      isSmartwatch &&
+      !formData.brand
+    ) {
+      setError(
+        "Please select a smartwatch brand."
+      );
       return;
     }
 
-    if (isTV && !formData.brand) {
-      setError("Please select a TV brand.");
+    if (
+      isTV &&
+      !formData.brand
+    ) {
+      setError(
+        "Please select a TV brand."
+      );
       return;
     }
 
-    if (isCar && !formData.brand) {
-      setError("Please select a car brand.");
+    if (
+      isCar &&
+      !formData.brand
+    ) {
+      setError(
+        "Please select a car brand."
+      );
       return;
     }
 
@@ -739,7 +1166,9 @@ const PostAd = () => {
   const buildProductFormData = () => {
     const form = new FormData();
 
-    const mappedCategory = categoryMap[formData.category] || formData.category;
+    const mappedCategory =
+      categoryMap[formData.category] ||
+      formData.category;
 
     // --------------------------------------------------------
     // COMMON FIELDS
@@ -751,20 +1180,32 @@ const PostAd = () => {
       category: mappedCategory,
       location: formData.location,
 
-      description: formData.description.trim(),
+      description:
+        formData.description.trim(),
 
-      sellerName: formData.sellerName.trim(),
-      sellerPhone: formData.sellerPhone.trim(),
+      sellerName:
+        formData.sellerName.trim(),
+
+      sellerPhone:
+        formData.sellerPhone.trim(),
 
       brand: formData.brand.trim(),
       model: formData.model.trim(),
-      color: formData.color.trim(),
 
-      condition: formData.condition,
-      warranty: formData.warranty,
+      color:
+        formData.color.trim(),
 
-      negotiation: String(formData.negotiation),
-      swapAccepted: String(formData.swapAccepted),
+      condition:
+        formData.condition,
+
+      warranty:
+        formData.warranty,
+
+      negotiation:
+        String(formData.negotiation),
+
+      swapAccepted:
+        String(formData.swapAccepted),
     };
 
     // --------------------------------------------------------
@@ -773,20 +1214,32 @@ const PostAd = () => {
 
     if (isPhone) {
       if (formData.storage) {
-        baseFields.storage = formData.storage;
+        baseFields.storage =
+          formData.storage.trim();
       }
 
-      if (formData.batteryHealth !== "") {
+      if (
+        formData.batteryHealth !== ""
+      ) {
         baseFields.batteryHealth =
-          String(formData.batteryHealth);
+          String(
+            formData.batteryHealth
+          );
       }
 
       if (formData.faceId) {
-        baseFields.faceId = formData.faceId;
+        baseFields.faceId =
+          formData.faceId;
       }
 
       if (formData.simStatus) {
-        baseFields.simStatus = formData.simStatus;
+        baseFields.simStatus =
+          formData.simStatus;
+      }
+
+      if (formData.color) {
+        baseFields.color =
+          formData.color.trim();
       }
     }
 
@@ -801,8 +1254,14 @@ const PostAd = () => {
       baseFields.ram =
         formData.ram.trim();
 
-      baseFields.storage =
-        formData.storage.trim();
+      /*
+       * Storage remains a string in formData.
+       * This keeps compatibility with LaptopForm.
+       */
+      if (formData.storage) {
+        baseFields.storage =
+          formData.storage.trim();
+      }
 
       baseFields.screenSize =
         formData.screenSize.trim();
@@ -817,11 +1276,13 @@ const PostAd = () => {
 
     if (isTablet) {
       if (formData.storage) {
-        baseFields.storage = formData.storage;
+        baseFields.storage =
+          String(formData.storage).trim();
       }
 
       if (formData.year) {
-        baseFields.year = formData.year;
+        baseFields.year =
+          formData.year;
       }
 
       if (formData.connectivity) {
@@ -872,18 +1333,28 @@ const PostAd = () => {
         "battery",
         "resolution",
         "videoOutput",
-        "storage",
         "ram",
         "screenSize",
         "year",
         "connectivity",
       ];
 
-      consoleFields.forEach((field) => {
-        if (formData[field] && formData[field] !== "") {
-          baseFields[field] = formData[field];
+      consoleFields.forEach(
+        (field) => {
+          if (
+            formData[field] &&
+            formData[field] !== ""
+          ) {
+            baseFields[field] =
+              formData[field];
+          }
         }
-      });
+      );
+
+      if (formData.storage) {
+        baseFields.storage =
+          String(formData.storage).trim();
+      }
     }
 
     // --------------------------------------------------------
@@ -892,24 +1363,32 @@ const PostAd = () => {
 
     if (isSmartwatch) {
       if (formData.watchSize) {
-        baseFields.watchSize = formData.watchSize;
+        baseFields.watchSize =
+          formData.watchSize;
       }
 
-      if (formData.batteryHealth !== "") {
+      if (
+        formData.batteryHealth !== ""
+      ) {
         baseFields.batteryHealth =
-          String(formData.batteryHealth);
+          String(
+            formData.batteryHealth
+          );
       }
 
       if (formData.connectivity) {
-        baseFields.connectivity = formData.connectivity;
+        baseFields.connectivity =
+          formData.connectivity;
       }
 
       if (formData.storage) {
-        baseFields.storage = formData.storage;
+        baseFields.storage =
+          String(formData.storage).trim();
       }
 
       if (formData.year) {
-        baseFields.year = formData.year;
+        baseFields.year =
+          formData.year;
       }
     }
 
@@ -928,27 +1407,45 @@ const PostAd = () => {
         "usbPorts",
       ];
 
-      tvFields.forEach((field) => {
-        if (formData[field] && formData[field] !== "") {
-          baseFields[field] = formData[field];
+      tvFields.forEach(
+        (field) => {
+          if (
+            formData[field] &&
+            formData[field] !== ""
+          ) {
+            baseFields[field] =
+              formData[field];
+          }
         }
-      });
+      );
 
-      baseFields.smartTV = String(formData.smartTV);
-      baseFields.voiceControl = String(formData.voiceControl);
-      baseFields.wallMountable = String(formData.wallMountable);
+      baseFields.smartTV =
+        String(formData.smartTV);
+
+      baseFields.voiceControl =
+        String(formData.voiceControl);
+
+      baseFields.wallMountable =
+        String(formData.wallMountable);
 
       if (formData.screenSize) {
-        baseFields.screenSize = formData.screenSize;
+        baseFields.screenSize =
+          formData.screenSize;
       }
+
       if (formData.resolution) {
-        baseFields.resolution = formData.resolution;
+        baseFields.resolution =
+          formData.resolution;
       }
+
       if (formData.year) {
-        baseFields.year = formData.year;
+        baseFields.year =
+          formData.year;
       }
+
       if (formData.connectivity) {
-        baseFields.connectivity = formData.connectivity;
+        baseFields.connectivity =
+          formData.connectivity;
       }
     }
 
@@ -969,14 +1466,21 @@ const PostAd = () => {
         "interiorColor",
       ];
 
-      carFields.forEach((field) => {
-        if (formData[field] && formData[field] !== "") {
-          baseFields[field] = formData[field];
+      carFields.forEach(
+        (field) => {
+          if (
+            formData[field] &&
+            formData[field] !== ""
+          ) {
+            baseFields[field] =
+              formData[field];
+          }
         }
-      });
+      );
 
       if (formData.year) {
-        baseFields.year = formData.year;
+        baseFields.year =
+          formData.year;
       }
     }
 
@@ -991,7 +1495,10 @@ const PostAd = () => {
           value !== null &&
           value !== ""
         ) {
-          form.append(key, value);
+          form.append(
+            key,
+            value
+          );
         }
       }
     );
@@ -1000,11 +1507,16 @@ const PostAd = () => {
     // APPEND MEDIA
     // --------------------------------------------------------
 
-    mediaItems.forEach((item) => {
-      if (item?.file) {
-        form.append("files", item.file);
+    mediaItems.forEach(
+      (item) => {
+        if (item?.file) {
+          form.append(
+            "files",
+            item.file
+          );
+        }
       }
-    });
+    );
 
     return form;
   };
@@ -1037,9 +1549,11 @@ const PostAd = () => {
     // MEDIA
     // --------------------------------------------------------
 
-    const imageCount = mediaItems.filter(
-      (item) => item.type === "image"
-    ).length;
+    const imageCount =
+      mediaItems.filter(
+        (item) =>
+          item.type === "image"
+      ).length;
 
     if (imageCount === 0) {
       setError(
@@ -1055,7 +1569,9 @@ const PostAd = () => {
 
     if (isLaptop) {
       if (!formData.model.trim()) {
-        setError("Please select a laptop model.");
+        setError(
+          "Please select a laptop model."
+        );
         return;
       }
 
@@ -1067,14 +1583,19 @@ const PostAd = () => {
         "graphics",
       ];
 
-      const missing = requiredFields.filter(
-        (field) =>
-          !String(formData[field] || "").trim()
-      );
+      const missing =
+        requiredFields.filter(
+          (field) =>
+            !String(
+              formData[field] || ""
+            ).trim()
+        );
 
       if (missing.length > 0) {
         setError(
-          `Please fill in: ${missing.join(", ")}`
+          `Please fill in: ${missing.join(
+            ", "
+          )}`
         );
         return;
       }
@@ -1086,7 +1607,9 @@ const PostAd = () => {
 
     if (isTablet) {
       if (!formData.model.trim()) {
-        setError("Please select a tablet model.");
+        setError(
+          "Please select a tablet model."
+        );
         return;
       }
     }
@@ -1097,12 +1620,16 @@ const PostAd = () => {
 
     if (isAccessory) {
       if (!formData.accessoryType) {
-        setError("Please select an accessory type.");
+        setError(
+          "Please select an accessory type."
+        );
         return;
       }
 
       if (!formData.brand.trim()) {
-        setError("Please enter the accessory brand.");
+        setError(
+          "Please enter the accessory brand."
+        );
         return;
       }
     }
@@ -1113,7 +1640,9 @@ const PostAd = () => {
 
     if (isGameConsole) {
       if (!formData.model.trim()) {
-        setError("Please select a console model.");
+        setError(
+          "Please select a console model."
+        );
         return;
       }
     }
@@ -1124,7 +1653,9 @@ const PostAd = () => {
 
     if (isSmartwatch) {
       if (!formData.model.trim()) {
-        setError("Please select a smartwatch model.");
+        setError(
+          "Please select a smartwatch model."
+        );
         return;
       }
     }
@@ -1135,7 +1666,9 @@ const PostAd = () => {
 
     if (isTV) {
       if (!formData.model.trim()) {
-        setError("Please select a TV model.");
+        setError(
+          "Please select a TV model."
+        );
         return;
       }
     }
@@ -1146,7 +1679,9 @@ const PostAd = () => {
 
     if (isCar) {
       if (!formData.model.trim()) {
-        setError("Please select a car model.");
+        setError(
+          "Please select a car model."
+        );
         return;
       }
     }
@@ -1158,24 +1693,46 @@ const PostAd = () => {
     setIsSubmitting(true);
 
     try {
-      const form = buildProductFormData();
+      const form =
+        buildProductFormData();
 
-      console.log("📤 Posting product with category:", form.get("category"));
-
-      const data = await createProductWithFiles(
-        form,
-        token
+      console.log(
+        "📤 Posting product with category:",
+        form.get("category")
       );
 
-      console.log("✅ Product upload response:", data);
+      console.log(
+        "🎨 Selected colors:",
+        form.get("color")
+      );
+
+      console.log(
+        "💾 Selected storage:",
+        form.get("storage")
+      );
+
+      const data =
+        await createProductWithFiles(
+          form,
+          token
+        );
+
+      console.log(
+        "✅ Product upload response:",
+        data
+      );
 
       if (data?.product) {
         // Clean previews
-        mediaItems.forEach((item) => {
-          if (item.preview) {
-            URL.revokeObjectURL(item.preview);
+        mediaItems.forEach(
+          (item) => {
+            if (item.preview) {
+              URL.revokeObjectURL(
+                item.preview
+              );
+            }
           }
-        });
+        );
 
         navigate("/products");
         return;
@@ -1186,10 +1743,14 @@ const PostAd = () => {
           "Failed to post ad."
       );
     } catch (err) {
-      console.error("❌ Post ad error:", err);
+      console.error(
+        "❌ Post ad error:",
+        err
+      );
 
       setError(
-        err?.response?.data?.message ||
+        err?.response?.data
+          ?.message ||
           err?.message ||
           "Something went wrong. Please try again."
       );
@@ -1202,7 +1763,9 @@ const PostAd = () => {
   // AUTH SUBMIT
   // ==========================================================
 
-  const handleAuthSubmit = async (e) => {
+  const handleAuthSubmit = async (
+    e
+  ) => {
     e.preventDefault();
 
     setAuthError("");
@@ -1253,7 +1816,9 @@ const PostAd = () => {
   // AUTH MODE
   // ==========================================================
 
-  const switchAuthMode = (mode) => {
+  const switchAuthMode = (
+    mode
+  ) => {
     setAuthMode(mode);
     setAuthError("");
   };
@@ -1300,18 +1865,46 @@ const PostAd = () => {
               <select
                 name="category"
                 value={formData.category}
-                onChange={handleCategoryChange}
+                onChange={
+                  handleCategoryChange
+                }
                 required
               >
-                <option value="cars">🚗 Cars</option>
-                <option value="phones">📱 Phones</option>
-                <option value="laptops">💻 Laptops</option>
-                <option value="tablets">📲 Tablets</option>
-                <option value="accessories">🎧 Accessories</option>
-                <option value="gameConsoles">🎮 Game Consoles</option>
-                <option value="smartwatches">⌚ Smartwatches</option>
-                <option value="tvs">📺 TVs</option>
-                <option value="electronics">📺 Electronics</option>
+                <option value="cars">
+                  🚗 Cars
+                </option>
+
+                <option value="phones">
+                  📱 Phones
+                </option>
+
+                <option value="laptops">
+                  💻 Laptops
+                </option>
+
+                <option value="tablets">
+                  📲 Tablets
+                </option>
+
+                <option value="accessories">
+                  🎧 Accessories
+                </option>
+
+                <option value="gameConsoles">
+                  🎮 Game Consoles
+                </option>
+
+                <option value="smartwatches">
+                  ⌚ Smartwatches
+                </option>
+
+                <option value="tvs">
+                  📺 TVs
+                </option>
+
+                <option value="electronics">
+                  📺 Electronics
+                </option>
               </select>
             </div>
 
@@ -1325,7 +1918,9 @@ const PostAd = () => {
 
                 <select
                   name="accessoryType"
-                  value={formData.accessoryType}
+                  value={
+                    formData.accessoryType
+                  }
                   onChange={handleChange}
                   required
                 >
@@ -1440,11 +2035,16 @@ const PostAd = () => {
                     "Logitech",
                     "Steam Deck",
                     "Other",
-                  ].map((brand) => (
-                    <option key={brand} value={brand}>
-                      {brand}
-                    </option>
-                  ))}
+                  ].map(
+                    (brand) => (
+                      <option
+                        key={brand}
+                        value={brand}
+                      >
+                        {brand}
+                      </option>
+                    )
+                  )}
                 </select>
               </div>
             )}
@@ -1478,11 +2078,16 @@ const PostAd = () => {
                     "Suunto",
                     "Polar",
                     "Other",
-                  ].map((brand) => (
-                    <option key={brand} value={brand}>
-                      {brand}
-                    </option>
-                  ))}
+                  ].map(
+                    (brand) => (
+                      <option
+                        key={brand}
+                        value={brand}
+                      >
+                        {brand}
+                      </option>
+                    )
+                  )}
                 </select>
               </div>
             )}
@@ -1522,11 +2127,16 @@ const PostAd = () => {
                     "Roku",
                     "Vizio",
                     "Other",
-                  ].map((brand) => (
-                    <option key={brand} value={brand}>
-                      {brand}
-                    </option>
-                  ))}
+                  ].map(
+                    (brand) => (
+                      <option
+                        key={brand}
+                        value={brand}
+                      >
+                        {brand}
+                      </option>
+                    )
+                  )}
                 </select>
               </div>
             )}
@@ -1586,11 +2196,16 @@ const PostAd = () => {
                     "Isuzu",
                     "Hino",
                     "Other",
-                  ].map((brand) => (
-                    <option key={brand} value={brand}>
-                      {brand}
-                    </option>
-                  ))}
+                  ].map(
+                    (brand) => (
+                      <option
+                        key={brand}
+                        value={brand}
+                      >
+                        {brand}
+                      </option>
+                    )
+                  )}
                 </select>
               </div>
             )}
@@ -1634,7 +2249,7 @@ const PostAd = () => {
                     : isSmartwatch
                     ? "e.g. Apple Watch Series 9 GPS"
                     : isTV
-                    ? "e.g. Samsung 55\" Neo QLED 4K Smart TV"
+                    ? 'e.g. Samsung 55" Neo QLED 4K Smart TV'
                     : isCar
                     ? "e.g. 2022 Toyota Corolla LE"
                     : "e.g. iPhone 15 Pro Max 256GB"
@@ -1672,7 +2287,9 @@ const PostAd = () => {
 
               <select
                 value={selectedCountry}
-                onChange={handleCountryChange}
+                onChange={
+                  handleCountryChange
+                }
               >
                 {countries.map(
                   (country) => (
@@ -1688,7 +2305,9 @@ const PostAd = () => {
 
               <select
                 value={selectedRegion}
-                onChange={handleRegionChange}
+                onChange={
+                  handleRegionChange
+                }
               >
                 <option value="">
                   Select Region
@@ -1718,14 +2337,16 @@ const PostAd = () => {
                 {selectedRegion &&
                   citiesByRegion[
                     selectedRegion
-                  ]?.map((city) => (
-                    <option
-                      key={city}
-                      value={city}
-                    >
-                      {city}
-                    </option>
-                  ))}
+                  ]?.map(
+                    (city) => (
+                      <option
+                        key={city}
+                        value={city}
+                      >
+                        {city}
+                      </option>
+                    )
+                  )}
               </select>
 
               <span className="hint">
@@ -1746,7 +2367,9 @@ const PostAd = () => {
               <input
                 type="text"
                 name="sellerName"
-                value={formData.sellerName}
+                value={
+                  formData.sellerName
+                }
                 onChange={handleChange}
                 placeholder="Your name"
               />
@@ -1762,7 +2385,9 @@ const PostAd = () => {
               <input
                 type="tel"
                 name="sellerPhone"
-                value={formData.sellerPhone}
+                value={
+                  formData.sellerPhone
+                }
                 onChange={handleChange}
                 placeholder="054 123 4567"
                 required
@@ -1778,7 +2403,9 @@ const PostAd = () => {
 
               <textarea
                 name="description"
-                value={formData.description}
+                value={
+                  formData.description
+                }
                 onChange={handleChange}
                 rows="5"
                 maxLength={5000}
@@ -1798,7 +2425,11 @@ const PostAd = () => {
               />
 
               <span className="hint">
-                {formData.description.length}/5000
+                {
+                  formData.description
+                    .length
+                }
+                /5000
               </span>
             </div>
 
@@ -1813,7 +2444,9 @@ const PostAd = () => {
                 type="file"
                 multiple
                 accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
-                onChange={handleFileChange}
+                onChange={
+                  handleFileChange
+                }
               />
 
               <span className="hint">
@@ -1832,7 +2465,9 @@ const PostAd = () => {
               <input
                 type="file"
                 accept="video/mp4,video/quicktime,video/x-msvideo,video/webm"
-                onChange={handleVideoChange}
+                onChange={
+                  handleVideoChange
+                }
               />
 
               <span className="hint">
@@ -1846,7 +2481,10 @@ const PostAd = () => {
             {mediaItems.length > 0 && (
               <div className="media-grid">
                 {mediaItems.map(
-                  (item, index) => (
+                  (
+                    item,
+                    index
+                  ) => (
                     <div
                       key={`${item.file.name}-${index}`}
                       className="media-item"
@@ -1855,27 +2493,37 @@ const PostAd = () => {
                         type="button"
                         className="remove-btn"
                         onClick={() =>
-                          removeMedia(index)
+                          removeMedia(
+                            index
+                          )
                         }
                       >
                         ✕
                       </button>
 
-                      {item.type === "video" ? (
+                      {item.type ===
+                      "video" ? (
                         <video
-                          src={item.preview}
+                          src={
+                            item.preview
+                          }
                           muted
                           playsInline
                           controls
                         />
                       ) : (
                         <img
-                          src={item.preview}
-                          alt={`Preview ${index + 1}`}
+                          src={
+                            item.preview
+                          }
+                          alt={`Preview ${
+                            index + 1
+                          }`}
                         />
                       )}
 
-                      {item.type === "video" && (
+                      {item.type ===
+                        "video" && (
                         <span className="video-badge">
                           🎬
                         </span>
@@ -1891,7 +2539,9 @@ const PostAd = () => {
             <button
               type="button"
               className="btn-primary"
-              onClick={goToNextStep}
+              onClick={
+                goToNextStep
+              }
             >
               Next: Additional Details →
             </button>
@@ -1909,7 +2559,9 @@ const PostAd = () => {
             {isLaptop && (
               <LaptopForm
                 formData={formData}
-                handleChange={handleChange}
+                handleChange={
+                  handleChange
+                }
                 handleCheckboxChange={
                   handleCheckboxChange
                 }
@@ -1922,7 +2574,9 @@ const PostAd = () => {
             {isTablet && (
               <TabletForm
                 formData={formData}
-                handleChange={handleChange}
+                handleChange={
+                  handleChange
+                }
                 handleCheckboxChange={
                   handleCheckboxChange
                 }
@@ -1935,7 +2589,9 @@ const PostAd = () => {
             {isGameConsole && (
               <GameConsoleForm
                 formData={formData}
-                handleChange={handleChange}
+                handleChange={
+                  handleChange
+                }
                 handleCheckboxChange={
                   handleCheckboxChange
                 }
@@ -1948,7 +2604,9 @@ const PostAd = () => {
             {isSmartwatch && (
               <AppleWatchForm
                 formData={formData}
-                handleChange={handleChange}
+                handleChange={
+                  handleChange
+                }
                 handleCheckboxChange={
                   handleCheckboxChange
                 }
@@ -1961,7 +2619,9 @@ const PostAd = () => {
             {isTV && (
               <TVForm
                 formData={formData}
-                handleChange={handleChange}
+                handleChange={
+                  handleChange
+                }
                 handleCheckboxChange={
                   handleCheckboxChange
                 }
@@ -1974,7 +2634,9 @@ const PostAd = () => {
             {isCar && (
               <CarForm
                 formData={formData}
-                handleChange={handleChange}
+                handleChange={
+                  handleChange
+                }
                 handleCheckboxChange={
                   handleCheckboxChange
                 }
@@ -1987,15 +2649,17 @@ const PostAd = () => {
             {isPhone && (
               <>
                 {/* STORAGE */}
+
                 <div className="form-group">
                   <label>
                     Storage
                   </label>
 
                   <select
-                    name="storage"
-                    value={formData.storage}
-                    onChange={handleChange}
+                    value=""
+                    onChange={
+                      handleStorageChange
+                    }
                   >
                     <option value="">
                       Select storage
@@ -2033,18 +2697,109 @@ const PostAd = () => {
                       2TB
                     </option>
                   </select>
+
+                  {/* SELECTED STORAGE */}
+
+                  {selectedStorage.length >
+                    0 && (
+                    <div
+                      style={{
+                        display:
+                          "flex",
+                        flexWrap:
+                          "wrap",
+                        gap: "8px",
+                        marginTop:
+                          "10px",
+                      }}
+                    >
+                      {selectedStorage.map(
+                        (
+                          storage
+                        ) => (
+                          <span
+                            key={
+                              storage
+                            }
+                            style={{
+                              display:
+                                "inline-flex",
+                              alignItems:
+                                "center",
+                              gap: "7px",
+                              padding:
+                                "7px 10px",
+                              background:
+                                "#eff6ff",
+                              border:
+                                "1px solid #bfdbfe",
+                              borderRadius:
+                                "999px",
+                              color:
+                                "#1e40af",
+                              fontSize:
+                                "14px",
+                              fontWeight:
+                                "500",
+                            }}
+                          >
+                            {
+                              storage
+                            }
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                removeStorage(
+                                  storage
+                                )
+                              }
+                              aria-label={`Remove ${storage}`}
+                              style={{
+                                border:
+                                  "none",
+                                background:
+                                  "transparent",
+                                color:
+                                  "#1e40af",
+                                cursor:
+                                  "pointer",
+                                padding:
+                                  "0",
+                                fontSize:
+                                  "17px",
+                                lineHeight:
+                                  "1",
+                                fontWeight:
+                                  "700",
+                              }}
+                            >
+                              ×
+                            </button>
+                          </span>
+                        )
+                      )}
+                    </div>
+                  )}
+
+                  <span className="hint">
+                    Select all storage
+                    options that apply.
+                  </span>
                 </div>
 
                 {/* COLOR */}
+
                 <div className="form-group">
                   <label>
                     Color
                   </label>
 
                   <select
-                    name="color"
-                    value={formData.color}
-                    onChange={handleChange}
+                    value=""
+                    onChange={
+                      handleColorChange
+                    }
                   >
                     <option value="">
                       Select color
@@ -2061,9 +2816,99 @@ const PostAd = () => {
                       )
                     )}
                   </select>
+
+                  {/* SELECTED COLORS */}
+
+                  {selectedColors.length >
+                    0 && (
+                    <div
+                      style={{
+                        display:
+                          "flex",
+                        flexWrap:
+                          "wrap",
+                        gap: "8px",
+                        marginTop:
+                          "10px",
+                      }}
+                    >
+                      {selectedColors.map(
+                        (
+                          color
+                        ) => (
+                          <span
+                            key={
+                              color
+                            }
+                            style={{
+                              display:
+                                "inline-flex",
+                              alignItems:
+                                "center",
+                              gap: "7px",
+                              padding:
+                                "7px 10px",
+                              background:
+                                "#f8fafc",
+                              border:
+                                "1px solid #cbd5e1",
+                              borderRadius:
+                                "999px",
+                              color:
+                                "#334155",
+                              fontSize:
+                                "14px",
+                              fontWeight:
+                                "500",
+                            }}
+                          >
+                            {
+                              color
+                            }
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                removeColor(
+                                  color
+                                )
+                              }
+                              aria-label={`Remove ${color}`}
+                              style={{
+                                border:
+                                  "none",
+                                background:
+                                  "transparent",
+                                color:
+                                  "#475569",
+                                cursor:
+                                  "pointer",
+                                padding:
+                                  "0",
+                                fontSize:
+                                  "17px",
+                                lineHeight:
+                                  "1",
+                                fontWeight:
+                                  "700",
+                              }}
+                            >
+                              ×
+                            </button>
+                          </span>
+                        )
+                      )}
+                    </div>
+                  )}
+
+                  <span className="hint">
+                    Select all colors that
+                    apply to this item.
+                  </span>
                 </div>
 
                 {/* BATTERY HEALTH */}
+
                 <div className="form-group">
                   <label>
                     Battery Health (%)
@@ -2072,8 +2917,12 @@ const PostAd = () => {
                   <input
                     type="number"
                     name="batteryHealth"
-                    value={formData.batteryHealth}
-                    onChange={handleChange}
+                    value={
+                      formData.batteryHealth
+                    }
+                    onChange={
+                      handleChange
+                    }
                     placeholder="e.g. 85"
                     min="0"
                     max="100"
@@ -2081,6 +2930,7 @@ const PostAd = () => {
                 </div>
 
                 {/* SIM STATUS */}
+
                 <div className="form-group">
                   <label>
                     SIM Status
@@ -2088,8 +2938,12 @@ const PostAd = () => {
 
                   <select
                     name="simStatus"
-                    value={formData.simStatus}
-                    onChange={handleChange}
+                    value={
+                      formData.simStatus
+                    }
+                    onChange={
+                      handleChange
+                    }
                   >
                     <option value="">
                       Select SIM status
@@ -2118,6 +2972,7 @@ const PostAd = () => {
                 </div>
 
                 {/* FACE ID */}
+
                 <div className="form-group">
                   <label>
                     Face ID
@@ -2125,8 +2980,12 @@ const PostAd = () => {
 
                   <select
                     name="faceId"
-                    value={formData.faceId}
-                    onChange={handleChange}
+                    value={
+                      formData.faceId
+                    }
+                    onChange={
+                      handleChange
+                    }
                   >
                     <option value="">
                       Select
@@ -2154,17 +3013,24 @@ const PostAd = () => {
               <>
                 <div
                   style={{
-                    background: "#f8fafc",
-                    border: "1px solid #e2e8f0",
-                    borderRadius: "10px",
-                    padding: "16px",
-                    marginBottom: "20px",
+                    background:
+                      "#f8fafc",
+                    border:
+                      "1px solid #e2e8f0",
+                    borderRadius:
+                      "10px",
+                    padding:
+                      "16px",
+                    marginBottom:
+                      "20px",
                   }}
                 >
                   <h3
                     style={{
-                      margin: "0 0 6px",
-                      fontSize: "18px",
+                      margin:
+                        "0 0 6px",
+                      fontSize:
+                        "18px",
                     }}
                   >
                     🎧 Accessory Details
@@ -2173,8 +3039,10 @@ const PostAd = () => {
                   <p
                     style={{
                       margin: 0,
-                      color: "#64748b",
-                      fontSize: "13px",
+                      color:
+                        "#64748b",
+                      fontSize:
+                        "13px",
                     }}
                   >
                     Add information buyers need
@@ -2183,6 +3051,7 @@ const PostAd = () => {
                 </div>
 
                 {/* ACCESSORY TYPE */}
+
                 <div className="form-group">
                   <label>
                     Accessory Type *
@@ -2190,8 +3059,12 @@ const PostAd = () => {
 
                   <select
                     name="accessoryType"
-                    value={formData.accessoryType}
-                    onChange={handleChange}
+                    value={
+                      formData.accessoryType
+                    }
+                    onChange={
+                      handleChange
+                    }
                     required
                   >
                     <option value="">
@@ -2212,6 +3085,7 @@ const PostAd = () => {
                 </div>
 
                 {/* COMPATIBILITY */}
+
                 <div className="form-group">
                   <label>
                     Compatibility
@@ -2219,8 +3093,12 @@ const PostAd = () => {
 
                   <select
                     name="compatibility"
-                    value={formData.compatibility}
-                    onChange={handleChange}
+                    value={
+                      formData.compatibility
+                    }
+                    onChange={
+                      handleChange
+                    }
                   >
                     <option value="">
                       Select compatibility
@@ -2240,6 +3118,7 @@ const PostAd = () => {
                 </div>
 
                 {/* COMPATIBLE MODEL */}
+
                 <div className="form-group">
                   <label>
                     Compatible Model
@@ -2248,13 +3127,18 @@ const PostAd = () => {
                   <input
                     type="text"
                     name="model"
-                    value={formData.model}
-                    onChange={handleChange}
+                    value={
+                      formData.model
+                    }
+                    onChange={
+                      handleChange
+                    }
                     placeholder="e.g. iPhone 15 Pro"
                   />
                 </div>
 
                 {/* ACCESSORY COLOR */}
+
                 <div className="form-group">
                   <label>
                     Color
@@ -2263,13 +3147,18 @@ const PostAd = () => {
                   <input
                     type="text"
                     name="accessoryColor"
-                    value={formData.accessoryColor}
-                    onChange={handleChange}
+                    value={
+                      formData.accessoryColor
+                    }
+                    onChange={
+                      handleChange
+                    }
                     placeholder="e.g. Black"
                   />
                 </div>
 
                 {/* MATERIAL */}
+
                 <div className="form-group">
                   <label>
                     Material
@@ -2278,8 +3167,12 @@ const PostAd = () => {
                   <input
                     type="text"
                     name="accessoryMaterial"
-                    value={formData.accessoryMaterial}
-                    onChange={handleChange}
+                    value={
+                      formData.accessoryMaterial
+                    }
+                    onChange={
+                      handleChange
+                    }
                     placeholder="e.g. Silicone, Leather, Aluminum"
                   />
                 </div>
@@ -2305,8 +3198,12 @@ const PostAd = () => {
                     <input
                       type="text"
                       name="brand"
-                      value={formData.brand}
-                      onChange={handleChange}
+                      value={
+                        formData.brand
+                      }
+                      onChange={
+                        handleChange
+                      }
                       placeholder="Brand"
                     />
                   </div>
@@ -2319,8 +3216,12 @@ const PostAd = () => {
                     <input
                       type="text"
                       name="model"
-                      value={formData.model}
-                      onChange={handleChange}
+                      value={
+                        formData.model
+                      }
+                      onChange={
+                        handleChange
+                      }
                       placeholder="Model"
                     />
                   </div>
@@ -2333,8 +3234,12 @@ const PostAd = () => {
                     <input
                       type="text"
                       name="color"
-                      value={formData.color}
-                      onChange={handleChange}
+                      value={
+                        formData.color
+                      }
+                      onChange={
+                        handleChange
+                      }
                       placeholder="Color"
                     />
                   </div>
@@ -2350,16 +3255,28 @@ const PostAd = () => {
 
               <select
                 name="condition"
-                value={formData.condition}
-                onChange={handleChange}
+                value={
+                  formData.condition
+                }
+                onChange={
+                  handleChange
+                }
               >
                 {CONDITIONS.map(
-                  (condition) => (
+                  (
+                    condition
+                  ) => (
                     <option
-                      key={condition}
-                      value={condition}
+                      key={
+                        condition
+                      }
+                      value={
+                        condition
+                      }
                     >
-                      {condition}
+                      {
+                        condition
+                      }
                     </option>
                   )
                 )}
@@ -2375,8 +3292,12 @@ const PostAd = () => {
 
               <select
                 name="warranty"
-                value={formData.warranty}
-                onChange={handleChange}
+                value={
+                  formData.warranty
+                }
+                onChange={
+                  handleChange
+                }
               >
                 <option value="">
                   No warranty
@@ -2423,8 +3344,12 @@ const PostAd = () => {
                 <input
                   type="checkbox"
                   name="negotiation"
-                  checked={formData.negotiation}
-                  onChange={handleCheckboxChange}
+                  checked={
+                    formData.negotiation
+                  }
+                  onChange={
+                    handleCheckboxChange
+                  }
                 />
 
                 <span>
@@ -2444,8 +3369,12 @@ const PostAd = () => {
                 <input
                   type="checkbox"
                   name="swapAccepted"
-                  checked={formData.swapAccepted}
-                  onChange={handleCheckboxChange}
+                  checked={
+                    formData.swapAccepted
+                  }
+                  onChange={
+                    handleCheckboxChange
+                  }
                 />
 
                 <span>
@@ -2460,8 +3389,12 @@ const PostAd = () => {
               <button
                 type="button"
                 className="btn-outline"
-                onClick={goToPreviousStep}
-                disabled={isSubmitting}
+                onClick={
+                  goToPreviousStep
+                }
+                disabled={
+                  isSubmitting
+                }
               >
                 ← Back
               </button>
@@ -2469,7 +3402,9 @@ const PostAd = () => {
               <button
                 type="submit"
                 className="btn-primary"
-                disabled={isSubmitting}
+                disabled={
+                  isSubmitting
+                }
                 style={{
                   flex: 2,
                 }}
@@ -2490,7 +3425,9 @@ const PostAd = () => {
       {showAuthModal && (
         <div
           className="auth-overlay"
-          onClick={closeAuthModal}
+          onClick={
+            closeAuthModal
+          }
         >
           <div
             className="auth-modal"
@@ -2501,7 +3438,9 @@ const PostAd = () => {
             <button
               type="button"
               className="close-btn"
-              onClick={closeAuthModal}
+              onClick={
+                closeAuthModal
+              }
             >
               &times;
             </button>
@@ -2525,10 +3464,14 @@ const PostAd = () => {
             )}
 
             <form
-              onSubmit={handleAuthSubmit}
+              onSubmit={
+                handleAuthSubmit
+              }
             >
               {/* REGISTER NAME */}
-              {authMode === "register" && (
+
+              {authMode ===
+                "register" && (
                 <div className="form-group">
                   <label>
                     Full Name
@@ -2536,10 +3479,13 @@ const PostAd = () => {
 
                   <input
                     type="text"
-                    value={authName}
+                    value={
+                      authName
+                    }
                     onChange={(e) =>
                       setAuthName(
-                        e.target.value
+                        e.target
+                          .value
                       )
                     }
                     placeholder="John Doe"
@@ -2549,6 +3495,7 @@ const PostAd = () => {
               )}
 
               {/* EMAIL */}
+
               <div className="form-group">
                 <label>
                   Email
@@ -2556,10 +3503,13 @@ const PostAd = () => {
 
                 <input
                   type="email"
-                  value={authEmail}
+                  value={
+                    authEmail
+                  }
                   onChange={(e) =>
                     setAuthEmail(
-                      e.target.value
+                      e.target
+                        .value
                     )
                   }
                   placeholder="your@email.com"
@@ -2568,6 +3518,7 @@ const PostAd = () => {
               </div>
 
               {/* PASSWORD */}
+
               <div className="form-group">
                 <label>
                   Password
@@ -2575,14 +3526,18 @@ const PostAd = () => {
 
                 <input
                   type="password"
-                  value={authPassword}
+                  value={
+                    authPassword
+                  }
                   onChange={(e) =>
                     setAuthPassword(
-                      e.target.value
+                      e.target
+                        .value
                     )
                   }
                   placeholder={
-                    authMode === "login"
+                    authMode ===
+                    "login"
                       ? "Enter your password"
                       : "Min 6 characters"
                   }
@@ -2592,7 +3547,9 @@ const PostAd = () => {
               </div>
 
               {/* REGISTER PHONE */}
-              {authMode === "register" && (
+
+              {authMode ===
+                "register" && (
                 <div className="form-group">
                   <label>
                     Phone (optional)
@@ -2600,10 +3557,13 @@ const PostAd = () => {
 
                   <input
                     type="tel"
-                    value={authPhone}
+                    value={
+                      authPhone
+                    }
                     onChange={(e) =>
                       setAuthPhone(
-                        e.target.value
+                        e.target
+                          .value
                       )
                     }
                     placeholder="054 123 4567"
@@ -2612,28 +3572,36 @@ const PostAd = () => {
               )}
 
               {/* SUBMIT */}
+
               <button
                 type="submit"
                 className={
-                  authMode === "login"
+                  authMode ===
+                  "login"
                     ? "btn-primary"
                     : "btn-secondary"
                 }
-                disabled={authLoading}
+                disabled={
+                  authLoading
+                }
               >
                 {authLoading
-                  ? authMode === "login"
+                  ? authMode ===
+                    "login"
                     ? "Logging in..."
                     : "Creating account..."
-                  : authMode === "login"
+                  : authMode ===
+                    "login"
                   ? "Log In →"
                   : "Create Account →"}
               </button>
             </form>
 
             {/* AUTH SWITCH */}
+
             <div className="auth-footer">
-              {authMode === "login" ? (
+              {authMode ===
+              "login" ? (
                 <>
                   No account?{" "}
                   <span
