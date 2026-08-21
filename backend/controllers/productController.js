@@ -35,16 +35,35 @@ const VALID_STATUSES = [
   "sold",
 ];
 
+const VALID_CONDITIONS = [
+  "Brand New",
+  "Like New",
+  "Excellent",
+  "Good",
+  "Fair",
+  "Poor",
+];
+
 // ============================================================
 // CATEGORY NORMALIZATION
 // ============================================================
 
 const normalizeCategory = (value) => {
-  if (
-    value === undefined ||
-    value === null
-  ) {
+  if (value === undefined || value === null) {
     return "Other";
+  }
+
+  // Handle arrays/objects safely
+  if (Array.isArray(value)) {
+    value = value[0];
+  }
+
+  if (typeof value === "object") {
+    value =
+      value.value ||
+      value.name ||
+      value.label ||
+      "";
   }
 
   const raw = String(value)
@@ -57,96 +76,331 @@ const normalizeCategory = (value) => {
 
   const normalized = raw
     .replace(/[_-]+/g, " ")
-    .replace(/\s+/g, " ");
+    .replace(/[&/]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  // ----------------------------------------------------------
+  // CATEGORY ALIASES
+  // ----------------------------------------------------------
 
   const categoryMap = {
-    // Cars
+    // ========================================================
+    // CARS
+    // ========================================================
+
     car: "Cars",
     cars: "Cars",
     automobile: "Cars",
     automobiles: "Cars",
+    auto: "Cars",
+    autos: "Cars",
+    vehicle: "Cars",
+    vehicles: "Cars",
+    motor: "Cars",
+    motors: "Cars",
+    "motor vehicle": "Cars",
+    "motor vehicles": "Cars",
 
-    // Phones
+    // ========================================================
+    // PHONES
+    // ========================================================
+
     phone: "Phones",
     phones: "Phones",
     mobile: "Phones",
     mobiles: "Phones",
     smartphone: "Phones",
     smartphones: "Phones",
+    "mobile phone": "Phones",
+    "mobile phones": "Phones",
+    "smart phone": "Phones",
+    "smart phones": "Phones",
+    iphone: "Phones",
+    iphones: "Phones",
+    samsung: "Phones",
+    android: "Phones",
+    "cell phone": "Phones",
+    "cell phones": "Phones",
 
-    // Laptops
+    // ========================================================
+    // LAPTOPS
+    // ========================================================
+
     laptop: "Laptops",
     laptops: "Laptops",
     notebook: "Laptops",
     notebooks: "Laptops",
+    computer: "Laptops",
+    computers: "Laptops",
+    "personal computer": "Laptops",
+    pc: "Laptops",
+    macbook: "Laptops",
+    macbooks: "Laptops",
 
-    // Tablets
+    // ========================================================
+    // TABLETS
+    // ========================================================
+
     tablet: "Tablets",
     tablets: "Tablets",
     ipad: "Tablets",
     ipads: "Tablets",
+    "tablet computer": "Tablets",
+    "tablet computers": "Tablets",
 
-    // Accessories
+    // ========================================================
+    // ACCESSORIES
+    // ========================================================
+
     accessory: "Accessories",
     accessories: "Accessories",
+    "phone accessory": "Accessories",
+    "phone accessories": "Accessories",
+    "computer accessory": "Accessories",
+    "computer accessories": "Accessories",
+    charger: "Accessories",
+    chargers: "Accessories",
+    cable: "Accessories",
+    cables: "Accessories",
+    earphones: "Accessories",
+    headphones: "Accessories",
+    earbuds: "Accessories",
 
-    // Real estate
+    // ========================================================
+    // REAL ESTATE
+    // ========================================================
+
     "real estate": "Real Estate",
+    realestate: "Real Estate",
     property: "Real Estate",
     properties: "Real Estate",
+    house: "Real Estate",
+    houses: "Real Estate",
+    land: "Real Estate",
+    lands: "Real Estate",
+    apartment: "Real Estate",
+    apartments: "Real Estate",
 
-    // Jobs
+    // ========================================================
+    // JOBS
+    // ========================================================
+
     job: "Jobs",
     jobs: "Jobs",
     employment: "Jobs",
+    vacancy: "Jobs",
+    vacancies: "Jobs",
+    career: "Jobs",
+    careers: "Jobs",
 
-    // Electronics
+    // ========================================================
+    // ELECTRONICS
+    // ========================================================
+
     electronic: "Electronics",
     electronics: "Electronics",
+    gadget: "Electronics",
+    gadgets: "Electronics",
+    device: "Electronics",
+    devices: "Electronics",
 
-    // Fashion
+    // ========================================================
+    // FASHION
+    // ========================================================
+
     fashion: "Fashion",
     clothing: "Fashion",
     clothes: "Fashion",
+    shoes: "Fashion",
+    shoe: "Fashion",
+    bags: "Fashion",
+    bag: "Fashion",
 
-    // Home
+    // ========================================================
+    // HOME
+    // ========================================================
+
     home: "Home",
     homes: "Home",
+    furniture: "Home",
+    household: "Home",
+    "home appliances": "Home",
+    appliance: "Home",
+    appliances: "Home",
 
-    // TVs
+    // ========================================================
+    // TV
+    // ========================================================
+
     tv: "TVs",
     tvs: "TVs",
     television: "TVs",
     televisions: "TVs",
+    "smart tv": "TVs",
+    "smart tvs": "TVs",
+    "smart television": "TVs",
+    "smart televisions": "TVs",
 
-    // Game consoles
+    // ========================================================
+    // GAME CONSOLES
+    // ========================================================
+
     console: "Game Consoles",
     consoles: "Game Consoles",
+    gaming: "Game Consoles",
     "game console": "Game Consoles",
     "game consoles": "Game Consoles",
-    gaming: "Game Consoles",
+    "gaming console": "Game Consoles",
+    "gaming consoles": "Game Consoles",
+    playstation: "Game Consoles",
+    playstations: "Game Consoles",
+    xbox: "Game Consoles",
+    "xbox console": "Game Consoles",
+    nintendo: "Game Consoles",
 
-    // Smartwatches
+    // ========================================================
+    // SMARTWATCHES
+    // ========================================================
+
     watch: "Smartwatches",
     watches: "Smartwatches",
     smartwatch: "Smartwatches",
     smartwatches: "Smartwatches",
     "smart watch": "Smartwatches",
     "smart watches": "Smartwatches",
+    "smart wristwatch": "Smartwatches",
+    "smart wristwatches": "Smartwatches",
+    applewatch: "Smartwatches",
+    "apple watch": "Smartwatches",
 
-    // Other
+    // ========================================================
+    // OTHER
+    // ========================================================
+
     other: "Other",
   };
 
-  return (
-    categoryMap[normalized] ||
+  // Direct alias match
+  if (categoryMap[normalized]) {
+    return categoryMap[normalized];
+  }
+
+  // Canonical category match
+  const canonicalCategory =
     VALID_CATEGORIES.find(
       (category) =>
-        category.toLowerCase() ===
-        normalized
-    ) ||
-    "Other"
-  );
+        category.toLowerCase() === normalized
+    );
+
+  if (canonicalCategory) {
+    return canonicalCategory;
+  }
+
+  // ----------------------------------------------------------
+  // FUZZY CATEGORY MATCHING
+  // ----------------------------------------------------------
+
+  if (
+    normalized.includes("phone") ||
+    normalized.includes("mobile") ||
+    normalized.includes("smartphone")
+  ) {
+    return "Phones";
+  }
+
+  if (
+    normalized.includes("laptop") ||
+    normalized.includes("notebook") ||
+    normalized === "computer" ||
+    normalized === "pc"
+  ) {
+    return "Laptops";
+  }
+
+  if (
+    normalized.includes("tablet") ||
+    normalized.includes("ipad")
+  ) {
+    return "Tablets";
+  }
+
+  if (
+    normalized.includes("car") ||
+    normalized.includes("automobile") ||
+    normalized.includes("vehicle")
+  ) {
+    return "Cars";
+  }
+
+  if (
+    normalized.includes("accessor")
+  ) {
+    return "Accessories";
+  }
+
+  if (
+    normalized.includes("real estate") ||
+    normalized.includes("property") ||
+    normalized.includes("house") ||
+    normalized.includes("land")
+  ) {
+    return "Real Estate";
+  }
+
+  if (
+    normalized.includes("job") ||
+    normalized.includes("employment")
+  ) {
+    return "Jobs";
+  }
+
+  if (
+    normalized.includes("fashion") ||
+    normalized.includes("clothing")
+  ) {
+    return "Fashion";
+  }
+
+  if (
+    normalized.includes("television") ||
+    normalized === "tv" ||
+    normalized === "tvs"
+  ) {
+    return "TVs";
+  }
+
+  if (
+    normalized.includes("console") ||
+    normalized.includes("playstation") ||
+    normalized.includes("xbox") ||
+    normalized.includes("nintendo")
+  ) {
+    return "Game Consoles";
+  }
+
+  if (
+    normalized.includes("watch") ||
+    normalized.includes("smartwatch")
+  ) {
+    return "Smartwatches";
+  }
+
+  if (
+    normalized.includes("electronic") ||
+    normalized.includes("gadget")
+  ) {
+    return "Electronics";
+  }
+
+  if (
+    normalized.includes("home") ||
+    normalized.includes("furniture")
+  ) {
+    return "Home";
+  }
+
+  return "Other";
 };
 
 // ============================================================
@@ -166,17 +420,39 @@ const normalizeStatus = (value) => {
     .trim()
     .toLowerCase();
 
-  if (
-    VALID_STATUSES.includes(status)
-  ) {
-    return status;
-  }
-
-  return "active";
+  return VALID_STATUSES.includes(status)
+    ? status
+    : "active";
 };
 
 // ============================================================
-// HELPERS
+// CONDITION NORMALIZATION
+// ============================================================
+
+const normalizeCondition = (value) => {
+  if (
+    value === undefined ||
+    value === null ||
+    value === ""
+  ) {
+    return "Good";
+  }
+
+  const normalized = String(value)
+    .trim()
+    .toLowerCase();
+
+  const match = VALID_CONDITIONS.find(
+    (condition) =>
+      condition.toLowerCase() ===
+      normalized
+  );
+
+  return match || "Good";
+};
+
+// ============================================================
+// BOOLEAN HELPER
 // ============================================================
 
 const toBoolean = (
@@ -195,14 +471,43 @@ const toBoolean = (
     return value;
   }
 
+  if (typeof value === "number") {
+    return value === 1;
+  }
+
   if (typeof value === "string") {
-    return (
-      value.toLowerCase() === "true"
-    );
+    const normalized =
+      value.trim().toLowerCase();
+
+    if (
+      [
+        "true",
+        "1",
+        "yes",
+        "on",
+      ].includes(normalized)
+    ) {
+      return true;
+    }
+
+    if (
+      [
+        "false",
+        "0",
+        "no",
+        "off",
+      ].includes(normalized)
+    ) {
+      return false;
+    }
   }
 
   return Boolean(value);
 };
+
+// ============================================================
+// NUMBER HELPER
+// ============================================================
 
 const toNumberOrNull = (value) => {
   if (
@@ -213,12 +518,24 @@ const toNumberOrNull = (value) => {
     return null;
   }
 
+  if (
+    typeof value === "string"
+  ) {
+    value = value
+      .replace(/,/g, "")
+      .trim();
+  }
+
   const number = Number(value);
 
   return Number.isFinite(number)
     ? number
     : null;
 };
+
+// ============================================================
+// STRING HELPER
+// ============================================================
 
 const cleanString = (
   value,
@@ -231,10 +548,26 @@ const cleanString = (
     return defaultValue;
   }
 
-  return typeof value === "string"
-    ? value.trim()
-    : String(value).trim();
+  if (Array.isArray(value)) {
+    value = value[0];
+  }
+
+  if (
+    typeof value === "object"
+  ) {
+    value =
+      value.value ||
+      value.name ||
+      value.label ||
+      "";
+  }
+
+  return String(value).trim();
 };
+
+// ============================================================
+// USER HELPERS
+// ============================================================
 
 const getUserId = (req) => {
   return (
@@ -250,13 +583,24 @@ const getUserRole = (req) => {
 };
 
 // ============================================================
+// ESCAPE REGEX
+// ============================================================
+
+const escapeRegex = (value) => {
+  return String(value).replace(
+    /[.*+?^${}()|[\]\\]/g,
+    "\\$&"
+  );
+};
+
+// ============================================================
 // CLOUDINARY UPLOAD
 // ============================================================
 
 const uploadToCloudinary = (
   buffer,
   resourceType = "image",
-  folder = "sell-platform/products"
+  folder = "buyukused/products"
 ) => {
   return new Promise(
     (resolve, reject) => {
@@ -308,7 +652,8 @@ const deleteFromCloudinary = async (
     }
 
     let publicId = fileUrl.substring(
-      uploadIndex + "/upload/".length
+      uploadIndex +
+        "/upload/".length
     );
 
     publicId = publicId.replace(
@@ -324,7 +669,8 @@ const deleteFromCloudinary = async (
     await cloudinary.uploader.destroy(
       publicId,
       {
-        resource_type: resourceType,
+        resource_type:
+          resourceType,
       }
     );
   } catch (error) {
@@ -347,6 +693,7 @@ const uploadProductFiles = async (
 
   if (
     !files ||
+    !Array.isArray(files) ||
     files.length === 0
   ) {
     return {
@@ -363,40 +710,49 @@ const uploadProductFiles = async (
       continue;
     }
 
-    if (
-      file.mimetype &&
-      file.mimetype.startsWith(
-        "image/"
-      )
-    ) {
-      const result =
-        await uploadToCloudinary(
-          file.buffer,
-          "image"
-        );
+    try {
+      if (
+        file.mimetype &&
+        file.mimetype.startsWith(
+          "image/"
+        )
+      ) {
+        const result =
+          await uploadToCloudinary(
+            file.buffer,
+            "image"
+          );
 
-      if (result?.secure_url) {
-        imageUrls.push(
-          result.secure_url
-        );
-      }
-    } else if (
-      file.mimetype &&
-      file.mimetype.startsWith(
-        "video/"
-      )
-    ) {
-      const result =
-        await uploadToCloudinary(
-          file.buffer,
-          "video"
-        );
+        if (result?.secure_url) {
+          imageUrls.push(
+            result.secure_url
+          );
+        }
+      } else if (
+        file.mimetype &&
+        file.mimetype.startsWith(
+          "video/"
+        )
+      ) {
+        const result =
+          await uploadToCloudinary(
+            file.buffer,
+            "video"
+          );
 
-      if (result?.secure_url) {
-        videoUrls.push(
-          result.secure_url
-        );
+        if (result?.secure_url) {
+          videoUrls.push(
+            result.secure_url
+          );
+        }
       }
+    } catch (uploadError) {
+      console.error(
+        "❌ File upload error:",
+        uploadError.message
+      );
+
+      throw uploadError;
     }
   }
 
@@ -414,12 +770,31 @@ const buildProductData = (
   body,
   req
 ) => {
+  const rawCategory =
+    body?.category;
+
+  const normalizedCategory =
+    normalizeCategory(
+      rawCategory
+    );
+
+  console.log(
+    "📦 Category conversion:",
+    {
+      received: rawCategory,
+      normalized:
+        normalizedCategory,
+    }
+  );
+
   return {
     // --------------------------------------------------------
     // BASIC
     // --------------------------------------------------------
 
-    title: cleanString(body.title),
+    title: cleanString(
+      body.title
+    ),
 
     price: toNumberOrNull(
       body.price
@@ -429,11 +804,8 @@ const buildProductData = (
       body.oldPrice
     ),
 
-    // IMPORTANT:
-    // Every category is normalized here.
-    category: normalizeCategory(
-      body.category
-    ),
+    category:
+      normalizedCategory,
 
     location:
       cleanString(
@@ -463,50 +835,64 @@ const buildProductData = (
     sellerPhone:
       cleanString(
         body.sellerPhone
+      ) ||
+      cleanString(
+        req.user?.phone
       ),
 
     // --------------------------------------------------------
     // GENERAL
     // --------------------------------------------------------
 
-    brand:
-      cleanString(body.brand),
+    brand: cleanString(
+      body.brand
+    ),
 
-    model:
-      cleanString(body.model),
+    model: cleanString(
+      body.model
+    ),
 
-    color:
-      cleanString(body.color),
+    color: cleanString(
+      body.color
+    ),
 
     condition:
-      cleanString(
+      normalizeCondition(
         body.condition
-      ) || "Good",
+      ),
 
-    warranty:
-      cleanString(body.warranty),
+    warranty: cleanString(
+      body.warranty
+    ),
 
     // --------------------------------------------------------
     // COMPUTER / TABLET / WATCH
     // --------------------------------------------------------
 
-    storage:
-      cleanString(body.storage),
+    storage: cleanString(
+      body.storage
+    ),
 
-    ram:
-      cleanString(body.ram),
+    ram: cleanString(
+      body.ram
+    ),
 
-    processor:
-      cleanString(body.processor),
+    processor: cleanString(
+      body.processor
+    ),
 
-    graphics:
-      cleanString(body.graphics),
+    graphics: cleanString(
+      body.graphics
+    ),
 
     screenSize:
-      cleanString(body.screenSize),
+      cleanString(
+        body.screenSize
+      ),
 
-    year:
-      cleanString(body.year),
+    year: cleanString(
+      body.year
+    ),
 
     connectivity:
       cleanString(
@@ -522,27 +908,32 @@ const buildProductData = (
         body.videoOutput
       ),
 
-    region:
-      cleanString(body.region),
+    region: cleanString(
+      body.region
+    ),
 
     consoleType:
       cleanString(
         body.consoleType
       ),
 
-    edition:
-      cleanString(body.edition),
+    edition: cleanString(
+      body.edition
+    ),
 
     discDrive:
-      cleanString(body.discDrive),
+      cleanString(
+        body.discDrive
+      ),
 
     controllersIncluded:
       cleanString(
         body.controllersIncluded
       ),
 
-    battery:
-      cleanString(body.battery),
+    battery: cleanString(
+      body.battery
+    ),
 
     resolution:
       cleanString(
@@ -554,14 +945,17 @@ const buildProductData = (
     // --------------------------------------------------------
 
     watchSize:
-      cleanString(body.watchSize),
+      cleanString(
+        body.watchSize
+      ),
 
     // --------------------------------------------------------
     // TV
     // --------------------------------------------------------
 
-    tvType:
-      cleanString(body.tvType),
+    tvType: cleanString(
+      body.tvType
+    ),
 
     displayTechnology:
       cleanString(
@@ -578,8 +972,9 @@ const buildProductData = (
         body.operatingSystem
       ),
 
-    hdr:
-      cleanString(body.hdr),
+    hdr: cleanString(
+      body.hdr
+    ),
 
     hdmiPorts:
       cleanString(
@@ -591,8 +986,9 @@ const buildProductData = (
         body.usbPorts
       ),
 
-    smartTV:
-      toBoolean(body.smartTV),
+    smartTV: toBoolean(
+      body.smartTV
+    ),
 
     voiceControl:
       toBoolean(
@@ -614,10 +1010,14 @@ const buildProductData = (
       ),
 
     bodyType:
-      cleanString(body.bodyType),
+      cleanString(
+        body.bodyType
+      ),
 
     fuelType:
-      cleanString(body.fuelType),
+      cleanString(
+        body.fuelType
+      ),
 
     transmission:
       cleanString(
@@ -669,7 +1069,9 @@ const buildProductData = (
       ),
 
     material:
-      cleanString(body.material),
+      cleanString(
+        body.material
+      ),
 
     cableType:
       cleanString(
@@ -696,11 +1098,13 @@ const buildProductData = (
         body.batteryCapacity
       ),
 
-    wireless:
-      toBoolean(body.wireless),
+    wireless: toBoolean(
+      body.wireless
+    ),
 
-    original:
-      toBoolean(body.original),
+    original: toBoolean(
+      body.original
+    ),
 
     // --------------------------------------------------------
     // PHONE
@@ -711,8 +1115,9 @@ const buildProductData = (
         body.batteryHealth
       ),
 
-    faceId:
-      cleanString(body.faceId),
+    faceId: cleanString(
+      body.faceId
+    ),
 
     simStatus:
       cleanString(
@@ -745,7 +1150,7 @@ const buildProductData = (
 };
 
 // ============================================================
-// VALIDATE PRODUCT
+// VALIDATE PRODUCT DATA
 // ============================================================
 
 const validateProductData = (
@@ -775,6 +1180,14 @@ const validateProductData = (
   }
 
   if (
+    !data.sellerId
+  ) {
+    errors.push(
+      "Seller authentication is required"
+    );
+  }
+
+  if (
     !data.sellerPhone ||
     !data.sellerPhone.trim()
   ) {
@@ -789,7 +1202,7 @@ const validateProductData = (
     )
   ) {
     errors.push(
-      "Invalid product category"
+      `Invalid product category: ${data.category}`
     );
   }
 
@@ -799,7 +1212,17 @@ const validateProductData = (
     )
   ) {
     errors.push(
-      "Invalid product status"
+      `Invalid product status: ${data.status}`
+    );
+  }
+
+  if (
+    !VALID_CONDITIONS.includes(
+      data.condition
+    )
+  ) {
+    errors.push(
+      `Invalid product condition: ${data.condition}`
     );
   }
 
@@ -851,18 +1274,15 @@ exports.getProducts =
 
       if (status) {
         const normalizedStatus =
-          normalizeStatus(status);
+          normalizeStatus(
+            status
+          );
 
-        if (
-          VALID_STATUSES.includes(
-            normalizedStatus
-          )
-        ) {
-          query.status =
-            normalizedStatus;
-        }
+        query.status =
+          normalizedStatus;
       } else {
-        query.status = "active";
+        query.status =
+          "active";
       }
 
       // ------------------------------------------------------
@@ -875,17 +1295,8 @@ exports.getProducts =
             category
           );
 
-        if (
-          normalizedCategory !==
-          "Other" ||
-          String(category)
-            .trim()
-            .toLowerCase() ===
-            "other"
-        ) {
-          query.category =
-            normalizedCategory;
-        }
+        query.category =
+          normalizedCategory;
       }
 
       // ------------------------------------------------------
@@ -894,12 +1305,10 @@ exports.getProducts =
 
       if (location) {
         query.location = {
-          $regex: String(
-            location
-          ).replace(
-            /[.*+?^${}()|[\]\\]/g,
-            "\\$&"
-          ),
+          $regex:
+            escapeRegex(
+              location
+            ),
           $options: "i",
         };
       }
@@ -910,7 +1319,9 @@ exports.getProducts =
 
       if (condition) {
         query.condition =
-          condition;
+          normalizeCondition(
+            condition
+          );
       }
 
       // ------------------------------------------------------
@@ -919,12 +1330,10 @@ exports.getProducts =
 
       if (brand) {
         query.brand = {
-          $regex: String(
-            brand
-          ).replace(
-            /[.*+?^${}()|[\]\\]/g,
-            "\\$&"
-          ),
+          $regex:
+            escapeRegex(
+              brand
+            ),
           $options: "i",
         };
       }
@@ -935,12 +1344,10 @@ exports.getProducts =
 
       if (model) {
         query.model = {
-          $regex: String(
-            model
-          ).replace(
-            /[.*+?^${}()|[\]\\]/g,
-            "\\$&"
-          ),
+          $regex:
+            escapeRegex(
+              model
+            ),
           $options: "i",
         };
       }
@@ -991,12 +1398,9 @@ exports.getProducts =
 
       if (search) {
         const safeSearch =
-          String(search)
-            .trim()
-            .replace(
-              /[.*+?^${}()|[\]\\]/g,
-              "\\$&"
-            );
+          escapeRegex(
+            String(search).trim()
+          );
 
         if (safeSearch) {
           query.$or = [
@@ -1141,6 +1545,18 @@ exports.getProductById =
         });
       }
 
+      if (
+        !mongoose.Types.ObjectId.isValid(
+          id
+        )
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Invalid product ID",
+        });
+      }
+
       const product =
         await Product.findById(
           id
@@ -1205,6 +1621,11 @@ exports.createProduct =
       );
 
       console.log(
+        "👤 User:",
+        req.user
+      );
+
+      console.log(
         "📦 Raw category:",
         req.body?.category
       );
@@ -1212,6 +1633,11 @@ exports.createProduct =
       console.log(
         "📦 Raw title:",
         req.body?.title
+      );
+
+      console.log(
+        "💰 Raw price:",
+        req.body?.price
       );
 
       console.log(
@@ -1239,7 +1665,7 @@ exports.createProduct =
 
       const productData =
         buildProductData(
-          req.body,
+          req.body || {},
           req
         );
 
@@ -1247,12 +1673,17 @@ exports.createProduct =
         userId;
 
       // ------------------------------------------------------
-      // SHOW NORMALIZED CATEGORY
+      // LOG NORMALIZED DATA
       // ------------------------------------------------------
 
       console.log(
         "📂 Normalized category:",
         productData.category
+      );
+
+      console.log(
+        "📞 Seller phone:",
+        productData.sellerPhone
       );
 
       // ------------------------------------------------------
@@ -1308,7 +1739,7 @@ exports.createProduct =
         imageUrls[0] || "";
 
       // ------------------------------------------------------
-      // CREATE
+      // CREATE PRODUCT
       // ------------------------------------------------------
 
       const product =
@@ -1317,13 +1748,26 @@ exports.createProduct =
         );
 
       console.log(
-        "✅ Product created:",
+        "========================================"
+      );
+
+      console.log(
+        "✅ PRODUCT CREATED"
+      );
+
+      console.log(
+        "🆔 ID:",
         product._id.toString()
       );
 
       console.log(
         "📂 Category:",
         product.category
+      );
+
+      console.log(
+        "🏷️ Title:",
+        product.title
       );
 
       console.log(
@@ -1334,6 +1778,10 @@ exports.createProduct =
       console.log(
         "🎥 Videos:",
         videoUrls.length
+      );
+
+      console.log(
+        "========================================"
       );
 
       return res.status(201).json({
@@ -1399,6 +1847,18 @@ exports.updateProduct =
           success: false,
           message:
             "Product ID is required",
+        });
+      }
+
+      if (
+        !mongoose.Types.ObjectId.isValid(
+          id
+        )
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Invalid product ID",
         });
       }
 
@@ -1595,6 +2055,18 @@ exports.updateProduct =
           continue;
         }
 
+        // CONDITION
+        if (
+          field === "condition"
+        ) {
+          product.condition =
+            normalizeCondition(
+              value
+            );
+
+          continue;
+        }
+
         // BOOLEAN
         if (
           booleanFields.includes(
@@ -1623,18 +2095,14 @@ exports.updateProduct =
 
         // STRING
         product[field] =
-          typeof value ===
-          "string"
-            ? value.trim()
-            : value;
+          cleanString(value);
       }
 
       // ------------------------------------------------------
       // KEEP EXISTING IMAGES
       // ------------------------------------------------------
 
-      let imagesToKeep =
-        null;
+      let imagesToKeep = null;
 
       if (
         req.body.imagesToKeep !==
@@ -1695,8 +2163,7 @@ exports.updateProduct =
       // KEEP EXISTING VIDEOS
       // ------------------------------------------------------
 
-      let videosToKeep =
-        null;
+      let videosToKeep = null;
 
       if (
         req.body.videosToKeep !==
@@ -1853,7 +2320,31 @@ exports.updateProduct =
         return res.status(400).json({
           success: false,
           message:
-            "Invalid product category",
+            `Invalid product category: ${product.category}`,
+        });
+      }
+
+      if (
+        !VALID_STATUSES.includes(
+          product.status
+        )
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            `Invalid product status: ${product.status}`,
+        });
+      }
+
+      if (
+        !VALID_CONDITIONS.includes(
+          product.condition
+        )
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            `Invalid product condition: ${product.condition}`,
         });
       }
 
@@ -1932,6 +2423,18 @@ exports.deleteProduct =
           success: false,
           message:
             "Product ID is required",
+        });
+      }
+
+      if (
+        !mongoose.Types.ObjectId.isValid(
+          id
+        )
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Invalid product ID",
         });
       }
 
@@ -2110,7 +2613,7 @@ exports.updateProductStatus =
         req.params;
 
       const { status } =
-        req.body;
+        req.body || {};
 
       if (!id) {
         return res.status(400).json({
@@ -2120,8 +2623,22 @@ exports.updateProductStatus =
         });
       }
 
+      if (
+        !mongoose.Types.ObjectId.isValid(
+          id
+        )
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Invalid product ID",
+        });
+      }
+
       const normalizedStatus =
-        normalizeStatus(status);
+        normalizeStatus(
+          status
+        );
 
       if (
         !VALID_STATUSES.includes(
