@@ -21,7 +21,7 @@ import TVForm from "../components/TVForm";
 import CarForm from "../components/CarForm";
 
 // ============================================================
-// LOCATION DATA
+// LOCATION DATA (complete)
 // ============================================================
 
 const countries = ["Ghana"];
@@ -322,7 +322,7 @@ const PostAd = () => {
   const [authLoading, setAuthLoading] = useState(false);
 
   // ==========================================================
-  // CATEGORY MAP – corrected for smartwatches
+  // CATEGORY MAP – exact match with backend enum
   // ==========================================================
 
   const categoryMap = {
@@ -332,7 +332,7 @@ const PostAd = () => {
     accessories: "Accessories",
     electronics: "Electronics",
     gameConsoles: "Game Consoles",
-    smartwatches: "Smart Watches",   // ✅ changed to "Smart Watches"
+    smartwatches: "Smartwatches",   // ✅ correct as per backend
     tvs: "TVs",
     cars: "Cars",
   };
@@ -733,7 +733,7 @@ const PostAd = () => {
   };
 
   // ==========================================================
-  // BUILD PRODUCT FORM DATA – expanded smartwatch fields
+  // BUILD PRODUCT FORM DATA
   // ==========================================================
 
   const buildProductFormData = () => {
@@ -887,32 +887,27 @@ const PostAd = () => {
     }
 
     // --------------------------------------------------------
-    // SMARTWATCH ONLY – now sends all relevant fields
+    // SMARTWATCH ONLY
     // --------------------------------------------------------
 
     if (isSmartwatch) {
-      // Watch size
       if (formData.watchSize) {
         baseFields.watchSize = formData.watchSize;
       }
 
-      // Battery health (optional for smartwatch)
       if (formData.batteryHealth !== "") {
         baseFields.batteryHealth =
           String(formData.batteryHealth);
       }
 
-      // Connectivity (Wi-Fi, GPS, Cellular)
       if (formData.connectivity) {
         baseFields.connectivity = formData.connectivity;
       }
 
-      // Storage (if applicable)
       if (formData.storage) {
         baseFields.storage = formData.storage;
       }
 
-      // Year (if applicable)
       if (formData.year) {
         baseFields.year = formData.year;
       }
