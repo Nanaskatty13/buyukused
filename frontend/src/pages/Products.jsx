@@ -68,6 +68,8 @@ const ProductCard = ({ product }) => {
     images,
     image,
 
+    description,
+
     storage,
     simStatus,
     swapAccepted,
@@ -466,6 +468,7 @@ const ProductCard = ({ product }) => {
         height: "100%",
         display: "flex",
         flexDirection: "column",
+        minWidth: 0,
       }}
     >
       {/* ==========================================================
@@ -611,8 +614,11 @@ const ProductCard = ({ product }) => {
           flex: 1,
           display: "flex",
           flexDirection: "column",
+          minWidth: 0,
         }}
       >
+        {/* TITLE */}
+
         <Link
           to={`/product/${_id}`}
           style={{
@@ -745,6 +751,51 @@ const ProductCard = ({ product }) => {
         </div>
 
         {/* ========================================================
+            PRODUCT DESCRIPTION
+            APPEARS BELOW ALL EXISTING PRODUCT DETAILS
+        ======================================================== */}
+
+        {description && String(description).trim() && (
+          <div
+            style={{
+              marginTop: "2px",
+              marginBottom: "12px",
+              paddingTop: "8px",
+              borderTop: "1px solid #f0f0f0",
+            }}
+          >
+            <div
+              style={{
+                fontSize: "11px",
+                fontWeight: 700,
+                color: "#555",
+                marginBottom: "4px",
+                textTransform: "uppercase",
+                letterSpacing: "0.3px",
+              }}
+            >
+              Description
+            </div>
+
+            <p
+              style={{
+                margin: 0,
+                fontSize: "12px",
+                lineHeight: 1.5,
+                color: "#666",
+                display: "-webkit-box",
+                WebkitLineClamp: 3,
+                WebkitBoxOrient: "vertical",
+                overflow: "hidden",
+                wordBreak: "break-word",
+              }}
+            >
+              {description}
+            </p>
+          </div>
+        )}
+
+        {/* ========================================================
             VIEW DETAILS
         ======================================================== */}
 
@@ -831,6 +882,16 @@ const ProductSkeleton = () => {
             height: "14px",
             background: "#e5e7eb",
             borderRadius: "4px",
+            marginBottom: "10px",
+          }}
+        />
+
+        <div
+          style={{
+            width: "80%",
+            height: "38px",
+            background: "#e5e7eb",
+            borderRadius: "4px",
             marginBottom: "18px",
           }}
         />
@@ -874,8 +935,6 @@ const Products = () => {
     search: initialSearch,
     category: initialCategory,
     location: "all",
-
-    // SIM filter is still available for phone searches.
     simStatus: initialSimStatus,
   });
 
@@ -894,7 +953,7 @@ const Products = () => {
   const [currentPage, setCurrentPage] =
     useState(1);
 
-  const ITEMS_PER_PAGE = 6;
+  const ITEMS_PER_PAGE = 8;
 
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
@@ -1175,6 +1234,40 @@ const Products = () => {
 
   return (
     <>
+      {/* ==========================================================
+          RESPONSIVE PRODUCT GRID
+          4 COLUMNS ON LARGE SCREENS
+      ========================================================== */}
+
+      <style>
+        {`
+          .products-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 16px;
+            width: 100%;
+          }
+
+          @media (max-width: 1100px) {
+            .products-grid {
+              grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
+          }
+
+          @media (max-width: 800px) {
+            .products-grid {
+              grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+          }
+
+          @media (max-width: 520px) {
+            .products-grid {
+              grid-template-columns: 1fr;
+            }
+          }
+        `}
+      </style>
+
       <div
         className="products-page"
         style={{
@@ -1373,17 +1466,9 @@ const Products = () => {
           ====================================================== */}
 
           {loading ? (
-            <div
-              className="products-grid"
-              style={{
-                display: "grid",
-                gridTemplateColumns:
-                  "repeat(auto-fill, minmax(220px, 1fr))",
-                gap: "16px",
-              }}
-            >
+            <div className="products-grid">
               {Array.from({
-                length: 6,
+                length: 8,
               }).map((_, index) => (
                 <ProductSkeleton
                   key={index}
@@ -1426,15 +1511,7 @@ const Products = () => {
                   PRODUCTS GRID
               ================================================== */}
 
-              <div
-                className="products-grid"
-                style={{
-                  display: "grid",
-                  gridTemplateColumns:
-                    "repeat(auto-fill, minmax(220px, 1fr))",
-                  gap: "16px",
-                }}
-              >
+              <div className="products-grid">
                 {sortedProducts.map(
                   (product) => (
                     <ProductCard
