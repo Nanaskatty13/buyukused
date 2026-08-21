@@ -1,28 +1,39 @@
-// components/ProductsTable.jsx
-import React from 'react';
-import { useNavigate } from 'react-router-dom'; // for View navigation
-
-// ✅ API and context
-import { deleteProduct } from '../../../services/api';
+// frontend/src/pages/Admin/components/ProductsTable.jsx
+import React, { useCallback, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
+import { deleteProduct } from '../../../services/api';
 
-// Helper for image URLs
+// ─── Helpers ──────────────────────────────────────────────
 const getImageUrl = (path) => {
-  if (!path) return 'https://placehold.co/50x50?text=No+Image';
+  if (!path) return 'https://placehold.co/60x60?text=No+Image';
   if (path.startsWith('http')) return path;
   const base = import.meta.env.VITE_API_URL || 'http://localhost:5000';
   return `${base}${path}`;
 };
 
+const statusConfig = {
+  active:   { bg: '#dcfce7', color: '#166534', label: 'Active' },
+  pending:  { bg: '#fef9c3', color: '#854d0e', label: 'Pending' },
+  inactive: { bg: '#fee2e2', color: '#991b1b', label: 'Inactive' },
+  sold:     { bg: '#e0e7ff', color: '#1e40af', label: 'Sold' },
+};
+
+const getStatusBadge = (status = 'active') => {
+  return statusConfig[status] || { bg: '#f1f5f9', color: '#64748b', label: status };
+};
+
+// ─── Component ─────────────────────────────────────────────
 const ProductsTable = ({ products, loading, refreshData, showNotification }) => {
   const { token } = useAuth();
   const navigate = useNavigate();
 
-  // Guard
-  if (!products) return <div>No products data</div>;
+  // ─── Memoized count ──────────────────────────────────────
+  const productCount = useMemo(() => products?.length || 0, [products]);
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this product?')) return;
+  // ─── Handlers (memoized) ────────────────────────────────
+  const handleDelete = useCallback(async (id, title) => {
+    if (!window.confirm(`Are you sure you want to delete "${title}"?`)) return;
     try {
       const result = await deleteProduct(id, token);
       if (result.success) {
@@ -34,33 +45,56 @@ const ProductsTable = ({ products, loading, refreshData, showNotification }) => 
     } catch (err) {
       showNotification?.(err.message || 'Something went wrong', 'error');
     }
-  };
+  }, [token, refreshData, showNotification]);
 
-  const handleView = (id) => {
+  const handleView = useCallback((id) => {
     navigate(`/product/${id}`);
-  };
+  }, [navigate]);
 
-  // ─── Loading state ──────────────────────────────
+  const handleEdit = useCallback((id) => {
+    navigate(`/edit-product/${id}`);
+  }, [navigate]);
+
+  const handleAddProduct = useCallback(() => {
+    navigate('/post-ad');
+  }, [navigate]);
+
+  // ─── Loading state ──────────────────────────────────────
   if (loading) {
     return (
       <div className="table-container" style={{ textAlign: 'center', padding: '40px 0', color: 'var(--gray-500)' }}>
-        <i className="fas fa-spinner fa-spin" style={{ fontSize: '24px', marginBottom: '12px' }}></i>
+        <i className="fas fa-spinner fa-spin" style={{ fontSize: '28px', marginBottom: '12px' }}></i>
         <div>Loading products…</div>
       </div>
     );
   }
 
-  // ─── Empty state ────────────────────────────────
-  if (products.length === 0) {
+  // ─── Empty state ────────────────────────────────────────
+  if (productCount === 0) {
     return (
       <div className="table-container" style={{ textAlign: 'center', padding: '40px 0', color: 'var(--gray-500)' }}>
-        <i className="fas fa-box-open" style={{ fontSize: '32px', marginBottom: '12px', opacity: 0.3 }}></i>
-        <div>No products found.</div>
+        <i className="fas fa-box-open" style={{ fontSize: '40px', marginBottom: '12px', opacity: 0.3 }}></i>
+        <div style={{ fontSize: '18px', fontWeight: 500 }}>No products found</div>
+        <button
+          onClick={handleAddProduct}
+          style={{
+            marginTop: '16px',
+            padding: '8px 20px',
+            background: 'var(--primary)',
+            color: 'white',
+            border: 'none',
+            borderRadius: 'var(--radius-full)',
+            fontWeight: 600,
+            cursor: 'pointer',
+          }}
+        >
+          + Add Product
+        </button>
       </div>
     );
   }
 
-  // ─── Main render ─────────────────────────────────
+  // ─── Main render ────────────────────────────────────────
   return (
     <div
       className="table-container"
@@ -84,27 +118,47 @@ const ProductsTable = ({ products, loading, refreshData, showNotification }) => 
           gap: '8px',
         }}
       >
-        <h2 style={{ fontSize: '20px', fontWeight: 700, margin: 0 }}>
-          📦 Products <span style={{ fontSize: '14px', fontWeight: 400, color: 'var(--gray-500)' }}>({products.length})</span>
+        <h2 style={{ fontSize: '20px', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+          📦 Products
+          <span style={{ fontSize: '14px', fontWeight: 400, color: 'var(--gray-500)' }}>
+            ({productCount})
+          </span>
         </h2>
-        <button
-          onClick={() => navigate('/products')}
-          style={{
-            padding: '6px 16px',
-            background: 'var(--primary)',
-            color: 'white',
-            border: 'none',
-            borderRadius: 'var(--radius-full)',
-            fontWeight: 600,
-            fontSize: '13px',
-            cursor: 'pointer',
-          }}
-        >
-          View All
-        </button>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button
+            onClick={handleAddProduct}
+            style={{
+              padding: '6px 16px',
+              background: 'var(--primary)',
+              color: 'white',
+              border: 'none',
+              borderRadius: 'var(--radius-full)',
+              fontWeight: 600,
+              fontSize: '13px',
+              cursor: 'pointer',
+            }}
+          >
+            + Add Product
+          </button>
+          <button
+            onClick={() => navigate('/products')}
+            style={{
+              padding: '6px 16px',
+              background: 'var(--gray-200)',
+              color: 'var(--gray-700)',
+              border: 'none',
+              borderRadius: 'var(--radius-full)',
+              fontWeight: 600,
+              fontSize: '13px',
+              cursor: 'pointer',
+            }}
+          >
+            View All
+          </button>
+        </div>
       </div>
 
-      {/* Table – responsive wrapper */}
+      {/* Table */}
       <div style={{ overflowX: 'auto', padding: '0 4px' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
           <thead>
@@ -118,19 +172,9 @@ const ProductsTable = ({ products, loading, refreshData, showNotification }) => 
             </tr>
           </thead>
           <tbody>
-            {products.map((product, index) => {
-              // Get first image
+            {products.map((product) => {
               const imgSrc = getImageUrl(product.image || product.images?.[0] || null);
-
-              // Status badge colours
-              const statusConfig = {
-                active: { bg: '#dcfce7', color: '#166534' },
-                pending: { bg: '#fef9c3', color: '#854d0e' },
-                inactive: { bg: '#fee2e2', color: '#991b1b' },
-                sold: { bg: '#e0e7ff', color: '#1e40af' },
-              };
-              const status = product.status || 'active';
-              const badge = statusConfig[status] || { bg: '#f1f5f9', color: '#64748b' };
+              const badge = getStatusBadge(product.status);
 
               return (
                 <tr
@@ -138,7 +182,6 @@ const ProductsTable = ({ products, loading, refreshData, showNotification }) => 
                   style={{
                     borderBottom: '1px solid var(--gray-100)',
                     transition: 'background 0.15s',
-                    cursor: 'default',
                   }}
                   onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--gray-50)')}
                   onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
@@ -148,8 +191,8 @@ const ProductsTable = ({ products, loading, refreshData, showNotification }) => 
                       src={imgSrc}
                       alt={product.title}
                       style={{
-                        width: '48px',
-                        height: '48px',
+                        width: '52px',
+                        height: '52px',
                         objectFit: 'cover',
                         borderRadius: 'var(--radius-sm)',
                         border: '1px solid var(--gray-200)',
@@ -179,25 +222,22 @@ const ProductsTable = ({ products, loading, refreshData, showNotification }) => 
                         color: badge.color,
                       }}
                     >
-                      {status}
+                      {badge.label}
                     </span>
                   </td>
                   <td style={{ padding: '10px 16px', textAlign: 'center' }}>
-                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
-                      {/* View button */}
+                    <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
                       <button
+                        aria-label={`View ${product.title}`}
                         onClick={() => handleView(product._id)}
                         style={{
-                          padding: '4px 10px',
+                          padding: '5px 10px',
                           background: 'var(--primary)',
                           color: 'white',
                           border: 'none',
                           borderRadius: 'var(--radius-sm)',
                           fontSize: '13px',
                           cursor: 'pointer',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '4px',
                           transition: 'var(--transition)',
                         }}
                         onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--primary-dark)')}
@@ -205,20 +245,35 @@ const ProductsTable = ({ products, loading, refreshData, showNotification }) => 
                       >
                         <i className="fas fa-eye"></i>
                       </button>
-                      {/* Delete button */}
                       <button
-                        onClick={() => handleDelete(product._id)}
+                        aria-label={`Edit ${product.title}`}
+                        onClick={() => handleEdit(product._id)}
                         style={{
-                          padding: '4px 10px',
+                          padding: '5px 10px',
+                          background: '#f59e0b',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: 'var(--radius-sm)',
+                          fontSize: '13px',
+                          cursor: 'pointer',
+                          transition: 'var(--transition)',
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = '#d97706')}
+                        onMouseLeave={(e) => (e.currentTarget.style.background = '#f59e0b')}
+                      >
+                        <i className="fas fa-edit"></i>
+                      </button>
+                      <button
+                        aria-label={`Delete ${product.title}`}
+                        onClick={() => handleDelete(product._id, product.title)}
+                        style={{
+                          padding: '5px 10px',
                           background: '#dc2626',
                           color: 'white',
                           border: 'none',
                           borderRadius: 'var(--radius-sm)',
                           fontSize: '13px',
                           cursor: 'pointer',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '4px',
                           transition: 'var(--transition)',
                         }}
                         onMouseEnter={(e) => (e.currentTarget.style.background = '#b91c1c')}

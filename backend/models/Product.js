@@ -120,20 +120,17 @@ const productSchema = new mongoose.Schema(
     // MEDIA
     // ========================================================
 
-    // Legacy/main image
     image: {
       type: String,
       default: "",
       trim: true,
     },
 
-    // Multiple images
     images: {
       type: [String],
       default: [],
     },
 
-    // Product videos
     videos: {
       type: [String],
       default: [],
@@ -175,7 +172,7 @@ const productSchema = new mongoose.Schema(
     },
 
     // ========================================================
-    // LAPTOP / TABLET / COMPUTER DETAILS
+    // COMPUTER / TABLET
     // ========================================================
 
     storage: {
@@ -471,7 +468,7 @@ const productSchema = new mongoose.Schema(
     },
 
     // ========================================================
-    // PHONE DETAILS
+    // PHONE
     // ========================================================
 
     batteryHealth: {
@@ -542,7 +539,7 @@ const productSchema = new mongoose.Schema(
     },
 
     // ========================================================
-    // PROMOTION / VERIFICATION
+    // PROMOTION
     // ========================================================
 
     promo: {
@@ -597,7 +594,7 @@ productSchema.pre("save", function (next) {
 });
 
 // ============================================================
-// TEXT SEARCH INDEX
+// INDEXES
 // ============================================================
 
 productSchema.index({
@@ -610,44 +607,24 @@ productSchema.index({
   compatibility: "text",
 });
 
-// ============================================================
-// CATEGORY / LOCATION / STATUS
-// ============================================================
-
 productSchema.index({
   category: 1,
   location: 1,
   status: 1,
 });
 
-// ============================================================
-// NEWEST PRODUCTS
-// ============================================================
-
 productSchema.index({
   createdAt: -1,
 });
-
-// ============================================================
-// PRICE
-// ============================================================
 
 productSchema.index({
   price: 1,
 });
 
-// ============================================================
-// SELLER PRODUCTS
-// ============================================================
-
 productSchema.index({
   sellerId: 1,
   createdAt: -1,
 });
-
-// ============================================================
-// PHONE FILTERS
-// ============================================================
 
 productSchema.index({
   simStatus: 1,
@@ -656,10 +633,6 @@ productSchema.index({
 productSchema.index({
   batteryHealth: 1,
 });
-
-// ============================================================
-// ACCESSORY FILTERS
-// ============================================================
 
 productSchema.index({
   accessoryType: 1,
@@ -680,10 +653,6 @@ productSchema.index({
 productSchema.index({
   original: 1,
 });
-
-// ============================================================
-// CONSOLE / TV / SMARTWATCH FILTERS
-// ============================================================
 
 productSchema.index({
   videoOutput: 1,
@@ -724,10 +693,6 @@ productSchema.index({
 productSchema.index({
   smartTV: 1,
 });
-
-// ============================================================
-// CAR INDEXES
-// ============================================================
 
 productSchema.index({
   mileage: 1,
