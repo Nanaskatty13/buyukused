@@ -2,22 +2,39 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5" />
+
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.5"
+    />
 
     <title>BuyUkUsed — Buy & Sell Used Items in Ghana</title>
 
-    <!-- ─── SEO / Description ─── -->
+    <!-- SEO -->
     <meta
       name="description"
       content="Buy and sell used items safely in Ghana. Find phones, laptops, cars, and more at BuyUkUsed. Post your ad for free today."
     />
-    <meta name="keywords" content="classifieds, Ghana, buy, sell, swap, smartphones, laptops, tablets, accessories, marketplace" />
+
+    <meta
+      name="keywords"
+      content="classifieds, Ghana, buy, sell, swap, smartphones, laptops, tablets, accessories, marketplace"
+    />
+
     <meta name="author" content="BuyUkUsed" />
     <meta name="robots" content="index, follow" />
 
-    <!-- ─── Open Graph / Social Sharing ─── -->
-    <meta property="og:title" content="BuyUkUsed — Buy & Sell Used Items in Ghana" />
-    <meta property="og:description" content="Buy and sell used items safely in Ghana. Find phones, laptops, cars, and more. Post your ad for free today." />
+    <!-- Open Graph -->
+    <meta
+      property="og:title"
+      content="BuyUkUsed — Buy & Sell Used Items in Ghana"
+    />
+
+    <meta
+      property="og:description"
+      content="Buy and sell used items safely in Ghana. Find phones, laptops, cars, and more. Post your ad for free today."
+    />
+
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://buyukused.com" />
     <meta property="og:image" content="/og-image.png" />
@@ -25,21 +42,31 @@
     <meta property="og:image:height" content="630" />
     <meta property="og:locale" content="en_GH" />
 
-    <!-- ─── Twitter Cards ─── -->
+    <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="BuyUkUsed — Buy & Sell Used Items in Ghana" />
-    <meta name="twitter:description" content="Buy and sell used items safely in Ghana. Find phones, laptops, cars, and more. Post your ad for free today." />
+
+    <meta
+      name="twitter:title"
+      content="BuyUkUsed — Buy & Sell Used Items in Ghana"
+    />
+
+    <meta
+      name="twitter:description"
+      content="Buy and sell used items safely in Ghana. Find phones, laptops, cars, and more. Post your ad for free today."
+    />
+
     <meta name="twitter:image" content="/og-image.png" />
 
-    <!-- ─── Google Fonts: Inter ─── -->
+    <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
     <link
       href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap"
       rel="stylesheet"
     />
 
-    <!-- ─── Font Awesome 6 (Free) ─── -->
+    <!-- Font Awesome -->
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
@@ -48,54 +75,33 @@
       referrerpolicy="no-referrer"
     />
 
-    <!-- ─── FAVICON – Full Coverage for All Devices ─── -->
+    <!-- Favicons -->
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/assets/logo/favicon-32x32.png"
+    />
 
-    <!-- Standard favicons (most browsers) -->
-    <link rel="icon" type="image/png" sizes="32x32" href="/assets/logo/favicon-32x32.png" />
-    <link rel="icon" type="image/png" sizes="16x16" href="/assets/logo/favicon-16x16.png" />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="/assets/logo/favicon-16x16.png"
+    />
 
-    <!-- Apple Touch Icon (iOS / iPadOS home screen) -->
-    <link rel="apple-touch-icon" sizes="180x180" href="/assets/logo/apple-touch-icon.png" />
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="/assets/logo/apple-touch-icon.png"
+    />
 
-    <!-- Fallback for very old browsers (Internet Explorer) -->
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
-
-    <!-- ─── END FAVICON ─── -->
-
-    <!--
-      ─── FIX: Prevent DevTools from breaking React Refresh ───
-
-      This ensures the DevTools extension does not interfere with Vite's HMR.
-      It preserves the original hook so that React Refresh can still function.
-    -->
-    <script>
-      (function() {
-        // If DevTools has already created a hook, keep it but mark it as disabled.
-        if (window.__REACT_DEVTOOLS_GLOBAL_HOOK__) {
-          window.__REACT_DEVTOOLS_GLOBAL_HOOK__.isDisabled = true;
-        } else {
-          // Otherwise, create a minimal hook that prevents the extension from overriding it.
-          window.__REACT_DEVTOOLS_GLOBAL_HOOK__ = {
-            isDisabled: true,
-            // Preserve the essential methods that React Refresh needs.
-            inject: function() {},
-            on: function() {},
-            off: function() {},
-            sub: function() {},
-            supportsFiber: true,
-            checkDCE: function() {},
-          };
-        }
-      })();
-    </script>
-
   </head>
 
   <body>
-    <!-- React mounts here -->
     <div id="root"></div>
 
-    <!-- Main JavaScript entry -->
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
