@@ -13,9 +13,11 @@ const getCategoryIcon = (name) => {
     Laptops: "fa-laptop",
     Tablets: "fa-tablet-alt",
     Accessories: "fa-headphones",
+
     TVs: "fa-tv",
     "TV & Game Consoles": "fa-tv",
     "Game Consoles": "fa-gamepad",
+
     Electronics: "fa-laptop",
     Cars: "fa-car",
     "Real Estate": "fa-home",
@@ -38,11 +40,11 @@ const categoryImages = {
   Tablets: "/categories/tablets.webp",
   Accessories: "/categories/accessories.webp",
 
-  // TV categories
+  // TV
   TVs: "/categories/tv.webp",
   "TV & Game Consoles": "/categories/tv.webp",
 
-  // Game consoles
+  // Game Consoles
   "Game Consoles": "/categories/game-consoles.webp",
 
   // Other categories
@@ -53,14 +55,16 @@ const categoryImages = {
   Home: "/categories/home.webp",
 
   Electronics: "/categories/electronics.webp",
-  Other: "/categories/Smartwatches.jpg",
+
+  Other: "/categories/other.webp",
 };
 
 // ================================================================
 // FALLBACK IMAGE
 // ================================================================
 
-const fallbackCategoryImage = "/categories/other.webp";
+const fallbackCategoryImage =
+  "/categories/other.webp";
 
 // ================================================================
 // MAIN COMPONENT
@@ -71,22 +75,23 @@ const Categories = ({
   onCategorySelect,
 }) => {
   // ==============================================================
-  // BUILD DYNAMIC CATEGORIES FROM PRODUCTS
+  // BUILD CATEGORY COUNTS
   // ==============================================================
 
   const categoryMap = {};
 
-  products.forEach((p) => {
-    if (!p) return;
+  products.forEach((product) => {
+    if (!product) return;
 
-    const cat = p.category || "Other";
+    const category =
+      product.category || "Other";
 
-    categoryMap[cat] =
-      (categoryMap[cat] || 0) + 1;
+    categoryMap[category] =
+      (categoryMap[category] || 0) + 1;
   });
 
   // ==============================================================
-  // DEFAULT CATEGORIES
+  // FALLBACK CATEGORIES
   // ==============================================================
 
   const fallbackCategories = [
@@ -128,9 +133,9 @@ const Categories = ({
   // CATEGORY CLICK
   // ==============================================================
 
-  const handleCategoryClick = (catName) => {
+  const handleCategoryClick = (categoryName) => {
     if (onCategorySelect) {
-      onCategorySelect(catName);
+      onCategorySelect(categoryName);
     }
   };
 
@@ -138,15 +143,16 @@ const Categories = ({
   // IMAGE ERROR HANDLER
   // ==============================================================
 
-  const handleImageError = (e) => {
-    if (
-      e.currentTarget.src !==
-      window.location.origin +
-        fallbackCategoryImage
-    ) {
-      e.currentTarget.src =
-        fallbackCategoryImage;
+  const handleImageError = (event) => {
+    const image = event.currentTarget;
+
+    // Prevent infinite fallback loop
+    if (image.dataset.fallback === "true") {
+      return;
     }
+
+    image.dataset.fallback = "true";
+    image.src = fallbackCategoryImage;
   };
 
   // ==============================================================
@@ -171,6 +177,7 @@ const Categories = ({
           justifyContent: "space-between",
           alignItems: "center",
           marginBottom: "24px",
+          gap: "12px",
         }}
       >
         <h2
@@ -191,6 +198,7 @@ const Categories = ({
             textDecoration: "none",
             fontWeight: 600,
             fontSize: "14px",
+            whiteSpace: "nowrap",
           }}
         >
           See All →
@@ -199,35 +207,46 @@ const Categories = ({
 
       {/* ========================================================
           CATEGORY GRID
+
+          Desktop = 4
+          Tablet  = 3
+          Mobile  = 2
       ======================================================== */}
 
       <div
+        className="categories-grid"
         style={{
           display: "grid",
           gridTemplateColumns:
-            "repeat(auto-fill, minmax(180px, 1fr))",
+            "repeat(4, minmax(0, 1fr))",
           gap: "16px",
         }}
       >
-        {categories.map((cat) => {
-          const categoryImage =
-            categoryImages[cat.name] ||
-            fallbackCategoryImage;
+        {categories.map((category) => {
+          const image =
+            categoryImages[
+              category.name
+            ] || fallbackCategoryImage;
 
           return (
             <div
-              key={cat.name}
+              key={category.name}
               onClick={() =>
                 handleCategoryClick(
-                  cat.name
+                  category.name
                 )
               }
               role="button"
               tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
+              onKeyDown={(event) => {
+                if (
+                  event.key === "Enter" ||
+                  event.key === " "
+                ) {
+                  event.preventDefault();
+
                   handleCategoryClick(
-                    cat.name
+                    category.name
                   );
                 }
               }}
@@ -236,32 +255,34 @@ const Categories = ({
                 border:
                   "1px solid #e5e7eb",
                 borderRadius: "8px",
-                padding: "20px 16px",
+                padding: "12px",
                 cursor: "pointer",
                 transition:
                   "all 0.2s ease",
                 textAlign: "center",
                 boxShadow:
                   "0 1px 2px rgba(0,0,0,0.05)",
+                minWidth: 0,
+                overflow: "hidden",
               }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor =
+              onMouseEnter={(event) => {
+                event.currentTarget.style.borderColor =
                   "#0066cc";
 
-                e.currentTarget.style.boxShadow =
+                event.currentTarget.style.boxShadow =
                   "0 4px 12px rgba(0,102,204,0.15)";
 
-                e.currentTarget.style.transform =
+                event.currentTarget.style.transform =
                   "translateY(-2px)";
               }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor =
+              onMouseLeave={(event) => {
+                event.currentTarget.style.borderColor =
                   "#e5e7eb";
 
-                e.currentTarget.style.boxShadow =
+                event.currentTarget.style.boxShadow =
                   "0 1px 2px rgba(0,0,0,0.05)";
 
-                e.currentTarget.style.transform =
+                event.currentTarget.style.transform =
                   "translateY(0)";
               }}
             >
@@ -274,7 +295,7 @@ const Categories = ({
                   width: "100%",
                   height: "120px",
                   margin:
-                    "0 auto 14px",
+                    "0 auto 12px",
                   background: "#f4f5f7",
                   borderRadius: "8px",
                   overflow: "hidden",
@@ -285,8 +306,8 @@ const Categories = ({
                 }}
               >
                 <img
-                  src={categoryImage}
-                  alt={cat.name}
+                  src={image}
+                  alt={category.name}
                   loading="lazy"
                   decoding="async"
                   style={{
@@ -311,9 +332,13 @@ const Categories = ({
                   fontWeight: 600,
                   color: "#333",
                   marginBottom: "4px",
+                  lineHeight: 1.3,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
                 }}
               >
-                {cat.name}
+                {category.name}
               </div>
 
               {/* ==================================================
@@ -326,8 +351,8 @@ const Categories = ({
                   color: "#777",
                 }}
               >
-                {cat.count}{" "}
-                {cat.count === 1
+                {category.count}{" "}
+                {category.count === 1
                   ? "item"
                   : "items"}
               </div>
@@ -335,6 +360,67 @@ const Categories = ({
           );
         })}
       </div>
+
+      {/* ========================================================
+          RESPONSIVE GRID
+
+          Desktop: 4
+          Tablet: 3
+          Mobile: 2
+      ======================================================== */}
+
+      <style>
+        {`
+          .categories-grid {
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+          }
+
+          /* ================================================
+             TABLET
+          ================================================ */
+
+          @media (max-width: 900px) {
+            .categories-grid {
+              grid-template-columns: repeat(
+                3,
+                minmax(0, 1fr)
+              ) !important;
+            }
+          }
+
+          /* ================================================
+             MOBILE
+          ================================================ */
+
+          @media (max-width: 600px) {
+            .categories-grid {
+              grid-template-columns: repeat(
+                2,
+                minmax(0, 1fr)
+              ) !important;
+
+              gap: 12px !important;
+            }
+          }
+
+          /* ================================================
+             SMALL MOBILE
+
+             STILL EXACTLY 2 PER ROW
+          ================================================ */
+
+          @media (max-width: 380px) {
+            .categories-grid {
+              grid-template-columns: repeat(
+                2,
+                minmax(0, 1fr)
+              ) !important;
+
+              gap: 10px !important;
+            }
+          }
+        `}
+      </style>
     </section>
   );
 };
