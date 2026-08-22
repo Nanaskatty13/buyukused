@@ -1,4 +1,6 @@
+// ================================================================
 // frontend/src/services/api.js
+// ================================================================
 
 import {
   getToken,
@@ -896,6 +898,12 @@ export const notifications = {
     id,
     token = getToken()
   ) => {
+    if (!id) {
+      throw new Error(
+        "Notification ID is required"
+      );
+    }
+
     return request(
       `${API_URL}/api/notifications/${encodeURIComponent(
         id
@@ -913,6 +921,12 @@ export const notifications = {
     id,
     token = getToken()
   ) => {
+    if (!id) {
+      throw new Error(
+        "Notification ID is required"
+      );
+    }
+
     return request(
       `${API_URL}/api/notifications/${encodeURIComponent(
         id
@@ -1024,6 +1038,12 @@ export const orders = {
     id,
     token = getToken()
   ) => {
+    if (!id) {
+      throw new Error(
+        "Order ID is required"
+      );
+    }
+
     return request(
       `${API_URL}/api/orders/${encodeURIComponent(
         id
@@ -1047,6 +1067,12 @@ export const messages = {
     userId,
     token = getToken()
   ) => {
+    if (!userId) {
+      throw new Error(
+        "User ID is required"
+      );
+    }
+
     return request(
       `${API_URL}/api/messages/${encodeURIComponent(
         userId
@@ -1078,6 +1104,12 @@ export const messages = {
     otherUserId,
     token = getToken()
   ) => {
+    if (!otherUserId) {
+      throw new Error(
+        "Other user ID is required"
+      );
+    }
+
     return request(
       `${API_URL}/api/messages/conversation/${encodeURIComponent(
         otherUserId
@@ -1118,6 +1150,12 @@ export const messages = {
     messageId,
     token = getToken()
   ) => {
+    if (!messageId) {
+      throw new Error(
+        "Message ID is required"
+      );
+    }
+
     return request(
       `${API_URL}/api/messages/${encodeURIComponent(
         messageId
@@ -1135,6 +1173,12 @@ export const messages = {
     messageId,
     token = getToken()
   ) => {
+    if (!messageId) {
+      throw new Error(
+        "Message ID is required"
+      );
+    }
+
     return request(
       `${API_URL}/api/messages/${encodeURIComponent(
         messageId
@@ -1172,6 +1216,12 @@ export const favorites = {
     productId,
     token = getToken()
   ) => {
+    if (!productId) {
+      throw new Error(
+        "Product ID is required"
+      );
+    }
+
     return request(
       `${API_URL}/api/favorites`,
       {
@@ -1191,6 +1241,12 @@ export const favorites = {
     productId,
     token = getToken()
   ) => {
+    if (!productId) {
+      throw new Error(
+        "Product ID is required"
+      );
+    }
+
     return request(
       `${API_URL}/api/favorites/${encodeURIComponent(
         productId
@@ -1246,6 +1302,12 @@ export const admin = {
     id,
     token = getToken()
   ) => {
+    if (!id) {
+      throw new Error(
+        "User ID is required"
+      );
+    }
+
     return request(
       `${API_URL}/api/admin/users/${encodeURIComponent(
         id
@@ -1264,6 +1326,12 @@ export const admin = {
     role,
     token = getToken()
   ) => {
+    if (!id) {
+      throw new Error(
+        "User ID is required"
+      );
+    }
+
     return request(
       `${API_URL}/api/admin/users/${encodeURIComponent(
         id
@@ -1285,6 +1353,12 @@ export const admin = {
     id,
     token = getToken()
   ) => {
+    if (!id) {
+      throw new Error(
+        "User ID is required"
+      );
+    }
+
     return request(
       `${API_URL}/api/admin/users/${encodeURIComponent(
         id
@@ -1320,6 +1394,12 @@ export const admin = {
     id,
     token = getToken()
   ) => {
+    if (!id) {
+      throw new Error(
+        "Product ID is required"
+      );
+    }
+
     return request(
       `${API_URL}/api/admin/products/${encodeURIComponent(
         id
@@ -1356,6 +1436,12 @@ export const admin = {
     status,
     token = getToken()
   ) => {
+    if (!id) {
+      throw new Error(
+        "Order ID is required"
+      );
+    }
+
     return request(
       `${API_URL}/api/admin/orders/${encodeURIComponent(
         id
@@ -1395,6 +1481,12 @@ export const admin = {
     id,
     token = getToken()
   ) => {
+    if (!id) {
+      throw new Error(
+        "Rider ID is required"
+      );
+    }
+
     return request(
       `${API_URL}/api/admin/riders/${encodeURIComponent(
         id
@@ -1504,6 +1596,12 @@ export const admin = {
     id,
     token = getToken()
   ) => {
+    if (!id) {
+      throw new Error(
+        "Delivery ID is required"
+      );
+    }
+
     return request(
       `${API_URL}/api/admin/deliveries/${encodeURIComponent(
         id
@@ -1522,6 +1620,12 @@ export const admin = {
     status,
     token = getToken()
   ) => {
+    if (!id) {
+      throw new Error(
+        "Delivery ID is required"
+      );
+    }
+
     return request(
       `${API_URL}/api/admin/deliveries/${encodeURIComponent(
         id
@@ -1664,6 +1768,12 @@ export const deliveries = {
     id,
     token = getToken()
   ) => {
+    if (!id) {
+      throw new Error(
+        "Delivery ID is required"
+      );
+    }
+
     return request(
       `${API_URL}/api/deliveries/${encodeURIComponent(
         id
@@ -1682,6 +1792,12 @@ export const deliveries = {
     status,
     token = getToken()
   ) => {
+    if (!id) {
+      throw new Error(
+        "Delivery ID is required"
+      );
+    }
+
     return request(
       `${API_URL}/api/deliveries/${encodeURIComponent(
         id
@@ -1704,6 +1820,12 @@ export const deliveries = {
     location,
     token = getToken()
   ) => {
+    if (!id) {
+      throw new Error(
+        "Delivery ID is required"
+      );
+    }
+
     return request(
       `${API_URL}/api/deliveries/${encodeURIComponent(
         id
@@ -1725,6 +1847,12 @@ export const deliveries = {
     id,
     token = getToken()
   ) => {
+    if (!id) {
+      throw new Error(
+        "Delivery ID is required"
+      );
+    }
+
     return request(
       `${API_URL}/api/deliveries/${encodeURIComponent(
         id
@@ -1742,6 +1870,12 @@ export const deliveries = {
     id,
     token = getToken()
   ) => {
+    if (!id) {
+      throw new Error(
+        "Delivery ID is required"
+      );
+    }
+
     return request(
       `${API_URL}/api/deliveries/${encodeURIComponent(
         id
@@ -1769,15 +1903,27 @@ export const logout = auth.logout;
 // PRODUCT EXPORTS
 // ================================================================
 
-export const getProducts = products.getAll;
-export const getProduct = products.getById;
-export const createProduct = products.create;
+export const getProducts =
+  products.getAll;
+
+export const getProduct =
+  products.getById;
+
+export const createProduct =
+  products.create;
+
 export const createProductWithFiles =
   products.createWithFiles;
-export const updateProduct = products.update;
+
+export const updateProduct =
+  products.update;
+
 export const updateProductWithFiles =
   products.updateWithFiles;
-export const deleteProduct = products.delete;
+
+export const deleteProduct =
+  products.delete;
+
 export const updateProductStatus =
   products.updateStatus;
 
@@ -1803,20 +1949,30 @@ export const getSellerProducts = async (
 // USER EXPORTS
 // ================================================================
 
-export const getUsers = users.getAll;
-export const getUser = users.getById;
-export const updateUser = users.update;
+export const getUsers =
+  users.getAll;
+
+export const getUser =
+  users.getById;
+
+export const updateUser =
+  users.update;
+
 export const updateUserWithFiles =
   users.updateWithFiles;
-export const deleteUser = users.delete;
-export const getUserStats = users.getStats;
+
+export const deleteUser =
+  users.delete;
+
+export const getUserStats =
+  users.getStats;
 
 // ================================================================
 // NOTIFICATION EXPORTS
 // ================================================================
 
 export const getNotifications =
-  notifications.getForAdmin;
+  notifications.getForUser;
 
 export const getAdminNotifications =
   notifications.getForAdmin;
@@ -1837,11 +1993,20 @@ export const deleteNotification =
 // ORDER EXPORTS
 // ================================================================
 
-export const getOrders = orders.getAll;
-export const getOrder = orders.getById;
-export const createOrder = orders.create;
-export const updateOrder = orders.update;
-export const deleteOrder = orders.delete;
+export const getOrders =
+  orders.getAll;
+
+export const getOrder =
+  orders.getById;
+
+export const createOrder =
+  orders.create;
+
+export const updateOrder =
+  orders.update;
+
+export const deleteOrder =
+  orders.delete;
 
 // ================================================================
 // MESSAGE EXPORTS

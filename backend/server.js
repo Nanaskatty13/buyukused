@@ -517,6 +517,13 @@ const sellerRoutes =
 const categoryRoutes =
   require("./routes/categories");
 
+// ============================================================
+// NEW: VISUAL SEARCH ROUTE
+// ============================================================
+
+const visualSearchRoutes =
+  require("./routes/visualSearchRoutes");
+
 console.log(
   "✅ Routes loaded successfully"
 );
@@ -555,6 +562,19 @@ app.use(
 app.use(
   "/api/products",
   productRoutes
+);
+
+// ============================================================
+// VISUAL IMAGE SEARCH
+// ============================================================
+
+app.use(
+  "/api/visual-search",
+  visualSearchRoutes
+);
+
+console.log(
+  "🖼️ Visual image search API mounted at /api/visual-search"
 );
 
 // ============================================================
@@ -955,6 +975,10 @@ const start =
 
             console.log(
               "📂 Categories API: /api/categories"
+            );
+
+            console.log(
+              "🖼️ Visual Search API: /api/visual-search"
             );
 
             console.log(

@@ -17,6 +17,12 @@ import BackToTop from "./components/BackToTop";
 import RobotGreeter from "./components/RobotGreeter";
 
 // ============================================================
+// VISUAL SEARCH
+// ============================================================
+
+import VisualSearch from "./components/VisualSearch";
+
+// ============================================================
 // PAGES
 // ============================================================
 
@@ -114,11 +120,20 @@ function App() {
                 HOME / AUTH
             ================================================== */}
 
-            <Route path="/" element={<Home />} />
+            <Route
+              path="/"
+              element={<Home />}
+            />
 
-            <Route path="/login" element={<Login />} />
+            <Route
+              path="/login"
+              element={<Login />}
+            />
 
-            <Route path="/register" element={<Register />} />
+            <Route
+              path="/register"
+              element={<Register />}
+            />
 
             <Route
               path="/forgot-password"
@@ -147,6 +162,18 @@ function App() {
             <Route
               path="/search-results"
               element={<SearchResultsPage />}
+            />
+
+            {/* ==================================================
+                VISUAL SEARCH
+                --------------------------------------------------
+                Upload a product image and find visually similar
+                products in the BuyUKUsed marketplace.
+            ================================================== */}
+
+            <Route
+              path="/visual-search"
+              element={<VisualSearch />}
             />
 
             {/* ==================================================

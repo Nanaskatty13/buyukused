@@ -137,6 +137,38 @@ const productSchema = new mongoose.Schema(
     },
 
     // ========================================================
+    // VISUAL SEARCH
+    // ========================================================
+    //
+    // CLIP image embedding.
+    //
+    // Xenova/clip-vit-base-patch32 produces 512 dimensions.
+    //
+    // This field is NOT returned to the frontend in normal
+    // product responses because it is unnecessary there.
+    //
+    // ========================================================
+
+    imageEmbedding: {
+      type: [Number],
+      default: undefined,
+      select: false,
+    },
+
+    imageEmbeddingModel: {
+      type: String,
+      default: "",
+      trim: true,
+      select: false,
+    },
+
+    imageEmbeddingUpdatedAt: {
+      type: Date,
+      default: null,
+      select: false,
+    },
+
+    // ========================================================
     // GENERAL PRODUCT DETAILS
     // ========================================================
 
@@ -144,12 +176,14 @@ const productSchema = new mongoose.Schema(
       type: String,
       default: "",
       trim: true,
+      index: true,
     },
 
     model: {
       type: String,
       default: "",
       trim: true,
+      index: true,
     },
 
     color: {
@@ -594,7 +628,7 @@ productSchema.pre("save", function (next) {
 });
 
 // ============================================================
-// INDEXES
+// TEXT INDEX
 // ============================================================
 
 productSchema.index({
@@ -606,6 +640,10 @@ productSchema.index({
   compatibleWith: "text",
   compatibility: "text",
 });
+
+// ============================================================
+// OTHER INDEXES
+// ============================================================
 
 productSchema.index({
   category: 1,
@@ -644,6 +682,10 @@ productSchema.index({
 
 productSchema.index({
   brand: 1,
+});
+
+productSchema.index({
+  model: 1,
 });
 
 productSchema.index({

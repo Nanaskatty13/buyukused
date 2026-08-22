@@ -7,7 +7,15 @@ const mongoose = require("mongoose");
 const Product = require("../models/Product");
 const cloudinary = require("../config/cloudinary");
 const streamifier = require("streamifier");
+
 const PRODUCT_CATEGORIES = require("../constants/productCategories");
+
+const {
+  createImageEmbeddingFromBuffer,
+  createImageEmbeddingFromUrl,
+  MODEL_ID,
+  EMBEDDING_DIMENSIONS,
+} = require("../services/imageEmbeddingService");
 
 // ============================================================
 // CONSTANTS
@@ -29,12 +37,18 @@ const VALID_CONDITIONS = [
   "Poor",
 ];
 
+const VECTOR_INDEX_NAME =
+  "product_image_vector_index";
+
 // ============================================================
 // CATEGORY NORMALIZATION
 // ============================================================
 
 const normalizeCategory = (value) => {
-  if (value === undefined || value === null) {
+  if (
+    value === undefined ||
+    value === null
+  ) {
     return "Other";
   }
 
@@ -42,7 +56,10 @@ const normalizeCategory = (value) => {
     value = value[0];
   }
 
-  if (typeof value === "object" && value !== null) {
+  if (
+    typeof value === "object" &&
+    value !== null
+  ) {
     value =
       value.value ||
       value.name ||
@@ -64,14 +81,7 @@ const normalizeCategory = (value) => {
     .replace(/\s+/g, " ")
     .trim();
 
-  // ==========================================================
-  // CATEGORY ALIASES
-  // ==========================================================
-
   const categoryMap = {
-    // --------------------------------------------------------
-    // CARS
-    // --------------------------------------------------------
     car: "Cars",
     cars: "Cars",
     automobile: "Cars",
@@ -85,9 +95,6 @@ const normalizeCategory = (value) => {
     "motor vehicle": "Cars",
     "motor vehicles": "Cars",
 
-    // --------------------------------------------------------
-    // PHONES
-    // --------------------------------------------------------
     phone: "Phones",
     phones: "Phones",
     mobile: "Phones",
@@ -105,9 +112,6 @@ const normalizeCategory = (value) => {
     "cell phone": "Phones",
     "cell phones": "Phones",
 
-    // --------------------------------------------------------
-    // LAPTOPS
-    // --------------------------------------------------------
     laptop: "Laptops",
     laptops: "Laptops",
     notebook: "Laptops",
@@ -119,9 +123,6 @@ const normalizeCategory = (value) => {
     macbook: "Laptops",
     macbooks: "Laptops",
 
-    // --------------------------------------------------------
-    // TABLETS
-    // --------------------------------------------------------
     tablet: "Tablets",
     tablets: "Tablets",
     ipad: "Tablets",
@@ -129,9 +130,6 @@ const normalizeCategory = (value) => {
     "tablet computer": "Tablets",
     "tablet computers": "Tablets",
 
-    // --------------------------------------------------------
-    // ACCESSORIES
-    // --------------------------------------------------------
     accessory: "Accessories",
     accessories: "Accessories",
     "phone accessory": "Accessories",
@@ -149,9 +147,6 @@ const normalizeCategory = (value) => {
     earbud: "Accessories",
     earbuds: "Accessories",
 
-    // --------------------------------------------------------
-    // REAL ESTATE
-    // --------------------------------------------------------
     "real estate": "Real Estate",
     realestate: "Real Estate",
     property: "Real Estate",
@@ -163,9 +158,6 @@ const normalizeCategory = (value) => {
     apartment: "Real Estate",
     apartments: "Real Estate",
 
-    // --------------------------------------------------------
-    // JOBS
-    // --------------------------------------------------------
     job: "Jobs",
     jobs: "Jobs",
     employment: "Jobs",
@@ -174,9 +166,6 @@ const normalizeCategory = (value) => {
     career: "Jobs",
     careers: "Jobs",
 
-    // --------------------------------------------------------
-    // ELECTRONICS
-    // --------------------------------------------------------
     electronic: "Electronics",
     electronics: "Electronics",
     gadget: "Electronics",
@@ -184,9 +173,6 @@ const normalizeCategory = (value) => {
     device: "Electronics",
     devices: "Electronics",
 
-    // --------------------------------------------------------
-    // FASHION
-    // --------------------------------------------------------
     fashion: "Fashion",
     clothing: "Fashion",
     clothes: "Fashion",
@@ -195,9 +181,6 @@ const normalizeCategory = (value) => {
     bag: "Fashion",
     bags: "Fashion",
 
-    // --------------------------------------------------------
-    // HOME
-    // --------------------------------------------------------
     home: "Home",
     homes: "Home",
     furniture: "Home",
@@ -207,9 +190,6 @@ const normalizeCategory = (value) => {
     appliance: "Home",
     appliances: "Home",
 
-    // --------------------------------------------------------
-    // TVS
-    // --------------------------------------------------------
     tv: "TVs",
     tvs: "TVs",
     television: "TVs",
@@ -219,9 +199,6 @@ const normalizeCategory = (value) => {
     "smart television": "TVs",
     "smart televisions": "TVs",
 
-    // --------------------------------------------------------
-    // GAME CONSOLES
-    // --------------------------------------------------------
     console: "Game Consoles",
     consoles: "Game Consoles",
     gaming: "Game Consoles",
@@ -242,9 +219,6 @@ const normalizeCategory = (value) => {
     "nintendo switch": "Game Consoles",
     switch: "Game Consoles",
 
-    // --------------------------------------------------------
-    // SMARTWATCHES
-    // --------------------------------------------------------
     watch: "Smartwatches",
     watches: "Smartwatches",
     smartwatch: "Smartwatches",
@@ -256,9 +230,6 @@ const normalizeCategory = (value) => {
     applewatch: "Smartwatches",
     "apple watch": "Smartwatches",
 
-    // --------------------------------------------------------
-    // OTHER
-    // --------------------------------------------------------
     other: "Other",
   };
 
@@ -266,22 +237,16 @@ const normalizeCategory = (value) => {
     return categoryMap[normalized];
   }
 
-  // ==========================================================
-  // EXACT CANONICAL MATCH
-  // ==========================================================
-
-  const canonicalCategory = PRODUCT_CATEGORIES.find(
-    (category) =>
-      category.toLowerCase() === normalized
-  );
+  const canonicalCategory =
+    PRODUCT_CATEGORIES.find(
+      (category) =>
+        category.toLowerCase() ===
+        normalized
+    );
 
   if (canonicalCategory) {
     return canonicalCategory;
   }
-
-  // ==========================================================
-  // FUZZY MATCHING
-  // ==========================================================
 
   if (
     normalized.includes("phone") ||
@@ -317,7 +282,9 @@ const normalizeCategory = (value) => {
     return "Cars";
   }
 
-  if (normalized.includes("accessor")) {
+  if (
+    normalized.includes("accessor")
+  ) {
     return "Accessories";
   }
 
@@ -396,7 +363,9 @@ const normalizeCategory = (value) => {
 // STATUS NORMALIZATION
 // ============================================================
 
-const normalizeStatus = (value) => {
+const normalizeStatus = (
+  value
+) => {
   if (
     value === undefined ||
     value === null ||
@@ -409,7 +378,9 @@ const normalizeStatus = (value) => {
     .trim()
     .toLowerCase();
 
-  return VALID_STATUSES.includes(status)
+  return VALID_STATUSES.includes(
+    status
+  )
     ? status
     : "active";
 };
@@ -418,7 +389,9 @@ const normalizeStatus = (value) => {
 // CONDITION NORMALIZATION
 // ============================================================
 
-const normalizeCondition = (value) => {
+const normalizeCondition = (
+  value
+) => {
   if (
     value === undefined ||
     value === null ||
@@ -431,10 +404,12 @@ const normalizeCondition = (value) => {
     .trim()
     .toLowerCase();
 
-  const match = VALID_CONDITIONS.find(
-    (condition) =>
-      condition.toLowerCase() === normalized
-  );
+  const match =
+    VALID_CONDITIONS.find(
+      (condition) =>
+        condition.toLowerCase() ===
+        normalized
+    );
 
   return match || "Good";
 };
@@ -498,7 +473,9 @@ const toBoolean = (
 // NUMBER HELPER
 // ============================================================
 
-const toNumberOrNull = (value) => {
+const toNumberOrNull = (
+  value
+) => {
   if (
     value === undefined ||
     value === null ||
@@ -557,7 +534,9 @@ const cleanString = (
 // USER HELPERS
 // ============================================================
 
-const getUserId = (req) => {
+const getUserId = (
+  req
+) => {
   return (
     req.user?.id ||
     req.user?._id ||
@@ -566,7 +545,9 @@ const getUserId = (req) => {
   );
 };
 
-const getUserRole = (req) => {
+const getUserRole = (
+  req
+) => {
   return req.user?.role || "";
 };
 
@@ -574,7 +555,9 @@ const getUserRole = (req) => {
 // ESCAPE REGEX
 // ============================================================
 
-const escapeRegex = (value) => {
+const escapeRegex = (
+  value
+) => {
   return String(value).replace(
     /[.*+?^${}()|[\]\\]/g,
     "\\$&"
@@ -596,7 +579,8 @@ const uploadToCloudinary = (
         cloudinary.uploader.upload_stream(
           {
             folder,
-            resource_type: resourceType,
+            resource_type:
+              resourceType,
           },
           (error, result) => {
             if (error) {
@@ -618,127 +602,146 @@ const uploadToCloudinary = (
 // CLOUDINARY DELETE
 // ============================================================
 
-const deleteFromCloudinary = async (
-  fileUrl,
-  resourceType = "image"
-) => {
-  try {
-    if (
-      !fileUrl ||
-      !fileUrl.includes("cloudinary.com")
-    ) {
-      return;
-    }
-
-    const uploadIndex =
-      fileUrl.indexOf("/upload/");
-
-    if (uploadIndex === -1) {
-      return;
-    }
-
-    let publicId = fileUrl.substring(
-      uploadIndex +
-        "/upload/".length
-    );
-
-    publicId = publicId.replace(
-      /^v\d+\//,
-      ""
-    );
-
-    publicId = publicId.replace(
-      /\.[^/.]+$/,
-      ""
-    );
-
-    await cloudinary.uploader.destroy(
-      publicId,
-      {
-        resource_type: resourceType,
+const deleteFromCloudinary =
+  async (
+    fileUrl,
+    resourceType = "image"
+  ) => {
+    try {
+      if (
+        !fileUrl ||
+        !fileUrl.includes(
+          "cloudinary.com"
+        )
+      ) {
+        return;
       }
-    );
-  } catch (error) {
-    console.error(
-      "❌ Cloudinary delete error:",
-      error.message
-    );
-  }
-};
+
+      const uploadIndex =
+        fileUrl.indexOf(
+          "/upload/"
+        );
+
+      if (uploadIndex === -1) {
+        return;
+      }
+
+      let publicId =
+        fileUrl.substring(
+          uploadIndex +
+            "/upload/".length
+        );
+
+      publicId =
+        publicId.replace(
+          /^v\d+\//,
+          ""
+        );
+
+      publicId =
+        publicId.replace(
+          /\.[^/.]+$/,
+          ""
+        );
+
+      await cloudinary.uploader.destroy(
+        publicId,
+        {
+          resource_type:
+            resourceType,
+        }
+      );
+    } catch (error) {
+      console.error(
+        "❌ Cloudinary delete error:",
+        error.message
+      );
+    }
+  };
 
 // ============================================================
 // UPLOAD PRODUCT FILES
 // ============================================================
 
-const uploadProductFiles = async (
-  files
-) => {
-  const imageUrls = [];
-  const videoUrls = [];
+const uploadProductFiles =
+  async (files) => {
+    const imageUrls = [];
+    const videoUrls = [];
 
-  if (
-    !files ||
-    !Array.isArray(files) ||
-    files.length === 0
-  ) {
+    if (
+      !files ||
+      !Array.isArray(files) ||
+      files.length === 0
+    ) {
+      return {
+        imageUrls,
+        videoUrls,
+      };
+    }
+
+    for (const file of files) {
+      if (
+        !file ||
+        !file.buffer
+      ) {
+        continue;
+      }
+
+      try {
+        if (
+          file.mimetype &&
+          file.mimetype.startsWith(
+            "image/"
+          )
+        ) {
+          const result =
+            await uploadToCloudinary(
+              file.buffer,
+              "image"
+            );
+
+          if (
+            result?.secure_url
+          ) {
+            imageUrls.push(
+              result.secure_url
+            );
+          }
+        } else if (
+          file.mimetype &&
+          file.mimetype.startsWith(
+            "video/"
+          )
+        ) {
+          const result =
+            await uploadToCloudinary(
+              file.buffer,
+              "video"
+            );
+
+          if (
+            result?.secure_url
+          ) {
+            videoUrls.push(
+              result.secure_url
+            );
+          }
+        }
+      } catch (uploadError) {
+        console.error(
+          "❌ File upload error:",
+          uploadError.message
+        );
+
+        throw uploadError;
+      }
+    }
+
     return {
       imageUrls,
       videoUrls,
     };
-  }
-
-  for (const file of files) {
-    if (!file || !file.buffer) {
-      continue;
-    }
-
-    try {
-      if (
-        file.mimetype &&
-        file.mimetype.startsWith("image/")
-      ) {
-        const result =
-          await uploadToCloudinary(
-            file.buffer,
-            "image"
-          );
-
-        if (result?.secure_url) {
-          imageUrls.push(
-            result.secure_url
-          );
-        }
-      } else if (
-        file.mimetype &&
-        file.mimetype.startsWith("video/")
-      ) {
-        const result =
-          await uploadToCloudinary(
-            file.buffer,
-            "video"
-          );
-
-        if (result?.secure_url) {
-          videoUrls.push(
-            result.secure_url
-          );
-        }
-      }
-    } catch (uploadError) {
-      console.error(
-        "❌ File upload error:",
-        uploadError.message
-      );
-
-      throw uploadError;
-    }
-  }
-
-  return {
-    imageUrls,
-    videoUrls,
   };
-};
 
 // ============================================================
 // BUILD PRODUCT DATA
@@ -753,20 +756,7 @@ const buildProductData = (
       body?.category
     );
 
-  console.log(
-    "📦 Category conversion:",
-    {
-      received: body?.category,
-      normalized:
-        normalizedCategory,
-      allowed:
-        PRODUCT_CATEGORIES,
-    }
-  );
-
   return {
-    // BASIC
-
     title: cleanString(
       body.title
     ),
@@ -775,9 +765,10 @@ const buildProductData = (
       body.price
     ),
 
-    oldPrice: toNumberOrNull(
-      body.oldPrice
-    ),
+    oldPrice:
+      toNumberOrNull(
+        body.oldPrice
+      ),
 
     category:
       normalizedCategory,
@@ -791,8 +782,6 @@ const buildProductData = (
       cleanString(
         body.description
       ),
-
-    // SELLER
 
     sellerId:
       getUserId(req),
@@ -812,8 +801,6 @@ const buildProductData = (
       cleanString(
         req.user?.phone
       ),
-
-    // GENERAL
 
     brand: cleanString(
       body.brand
@@ -835,8 +822,6 @@ const buildProductData = (
     warranty: cleanString(
       body.warranty
     ),
-
-    // COMPUTER / TABLET
 
     storage: cleanString(
       body.storage
@@ -868,27 +853,23 @@ const buildProductData = (
         body.connectivity
       ),
 
-    // CONSOLE
-
     videoOutput:
       cleanString(
         body.videoOutput
       ),
 
-    region:
-      cleanString(
-        body.region
-      ),
+    region: cleanString(
+      body.region
+    ),
 
     consoleType:
       cleanString(
         body.consoleType
       ),
 
-    edition:
-      cleanString(
-        body.edition
-      ),
+    edition: cleanString(
+      body.edition
+    ),
 
     discDrive:
       cleanString(
@@ -900,29 +881,23 @@ const buildProductData = (
         body.controllersIncluded
       ),
 
-    battery:
-      cleanString(
-        body.battery
-      ),
+    battery: cleanString(
+      body.battery
+    ),
 
     resolution:
       cleanString(
         body.resolution
       ),
 
-    // SMARTWATCH
-
     watchSize:
       cleanString(
         body.watchSize
       ),
 
-    // TV
-
-    tvType:
-      cleanString(
-        body.tvType
-      ),
+    tvType: cleanString(
+      body.tvType
+    ),
 
     displayTechnology:
       cleanString(
@@ -939,10 +914,9 @@ const buildProductData = (
         body.operatingSystem
       ),
 
-    hdr:
-      cleanString(
-        body.hdr
-      ),
+    hdr: cleanString(
+      body.hdr
+    ),
 
     hdmiPorts:
       cleanString(
@@ -954,10 +928,9 @@ const buildProductData = (
         body.usbPorts
       ),
 
-    smartTV:
-      toBoolean(
-        body.smartTV
-      ),
+    smartTV: toBoolean(
+      body.smartTV
+    ),
 
     voiceControl:
       toBoolean(
@@ -968,8 +941,6 @@ const buildProductData = (
       toBoolean(
         body.wallMountable
       ),
-
-    // CAR
 
     mileage:
       toNumberOrNull(
@@ -1015,8 +986,6 @@ const buildProductData = (
       cleanString(
         body.interiorColor
       ),
-
-    // ACCESSORIES
 
     accessoryType:
       cleanString(
@@ -1073,24 +1042,19 @@ const buildProductData = (
         body.original
       ),
 
-    // PHONE
-
     batteryHealth:
       toNumberOrNull(
         body.batteryHealth
       ),
 
-    faceId:
-      cleanString(
-        body.faceId
-      ),
+    faceId: cleanString(
+      body.faceId
+    ),
 
     simStatus:
       cleanString(
         body.simStatus
       ),
-
-    // SELLING
 
     negotiation:
       toBoolean(
@@ -1101,8 +1065,6 @@ const buildProductData = (
       toBoolean(
         body.swapAccepted
       ),
-
-    // STATUS
 
     status:
       normalizeStatus(
@@ -1190,6 +1152,50 @@ const validateProductData = (
 };
 
 // ============================================================
+// CREATE EMBEDDING FOR FIRST IMAGE
+// ============================================================
+
+const createProductVisualEmbedding =
+  async (
+    imageBuffer
+  ) => {
+    if (
+      !imageBuffer ||
+      !Buffer.isBuffer(imageBuffer)
+    ) {
+      return null;
+    }
+
+    try {
+      const embedding =
+        await createImageEmbeddingFromBuffer(
+          imageBuffer
+        );
+
+      if (
+        !Array.isArray(
+          embedding
+        ) ||
+        embedding.length !==
+          EMBEDDING_DIMENSIONS
+      ) {
+        throw new Error(
+          `Expected ${EMBEDDING_DIMENSIONS}-dimension embedding`
+        );
+      }
+
+      return embedding;
+    } catch (error) {
+      console.error(
+        "⚠️ Visual embedding generation failed:",
+        error.message
+      );
+
+      return null;
+    }
+  };
+
+// ============================================================
 // GET PRODUCTS
 // ============================================================
 
@@ -1228,8 +1234,6 @@ exports.getProducts =
 
       const query = {};
 
-      // STATUS
-
       if (status) {
         query.status =
           normalizeStatus(status);
@@ -1237,19 +1241,12 @@ exports.getProducts =
         query.status = "active";
       }
 
-      // CATEGORY
-
       if (category) {
-        const normalizedCategory =
+        query.category =
           normalizeCategory(
             category
           );
-
-        query.category =
-          normalizedCategory;
       }
-
-      // LOCATION
 
       if (location) {
         query.location = {
@@ -1261,16 +1258,12 @@ exports.getProducts =
         };
       }
 
-      // CONDITION
-
       if (condition) {
         query.condition =
           normalizeCondition(
             condition
           );
       }
-
-      // BRAND
 
       if (brand) {
         query.brand = {
@@ -1282,8 +1275,6 @@ exports.getProducts =
         };
       }
 
-      // MODEL
-
       if (model) {
         query.model = {
           $regex:
@@ -1293,8 +1284,6 @@ exports.getProducts =
           $options: "i",
         };
       }
-
-      // SELLER
 
       if (sellerId) {
         if (
@@ -1312,8 +1301,6 @@ exports.getProducts =
         query.sellerId =
           sellerId;
       }
-
-      // PRICE
 
       const min =
         toNumberOrNull(
@@ -1339,8 +1326,6 @@ exports.getProducts =
           query.price.$lte = max;
         }
       }
-
-      // SEARCH
 
       if (search) {
         const safeSearch =
@@ -1470,6 +1455,254 @@ exports.getProducts =
   };
 
 // ============================================================
+// VISUAL SEARCH
+// ============================================================
+
+exports.visualSearch =
+  async (req, res) => {
+    try {
+      const file =
+        Array.isArray(req.files)
+          ? req.files[0]
+          : req.file;
+
+      if (
+        !file ||
+        !file.buffer
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Please upload an image",
+        });
+      }
+
+      if (
+        !file.mimetype ||
+        !file.mimetype.startsWith(
+          "image/"
+        )
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Only image files are supported",
+        });
+      }
+
+      const {
+        category,
+        location,
+        minPrice,
+        maxPrice,
+        limit = 24,
+      } = req.body || {};
+
+      const queryEmbedding =
+        await createImageEmbeddingFromBuffer(
+          file.buffer
+        );
+
+      if (
+        !queryEmbedding ||
+        queryEmbedding.length !==
+          EMBEDDING_DIMENSIONS
+      ) {
+        return res.status(500).json({
+          success: false,
+          message:
+            "Unable to create image embedding",
+        });
+      }
+
+      const safeLimit =
+        Math.min(
+          Math.max(
+            Number(limit) || 24,
+            1
+          ),
+          100
+        );
+
+      const filter = {
+        status: "active",
+      };
+
+      if (category) {
+        filter.category =
+          normalizeCategory(
+            category
+          );
+      }
+
+      if (location) {
+        filter.location = {
+          $regex:
+            escapeRegex(
+              location
+            ),
+          $options: "i",
+        };
+      }
+
+      const min =
+        toNumberOrNull(
+          minPrice
+        );
+
+      const max =
+        toNumberOrNull(
+          maxPrice
+        );
+
+      if (
+        min !== null ||
+        max !== null
+      ) {
+        filter.price = {};
+
+        if (min !== null) {
+          filter.price.$gte =
+            min;
+        }
+
+        if (max !== null) {
+          filter.price.$lte =
+            max;
+        }
+      }
+
+      const candidates =
+        Math.max(
+          safeLimit * 10,
+          100
+        );
+
+      const pipeline = [
+        {
+          $vectorSearch: {
+            index:
+              VECTOR_INDEX_NAME,
+            path:
+              "imageEmbedding",
+            queryVector:
+              queryEmbedding,
+            numCandidates:
+              candidates,
+            limit:
+              safeLimit,
+            filter,
+          },
+        },
+
+        {
+          $addFields: {
+            visualSimilarity: {
+              $meta:
+                "vectorSearchScore",
+            },
+          },
+        },
+
+        {
+          $project: {
+            imageEmbedding: 0,
+            imageEmbeddingModel: 0,
+            imageEmbeddingUpdatedAt: 0,
+          },
+        },
+
+        {
+          $lookup: {
+            from: "users",
+            localField:
+              "sellerId",
+            foreignField:
+              "_id",
+            as: "seller",
+          },
+        },
+
+        {
+          $unwind: {
+            path: "$seller",
+            preserveNullAndEmptyArrays:
+              true,
+          },
+        },
+
+        {
+          $addFields: {
+            sellerId: {
+              _id: "$seller._id",
+              name: "$seller.name",
+              email: "$seller.email",
+              phone: "$seller.phone",
+              location:
+                "$seller.location",
+              avatar:
+                "$seller.avatar",
+            },
+          },
+        },
+
+        {
+          $project: {
+            seller: 0,
+          },
+        },
+      ];
+
+      const products =
+        await Product.aggregate(
+          pipeline
+        );
+
+      return res.json({
+        success: true,
+        message:
+          "Visual search completed",
+        products,
+        count:
+          products.length,
+        visualSearch: true,
+        model: MODEL_ID,
+        dimensions:
+          EMBEDDING_DIMENSIONS,
+      });
+    } catch (error) {
+      console.error(
+        "❌ Visual search error:",
+        error
+      );
+
+      if (
+        error.message?.includes(
+          "index"
+        ) &&
+        error.message?.includes(
+          "vector"
+        )
+      ) {
+        return res.status(500).json({
+          success: false,
+          message:
+            "Visual search index is not configured in MongoDB Atlas",
+          error:
+            error.message,
+        });
+      }
+
+      return res.status(500).json({
+        success: false,
+        message:
+          error.message ||
+          "Visual search failed",
+      });
+    }
+  };
+
+// ============================================================
 // GET SINGLE PRODUCT
 // ============================================================
 
@@ -1553,43 +1786,6 @@ exports.getProductById =
 exports.createProduct =
   async (req, res) => {
     try {
-      console.log(
-        "========================================"
-      );
-
-      console.log(
-        "📥 CREATE PRODUCT REQUEST"
-      );
-
-      console.log(
-        "👤 User:",
-        req.user
-      );
-
-      console.log(
-        "📦 Raw category:",
-        req.body?.category
-      );
-
-      console.log(
-        "📦 Raw title:",
-        req.body?.title
-      );
-
-      console.log(
-        "💰 Raw price:",
-        req.body?.price
-      );
-
-      console.log(
-        "📋 Allowed categories:",
-        PRODUCT_CATEGORIES
-      );
-
-      console.log(
-        "========================================"
-      );
-
       const userId =
         getUserId(req);
 
@@ -1610,16 +1806,6 @@ exports.createProduct =
       productData.sellerId =
         userId;
 
-      console.log(
-        "📂 Normalized category:",
-        productData.category
-      );
-
-      console.log(
-        "📞 Seller phone:",
-        productData.sellerPhone
-      );
-
       const validationErrors =
         validateProductData(
           productData
@@ -1628,11 +1814,6 @@ exports.createProduct =
       if (
         validationErrors.length > 0
       ) {
-        console.error(
-          "❌ Product validation:",
-          validationErrors
-        );
-
         return res.status(400).json({
           success: false,
           message:
@@ -1659,53 +1840,55 @@ exports.createProduct =
       productData.image =
         imageUrls[0] || "";
 
+      // ======================================================
+      // CREATE VISUAL EMBEDDING
+      // ======================================================
+
+      if (
+        req.files &&
+        Array.isArray(req.files)
+      ) {
+        const firstImage =
+          req.files.find(
+            (file) =>
+              file?.mimetype?.startsWith(
+                "image/"
+              )
+          );
+
+        if (firstImage) {
+          const embedding =
+            await createProductVisualEmbedding(
+              firstImage.buffer
+            );
+
+          if (embedding) {
+            productData.imageEmbedding =
+              embedding;
+
+            productData.imageEmbeddingModel =
+              MODEL_ID;
+
+            productData.imageEmbeddingUpdatedAt =
+              new Date();
+          }
+        }
+      }
+
       const product =
         await Product.create(
           productData
         );
-
-      console.log(
-        "========================================"
-      );
-
-      console.log(
-        "✅ PRODUCT CREATED"
-      );
-
-      console.log(
-        "🆔 ID:",
-        product._id.toString()
-      );
-
-      console.log(
-        "📂 Category:",
-        product.category
-      );
-
-      console.log(
-        "🏷️ Title:",
-        product.title
-      );
-
-      console.log(
-        "🖼️ Images:",
-        imageUrls.length
-      );
-
-      console.log(
-        "🎥 Videos:",
-        videoUrls.length
-      );
-
-      console.log(
-        "========================================"
-      );
 
       return res.status(201).json({
         success: true,
         message:
           "Product created successfully",
         product,
+        visualSearchIndexed:
+          Boolean(
+            productData.imageEmbedding
+          ),
       });
     } catch (error) {
       console.error(
@@ -1782,6 +1965,8 @@ exports.updateProduct =
       const product =
         await Product.findById(
           id
+        ).select(
+          "+imageEmbedding +imageEmbeddingModel +imageEmbeddingUpdatedAt"
         );
 
       if (!product) {
@@ -2110,6 +2295,12 @@ exports.updateProduct =
       // UPLOAD NEW FILES
       // ======================================================
 
+      let newImageUploaded =
+        false;
+
+      let firstNewImageBuffer =
+        null;
+
       if (
         req.files &&
         req.files.length > 0
@@ -2136,6 +2327,9 @@ exports.updateProduct =
           product.images.push(
             ...imageUrls
           );
+
+          newImageUploaded =
+            true;
         }
 
         if (
@@ -2157,6 +2351,44 @@ exports.updateProduct =
         product.image =
           product.images?.[0] ||
           "";
+
+        const firstNewImage =
+          req.files.find(
+            (file) =>
+              file?.mimetype?.startsWith(
+                "image/"
+              )
+          );
+
+        if (firstNewImage) {
+          firstNewImageBuffer =
+            firstNewImage.buffer;
+        }
+      }
+
+      // ======================================================
+      // REGENERATE VISUAL EMBEDDING
+      // ======================================================
+
+      if (
+        newImageUploaded &&
+        firstNewImageBuffer
+      ) {
+        const embedding =
+          await createProductVisualEmbedding(
+            firstNewImageBuffer
+          );
+
+        if (embedding) {
+          product.imageEmbedding =
+            embedding;
+
+          product.imageEmbeddingModel =
+            MODEL_ID;
+
+          product.imageEmbeddingUpdatedAt =
+            new Date();
+        }
       }
 
       // ======================================================
@@ -2209,8 +2441,6 @@ exports.updateProduct =
           success: false,
           message:
             `Invalid product category: ${product.category}`,
-          allowedCategories:
-            PRODUCT_CATEGORIES,
         });
       }
 
@@ -2239,16 +2469,6 @@ exports.updateProduct =
       }
 
       await product.save();
-
-      console.log(
-        "✅ Product updated:",
-        product._id
-      );
-
-      console.log(
-        "📂 Category:",
-        product.category
-      );
 
       return res.json({
         success: true,
@@ -2393,11 +2613,6 @@ exports.deleteProduct =
 
       await product.deleteOne();
 
-      console.log(
-        "🗑️ Product deleted:",
-        id
-      );
-
       return res.json({
         success: true,
         message:
@@ -2518,18 +2733,6 @@ exports.updateProductStatus =
           status
         );
 
-      if (
-        !VALID_STATUSES.includes(
-          normalizedStatus
-        )
-      ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Invalid status",
-        });
-      }
-
       const product =
         await Product.findById(
           id
@@ -2577,10 +2780,6 @@ exports.updateProductStatus =
         normalizedStatus;
 
       await product.save();
-
-      console.log(
-        `✅ Product ${id} status changed to ${normalizedStatus}`
-      );
 
       return res.json({
         success: true,
@@ -2631,4 +2830,7 @@ module.exports = {
 
   updateProductStatus:
     exports.updateProductStatus,
+
+  visualSearch:
+    exports.visualSearch,
 };
