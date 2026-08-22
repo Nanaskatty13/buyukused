@@ -1,4 +1,6 @@
+// ============================================================
 // backend/models/Delivery.js
+// ============================================================
 
 const mongoose = require("mongoose");
 
@@ -23,6 +25,7 @@ const deliverySchema = new mongoose.Schema(
       type: String,
       enum: ["buyer", "seller"],
       required: true,
+      index: true,
     },
 
     // ==========================================================
@@ -93,18 +96,21 @@ const deliverySchema = new mongoose.Schema(
       type: String,
       required: [true, "Pickup location is required"],
       trim: true,
+      maxlength: 1000,
     },
 
     pickupContactName: {
       type: String,
       default: "",
       trim: true,
+      maxlength: 200,
     },
 
     pickupPhone: {
       type: String,
       default: "",
       trim: true,
+      maxlength: 50,
     },
 
     // ==========================================================
@@ -115,18 +121,21 @@ const deliverySchema = new mongoose.Schema(
       type: String,
       required: [true, "Delivery location is required"],
       trim: true,
+      maxlength: 1000,
     },
 
     deliveryContactName: {
       type: String,
       default: "",
       trim: true,
+      maxlength: 200,
     },
 
     deliveryPhone: {
       type: String,
       default: "",
       trim: true,
+      maxlength: 50,
     },
 
     // ==========================================================
@@ -193,6 +202,38 @@ const deliverySchema = new mongoose.Schema(
     },
 
     // ==========================================================
+    // RIDER LOCATION
+    // ==========================================================
+
+    riderLocation: {
+      latitude: {
+        type: Number,
+        default: null,
+        min: -90,
+        max: 90,
+      },
+
+      longitude: {
+        type: Number,
+        default: null,
+        min: -180,
+        max: 180,
+      },
+
+      address: {
+        type: String,
+        default: "",
+        trim: true,
+        maxlength: 1000,
+      },
+
+      updatedAt: {
+        type: Date,
+        default: null,
+      },
+    },
+
+    // ==========================================================
     // DELIVERY STATUS
     // ==========================================================
 
@@ -211,7 +252,7 @@ const deliverySchema = new mongoose.Schema(
     },
 
     // ==========================================================
-    // ACCEPTANCE TIME
+    // DELIVERY TIMESTAMPS
     // ==========================================================
 
     acceptedAt: {
@@ -266,21 +307,28 @@ const deliverySchema = new mongoose.Schema(
 // INDEXES
 // ============================================================
 
-// Quickly find pending deliveries.
 deliverySchema.index({
   status: 1,
   createdAt: -1,
 });
 
-// Quickly find a user's deliveries.
 deliverySchema.index({
   requester: 1,
   createdAt: -1,
 });
 
-// Quickly find rider's deliveries.
 deliverySchema.index({
   rider: 1,
+  createdAt: -1,
+});
+
+deliverySchema.index({
+  buyer: 1,
+  createdAt: -1,
+});
+
+deliverySchema.index({
+  seller: 1,
   createdAt: -1,
 });
 

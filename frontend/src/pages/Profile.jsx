@@ -1,9 +1,19 @@
 // frontend/src/pages/Profile.jsx
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import '../styles/global.css';
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+} from "react";
+
+import {
+  Link,
+  useNavigate,
+} from "react-router-dom";
+
+import { useAuth } from "../context/AuthContext";
+
+import "../styles/global.css";
 
 import {
   getProducts,
@@ -11,9 +21,9 @@ import {
   getImageUrl,
   API_URL,
   deleteProduct,
-} from '../services/api';
+} from "../services/api";
 
-import { messages } from '../services/messages';
+import { messages } from "../services/messages";
 
 const Profile = () => {
   const { user, token } = useAuth();
@@ -27,12 +37,10 @@ const Profile = () => {
   const [notifications, setNotifications] = useState([]);
   const [messagesList, setMessagesList] = useState([]);
 
-  // IMPORTANT:
-  // We no longer use loading to hide the whole profile.
-  // The profile renders immediately from AuthContext.
   const [loading, setLoading] = useState(false);
 
-  const [deletingProductId, setDeletingProductId] = useState(null);
+  const [deletingProductId, setDeletingProductId] =
+    useState(null);
 
   const [stats, setStats] = useState({
     totalAds: 0,
@@ -46,19 +54,25 @@ const Profile = () => {
   // EDIT PROFILE MODAL
   // ================================================================
 
-  const [showEditModal, setShowEditModal] = useState(false);
+  const [showEditModal, setShowEditModal] =
+    useState(false);
 
-  const [editName, setEditName] = useState('');
-  const [editEmail, setEditEmail] = useState('');
-  const [editPhone, setEditPhone] = useState('');
-  const [editRole, setEditRole] = useState('buyer');
+  const [editName, setEditName] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [editRole, setEditRole] = useState("buyer");
 
   const [editPhoto, setEditPhoto] = useState(null);
-  const [editPhotoPreview, setEditPhotoPreview] = useState('');
+  const [editPhotoPreview, setEditPhotoPreview] =
+    useState("");
 
-  const [editLoading, setEditLoading] = useState(false);
-  const [editError, setEditError] = useState('');
-  const [removePhoto, setRemovePhoto] = useState(false);
+  const [editLoading, setEditLoading] =
+    useState(false);
+
+  const [editError, setEditError] = useState("");
+
+  const [removePhoto, setRemovePhoto] =
+    useState(false);
 
   // ================================================================
   // KEEP EDIT FIELDS IN SYNC WITH USER
@@ -67,16 +81,18 @@ const Profile = () => {
   useEffect(() => {
     if (!user) return;
 
-    setEditName(user.name || '');
-    setEditEmail(user.email || '');
-    setEditPhone(user.phone || '');
-    setEditRole(user.role || 'buyer');
+    setEditName(user.name || "");
+    setEditEmail(user.email || "");
+    setEditPhone(user.phone || "");
+    setEditRole(user.role || "buyer");
 
-    setEditPhotoPreview(
+    const existingPhoto =
       user.photoURL ||
       user.photo ||
-      ''
-    );
+      user.profileImage ||
+      "";
+
+    setEditPhotoPreview(existingPhoto);
 
     setEditPhoto(null);
     setRemovePhoto(false);
@@ -84,10 +100,6 @@ const Profile = () => {
 
   // ================================================================
   // FAST PROFILE DATA LOADER
-  //
-  // IMPORTANT:
-  // Products, notifications and messages are loaded IN PARALLEL.
-  // The profile itself never waits for these requests before rendering.
   // ================================================================
 
   const loadUserData = useCallback(async () => {
@@ -102,9 +114,10 @@ const Profile = () => {
 
     if (!userId) {
       console.warn(
-        '⚠️ No user ID found in user object:',
+        "⚠️ No user ID found in user object:",
         user
       );
+
       return;
     }
 
@@ -112,66 +125,70 @@ const Profile = () => {
       setLoading(true);
 
       console.log(
-        '👤 Loading profile data for user:',
+        "👤 Loading profile data for user:",
         userId
       );
 
       // ============================================================
-      // LOAD EVERYTHING AT THE SAME TIME
+      // LOAD EVERYTHING IN PARALLEL
       // ============================================================
 
-      const results = await Promise.allSettled([
-        // ------------------------------------------------------------
-        // PRODUCTS
-        // ------------------------------------------------------------
+      const results =
+        await Promise.allSettled([
+          // ----------------------------------------------------------
+          // PRODUCTS
+          // ----------------------------------------------------------
 
-        getProducts({
-          sellerId: userId,
-          limit: 100,
-        }),
+          getProducts({
+            sellerId: userId,
+            limit: 100,
+          }),
 
-        // ------------------------------------------------------------
-        // NOTIFICATIONS
-        // ------------------------------------------------------------
+          // ----------------------------------------------------------
+          // NOTIFICATIONS
+          // ----------------------------------------------------------
 
-        getUserNotifications(
-          userId,
-          token
-        ),
+          getUserNotifications(
+            userId,
+            token
+          ),
 
-        // ------------------------------------------------------------
-        // MESSAGES
-        // ------------------------------------------------------------
+          // ----------------------------------------------------------
+          // MESSAGES
+          // ----------------------------------------------------------
 
-        messages.getForUser(
-          userId,
-          token
-        ),
-      ]);
+          messages.getForUser(
+            userId,
+            token
+          ),
+        ]);
 
       // ============================================================
-      // PRODUCTS RESULT
+      // PRODUCTS
       // ============================================================
 
       let userProducts = [];
 
-      if (results[0]?.status === 'fulfilled') {
+      if (
+        results[0]?.status ===
+        "fulfilled"
+      ) {
         const productResponse =
           results[0].value;
 
-        userProducts = Array.isArray(
-          productResponse
-        )
-          ? productResponse
-          : productResponse?.products || [];
+        userProducts =
+          Array.isArray(productResponse)
+            ? productResponse
+            : productResponse?.products ||
+              [];
 
         console.log(
-          '✅ Products loaded:',
+          "✅ Products loaded:",
           userProducts.length
         );
       } else {
         console.error(
-          '❌ Products request failed:',
+          "❌ Products request failed:",
           results[0]?.reason
         );
 
@@ -180,15 +197,16 @@ const Profile = () => {
         // ----------------------------------------------------------
 
         try {
-          const response = await fetch(
-            `${API_URL}/api/users/me/products`,
-            {
-              headers: {
-                Authorization:
-                  `Bearer ${token}`,
-              },
-            }
-          );
+          const response =
+            await fetch(
+              `${API_URL}/api/users/me/products`,
+              {
+                headers: {
+                  Authorization:
+                    `Bearer ${token}`,
+                },
+              }
+            );
 
           if (response.ok) {
             const data =
@@ -198,78 +216,86 @@ const Profile = () => {
               data?.products || [];
 
             console.log(
-              '✅ Fallback products loaded:',
+              "✅ Fallback products loaded:",
               userProducts.length
             );
           }
-        } catch (fallbackError) {
+        } catch (
+          fallbackError
+        ) {
           console.error(
-            '❌ Fallback product fetch failed:',
+            "❌ Fallback product fetch failed:",
             fallbackError
           );
         }
       }
 
       // ============================================================
-      // NOTIFICATIONS RESULT
+      // NOTIFICATIONS
       // ============================================================
 
       let userNotifs = [];
 
-      if (results[1]?.status === 'fulfilled') {
+      if (
+        results[1]?.status ===
+        "fulfilled"
+      ) {
         const notifResponse =
           results[1].value;
 
-        userNotifs = Array.isArray(
-          notifResponse
-        )
-          ? notifResponse
-          : notifResponse?.notifications ||
-            notifResponse?.data ||
-            [];
+        userNotifs =
+          Array.isArray(
+            notifResponse
+          )
+            ? notifResponse
+            : notifResponse?.notifications ||
+              notifResponse?.data ||
+              [];
 
         console.log(
-          '✅ Notifications loaded:',
+          "✅ Notifications loaded:",
           userNotifs.length
         );
       } else {
         console.error(
-          '❌ Notifications request failed:',
+          "❌ Notifications request failed:",
           results[1]?.reason
         );
       }
 
       // ============================================================
-      // MESSAGES RESULT
+      // MESSAGES
       // ============================================================
 
       let userMessages = [];
 
-      if (results[2]?.status === 'fulfilled') {
+      if (
+        results[2]?.status ===
+        "fulfilled"
+      ) {
         const msgResponse =
           results[2].value;
 
-        userMessages = Array.isArray(
-          msgResponse
-        )
-          ? msgResponse
-          : msgResponse?.messages ||
-            msgResponse?.data ||
-            [];
+        userMessages =
+          Array.isArray(msgResponse)
+            ? msgResponse
+            : msgResponse?.messages ||
+              msgResponse?.data ||
+              [];
 
         console.log(
-          '✅ Messages loaded:',
+          "✅ Messages loaded:",
           userMessages.length
         );
       } else {
         console.error(
-          '❌ Messages request failed:',
+          "❌ Messages request failed:",
           results[2]?.reason
         );
       }
 
       // ============================================================
-      // UPDATE STATE TOGETHER
+      // UPDATE STATE
       // ============================================================
 
       setProducts(userProducts);
@@ -285,7 +311,7 @@ const Profile = () => {
           (message) => {
             const receiverId =
               typeof message.receiver ===
-              'string'
+              "string"
                 ? message.receiver
                 : message.receiver?._id;
 
@@ -298,7 +324,7 @@ const Profile = () => {
         ).length;
 
       // ============================================================
-      // CALCULATE STATS
+      // TOTAL VIEWS
       // ============================================================
 
       const totalViews =
@@ -311,11 +337,19 @@ const Profile = () => {
           0
         );
 
+      // ============================================================
+      // UNREAD NOTIFICATIONS
+      // ============================================================
+
       const unreadNotifications =
         userNotifs.filter(
           (notification) =>
             !notification.read
         ).length;
+
+      // ============================================================
+      // UPDATE STATS
+      // ============================================================
 
       setStats({
         totalAds:
@@ -333,11 +367,11 @@ const Profile = () => {
       });
 
       console.log(
-        '✅ Profile data loaded successfully'
+        "✅ Profile data loaded successfully"
       );
     } catch (error) {
       console.error(
-        '❌ Profile loading error:',
+        "❌ Profile loading error:",
         error
       );
     } finally {
@@ -353,7 +387,11 @@ const Profile = () => {
     if (!user || !token) return;
 
     loadUserData();
-  }, [user, token, loadUserData]);
+  }, [
+    user,
+    token,
+    loadUserData,
+  ]);
 
   // ================================================================
   // DELETE PRODUCT
@@ -364,7 +402,7 @@ const Profile = () => {
   ) => {
     if (
       !window.confirm(
-        'Delete this product permanently?'
+        "Delete this product permanently?"
       )
     ) {
       return;
@@ -372,8 +410,9 @@ const Profile = () => {
 
     if (!token) {
       alert(
-        'Session expired. Please login again.'
+        "Session expired. Please login again."
       );
+
       return;
     }
 
@@ -389,7 +428,7 @@ const Profile = () => {
       if (
         result?.success ||
         result?.message?.includes(
-          'deleted'
+          "deleted"
         )
       ) {
         setProducts(
@@ -404,6 +443,7 @@ const Profile = () => {
         setStats(
           (prev) => ({
             ...prev,
+
             totalAds:
               Math.max(
                 0,
@@ -414,18 +454,18 @@ const Profile = () => {
       } else {
         alert(
           result?.message ||
-            'Delete failed.'
+            "Delete failed."
         );
       }
     } catch (error) {
       console.error(
-        '❌ Delete error:',
+        "❌ Delete error:",
         error
       );
 
       alert(
         error?.message ||
-          'Something went wrong.'
+          "Something went wrong."
       );
     } finally {
       setDeletingProductId(null);
@@ -444,11 +484,11 @@ const Profile = () => {
 
     if (!file) return;
 
-    // Revoke previous preview
+    // Revoke previous blob preview
     if (
       editPhotoPreview &&
       editPhotoPreview.startsWith(
-        'blob:'
+        "blob:"
       )
     ) {
       URL.revokeObjectURL(
@@ -473,7 +513,7 @@ const Profile = () => {
     if (
       editPhotoPreview &&
       editPhotoPreview.startsWith(
-        'blob:'
+        "blob:"
       )
     ) {
       URL.revokeObjectURL(
@@ -482,7 +522,7 @@ const Profile = () => {
     }
 
     setEditPhoto(null);
-    setEditPhotoPreview('');
+    setEditPhotoPreview("");
     setRemovePhoto(true);
   };
 
@@ -497,12 +537,13 @@ const Profile = () => {
 
     if (!token) {
       setEditError(
-        'Session expired. Please login again.'
+        "Session expired. Please login again."
       );
+
       return;
     }
 
-    setEditError('');
+    setEditError("");
     setEditLoading(true);
 
     try {
@@ -510,35 +551,35 @@ const Profile = () => {
         new FormData();
 
       formData.append(
-        'name',
+        "name",
         editName.trim()
       );
 
       formData.append(
-        'email',
+        "email",
         editEmail
           .trim()
           .toLowerCase()
       );
 
       formData.append(
-        'phone',
+        "phone",
         editPhone.trim()
       );
 
       formData.append(
-        'role',
+        "role",
         editRole
       );
 
       if (removePhoto) {
         formData.append(
-          'removePhoto',
-          'true'
+          "removePhoto",
+          "true"
         );
       } else if (editPhoto) {
         formData.append(
-          'photo',
+          "photo",
           editPhoto
         );
       }
@@ -547,12 +588,15 @@ const Profile = () => {
         await fetch(
           `${API_URL}/api/users/profile`,
           {
-            method: 'PUT',
-            credentials: 'include',
+            method: "PUT",
+
+            credentials: "include",
+
             headers: {
               Authorization:
                 `Bearer ${token}`,
             },
+
             body: formData,
           }
         );
@@ -577,24 +621,22 @@ const Profile = () => {
       if (data.success !== false) {
         setShowEditModal(false);
 
-        // Keep your existing AuthContext
-        // refresh behavior.
         window.location.reload();
       } else {
         setEditError(
           data.message ||
-            'Update failed'
+            "Update failed"
         );
       }
     } catch (error) {
       console.error(
-        '❌ Profile update error:',
+        "❌ Profile update error:",
         error
       );
 
       setEditError(
         error?.message ||
-          'Something went wrong.'
+          "Something went wrong."
       );
     } finally {
       setEditLoading(false);
@@ -610,6 +652,16 @@ const Profile = () => {
   };
 
   // ================================================================
+  // REQUEST A RIDE
+  //
+  // Available to BOTH buyers and sellers.
+  // ================================================================
+
+  const handleRequestRide = () => {
+    navigate("/book-rider");
+  };
+
+  // ================================================================
   // NOT LOGGED IN
   // ================================================================
 
@@ -618,8 +670,8 @@ const Profile = () => {
       <div
         className="container"
         style={{
-          padding: '60px 20px',
-          textAlign: 'center',
+          padding: "60px 20px",
+          textAlign: "center",
         }}
       >
         <h2>
@@ -629,7 +681,7 @@ const Profile = () => {
         <p
           style={{
             color:
-              'var(--gray-500)',
+              "var(--gray-500)",
           }}
         >
           You need to be logged in
@@ -641,8 +693,8 @@ const Profile = () => {
           className="btn-primary"
           style={{
             display:
-              'inline-block',
-            marginTop: '16px',
+              "inline-block",
+            marginTop: "16px",
           }}
         >
           Login
@@ -656,23 +708,24 @@ const Profile = () => {
   // ================================================================
 
   const profileName =
-    user.name || 'User';
+    user.name || "User";
 
   const profileEmail =
-    user.email || '';
+    user.email || "";
 
   const profilePhoto =
     user.photoURL ||
     user.photo ||
-    '';
+    user.profileImage ||
+    "";
 
   const profileInitial =
     profileName
       ?.charAt(0)
-      .toUpperCase() || 'U';
+      .toUpperCase() || "U";
 
   const profileRole =
-    user.role || 'buyer';
+    user.role || "buyer";
 
   // ================================================================
   // RENDER
@@ -683,7 +736,7 @@ const Profile = () => {
       className="container"
       style={{
         padding:
-          '30px 20px',
+          "30px 20px",
       }}
     >
       {/* ==========================================================
@@ -693,21 +746,20 @@ const Profile = () => {
       <div
         className="profile-header"
         style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '24px',
+          display: "flex",
+          alignItems: "center",
+          gap: "24px",
           padding:
-            '24px 28px',
-          background: 'white',
+            "24px 28px",
+          background: "white",
           borderRadius:
-            'var(--radius-md)',
+            "var(--radius-md)",
           border:
-            '1px solid var(--gray-200)',
+            "1px solid var(--gray-200)",
           marginBottom:
-            '24px',
-          flexWrap: 'wrap',
-          position:
-            'relative',
+            "24px",
+          flexWrap: "wrap",
+          position: "relative",
         }}
       >
         {/* ========================================================
@@ -717,42 +769,48 @@ const Profile = () => {
         <div
           className="profile-avatar"
           style={{
-            width: '80px',
-            height: '80px',
-            borderRadius: '50%',
+            width: "80px",
+            height: "80px",
+            borderRadius: "50%",
             background:
-              'var(--primary)',
-            color: 'white',
-            display: 'flex',
-            alignItems: 'center',
+              "var(--primary)",
+            color: "white",
+            display: "flex",
+            alignItems: "center",
             justifyContent:
-              'center',
-            fontSize: '32px',
+              "center",
+            fontSize: "32px",
             fontWeight: 700,
             flexShrink: 0,
-            overflow: 'hidden',
+            overflow: "hidden",
           }}
         >
           {profilePhoto ? (
             <img
-              src={profilePhoto}
+              src={
+                profilePhoto.startsWith(
+                  "http"
+                )
+                  ? profilePhoto
+                  : getImageUrl(
+                      profilePhoto
+                    )
+              }
               alt={
                 profileName ||
-                'Profile'
+                "Profile"
               }
               loading="eager"
               decoding="async"
               style={{
-                width: '100%',
-                height: '100%',
+                width: "100%",
+                height: "100%",
                 objectFit:
-                  'cover',
+                  "cover",
               }}
-              onError={(
-                e
-              ) => {
+              onError={(e) => {
                 e.currentTarget.style.display =
-                  'none';
+                  "none";
               }}
             />
           ) : (
@@ -768,41 +826,43 @@ const Profile = () => {
           style={{
             flex: 1,
             minWidth:
-              '220px',
+              "220px",
           }}
         >
           <h1
             style={{
               fontSize:
-                '24px',
+                "24px",
               fontWeight: 700,
               display:
-                'flex',
+                "flex",
               alignItems:
-                'center',
-              gap: '10px',
+                "center",
+              gap: "10px",
               flexWrap:
-                'wrap',
+                "wrap",
               margin:
-                '0 0 6px',
+                "0 0 6px",
             }}
           >
             {profileName}
 
+            {/* ADMIN */}
+
             {profileRole ===
-              'admin' && (
+              "admin" && (
               <span
                 style={{
                   background:
-                    '#f59e0b',
+                    "#f59e0b",
                   color:
-                    'white',
+                    "white",
                   fontSize:
-                    '12px',
+                    "12px",
                   padding:
-                    '2px 12px',
+                    "2px 12px",
                   borderRadius:
-                    'var(--radius-full)',
+                    "var(--radius-full)",
                   fontWeight: 600,
                 }}
               >
@@ -810,21 +870,23 @@ const Profile = () => {
               </span>
             )}
 
+            {/* BUYER / SELLER / RIDER */}
+
             {profileRole &&
               profileRole !==
-                'admin' && (
+                "admin" && (
                 <span
                   style={{
                     background:
-                      '#31f705',
+                      "#31f705",
                     color:
-                      '#374151',
+                      "#374151",
                     fontSize:
-                      '12px',
+                      "12px",
                     padding:
-                      '2px 12px',
+                      "2px 12px",
                     borderRadius:
-                      'var(--radius-full)',
+                      "var(--radius-full)",
                     fontWeight: 500,
                   }}
                 >
@@ -843,9 +905,9 @@ const Profile = () => {
           <p
             style={{
               color:
-                'var(--gray-500)',
+                "var(--gray-500)",
               margin:
-                '0 0 4px',
+                "0 0 4px",
             }}
           >
             {profileEmail}
@@ -854,56 +916,56 @@ const Profile = () => {
           <p
             style={{
               color:
-                'var(--gray-500)',
+                "var(--gray-500)",
               margin: 0,
             }}
           >
-            <i className="fas fa-calendar-alt"></i>{' '}
-            Member since{' '}
+            <i className="fas fa-calendar-alt"></i>{" "}
+            Member since{" "}
             {user.createdAt
               ? new Date(
                   user.createdAt
                 ).toLocaleDateString()
-              : 'N/A'}
+              : "N/A"}
           </p>
         </div>
 
         {/* ========================================================
-            BACKGROUND DATA LOADING INDICATOR
+            BACKGROUND LOADING INDICATOR
         ======================================================== */}
 
         {loading && (
           <div
             style={{
               position:
-                'absolute',
-              top: '10px',
-              right: '14px',
+                "absolute",
+              top: "10px",
+              right: "14px",
               fontSize:
-                '11px',
+                "11px",
               color:
-                'var(--gray-400)',
+                "var(--gray-400)",
               display:
-                'flex',
+                "flex",
               alignItems:
-                'center',
-              gap: '6px',
+                "center",
+              gap: "6px",
             }}
           >
             <span
               style={{
                 width:
-                  '8px',
+                  "8px",
                 height:
-                  '8px',
+                  "8px",
                 borderRadius:
-                  '50%',
+                  "50%",
                 border:
-                  '2px solid var(--gray-300)',
+                  "2px solid var(--gray-300)",
                 borderTopColor:
-                  'var(--primary)',
+                  "var(--primary)",
                 animation:
-                  'profileSpin 0.8s linear infinite',
+                  "profileSpin 0.8s linear infinite",
               }}
             />
 
@@ -918,37 +980,124 @@ const Profile = () => {
         <div
           style={{
             display:
-              'flex',
-            gap: '10px',
+              "flex",
+            gap: "10px",
             flexWrap:
-              'wrap',
+              "wrap",
+            alignItems:
+              "center",
           }}
         >
+          {/* ======================================================
+              REQUEST A RIDE
+              BOTH BUYERS AND SELLERS CAN USE THIS
+          ====================================================== */}
+
+          <button
+            type="button"
+            onClick={
+              handleRequestRide
+            }
+            style={{
+              padding:
+                "10px 20px",
+
+              background:
+                "#111827",
+
+              color: "white",
+
+              border: "none",
+
+              borderRadius:
+                "var(--radius-full)",
+
+              fontWeight: 700,
+
+              display:
+                "inline-flex",
+
+              alignItems:
+                "center",
+
+              justifyContent:
+                "center",
+
+              gap: "8px",
+
+              cursor:
+                "pointer",
+
+              fontSize:
+                "14px",
+
+              transition:
+                "transform 0.15s ease, opacity 0.15s ease",
+            }}
+            onMouseEnter={(
+              e
+            ) => {
+              e.currentTarget.style.opacity =
+                "0.9";
+            }}
+            onMouseLeave={(
+              e
+            ) => {
+              e.currentTarget.style.opacity =
+                "1";
+            }}
+            onMouseDown={(
+              e
+            ) => {
+              e.currentTarget.style.transform =
+                "scale(0.97)";
+            }}
+            onMouseUp={(
+              e
+            ) => {
+              e.currentTarget.style.transform =
+                "scale(1)";
+            }}
+          >
+            <i className="fas fa-motorcycle"></i>
+
+            Request a Ride
+          </button>
+
+          {/* ======================================================
+              POST AD
+          ====================================================== */}
+
           <Link
             to="/post-ad"
             className="btn-secondary"
             style={{
               padding:
-                '10px 20px',
+                "10px 20px",
               background:
-                'var(--secondary)',
-              color: 'white',
-              border: 'none',
+                "var(--secondary)",
+              color: "white",
+              border: "none",
               borderRadius:
-                'var(--radius-full)',
+                "var(--radius-full)",
               fontWeight: 600,
               textDecoration:
-                'none',
+                "none",
               display:
-                'inline-flex',
+                "inline-flex",
               alignItems:
-                'center',
-              gap: '8px',
+                "center",
+              gap: "8px",
             }}
           >
-            <i className="fas fa-plus-circle"></i>{' '}
+            <i className="fas fa-plus-circle"></i>
+
             Post Ad
           </Link>
+
+          {/* ======================================================
+              EDIT PROFILE
+          ====================================================== */}
 
           <button
             className="btn-outline"
@@ -961,39 +1110,170 @@ const Profile = () => {
                 false
               );
 
-              setEditError('');
+              setEditError("");
             }}
             style={{
               padding:
-                '10px 20px',
+                "10px 20px",
               border:
-                '1.5px solid var(--gray-300)',
+                "1.5px solid var(--gray-300)",
               borderRadius:
-                'var(--radius-full)',
+                "var(--radius-full)",
               background:
-                'transparent',
+                "transparent",
               fontWeight: 600,
               cursor:
-                'pointer',
+                "pointer",
             }}
           >
-            <i className="fas fa-pen"></i>{' '}
+            <i className="fas fa-pen"></i>{" "}
             Edit Profile
           </button>
         </div>
       </div>
 
       {/* ==========================================================
-          STATS CARDS
-          These render immediately with the current state.
+          QUICK RIDE REQUEST CARD
+          
+          This gives users another obvious place to request
+          a rider without needing to use Post Ad.
       ========================================================== */}
 
       <div
         style={{
-          display: 'grid',
+          background:
+            "linear-gradient(135deg, #111827 0%, #1f2937 100%)",
+          color: "#fff",
+          borderRadius:
+            "var(--radius-md)",
+          padding:
+            "20px 22px",
+          marginBottom:
+            "24px",
+          display:
+            "flex",
+          alignItems:
+            "center",
+          justifyContent:
+            "space-between",
+          gap: "18px",
+          flexWrap:
+            "wrap",
+          boxShadow:
+            "0 4px 18px rgba(0,0,0,0.08)",
+        }}
+      >
+        <div
+          style={{
+            display:
+              "flex",
+            alignItems:
+              "center",
+            gap: "14px",
+            minWidth:
+              "220px",
+            flex: 1,
+          }}
+        >
+          <div
+            style={{
+              width:
+                "48px",
+              height:
+                "48px",
+              borderRadius:
+                "50%",
+              background:
+                "rgba(255,255,255,0.12)",
+              display:
+                "flex",
+              alignItems:
+                "center",
+              justifyContent:
+                "center",
+              fontSize:
+                "21px",
+              flexShrink: 0,
+            }}
+          >
+            <i className="fas fa-motorcycle"></i>
+          </div>
+
+          <div>
+            <h2
+              style={{
+                margin:
+                  "0 0 4px",
+                fontSize:
+                  "17px",
+                fontWeight:
+                  800,
+              }}
+            >
+              Need a ride?
+            </h2>
+
+            <p
+              style={{
+                margin: 0,
+                color:
+                  "rgba(255,255,255,0.72)",
+                fontSize:
+                  "13px",
+                lineHeight:
+                  1.5,
+              }}
+            >
+              Request a rider to pick up
+              or deliver an item.
+            </p>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={
+            handleRequestRide
+          }
+          style={{
+            border: "none",
+            background:
+              "#fff",
+            color:
+              "#111827",
+            padding:
+              "10px 18px",
+            borderRadius:
+              "999px",
+            fontWeight:
+              800,
+            cursor:
+              "pointer",
+            display:
+              "inline-flex",
+            alignItems:
+              "center",
+            gap: "8px",
+            whiteSpace:
+              "nowrap",
+          }}
+        >
+          <i className="fas fa-motorcycle"></i>
+
+          Request a Ride
+        </button>
+      </div>
+
+      {/* ==========================================================
+          STATS CARDS
+      ========================================================== */}
+
+      <div
+        style={{
+          display: "grid",
           gridTemplateColumns:
-            'repeat(auto-fit, minmax(150px, 1fr))',
-          gap: '16px',
+            "repeat(auto-fit, minmax(150px, 1fr))",
+          gap: "16px",
         }}
       >
         {/* ========================================================
@@ -1003,58 +1283,58 @@ const Profile = () => {
         <div
           onClick={() =>
             navigateTo(
-              '/my-ads'
+              "/my-ads"
             )
           }
           style={{
             background:
-              'white',
+              "white",
             padding:
-              '16px 20px',
+              "16px 20px",
             borderRadius:
-              'var(--radius-md)',
+              "var(--radius-md)",
             border:
-              '1px solid var(--gray-200)',
+              "1px solid var(--gray-200)",
             textAlign:
-              'center',
+              "center",
             cursor:
-              'pointer',
+              "pointer",
             transition:
-              'background 0.2s, transform 0.1s',
+              "background 0.2s, transform 0.1s",
           }}
           onMouseEnter={(
             e
           ) =>
             (e.currentTarget.style.background =
-              'var(--gray-50)')
+              "var(--gray-50)")
           }
           onMouseLeave={(
             e
           ) =>
             (e.currentTarget.style.background =
-              'white')
+              "white")
           }
           onMouseDown={(
             e
           ) =>
             (e.currentTarget.style.transform =
-              'scale(0.98)')
+              "scale(0.98)")
           }
           onMouseUp={(
             e
           ) =>
             (e.currentTarget.style.transform =
-              'scale(1)')
+              "scale(1)")
           }
         >
           <div
             style={{
               fontSize:
-                '28px',
+                "28px",
               fontWeight:
                 800,
               color:
-                'var(--primary)',
+                "var(--primary)",
             }}
           >
             {stats.totalAds}
@@ -1063,9 +1343,9 @@ const Profile = () => {
           <div
             style={{
               fontSize:
-                '13px',
+                "13px",
               color:
-                'var(--gray-500)',
+                "var(--gray-500)",
             }}
           >
             TOTAL ADS
@@ -1079,58 +1359,58 @@ const Profile = () => {
         <div
           onClick={() =>
             navigateTo(
-              '/analytics'
+              "/analytics"
             )
           }
           style={{
             background:
-              'white',
+              "white",
             padding:
-              '16px 20px',
+              "16px 20px",
             borderRadius:
-              'var(--radius-md)',
+              "var(--radius-md)",
             border:
-              '1px solid var(--gray-200)',
+              "1px solid var(--gray-200)",
             textAlign:
-              'center',
+              "center",
             cursor:
-              'pointer',
+              "pointer",
             transition:
-              'background 0.2s, transform 0.1s',
+              "background 0.2s, transform 0.1s",
           }}
           onMouseEnter={(
             e
           ) =>
             (e.currentTarget.style.background =
-              'var(--gray-50)')
+              "var(--gray-50)")
           }
           onMouseLeave={(
             e
           ) =>
             (e.currentTarget.style.background =
-              'white')
+              "white")
           }
           onMouseDown={(
             e
           ) =>
             (e.currentTarget.style.transform =
-              'scale(0.98)')
+              "scale(0.98)")
           }
           onMouseUp={(
             e
           ) =>
             (e.currentTarget.style.transform =
-              'scale(1)')
+              "scale(1)")
           }
         >
           <div
             style={{
               fontSize:
-                '28px',
+                "28px",
               fontWeight:
                 800,
               color:
-                '#8b5cf6',
+                "#8b5cf6",
             }}
           >
             {stats.totalViews}
@@ -1139,9 +1419,9 @@ const Profile = () => {
           <div
             style={{
               fontSize:
-                '13px',
+                "13px",
               color:
-                'var(--gray-500)',
+                "var(--gray-500)",
             }}
           >
             TOTAL VIEWS
@@ -1155,58 +1435,58 @@ const Profile = () => {
         <div
           onClick={() =>
             navigateTo(
-              '/notifications'
+              "/notifications"
             )
           }
           style={{
             background:
-              'white',
+              "white",
             padding:
-              '16px 20px',
+              "16px 20px",
             borderRadius:
-              'var(--radius-md)',
+              "var(--radius-md)",
             border:
-              '1px solid var(--gray-200)',
+              "1px solid var(--gray-200)",
             textAlign:
-              'center',
+              "center",
             cursor:
-              'pointer',
+              "pointer",
             transition:
-              'background 0.2s, transform 0.1s',
+              "background 0.2s, transform 0.1s",
           }}
           onMouseEnter={(
             e
           ) =>
             (e.currentTarget.style.background =
-              'var(--gray-50)')
+              "var(--gray-50)")
           }
           onMouseLeave={(
             e
           ) =>
             (e.currentTarget.style.background =
-              'white')
+              "white")
           }
           onMouseDown={(
             e
           ) =>
             (e.currentTarget.style.transform =
-              'scale(0.98)')
+              "scale(0.98)")
           }
           onMouseUp={(
             e
           ) =>
             (e.currentTarget.style.transform =
-              'scale(1)')
+              "scale(1)")
           }
         >
           <div
             style={{
               fontSize:
-                '28px',
+                "28px",
               fontWeight:
                 800,
               color:
-                '#f59e0b',
+                "#f59e0b",
             }}
           >
             {
@@ -1217,9 +1497,9 @@ const Profile = () => {
           <div
             style={{
               fontSize:
-                '13px',
+                "13px",
               color:
-                'var(--gray-500)',
+                "var(--gray-500)",
             }}
           >
             NOTIFICATIONS
@@ -1230,24 +1510,24 @@ const Profile = () => {
             <span
               style={{
                 background:
-                  '#e74c3c',
+                  "#e74c3c",
                 color:
-                  'white',
+                  "white",
                 fontSize:
-                  '11px',
+                  "11px",
                 padding:
-                  '1px 10px',
+                  "1px 10px",
                 borderRadius:
-                  'var(--radius-full)',
+                  "var(--radius-full)",
                 display:
-                  'inline-block',
+                  "inline-block",
                 marginTop:
-                  '4px',
+                  "4px",
               }}
             >
               {
                 stats.unreadNotifications
-              }{' '}
+              }{" "}
               unread
             </span>
           )}
@@ -1260,58 +1540,58 @@ const Profile = () => {
         <div
           onClick={() =>
             navigateTo(
-              '/messages'
+              "/messages"
             )
           }
           style={{
             background:
-              'white',
+              "white",
             padding:
-              '16px 20px',
+              "16px 20px",
             borderRadius:
-              'var(--radius-md)',
+              "var(--radius-md)",
             border:
-              '1px solid var(--gray-200)',
+              "1px solid var(--gray-200)",
             textAlign:
-              'center',
+              "center",
             cursor:
-              'pointer',
+              "pointer",
             transition:
-              'background 0.2s, transform 0.1s',
+              "background 0.2s, transform 0.1s",
           }}
           onMouseEnter={(
             e
           ) =>
             (e.currentTarget.style.background =
-              'var(--gray-50)')
+              "var(--gray-50)")
           }
           onMouseLeave={(
             e
           ) =>
             (e.currentTarget.style.background =
-              'white')
+              "white")
           }
           onMouseDown={(
             e
           ) =>
             (e.currentTarget.style.transform =
-              'scale(0.98)')
+              "scale(0.98)")
           }
           onMouseUp={(
             e
           ) =>
             (e.currentTarget.style.transform =
-              'scale(1)')
+              "scale(1)")
           }
         >
           <div
             style={{
               fontSize:
-                '28px',
+                "28px",
               fontWeight:
                 800,
               color:
-                '#0ea5e9',
+                "#0ea5e9",
             }}
           >
             {
@@ -1322,9 +1602,9 @@ const Profile = () => {
           <div
             style={{
               fontSize:
-                '13px',
+                "13px",
               color:
-                'var(--gray-500)',
+                "var(--gray-500)",
             }}
           >
             MESSAGES
@@ -1335,24 +1615,24 @@ const Profile = () => {
             <span
               style={{
                 background:
-                  '#e74c3c',
+                  "#e74c3c",
                 color:
-                  'white',
+                  "white",
                 fontSize:
-                  '11px',
+                  "11px",
                 padding:
-                  '1px 10px',
+                  "1px 10px",
                 borderRadius:
-                  'var(--radius-full)',
+                  "var(--radius-full)",
                 display:
-                  'inline-block',
+                  "inline-block",
                 marginTop:
-                  '4px',
+                  "4px",
               }}
             >
               {
                 stats.unreadMessages
-              }{' '}
+              }{" "}
               unread
             </span>
           )}
@@ -1367,41 +1647,41 @@ const Profile = () => {
         <div
           style={{
             marginTop:
-              '16px',
+              "16px",
             padding:
-              '10px 14px',
+              "10px 14px",
             borderRadius:
-              'var(--radius-md)',
+              "var(--radius-md)",
             background:
-              'var(--gray-50)',
+              "var(--gray-50)",
             color:
-              'var(--gray-500)',
+              "var(--gray-500)",
             fontSize:
-              '13px',
+              "13px",
             textAlign:
-              'center',
+              "center",
           }}
         >
           <span
             style={{
               display:
-                'inline-block',
+                "inline-block",
               width:
-                '12px',
+                "12px",
               height:
-                '12px',
+                "12px",
               borderRadius:
-                '50%',
+                "50%",
               border:
-                '2px solid var(--gray-300)',
+                "2px solid var(--gray-300)",
               borderTopColor:
-                'var(--primary)',
+                "var(--primary)",
               animation:
-                'profileSpin 0.8s linear infinite',
+                "profileSpin 0.8s linear infinite",
               marginRight:
-                '8px',
+                "8px",
               verticalAlign:
-                'middle',
+                "middle",
             }}
           />
 
@@ -1429,7 +1709,10 @@ const Profile = () => {
               e.stopPropagation()
             }
           >
+            {/* CLOSE */}
+
             <button
+              type="button"
               className="close-btn"
               onClick={() =>
                 setShowEditModal(
@@ -1443,6 +1726,8 @@ const Profile = () => {
             <h2>
               Edit Profile
             </h2>
+
+            {/* ERROR */}
 
             {editError && (
               <div className="error-banner">
@@ -1469,7 +1754,16 @@ const Profile = () => {
                     {editPhotoPreview ? (
                       <img
                         src={
-                          editPhotoPreview
+                          editPhotoPreview.startsWith(
+                            "http"
+                          ) ||
+                          editPhotoPreview.startsWith(
+                            "blob:"
+                          )
+                            ? editPhotoPreview
+                            : getImageUrl(
+                                editPhotoPreview
+                              )
                         }
                         alt="Preview"
                       />
@@ -1484,6 +1778,9 @@ const Profile = () => {
                     onChange={
                       handleEditPhotoChange
                     }
+                    disabled={
+                      editLoading
+                    }
                   />
 
                   <button
@@ -1491,6 +1788,9 @@ const Profile = () => {
                     className="remove-photo-btn"
                     onClick={
                       handleRemovePhoto
+                    }
+                    disabled={
+                      editLoading
                     }
                   >
                     Remove Photo
@@ -1525,6 +1825,9 @@ const Profile = () => {
                     )
                   }
                   required
+                  disabled={
+                    editLoading
+                  }
                 />
               </div>
 
@@ -1548,6 +1851,9 @@ const Profile = () => {
                     )
                   }
                   required
+                  disabled={
+                    editLoading
+                  }
                 />
               </div>
 
@@ -1570,6 +1876,9 @@ const Profile = () => {
                       e.target.value
                     )
                   }
+                  disabled={
+                    editLoading
+                  }
                 />
               </div>
 
@@ -1591,6 +1900,9 @@ const Profile = () => {
                       e.target.value
                     )
                   }
+                  disabled={
+                    editLoading
+                  }
                 >
                   <option value="buyer">
                     Buyer
@@ -1608,11 +1920,11 @@ const Profile = () => {
                 <small
                   style={{
                     display:
-                      'block',
+                      "block",
                     marginTop:
-                      '4px',
+                      "4px",
                     color:
-                      'var(--gray-500)',
+                      "var(--gray-500)",
                   }}
                 >
                   Your role determines
@@ -1633,8 +1945,8 @@ const Profile = () => {
                 }
               >
                 {editLoading
-                  ? 'Saving...'
-                  : 'Save Changes'}
+                  ? "Saving..."
+                  : "Save Changes"}
               </button>
             </form>
           </div>
@@ -1654,6 +1966,34 @@ const Profile = () => {
 
             to {
               transform: rotate(360deg);
+            }
+          }
+
+          @media (max-width: 700px) {
+            .profile-header {
+              padding: 20px !important;
+            }
+
+            .profile-header > div:last-child {
+              width: 100%;
+            }
+          }
+
+          @media (max-width: 600px) {
+            .profile-header {
+              gap: 16px !important;
+            }
+
+            .profile-header > div:last-child {
+              display: grid !important;
+              grid-template-columns: 1fr !important;
+              width: 100% !important;
+            }
+
+            .profile-header > div:last-child button,
+            .profile-header > div:last-child a {
+              width: 100%;
+              box-sizing: border-box;
             }
           }
         `}

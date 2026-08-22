@@ -21,13 +21,11 @@ dotenv.config();
 
 const connectDB = require("./config/db");
 
-// Passport configuration
 require("./config/passport")(passport);
 
-// Activity tracking middleware
-const activityMiddleware = require("./middleware/activity");
+const activityMiddleware =
+  require("./middleware/activity");
 
-// Category seeding
 const {
   ensureDefaultCategories,
 } = require("./controllers/categoryController");
@@ -43,13 +41,16 @@ const requiredEnv = [
   "JWT_SECRET",
 ];
 
-const missing = requiredEnv.filter(
-  (key) => !process.env[key]
-);
+const missing =
+  requiredEnv.filter(
+    (key) => !process.env[key]
+  );
 
 if (missing.length > 0) {
   console.error(
-    `❌ Missing environment variables: ${missing.join(", ")}`
+    `❌ Missing environment variables: ${missing.join(
+      ", "
+    )}`
   );
 
   process.exit(1);
@@ -89,7 +90,8 @@ app.use(compression());
 
 app.use(
   morgan(
-    process.env.NODE_ENV === "production"
+    process.env.NODE_ENV ===
+      "production"
       ? "combined"
       : "dev"
   )
@@ -98,33 +100,21 @@ app.use(
 // ============================================================
 // CORS
 // ============================================================
-//
-// IMPORTANT:
-// This version explicitly allows localhost:5173,
-// all Vercel deployments, and FRONTEND_URL.
-//
-// It also handles OPTIONS/preflight requests before
-// the API routes and rate limiter.
-//
-// ============================================================
 
 const allowedOrigins = [
-  // Local development
   "http://localhost:5173",
   "http://127.0.0.1:5173",
 
-  // Current production frontend
   "https://buyukused.vercel.app",
 
-  // Previous Vercel deployments
   "https://buyukused-ggapyipm3-nanaskatty13s-projects.vercel.app",
+
   "https://buyukused-2w4b8fl3w-nanaskatty13s-projects.vercel.app",
 
-  // Older frontend deployments
   "https://sell-platform2.vercel.app",
+
   "https://sell-platform2-mcv0eniwt-nanaskatty13s-projects.vercel.app",
 
-  // Environment variable
   process.env.FRONTEND_URL,
 ].filter(Boolean);
 
@@ -133,27 +123,26 @@ console.log(
   allowedOrigins
 );
 
-// ------------------------------------------------------------
-// CORS helper
-// ------------------------------------------------------------
+// ============================================================
+// CORS HELPER
+// ============================================================
 
-const isAllowedOrigin = (origin) => {
-  // Requests such as server-to-server requests have no Origin.
+const isAllowedOrigin = (
+  origin
+) => {
   if (!origin) {
     return true;
   }
 
-  // Exact origin match
-  if (allowedOrigins.includes(origin)) {
+  if (
+    allowedOrigins.includes(
+      origin
+    )
+  ) {
     return true;
   }
 
-  // Allow all Vercel preview deployments belonging to
-  // this project/account.
-  //
-  // Example:
-  // https://buyukused-abc123-nanaskatty13s-projects.vercel.app
-  //
+  // BuyUKUsed Vercel previews
   if (
     /^https:\/\/buyukused-[a-zA-Z0-9-]+-nanaskatty13s-projects\.vercel\.app$/.test(
       origin
@@ -162,7 +151,7 @@ const isAllowedOrigin = (origin) => {
     return true;
   }
 
-  // Allow standard Vercel subdomains.
+  // Any standard Vercel deployment
   if (
     /^https:\/\/[a-zA-Z0-9-]+\.vercel\.app$/.test(
       origin
@@ -174,19 +163,27 @@ const isAllowedOrigin = (origin) => {
   return false;
 };
 
-// ------------------------------------------------------------
-// CORS options
-// ------------------------------------------------------------
+// ============================================================
+// CORS OPTIONS
+// ============================================================
 
 const corsOptions = {
-  origin: (origin, callback) => {
+  origin: (
+    origin,
+    callback
+  ) => {
     console.log(
       "🔍 Incoming origin:",
       origin || "undefined"
     );
 
-    if (isAllowedOrigin(origin)) {
-      return callback(null, true);
+    if (
+      isAllowedOrigin(origin)
+    ) {
+      return callback(
+        null,
+        true
+      );
     }
 
     console.log(
@@ -195,7 +192,9 @@ const corsOptions = {
     );
 
     return callback(
-      new Error("CORS not allowed for this origin")
+      new Error(
+        "CORS not allowed for this origin"
+      )
     );
   },
 
@@ -228,14 +227,18 @@ const corsOptions = {
   maxAge: 86400,
 };
 
-// ------------------------------------------------------------
-// Apply CORS BEFORE routes and rate limiting
-// ------------------------------------------------------------
+// ============================================================
+// APPLY CORS
+// ============================================================
 
-app.use(cors(corsOptions));
+app.use(
+  cors(corsOptions)
+);
 
-// Explicit OPTIONS handler
-app.options("*", cors(corsOptions));
+app.options(
+  "*",
+  cors(corsOptions)
+);
 
 // ============================================================
 // BODY PARSERS
@@ -258,27 +261,31 @@ app.use(
 // STATIC UPLOADS
 // ============================================================
 
-const uploadsDirectory = path.join(
-  __dirname,
-  "public",
-  "uploads"
-);
+const uploadsDirectory =
+  path.join(
+    __dirname,
+    "public",
+    "uploads"
+  );
 
 app.use(
   "/uploads",
-  express.static(uploadsDirectory, {
-    setHeaders: (res) => {
-      res.setHeader(
-        "Access-Control-Allow-Origin",
-        "*"
-      );
+  express.static(
+    uploadsDirectory,
+    {
+      setHeaders: (res) => {
+        res.setHeader(
+          "Access-Control-Allow-Origin",
+          "*"
+        );
 
-      res.setHeader(
-        "Cross-Origin-Resource-Policy",
-        "cross-origin"
-      );
-    },
-  })
+        res.setHeader(
+          "Cross-Origin-Resource-Policy",
+          "cross-origin"
+        );
+      },
+    }
+  )
 );
 
 console.log(
@@ -290,13 +297,17 @@ console.log(
 // PASSPORT
 // ============================================================
 
-app.use(passport.initialize());
+app.use(
+  passport.initialize()
+);
 
 // ============================================================
 // ACTIVITY TRACKING
 // ============================================================
 
-app.use(activityMiddleware);
+app.use(
+  activityMiddleware
+);
 
 console.log(
   "🟢 Seller/user activity tracking enabled"
@@ -306,13 +317,19 @@ console.log(
 // RATE LIMITING
 // ============================================================
 
-const skipIfAdmin = (req, res, next) => {
+const skipIfAdmin = (
+  req,
+  res,
+  next
+) => {
   const authHeader =
     req.headers.authorization;
 
   if (
     !authHeader ||
-    !authHeader.startsWith("Bearer ")
+    !authHeader.startsWith(
+      "Bearer "
+    )
   ) {
     return next();
   }
@@ -321,102 +338,184 @@ const skipIfAdmin = (req, res, next) => {
     authHeader.split(" ")[1];
 
   try {
-    const decoded = jwt.verify(
-      token,
-      process.env.JWT_SECRET
-    );
+    const decoded =
+      jwt.verify(
+        token,
+        process.env.JWT_SECRET
+      );
 
-    if (decoded.role === "admin") {
+    if (
+      decoded.role === "admin"
+    ) {
       req.skipRateLimit = true;
     }
   } catch (error) {
-    // Ignore invalid/expired tokens.
+    // Ignore invalid token.
   }
 
   next();
 };
 
-app.use(skipIfAdmin);
+app.use(
+  skipIfAdmin
+);
 
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
+const limiter =
+  rateLimit({
+    windowMs:
+      15 * 60 * 1000,
 
-  max:
-    process.env.NODE_ENV === "production"
-      ? 100
-      : 500,
-
-  skip: (req) => {
-    if (req.skipRateLimit) {
-      return true;
-    }
-
-    if (
+    max:
       process.env.NODE_ENV ===
-      "development"
-    ) {
-      return true;
-    }
+      "production"
+        ? 100
+        : 500,
 
-    return false;
-  },
+    skip: (req) => {
+      if (
+        req.skipRateLimit
+      ) {
+        return true;
+      }
 
-  standardHeaders: true,
-  legacyHeaders: false,
+      if (
+        process.env.NODE_ENV ===
+        "development"
+      ) {
+        return true;
+      }
 
-  message: {
-    success: false,
-    message:
-      "Too many requests, please try again later.",
-  },
-});
+      return false;
+    },
 
-app.use("/api", limiter);
-app.use("/auth", limiter);
+    standardHeaders: true,
+    legacyHeaders: false,
 
-// ============================================================
-// ROOT API CHECK
-// ============================================================
-
-app.get("/", (req, res) => {
-  res.status(200).json({
-    success: true,
-    message: "BuyUKUsed API is running",
-    environment:
-      process.env.NODE_ENV || "development",
+    message: {
+      success: false,
+      message:
+        "Too many requests, please try again later.",
+    },
   });
-});
+
+app.use(
+  "/api",
+  limiter
+);
+
+app.use(
+  "/auth",
+  limiter
+);
 
 // ============================================================
-// HEALTH CHECK
+// REQUEST LOGGER FOR DELIVERY API
 // ============================================================
 
-const healthResponse = (req, res) => {
-  res.status(200).json({
-    success: true,
-    status: "ok",
-    timestamp: new Date().toISOString(),
-  });
-};
+app.use(
+  "/api/deliveries",
+  (req, res, next) => {
+    const startedAt =
+      Date.now();
 
-app.get("/health", healthResponse);
-app.get("/api/health", healthResponse);
+    console.log(
+      `🚴 DELIVERY REQUEST → ${req.method} ${req.originalUrl}`
+    );
+
+    res.on(
+      "finish",
+      () => {
+        console.log(
+          `🚴 DELIVERY RESPONSE ← ${req.method} ${req.originalUrl} | ${res.statusCode} | ${
+            Date.now() -
+            startedAt
+          }ms`
+        );
+      }
+    );
+
+    next();
+  }
+);
+
+// ============================================================
+// ROOT
+// ============================================================
+
+app.get(
+  "/",
+  (req, res) => {
+    res.status(200).json({
+      success: true,
+      message:
+        "BuyUKUsed API is running",
+      environment:
+        process.env.NODE_ENV ||
+        "development",
+    });
+  }
+);
+
+// ============================================================
+// HEALTH
+// ============================================================
+
+const healthResponse =
+  (req, res) => {
+    res.status(200).json({
+      success: true,
+      status: "ok",
+      timestamp:
+        new Date().toISOString(),
+    });
+  };
+
+app.get(
+  "/health",
+  healthResponse
+);
+
+app.get(
+  "/api/health",
+  healthResponse
+);
 
 // ============================================================
 // LOAD ROUTES
 // ============================================================
 
-const passwordRoutes = require("./routes/passwordRoutes");
-const authRoutes = require("./routes/auth");
-const productRoutes = require("./routes/products");
-const notificationRoutes = require("./routes/notifications");
-const userRoutes = require("./routes/users");
-const messageRoutes = require("./routes/messages");
-const adminRoutes = require("./routes/admin");
-const deliveryRoutes = require("./routes/deliveryRoutes");
-const uploadRoutes = require("./routes/upload");
-const sellerRoutes = require("./routes/sellers");
-const categoryRoutes = require("./routes/categories");
+const passwordRoutes =
+  require("./routes/passwordRoutes");
+
+const authRoutes =
+  require("./routes/auth");
+
+const productRoutes =
+  require("./routes/products");
+
+const notificationRoutes =
+  require("./routes/notifications");
+
+const userRoutes =
+  require("./routes/users");
+
+const messageRoutes =
+  require("./routes/messages");
+
+const adminRoutes =
+  require("./routes/admin");
+
+const deliveryRoutes =
+  require("./routes/deliveryRoutes");
+
+const uploadRoutes =
+  require("./routes/upload");
+
+const sellerRoutes =
+  require("./routes/sellers");
+
+const categoryRoutes =
+  require("./routes/categories");
 
 console.log(
   "✅ Routes loaded successfully"
@@ -432,7 +531,7 @@ app.use(
 );
 
 // ============================================================
-// AUTHENTICATION
+// AUTH
 // ============================================================
 
 app.use(
@@ -441,7 +540,7 @@ app.use(
 );
 
 // ============================================================
-// SELLER ROUTES
+// SELLERS
 // ============================================================
 
 app.use(
@@ -495,12 +594,16 @@ app.use(
 );
 
 // ============================================================
-// DELIVERY / RIDER
+// DELIVERY
 // ============================================================
 
 app.use(
   "/api/deliveries",
   deliveryRoutes
+);
+
+console.log(
+  "🚴 Delivery API mounted at /api/deliveries"
 );
 
 // ============================================================
@@ -513,7 +616,7 @@ app.use(
 );
 
 console.log(
-  "📤 Upload API mounted at: /api/upload"
+  "📤 Upload API mounted at /api/upload"
 );
 
 // ============================================================
@@ -526,65 +629,59 @@ app.use(
 );
 
 console.log(
-  "📂 Categories API mounted at: /api/categories"
+  "📂 Categories API mounted at /api/categories"
 );
 
 // ============================================================
-// ROUTE DEBUG
+// 404
 // ============================================================
 
-console.log(
-  "🔐 Admin API mounted at: /api/admin"
-);
+app.use(
+  (req, res) => {
+    console.log(
+      `❌ 404: ${req.method} ${req.originalUrl}`
+    );
 
-console.log(
-  "🚴 Delivery API mounted at: /api/deliveries"
-);
+    if (
+      req.path.startsWith(
+        "/api"
+      ) ||
+      req.path.startsWith(
+        "/auth"
+      ) ||
+      req.path.startsWith(
+        "/sellers"
+      )
+    ) {
+      return res.status(404).json({
+        success: false,
+        message:
+          "API endpoint not found",
+        path: req.originalUrl,
+      });
+    }
 
-console.log(
-  "🛒 Seller API mounted at: /sellers"
-);
-
-// ============================================================
-// 404 HANDLER
-// ============================================================
-
-app.use((req, res) => {
-  console.log(
-    `❌ 404: ${req.method} ${req.originalUrl}`
-  );
-
-  if (
-    req.path.startsWith("/api") ||
-    req.path.startsWith("/auth") ||
-    req.path.startsWith("/sellers")
-  ) {
-    return res.status(404).json({
-      success: false,
-      message: "API endpoint not found",
-      path: req.originalUrl,
-    });
+    return res
+      .status(404)
+      .send("Not Found");
   }
-
-  return res
-    .status(404)
-    .send("Not Found");
-});
+);
 
 // ============================================================
 // GLOBAL ERROR HANDLER
 // ============================================================
 
 app.use(
-  (err, req, res, next) => {
+  (
+    err,
+    req,
+    res,
+    next
+  ) => {
     console.error(
-      "❌ Error:",
+      "❌ Global error:",
       err
     );
-
-    // --------------------------------------------------------
-    // CORS ERROR
-    // --------------------------------------------------------
 
     if (
       err &&
@@ -597,13 +694,10 @@ app.use(
       });
     }
 
-    // --------------------------------------------------------
-    // MULTER ERROR
-    // --------------------------------------------------------
-
     if (
       err &&
-      err.name === "MulterError"
+      err.name ===
+        "MulterError"
     ) {
       if (
         err.code ===
@@ -624,10 +718,6 @@ app.use(
       });
     }
 
-    // --------------------------------------------------------
-    // DUPLICATE MONGODB FIELD
-    // --------------------------------------------------------
-
     if (
       err &&
       err.code === 11000
@@ -639,13 +729,10 @@ app.use(
 
       return res.status(409).json({
         success: false,
-        message: `${field} already exists`,
+        message:
+          `${field} already exists`,
       });
     }
-
-    // --------------------------------------------------------
-    // MONGOOSE VALIDATION
-    // --------------------------------------------------------
 
     if (
       err &&
@@ -668,12 +755,10 @@ app.use(
       });
     }
 
-    // --------------------------------------------------------
-    // DEFAULT ERROR
-    // --------------------------------------------------------
-
     return res
-      .status(err?.status || 500)
+      .status(
+        err?.status || 500
+      )
       .json({
         success: false,
         message:
@@ -804,119 +889,108 @@ const createDefaultAdmin =
 // START SERVER
 // ============================================================
 
-const start = async () => {
-  try {
-    const connection =
-      await connectDB();
+const start =
+  async () => {
+    try {
+      const connection =
+        await connectDB();
 
-    console.log(
-      `✅ MongoDB connected to: ${connection.name}`
-    );
-
-    // --------------------------------------------------------
-    // Seed default categories
-    // --------------------------------------------------------
-
-    await ensureDefaultCategories();
-
-    console.log(
-      "✅ Default categories check completed"
-    );
-
-    // --------------------------------------------------------
-    // Create default admin
-    // --------------------------------------------------------
-
-    await createDefaultAdmin();
-
-    // --------------------------------------------------------
-    // Start server
-    // --------------------------------------------------------
-
-    const server =
-      app.listen(
-        PORT,
-        () => {
-          console.log(
-            "////////////////////////////////////////////////////////////"
-          );
-
-          console.log(
-            `🚀 Server running on port ${PORT}`
-          );
-
-          console.log(
-            `🌍 Environment: ${
-              process.env.NODE_ENV ||
-              "development"
-            }`
-          );
-
-          console.log(
-            `🔗 Base URL: ${
-              process.env.BASE_URL ||
-              "(auto-detected)"
-            }`
-          );
-
-          console.log(
-            `📁 Uploads: ${uploadsDirectory}`
-          );
-
-          console.log(
-            "🔐 Admin API: /api/admin"
-          );
-
-          console.log(
-            "🚴 Delivery/Rider API: /api/deliveries"
-          );
-
-          console.log(
-            "📤 Upload API: /api/upload"
-          );
-
-          console.log(
-            "🛒 Seller API: /sellers"
-          );
-
-          console.log(
-            "📂 Categories API: /api/categories"
-          );
-
-          console.log(
-            "🟢 Activity tracking: ENABLED"
-          );
-
-          console.log(
-            "🟢 CORS: ENABLED"
-          );
-
-          console.log(
-            "////////////////////////////////////////////////////////////"
-          );
-        }
+      console.log(
+        `✅ MongoDB connected to: ${connection.name}`
       );
 
-    // --------------------------------------------------------
-    // Server timeout settings
-    // --------------------------------------------------------
+      await ensureDefaultCategories();
 
-    server.timeout =
-      120000;
+      console.log(
+        "✅ Default categories check completed"
+      );
 
-    server.keepAliveTimeout =
-      65000;
+      await createDefaultAdmin();
 
-    server.headersTimeout =
-      66000;
-  } catch (error) {
-    console.error(
-      "❌ Server failed:",
-      error
-    );
+      const server =
+        app.listen(
+          PORT,
+          () => {
+            console.log(
+              "============================================================"
+            );
 
-    process.exit(1);
-  }
-};
+            console.log(
+              `🚀 Server running on port ${PORT}`
+            );
+
+            console.log(
+              `🌍 Environment: ${
+                process.env.NODE_ENV ||
+                "development"
+              }`
+            );
+
+            console.log(
+              `🔗 Base URL: ${
+                process.env.BASE_URL ||
+                "(auto-detected)"
+              }`
+            );
+
+            console.log(
+              `📁 Uploads: ${uploadsDirectory}`
+            );
+
+            console.log(
+              "🔐 Admin API: /api/admin"
+            );
+
+            console.log(
+              "🚴 Delivery API: /api/deliveries"
+            );
+
+            console.log(
+              "📤 Upload API: /api/upload"
+            );
+
+            console.log(
+              "🛒 Seller API: /sellers"
+            );
+
+            console.log(
+              "📂 Categories API: /api/categories"
+            );
+
+            console.log(
+              "🟢 Activity tracking: ENABLED"
+            );
+
+            console.log(
+              "🟢 CORS: ENABLED"
+            );
+
+            console.log(
+              "============================================================"
+            );
+          }
+        );
+
+      // --------------------------------------------------------
+      // TIMEOUTS
+      // --------------------------------------------------------
+
+      server.timeout =
+        120000;
+
+      server.keepAliveTimeout =
+        65000;
+
+      server.headersTimeout =
+        66000;
+    } catch (error) {
+      console.error(
+        "❌ Server failed:",
+        error
+      );
+
+      process.exit(1);
+    }
+  };
 
 start();
