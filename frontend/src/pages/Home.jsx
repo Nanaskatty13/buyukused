@@ -1,6 +1,13 @@
+// ============================================================
 // frontend/src/pages/Home.jsx
+// BuyUKUsed Home Page
+// ============================================================
 
-import React, { useEffect, useState, useCallback } from "react";
+import React, {
+  useEffect,
+  useState,
+  useCallback,
+} from "react";
 
 import Hero from "../components/Hero";
 import Categories from "../components/Categories";
@@ -15,6 +22,10 @@ import { getProducts } from "../services/api";
 // ============================================================
 
 const Home = () => {
+  // ==========================================================
+  // STATE
+  // ==========================================================
+
   const [allProducts, setAllProducts] = useState([]);
   const [filteredProducts, setFilteredProducts] = useState([]);
 
@@ -24,153 +35,288 @@ const Home = () => {
   const [activeCategory, setActiveCategory] = useState(null);
 
   // ==========================================================
-  // LOAD FEATURED PRODUCTS
+  // NORMALIZE API RESPONSE
+  // ==========================================================
+
+  const extractProducts = useCallback((data) => {
+    // --------------------------------------------------------
+    // Standard response
+    // --------------------------------------------------------
+
+    if (Array.isArray(data?.products)) {
+      return data.products;
+    }
+
+    // --------------------------------------------------------
+    // Some APIs return data.products
+    // --------------------------------------------------------
+
+    if (Array.isArray(data?.data?.products)) {
+      return data.data.products;
+    }
+
+    // --------------------------------------------------------
+    // Some APIs return the array directly
+    // --------------------------------------------------------
+
+    if (Array.isArray(data)) {
+      return data;
+    }
+
+    return [];
+  }, []);
+
+  // ==========================================================
+  // REMOVE DUPLICATE PRODUCTS
+  // ==========================================================
+
+  const removeDuplicateProducts = useCallback(
+    (products = []) => {
+      const seen = new Set();
+
+      return products.filter((product) => {
+        if (!product) return false;
+
+        const id =
+          product._id ||
+          product.id ||
+          product.slug ||
+          `${product.title}-${product.price}`;
+
+        if (seen.has(id)) {
+          return false;
+        }
+
+        seen.add(id);
+
+        return true;
+      });
+    },
+    []
+  );
+
+  // ==========================================================
+  // LOAD HOMEPAGE PRODUCTS
   // ==========================================================
 
   const loadProducts = useCallback(async () => {
     setLoading(true);
 
     try {
-      /*
-       * IMPORTANT:
-       * Do not request the entire marketplace here.
-       *
-       * The backend should return a limited number of products
-       * for the homepage.
-       */
+      console.log("========================================");
+      console.log("🏠 LOADING HOMEPAGE PRODUCTS");
+
       const data = await getProducts({
-        limit: 12,
         page: 1,
+        limit: 100,
       });
 
-      const products = Array.isArray(data?.products)
-        ? data.products
-        : [];
+      console.log("📦 HOMEPAGE API RESPONSE:", data);
+
+      const receivedProducts = extractProducts(data);
+
+      const products =
+        removeDuplicateProducts(receivedProducts);
+
+      console.log(
+        "📦 PRODUCTS RECEIVED:",
+        receivedProducts.length
+      );
+
+      console.log(
+        "✅ UNIQUE PRODUCTS:",
+        products.length
+      );
+
+      console.log(
+        "📋 PRODUCT TITLES:",
+        products.map((product) => ({
+          id: product._id,
+          title: product.title,
+          category: product.category,
+          price: product.price,
+        }))
+      );
+
+      console.log("========================================");
 
       setAllProducts(products);
       setFilteredProducts(products);
+      setActiveCategory(null);
     } catch (error) {
-      console.error("❌ Failed to load homepage products:", error);
+      console.error(
+        "❌ Failed to load homepage products:",
+        error
+      );
 
       setAllProducts([]);
       setFilteredProducts([]);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [extractProducts, removeDuplicateProducts]);
 
   // ==========================================================
   // INITIAL LOAD
   // ==========================================================
 
   useEffect(() => {
-    let mounted = true;
-
-    const load = async () => {
-      try {
-        setLoading(true);
-
-        const data = await getProducts({
-          limit: 12,
-          page: 1,
-        });
-
-        if (!mounted) return;
-
-        const products = Array.isArray(data?.products)
-          ? data.products
-          : [];
-
-        setAllProducts(products);
-        setFilteredProducts(products);
-      } catch (error) {
-        if (!mounted) return;
-
-        console.error(
-          "❌ Failed to load homepage products:",
-          error
-        );
-
-        setAllProducts([]);
-        setFilteredProducts([]);
-      } finally {
-        if (mounted) {
-          setLoading(false);
-        }
-      }
-    };
-
-    load();
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
+    loadProducts();
+  }, [loadProducts]);
 
   // ==========================================================
-  // CATEGORY FILTER
+  // CATEGORY SELECT
   // ==========================================================
 
   const handleCategorySelect = useCallback(
-    (category) => {
-      setActiveCategory(category || null);
+    async (category) => {
+      const selectedCategory =
+        String(category || "").trim();
 
-      if (!category || category === "all") {
+      // ------------------------------------------------------
+      // ALL / RESET
+      // ------------------------------------------------------
+
+      if (
+        !selectedCategory ||
+        selectedCategory.toLowerCase() === "all"
+      ) {
+        setActiveCategory(null);
+
         setFilteredProducts(allProducts);
+
         return;
       }
 
-      const normalizedCategory = String(category)
-        .trim()
-        .toLowerCase();
+      // ------------------------------------------------------
+      // ACTIVE CATEGORY
+      // ------------------------------------------------------
 
-      const filtered = allProducts.filter((product) => {
-        const productCategory = String(
-          product?.category || ""
-        )
-          .trim()
-          .toLowerCase();
+      setActiveCategory(selectedCategory);
+      setSearching(true);
 
-        return productCategory === normalizedCategory;
-      });
+      try {
+        console.log("========================================");
+        console.log(
+          "🔎 CATEGORY REQUEST:",
+          selectedCategory
+        );
 
-      setFilteredProducts(filtered);
+        const data = await getProducts({
+          category: selectedCategory,
+          page: 1,
+          limit: 100,
+        });
+
+        console.log(
+          "📦 CATEGORY RESPONSE:",
+          data
+        );
+
+        const receivedProducts =
+          extractProducts(data);
+
+        const products =
+          removeDuplicateProducts(
+            receivedProducts
+          );
+
+        console.log(
+          `✅ ${selectedCategory}: ${products.length} unique products`
+        );
+
+        console.log(
+          "📋 CATEGORY PRODUCTS:",
+          products.map((product) => ({
+            id: product._id,
+            title: product.title,
+            category: product.category,
+            price: product.price,
+          }))
+        );
+
+        console.log("========================================");
+
+        setFilteredProducts(products);
+      } catch (error) {
+        console.error(
+          `❌ Failed to load ${selectedCategory}:`,
+          error
+        );
+
+        setFilteredProducts([]);
+      } finally {
+        setSearching(false);
+      }
     },
-    [allProducts]
+    [
+      allProducts,
+      extractProducts,
+      removeDuplicateProducts,
+    ]
   );
 
   // ==========================================================
   // SEARCH
   // ==========================================================
 
-  const handleSearch = useCallback(async (params = {}) => {
-    setSearching(true);
+  const handleSearch = useCallback(
+    async (params = {}) => {
+      setSearching(true);
 
-    try {
-      const searchParams = {
-        ...params,
-        limit: 12,
-        page: 1,
-      };
+      try {
+        const searchParams = {
+          ...params,
+          page: 1,
+          limit: 100,
+        };
 
-      const data = await getProducts(searchParams);
+        console.log("========================================");
+        console.log(
+          "🔎 SEARCH REQUEST:",
+          searchParams
+        );
 
-      const products = Array.isArray(data?.products)
-        ? data.products
-        : [];
+        const data =
+          await getProducts(searchParams);
 
-      setAllProducts(products);
-      setFilteredProducts(products);
+        console.log(
+          "📦 SEARCH RESPONSE:",
+          data
+        );
 
-      setActiveCategory(null);
-    } catch (error) {
-      console.error("❌ Homepage search failed:", error);
+        const receivedProducts =
+          extractProducts(data);
 
-      setFilteredProducts([]);
-    } finally {
-      setSearching(false);
-    }
-  }, []);
+        const products =
+          removeDuplicateProducts(
+            receivedProducts
+          );
+
+        console.log(
+          "✅ SEARCH PRODUCTS:",
+          products.length
+        );
+
+        console.log("========================================");
+
+        setAllProducts(products);
+        setFilteredProducts(products);
+        setActiveCategory(null);
+      } catch (error) {
+        console.error(
+          "❌ Search failed:",
+          error
+        );
+
+        setAllProducts([]);
+        setFilteredProducts([]);
+      } finally {
+        setSearching(false);
+      }
+    },
+    [extractProducts, removeDuplicateProducts]
+  );
 
   // ==========================================================
   // FEATURED SELLERS
@@ -208,25 +354,58 @@ const Home = () => {
     : "Featured Products";
 
   // ==========================================================
+  // DEBUG
+  // ==========================================================
+
+  console.log("🏠 HOME STATE:", {
+    allProducts: allProducts.length,
+    filteredProducts: filteredProducts.length,
+    activeCategory,
+    loading,
+    searching,
+  });
+
+  // ==========================================================
   // RENDER
   // ==========================================================
 
   return (
     <>
+      {/* ======================================================
+          HERO
+      ====================================================== */}
+
       <Hero onSearch={handleSearch} />
+
+      {/* ======================================================
+          CATEGORIES
+      ====================================================== */}
 
       <Categories
         products={allProducts}
         onCategorySelect={handleCategorySelect}
       />
 
+      {/* ======================================================
+          PRODUCTS
+      ====================================================== */}
+
       <FeaturedProducts
         products={filteredProducts}
         loading={loading || searching}
         title={featuredTitle}
+        link="/products"
       />
 
+      {/* ======================================================
+          FEATURED SELLERS
+      ====================================================== */}
+
       <FeaturedSellers sellers={sellers} />
+
+      {/* ======================================================
+          FOOTER
+      ====================================================== */}
 
       <Footer />
     </>
