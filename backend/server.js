@@ -23,8 +23,7 @@ const connectDB = require("./config/db");
 
 require("./config/passport")(passport);
 
-const activityMiddleware =
-  require("./middleware/activity");
+const activityMiddleware = require("./middleware/activity");
 
 const {
   ensureDefaultCategories,
@@ -41,16 +40,13 @@ const requiredEnv = [
   "JWT_SECRET",
 ];
 
-const missing =
-  requiredEnv.filter(
-    (key) => !process.env[key]
-  );
+const missing = requiredEnv.filter(
+  (key) => !process.env[key]
+);
 
 if (missing.length > 0) {
   console.error(
-    `❌ Missing environment variables: ${missing.join(
-      ", "
-    )}`
+    `❌ Missing environment variables: ${missing.join(", ")}`
   );
 
   process.exit(1);
@@ -90,8 +86,7 @@ app.use(compression());
 
 app.use(
   morgan(
-    process.env.NODE_ENV ===
-      "production"
+    process.env.NODE_ENV === "production"
       ? "combined"
       : "dev"
   )
@@ -127,27 +122,18 @@ console.log(
 // CORS HELPER
 // ============================================================
 
-const isAllowedOrigin = (
-  origin
-) => {
+const isAllowedOrigin = (origin) => {
   // Allow requests without Origin.
-  //
-  // This includes server-to-server requests,
-  // Postman, curl, etc.
   if (!origin) {
     return true;
   }
 
   // Exact allowed origins.
-  if (
-    allowedOrigins.includes(
-      origin
-    )
-  ) {
+  if (allowedOrigins.includes(origin)) {
     return true;
   }
 
-  // BuyUKUsed Vercel previews.
+  // BuyUKUsed Vercel preview deployments.
   if (
     /^https:\/\/buyukused-[a-zA-Z0-9-]+-nanaskatty13s-projects\.vercel\.app$/.test(
       origin
@@ -173,22 +159,14 @@ const isAllowedOrigin = (
 // ============================================================
 
 const corsOptions = {
-  origin: (
-    origin,
-    callback
-  ) => {
+  origin: (origin, callback) => {
     console.log(
       "🔍 Incoming origin:",
       origin || "undefined"
     );
 
-    if (
-      isAllowedOrigin(origin)
-    ) {
-      return callback(
-        null,
-        true
-      );
+    if (isAllowedOrigin(origin)) {
+      return callback(null, true);
     }
 
     console.log(
@@ -236,14 +214,9 @@ const corsOptions = {
 // APPLY CORS
 // ============================================================
 
-app.use(
-  cors(corsOptions)
-);
+app.use(cors(corsOptions));
 
-app.options(
-  "*",
-  cors(corsOptions)
-);
+app.options("*", cors(corsOptions));
 
 // ============================================================
 // BODY PARSERS
@@ -266,31 +239,27 @@ app.use(
 // STATIC UPLOADS
 // ============================================================
 
-const uploadsDirectory =
-  path.join(
-    __dirname,
-    "public",
-    "uploads"
-  );
+const uploadsDirectory = path.join(
+  __dirname,
+  "public",
+  "uploads"
+);
 
 app.use(
   "/uploads",
-  express.static(
-    uploadsDirectory,
-    {
-      setHeaders: (res) => {
-        res.setHeader(
-          "Access-Control-Allow-Origin",
-          "*"
-        );
+  express.static(uploadsDirectory, {
+    setHeaders: (res) => {
+      res.setHeader(
+        "Access-Control-Allow-Origin",
+        "*"
+      );
 
-        res.setHeader(
-          "Cross-Origin-Resource-Policy",
-          "cross-origin"
-        );
-      },
-    }
-  )
+      res.setHeader(
+        "Cross-Origin-Resource-Policy",
+        "cross-origin"
+      );
+    },
+  })
 );
 
 console.log(
@@ -302,17 +271,13 @@ console.log(
 // PASSPORT
 // ============================================================
 
-app.use(
-  passport.initialize()
-);
+app.use(passport.initialize());
 
 // ============================================================
 // ACTIVITY TRACKING
 // ============================================================
 
-app.use(
-  activityMiddleware
-);
+app.use(activityMiddleware);
 
 console.log(
   "🟢 Seller/user activity tracking enabled"
@@ -322,19 +287,13 @@ console.log(
 // RATE LIMITING
 // ============================================================
 
-const skipIfAdmin = (
-  req,
-  res,
-  next
-) => {
+const skipIfAdmin = (req, res, next) => {
   const authHeader =
     req.headers.authorization;
 
   if (
     !authHeader ||
-    !authHeader.startsWith(
-      "Bearer "
-    )
+    !authHeader.startsWith("Bearer ")
   ) {
     return next();
   }
@@ -343,15 +302,12 @@ const skipIfAdmin = (
     authHeader.split(" ")[1];
 
   try {
-    const decoded =
-      jwt.verify(
-        token,
-        process.env.JWT_SECRET
-      );
+    const decoded = jwt.verify(
+      token,
+      process.env.JWT_SECRET
+    );
 
-    if (
-      decoded.role === "admin"
-    ) {
+    if (decoded.role === "admin") {
       req.skipRateLimit = true;
     }
   } catch (error) {
@@ -361,85 +317,66 @@ const skipIfAdmin = (
   next();
 };
 
-app.use(
-  skipIfAdmin
-);
+app.use(skipIfAdmin);
 
-const limiter =
-  rateLimit({
-    windowMs:
-      15 * 60 * 1000,
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
 
-    max:
+  max:
+    process.env.NODE_ENV === "production"
+      ? 100
+      : 500,
+
+  skip: (req) => {
+    if (req.skipRateLimit) {
+      return true;
+    }
+
+    if (
       process.env.NODE_ENV ===
-      "production"
-        ? 100
-        : 500,
+      "development"
+    ) {
+      return true;
+    }
 
-    skip: (req) => {
-      if (
-        req.skipRateLimit
-      ) {
-        return true;
-      }
+    return false;
+  },
 
-      if (
-        process.env.NODE_ENV ===
-        "development"
-      ) {
-        return true;
-      }
+  standardHeaders: true,
 
-      return false;
-    },
+  legacyHeaders: false,
 
-    standardHeaders: true,
+  message: {
+    success: false,
+    message:
+      "Too many requests, please try again later.",
+  },
+});
 
-    legacyHeaders: false,
+app.use("/api", limiter);
 
-    message: {
-      success: false,
-
-      message:
-        "Too many requests, please try again later.",
-    },
-  });
-
-app.use(
-  "/api",
-  limiter
-);
-
-app.use(
-  "/auth",
-  limiter
-);
+app.use("/auth", limiter);
 
 // ============================================================
-// REQUEST LOGGER FOR DELIVERY API
+// DELIVERY REQUEST LOGGER
 // ============================================================
 
 app.use(
   "/api/deliveries",
   (req, res, next) => {
-    const startedAt =
-      Date.now();
+    const startedAt = Date.now();
 
     console.log(
       `🚴 DELIVERY REQUEST → ${req.method} ${req.originalUrl}`
     );
 
-    res.on(
-      "finish",
-      () => {
-        console.log(
-          `🚴 DELIVERY RESPONSE ← ${req.method} ${req.originalUrl} | ${res.statusCode} | ${
-            Date.now() -
-            startedAt
-          }ms`
-        );
-      }
-    );
+    res.on("finish", () => {
+      console.log(
+        `🚴 DELIVERY RESPONSE ← ${req.method} ${req.originalUrl} | ${res.statusCode} | ${
+          Date.now() - startedAt
+        }ms`
+      );
+    });
 
     next();
   }
@@ -449,47 +386,37 @@ app.use(
 // ROOT
 // ============================================================
 
-app.get(
-  "/",
-  (req, res) => {
-    res.status(200).json({
-      success: true,
+app.get("/", (req, res) => {
+  res.status(200).json({
+    success: true,
 
-      message:
-        "BuyUKUsed API is running",
+    message:
+      "BuyUKUsed API is running",
 
-      environment:
-        process.env.NODE_ENV ||
-        "development",
-    });
-  }
-);
+    environment:
+      process.env.NODE_ENV ||
+      "development",
+  });
+});
 
 // ============================================================
 // HEALTH
 // ============================================================
 
-const healthResponse =
-  (req, res) => {
-    res.status(200).json({
-      success: true,
+const healthResponse = (req, res) => {
+  res.status(200).json({
+    success: true,
 
-      status: "ok",
+    status: "ok",
 
-      timestamp:
-        new Date().toISOString(),
-    });
-  };
+    timestamp:
+      new Date().toISOString(),
+  });
+};
 
-app.get(
-  "/health",
-  healthResponse
-);
+app.get("/health", healthResponse);
 
-app.get(
-  "/api/health",
-  healthResponse
-);
+app.get("/api/health", healthResponse);
 
 // ============================================================
 // LOAD ROUTES
@@ -522,20 +449,11 @@ const deliveryRoutes =
 const uploadRoutes =
   require("./routes/upload");
 
-// ============================================================
-// IMPORTANT:
-// Use sellerRoutes.js, not sellers.js
-// ============================================================
-
 const sellerRoutes =
   require("./routes/sellerRoutes");
 
 const categoryRoutes =
   require("./routes/categories");
-
-// ============================================================
-// VISUAL SEARCH ROUTE
-// ============================================================
 
 const visualSearchRoutes =
   require("./routes/visualSearchRoutes");
@@ -566,15 +484,9 @@ app.use(
 // SELLERS
 // ============================================================
 //
-// IMPORTANT:
-//
-// Frontend sellerService.js uses:
+// Normal seller API:
 //
 // /api/sellers/...
-//
-// Therefore the seller router must be mounted at:
-//
-// /api/sellers
 //
 // ============================================================
 
@@ -588,6 +500,36 @@ console.log(
 );
 
 // ============================================================
+// ADMIN SELLER COMPATIBILITY ROUTE
+// ============================================================
+//
+// Your Admin Sellers frontend currently calls:
+//
+// POST /api/admin/sellers/:sellerId/verify
+//
+// The seller router already contains the seller
+// verification endpoint.
+//
+// Therefore we also mount the same seller router here:
+//
+// /api/admin/sellers
+//
+// This fixes:
+//
+// 404 API endpoint not found
+//
+// ============================================================
+
+app.use(
+  "/api/admin/sellers",
+  sellerRoutes
+);
+
+console.log(
+  "👑 Admin Seller API mounted at /api/admin/sellers"
+);
+
+// ============================================================
 // PRODUCTS
 // ============================================================
 
@@ -597,7 +539,7 @@ app.use(
 );
 
 // ============================================================
-// VISUAL IMAGE SEARCH
+// VISUAL SEARCH
 // ============================================================
 
 app.use(
@@ -645,6 +587,10 @@ app.use(
   adminRoutes
 );
 
+console.log(
+  "🔐 Admin API mounted at /api/admin"
+);
+
 // ============================================================
 // DELIVERY
 // ============================================================
@@ -688,48 +634,37 @@ console.log(
 // 404
 // ============================================================
 
-app.use(
-  (req, res) => {
-    console.log(
-      `❌ 404: ${req.method} ${req.originalUrl}`
-    );
+app.use((req, res) => {
+  console.log(
+    `❌ 404: ${req.method} ${req.originalUrl}`
+  );
 
-    if (
-      req.path.startsWith(
-        "/api"
-      ) ||
-      req.path.startsWith(
-        "/auth"
-      )
-    ) {
-      return res.status(404).json({
-        success: false,
+  if (
+    req.path.startsWith("/api") ||
+    req.path.startsWith("/auth")
+  ) {
+    return res.status(404).json({
+      success: false,
 
-        message:
-          "API endpoint not found",
+      message:
+        "API endpoint not found",
 
-        path:
-          req.originalUrl,
-      });
-    }
-
-    return res
-      .status(404)
-      .send("Not Found");
+      path:
+        req.originalUrl,
+    });
   }
-);
+
+  return res
+    .status(404)
+    .send("Not Found");
+});
 
 // ============================================================
 // GLOBAL ERROR HANDLER
 // ============================================================
 
 app.use(
-  (
-    err,
-    req,
-    res,
-    next
-  ) => {
+  (err, req, res, next) => {
     console.error(
       "❌ Global error:",
       err
@@ -758,8 +693,7 @@ app.use(
 
     if (
       err &&
-      err.name ===
-        "MulterError"
+      err.name === "MulterError"
     ) {
       if (
         err.code ===
@@ -793,8 +727,7 @@ app.use(
       const field =
         Object.keys(
           err.keyPattern || {}
-        )[0] ||
-        "field";
+        )[0] || "field";
 
       return res.status(409).json({
         success: false,
@@ -976,112 +909,112 @@ const createDefaultAdmin =
 // START SERVER
 // ============================================================
 
-const start =
-  async () => {
-    try {
-      const connection =
-        await connectDB();
+const start = async () => {
+  try {
+    const connection =
+      await connectDB();
 
-      console.log(
-        `✅ MongoDB connected to: ${connection.name}`
+    console.log(
+      `✅ MongoDB connected to: ${connection.name}`
+    );
+
+    await ensureDefaultCategories();
+
+    console.log(
+      "✅ Default categories check completed"
+    );
+
+    await createDefaultAdmin();
+
+    const server =
+      app.listen(
+        PORT,
+        () => {
+          console.log(
+            "============================================================"
+          );
+
+          console.log(
+            `🚀 Server running on port ${PORT}`
+          );
+
+          console.log(
+            `🌍 Environment: ${
+              process.env.NODE_ENV ||
+              "development"
+            }`
+          );
+
+          console.log(
+            `🔗 Base URL: ${
+              process.env.BASE_URL ||
+              "(auto-detected)"
+            }`
+          );
+
+          console.log(
+            `📁 Uploads: ${uploadsDirectory}`
+          );
+
+          console.log(
+            "🔐 Admin API: /api/admin"
+          );
+
+          console.log(
+            "👑 Admin Seller API: /api/admin/sellers"
+          );
+
+          console.log(
+            "🚴 Delivery API: /api/deliveries"
+          );
+
+          console.log(
+            "📤 Upload API: /api/upload"
+          );
+
+          console.log(
+            "🛒 Seller API: /api/sellers"
+          );
+
+          console.log(
+            "📂 Categories API: /api/categories"
+          );
+
+          console.log(
+            "🖼️ Visual Search API: /api/visual-search"
+          );
+
+          console.log(
+            "🟢 Activity tracking: ENABLED"
+          );
+
+          console.log(
+            "🟢 CORS: ENABLED"
+          );
+
+          console.log(
+            "============================================================"
+          );
+        }
       );
 
-      await ensureDefaultCategories();
+    // --------------------------------------------------------
+    // TIMEOUTS
+    // --------------------------------------------------------
 
-      console.log(
-        "✅ Default categories check completed"
-      );
+    server.timeout = 120000;
 
-      await createDefaultAdmin();
+    server.keepAliveTimeout = 65000;
 
-      const server =
-        app.listen(
-          PORT,
-          () => {
-            console.log(
-              "============================================================"
-            );
+    server.headersTimeout = 66000;
+  } catch (error) {
+    console.error(
+      "❌ Server failed:",
+      error
+    );
 
-            console.log(
-              `🚀 Server running on port ${PORT}`
-            );
-
-            console.log(
-              `🌍 Environment: ${
-                process.env.NODE_ENV ||
-                "development"
-              }`
-            );
-
-            console.log(
-              `🔗 Base URL: ${
-                process.env.BASE_URL ||
-                "(auto-detected)"
-              }`
-            );
-
-            console.log(
-              `📁 Uploads: ${uploadsDirectory}`
-            );
-
-            console.log(
-              "🔐 Admin API: /api/admin"
-            );
-
-            console.log(
-              "🚴 Delivery API: /api/deliveries"
-            );
-
-            console.log(
-              "📤 Upload API: /api/upload"
-            );
-
-            console.log(
-              "🛒 Seller API: /api/sellers"
-            );
-
-            console.log(
-              "📂 Categories API: /api/categories"
-            );
-
-            console.log(
-              "🖼️ Visual Search API: /api/visual-search"
-            );
-
-            console.log(
-              "🟢 Activity tracking: ENABLED"
-            );
-
-            console.log(
-              "🟢 CORS: ENABLED"
-            );
-
-            console.log(
-              "============================================================"
-            );
-          }
-        );
-
-      // --------------------------------------------------------
-      // TIMEOUTS
-      // --------------------------------------------------------
-
-      server.timeout =
-        120000;
-
-      server.keepAliveTimeout =
-        65000;
-
-      server.headersTimeout =
-        66000;
-    } catch (error) {
-      console.error(
-        "❌ Server failed:",
-        error
-      );
-
-      process.exit(1);
-    }
-  };
+    process.exit(1);
+  }
+};
 
 start();

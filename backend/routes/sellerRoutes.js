@@ -36,16 +36,16 @@ const {
 // SELLER ACCESS
 // ============================================================
 
-const requireSeller =
-  requireRoles(
-    "seller",
-    "admin"
-  );
+const requireSeller = requireRoles(
+  "seller",
+  "admin"
+);
 
 // ============================================================
 // REGISTER AS SELLER
 // ============================================================
 
+// POST /api/sellers/register
 router.post(
   "/register",
   authenticate,
@@ -56,6 +56,7 @@ router.post(
 // PRIVATE SELLER PROFILE
 // ============================================================
 
+// GET /api/sellers/profile
 router.get(
   "/profile",
   authenticate,
@@ -63,11 +64,16 @@ router.get(
   getSellerProfile
 );
 
-// ============================================================
-// UPDATE SELLER PROFILE
-// ============================================================
-
+// PUT /api/sellers/profile
 router.put(
+  "/profile",
+  authenticate,
+  requireSeller,
+  updateSellerProfile
+);
+
+// PATCH /api/sellers/profile
+router.patch(
   "/profile",
   authenticate,
   requireSeller,
@@ -78,6 +84,7 @@ router.put(
 // SELLER DASHBOARD
 // ============================================================
 
+// GET /api/sellers/dashboard
 router.get(
   "/dashboard",
   authenticate,
@@ -89,6 +96,7 @@ router.get(
 // SELLER EARNINGS
 // ============================================================
 
+// GET /api/sellers/earnings
 router.get(
   "/earnings",
   authenticate,
@@ -100,6 +108,7 @@ router.get(
 // SELLER PRODUCTS
 // ============================================================
 
+// GET /api/sellers/products
 router.get(
   "/products",
   authenticate,
@@ -111,6 +120,7 @@ router.get(
 // SELLER ORDERS
 // ============================================================
 
+// GET /api/sellers/orders
 router.get(
   "/orders",
   authenticate,
@@ -120,11 +130,16 @@ router.get(
 
 // ============================================================
 // PUBLIC SELLER PRODUCTS
+// ============================================================
 //
 // IMPORTANT:
-// This must come before /:sellerId
+// This route must come before:
+//
+// /:sellerId
+//
 // ============================================================
 
+// GET /api/sellers/:sellerId/products
 router.get(
   "/:sellerId/products",
   getPublicSellerProducts
@@ -134,6 +149,7 @@ router.get(
 // PUBLIC SELLER PROFILE
 // ============================================================
 
+// GET /api/sellers/:sellerId
 router.get(
   "/:sellerId",
   getPublicSellerProfile

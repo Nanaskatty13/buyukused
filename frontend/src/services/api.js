@@ -1,6 +1,6 @@
 // ================================================================
 // frontend/src/services/api.js
-// BuyUKUsed API Service
+// BuyUKUsed - Complete API Service
 // ================================================================
 
 import {
@@ -16,10 +16,7 @@ const RAW_API_URL =
   import.meta.env.VITE_API_URL ||
   "http://localhost:5000";
 
-export const API_URL = String(RAW_API_URL).replace(
-  /\/+$/,
-  ""
-);
+export const API_URL = String(RAW_API_URL).replace(/\/+$/, "");
 
 console.log("🔗 API_URL:", API_URL);
 
@@ -135,7 +132,6 @@ const request = async (
     const response = await fetch(url, {
       credentials: "include",
       ...options,
-
       signal:
         options.signal ||
         controller.signal,
@@ -213,6 +209,10 @@ const request = async (
       );
     }
 
+    // ============================================================
+    // FINAL ERROR
+    // ============================================================
+
     console.error(
       "❌ API request failed:",
       url,
@@ -279,12 +279,14 @@ export const getImageUrl = (path) => {
     return "/placeholder.png";
   }
 
-  // External URL
+  // ============================================================
+  // EXTERNAL URL
+  // ============================================================
+
   if (
     cleanPath.startsWith("http://") ||
     cleanPath.startsWith("https://")
   ) {
-    // Cloudinary optimization
     if (
       cleanPath.includes("res.cloudinary.com") &&
       cleanPath.includes("/image/upload/")
@@ -298,17 +300,26 @@ export const getImageUrl = (path) => {
     return cleanPath;
   }
 
-  // Base64
+  // ============================================================
+  // BASE64
+  // ============================================================
+
   if (cleanPath.startsWith("data:")) {
     return cleanPath;
   }
 
-  // Blob
+  // ============================================================
+  // BLOB
+  // ============================================================
+
   if (cleanPath.startsWith("blob:")) {
     return cleanPath;
   }
 
-  // Backend relative path
+  // ============================================================
+  // BACKEND RELATIVE PATH
+  // ============================================================
+
   return `${API_URL}${
     cleanPath.startsWith("/")
       ? cleanPath
@@ -321,8 +332,8 @@ export const getImageUrl = (path) => {
 // ================================================================
 
 export const health = {
-  check: async () =>
-    request(
+  check: async () => {
+    return request(
       `${API_URL}/health`,
       {
         method: "GET",
@@ -330,7 +341,8 @@ export const health = {
           Accept: "application/json",
         },
       }
-    ),
+    );
+  },
 };
 
 // ================================================================
@@ -428,7 +440,8 @@ export const auth = {
       `${API_URL}/auth/me`,
       {
         method: "GET",
-        headers: getHeaders(token),
+        headers:
+          getHeaders(token),
       }
     );
   },
@@ -442,13 +455,18 @@ export const auth = {
       };
     }
 
-    return request(
-      `${API_URL}/auth/logout`,
-      {
-        method: "POST",
-        headers: getHeaders(token),
-      }
-    );
+    try {
+      return await request(
+        `${API_URL}/auth/logout`,
+        {
+          method: "POST",
+          headers:
+            getHeaders(token),
+        }
+      );
+    } finally {
+      clearAuthData();
+    }
   },
 };
 
@@ -606,15 +624,12 @@ export const products = {
       )}`,
       {
         method: "DELETE",
+
         headers:
           getHeaders(token),
       }
     );
   },
-
-  // ============================================================
-  // UPDATE PRODUCT STATUS
-  // ============================================================
 
   updateStatus: async (
     productId,
@@ -765,6 +780,7 @@ export const users = {
       )}`,
       {
         method: "DELETE",
+
         headers:
           getHeaders(token),
       }
@@ -778,6 +794,7 @@ export const users = {
       `${API_URL}/api/users/stats`,
       {
         method: "GET",
+
         headers:
           getHeaders(token),
       }
@@ -806,6 +823,7 @@ export const notifications = {
       )}`,
       {
         method: "GET",
+
         headers:
           getHeaders(token),
       }
@@ -819,6 +837,7 @@ export const notifications = {
       `${API_URL}/api/notifications/admin`,
       {
         method: "GET",
+
         headers:
           getHeaders(token),
       }
@@ -837,7 +856,9 @@ export const notifications = {
         headers:
           getHeaders(token),
 
-        body: JSON.stringify(data),
+        body: JSON.stringify(
+          data
+        ),
       }
     );
   },
@@ -858,6 +879,30 @@ export const notifications = {
       )}/read`,
       {
         method: "PUT",
+
+        headers:
+          getHeaders(token),
+      }
+    );
+  },
+
+  markAllRead: async (
+    userId,
+    token = getToken()
+  ) => {
+    if (!userId) {
+      throw new Error(
+        "User ID is required"
+      );
+    }
+
+    return request(
+      `${API_URL}/api/notifications/${encodeURIComponent(
+        userId
+      )}/read-all`,
+      {
+        method: "PUT",
+
         headers:
           getHeaders(token),
       }
@@ -880,6 +925,7 @@ export const notifications = {
       )}`,
       {
         method: "DELETE",
+
         headers:
           getHeaders(token),
       }
@@ -903,6 +949,7 @@ export const orders = {
       `${API_URL}/api/orders${query}`,
       {
         method: "GET",
+
         headers:
           getHeaders(token),
       }
@@ -925,6 +972,7 @@ export const orders = {
       )}`,
       {
         method: "GET",
+
         headers:
           getHeaders(token),
       }
@@ -994,6 +1042,7 @@ export const orders = {
       )}`,
       {
         method: "DELETE",
+
         headers:
           getHeaders(token),
       }
@@ -1022,6 +1071,7 @@ export const messages = {
       )}`,
       {
         method: "GET",
+
         headers:
           getHeaders(token),
       }
@@ -1035,6 +1085,7 @@ export const messages = {
       `${API_URL}/api/messages/conversations`,
       {
         method: "GET",
+
         headers:
           getHeaders(token),
       }
@@ -1057,6 +1108,7 @@ export const messages = {
       )}`,
       {
         method: "GET",
+
         headers:
           getHeaders(token),
       }
@@ -1102,6 +1154,7 @@ export const messages = {
       )}/read`,
       {
         method: "PUT",
+
         headers:
           getHeaders(token),
       }
@@ -1124,6 +1177,7 @@ export const messages = {
       )}`,
       {
         method: "DELETE",
+
         headers:
           getHeaders(token),
       }
@@ -1143,6 +1197,7 @@ export const favorites = {
       `${API_URL}/api/favorites`,
       {
         method: "GET",
+
         headers:
           getHeaders(token),
       }
@@ -1190,6 +1245,7 @@ export const favorites = {
       )}`,
       {
         method: "DELETE",
+
         headers:
           getHeaders(token),
       }
@@ -1202,6 +1258,10 @@ export const favorites = {
 // ================================================================
 
 export const admin = {
+  // ============================================================
+  // DASHBOARD
+  // ============================================================
+
   getDashboardStats: async (
     token = getToken()
   ) => {
@@ -1209,11 +1269,16 @@ export const admin = {
       `${API_URL}/api/admin/dashboard`,
       {
         method: "GET",
+
         headers:
           getHeaders(token),
       }
     );
   },
+
+  // ============================================================
+  // USERS
+  // ============================================================
 
   getUsers: async (
     params = {},
@@ -1226,6 +1291,7 @@ export const admin = {
       `${API_URL}/api/admin/users${query}`,
       {
         method: "GET",
+
         headers:
           getHeaders(token),
       }
@@ -1248,6 +1314,7 @@ export const admin = {
       )}`,
       {
         method: "GET",
+
         headers:
           getHeaders(token),
       }
@@ -1265,6 +1332,12 @@ export const admin = {
       );
     }
 
+    if (!role) {
+      throw new Error(
+        "Role is required"
+      );
+    }
+
     return request(
       `${API_URL}/api/admin/users/${encodeURIComponent(
         id
@@ -1277,6 +1350,38 @@ export const admin = {
 
         body: JSON.stringify({
           role,
+        }),
+      }
+    );
+  },
+
+  // ============================================================
+  // USER STATUS
+  // ============================================================
+
+  updateUserStatus: async (
+    id,
+    isActive,
+    token = getToken()
+  ) => {
+    if (!id) {
+      throw new Error(
+        "User ID is required"
+      );
+    }
+
+    return request(
+      `${API_URL}/api/admin/users/${encodeURIComponent(
+        id
+      )}/status`,
+      {
+        method: "PUT",
+
+        headers:
+          getHeaders(token),
+
+        body: JSON.stringify({
+          isActive: Boolean(isActive),
         }),
       }
     );
@@ -1298,11 +1403,16 @@ export const admin = {
       )}`,
       {
         method: "DELETE",
+
         headers:
           getHeaders(token),
       }
     );
   },
+
+  // ============================================================
+  // PRODUCTS
+  // ============================================================
 
   getProducts: async (
     params = {},
@@ -1315,6 +1425,7 @@ export const admin = {
       `${API_URL}/api/admin/products${query}`,
       {
         method: "GET",
+
         headers:
           getHeaders(token),
       }
@@ -1337,11 +1448,16 @@ export const admin = {
       )}`,
       {
         method: "DELETE",
+
         headers:
           getHeaders(token),
       }
     );
   },
+
+  // ============================================================
+  // ORDERS
+  // ============================================================
 
   getOrders: async (
     params = {},
@@ -1354,6 +1470,7 @@ export const admin = {
       `${API_URL}/api/admin/orders${query}`,
       {
         method: "GET",
+
         headers:
           getHeaders(token),
       }
@@ -1388,6 +1505,60 @@ export const admin = {
     );
   },
 
+  // ============================================================
+  // SELLER VERIFICATION
+  // ============================================================
+
+  verifySeller: async (
+    id,
+    token = getToken()
+  ) => {
+    if (!id) {
+      throw new Error(
+        "Seller ID is required"
+      );
+    }
+
+    return request(
+      `${API_URL}/api/admin/sellers/${encodeURIComponent(
+        id
+      )}/verify`,
+      {
+        method: "PUT",
+
+        headers:
+          getHeaders(token),
+      }
+    );
+  },
+
+  unverifySeller: async (
+    id,
+    token = getToken()
+  ) => {
+    if (!id) {
+      throw new Error(
+        "Seller ID is required"
+      );
+    }
+
+    return request(
+      `${API_URL}/api/admin/sellers/${encodeURIComponent(
+        id
+      )}/unverify`,
+      {
+        method: "PUT",
+
+        headers:
+          getHeaders(token),
+      }
+    );
+  },
+
+  // ============================================================
+  // RIDERS
+  // ============================================================
+
   getRiders: async (
     params = {},
     token = getToken()
@@ -1399,6 +1570,7 @@ export const admin = {
       `${API_URL}/api/admin/riders${query}`,
       {
         method: "GET",
+
         headers:
           getHeaders(token),
       }
@@ -1421,6 +1593,7 @@ export const admin = {
       )}`,
       {
         method: "GET",
+
         headers:
           getHeaders(token),
       }
@@ -1443,6 +1616,7 @@ export const admin = {
       )}/approve`,
       {
         method: "PUT",
+
         headers:
           getHeaders(token),
       }
@@ -1465,6 +1639,7 @@ export const admin = {
       )}/reject`,
       {
         method: "PUT",
+
         headers:
           getHeaders(token),
       }
@@ -1516,11 +1691,16 @@ export const admin = {
       )}`,
       {
         method: "DELETE",
+
         headers:
           getHeaders(token),
       }
     );
   },
+
+  // ============================================================
+  // DELIVERIES
+  // ============================================================
 
   getDeliveries: async (
     params = {},
@@ -1533,6 +1713,7 @@ export const admin = {
       `${API_URL}/api/admin/deliveries${query}`,
       {
         method: "GET",
+
         headers:
           getHeaders(token),
       }
@@ -1555,6 +1736,7 @@ export const admin = {
       )}`,
       {
         method: "GET",
+
         headers:
           getHeaders(token),
       }
@@ -1621,6 +1803,7 @@ export const deliveries = {
       `${API_URL}/api/deliveries/customer`,
       {
         method: "GET",
+
         headers:
           getHeaders(token),
       }
@@ -1634,6 +1817,7 @@ export const deliveries = {
       `${API_URL}/api/deliveries/available`,
       {
         method: "GET",
+
         headers:
           getHeaders(token),
       }
@@ -1647,6 +1831,7 @@ export const deliveries = {
       `${API_URL}/api/deliveries/my`,
       {
         method: "GET",
+
         headers:
           getHeaders(token),
       }
@@ -1660,6 +1845,7 @@ export const deliveries = {
       `${API_URL}/api/deliveries/rider`,
       {
         method: "GET",
+
         headers:
           getHeaders(token),
       }
@@ -1722,6 +1908,7 @@ export const deliveries = {
       )}/accept`,
       {
         method: "PATCH",
+
         headers:
           getHeaders(token),
       }
@@ -1800,6 +1987,7 @@ export const deliveries = {
       )}`,
       {
         method: "GET",
+
         headers:
           getHeaders(token),
       }
@@ -1822,6 +2010,7 @@ export const deliveries = {
       )}/cancel`,
       {
         method: "PATCH",
+
         headers:
           getHeaders(token),
       }
@@ -1863,9 +2052,6 @@ export const updateProductWithFiles =
 export const deleteProduct =
   products.delete;
 
-// IMPORTANT:
-// This is a real named export.
-// ProductCard.jsx can import it directly.
 export const updateProductStatus =
   products.updateStatus;
 
@@ -1927,6 +2113,9 @@ export const createNotification =
 
 export const markNotificationRead =
   notifications.markRead;
+
+export const markAllNotificationsAsRead =
+  notifications.markAllRead;
 
 export const deleteNotification =
   notifications.delete;
@@ -2001,6 +2190,9 @@ export const getAdminUserById =
 export const updateAdminUserRole =
   admin.updateUserRole;
 
+export const updateAdminUserStatus =
+  admin.updateUserStatus;
+
 export const deleteAdminUser =
   admin.deleteUser;
 
@@ -2009,6 +2201,12 @@ export const getAdminProducts =
 
 export const deleteAdminProduct =
   admin.deleteProduct;
+
+export const verifyAdminSeller =
+  admin.verifySeller;
+
+export const unverifyAdminSeller =
+  admin.unverifySeller;
 
 export const getAdminOrders =
   admin.getOrders;
@@ -2091,100 +2289,175 @@ const api = {
   API_URL,
 
   health,
+
   auth,
+
   products,
+
   users,
+
   notifications,
+
   orders,
+
   messages,
+
   favorites,
+
   admin,
+
   deliveries,
 
   login,
+
   register,
+
   getMe,
+
   logout,
 
   getProducts,
+
   getProduct,
+
   createProduct,
+
   createProductWithFiles,
+
   updateProduct,
+
   updateProductWithFiles,
+
   deleteProduct,
+
   updateProductStatus,
 
   getSellerProducts,
 
   getUsers,
+
   getUser,
+
   updateUser,
+
   updateUserWithFiles,
+
   deleteUser,
+
   getUserStats,
 
   getNotifications,
+
   getAdminNotifications,
+
   getUserNotifications,
+
   createNotification,
+
   markNotificationRead,
+
+  markAllNotificationsAsRead,
+
   deleteNotification,
 
   getOrders,
+
   getOrder,
+
   createOrder,
+
   updateOrder,
+
   deleteOrder,
 
   getMessages,
+
   getConversations,
+
   getConversation,
+
   sendMessage,
+
   markMessageRead,
+
   deleteMessage,
 
   getFavorites,
+
   addFavorite,
+
   removeFavorite,
 
   getAdminDashboardStats,
+
   getAdminUsers,
+
   getAdminUserById,
+
   updateAdminUserRole,
+
+  updateAdminUserStatus,
+
   deleteAdminUser,
+
   getAdminProducts,
+
   deleteAdminProduct,
+
+  verifyAdminSeller,
+
+  unverifyAdminSeller,
+
   getAdminOrders,
+
   updateAdminOrderStatus,
 
   getRiders,
+
   getRiderById,
+
   approveRider,
+
   rejectRider,
+
   updateRiderApproval,
+
   deleteRider,
 
   getAdminDeliveries,
+
   getAdminDeliveryById,
+
   updateAdminDeliveryStatus,
 
   createDelivery,
+
   getCustomerDeliveries,
+
   getAvailableDeliveries,
+
   getMyDeliveries,
+
   getRiderDeliveries,
+
   updateRiderAvailability,
+
   toggleRiderAvailability,
+
   acceptDelivery,
+
   updateDeliveryStatus,
+
   updateDeliveryLocation,
+
   getDelivery,
+
   cancelDelivery,
 
   getImageUrl,
 
   getToken,
+
   clearAuthData,
 };
 
