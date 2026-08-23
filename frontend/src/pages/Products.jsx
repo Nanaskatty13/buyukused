@@ -150,6 +150,8 @@ const ProductCard = ({ product }) => {
       : getImageUrl(sellerImage)
     : null;
 
+  const isVerified = sellerObj?.isVerified === true;
+
   // ==============================================================
   // PRODUCT IMAGE
   // ==============================================================
@@ -514,7 +516,7 @@ const ProductCard = ({ product }) => {
         />
 
         {/* ========================================================
-            SELLER
+            SELLER AVATAR + VERIFIED BADGE (NO NAME)
         ======================================================== */}
 
         <div
@@ -522,58 +524,100 @@ const ProductCard = ({ product }) => {
             position: "absolute",
             top: "10px",
             left: "10px",
-            display: "flex",
-            alignItems: "center",
-            gap: "6px",
-            background: "rgba(0,0,0,0.65)",
-            padding: "4px 10px",
-            borderRadius: "20px",
-            color: "white",
-            fontSize: "12px",
-            fontWeight: 600,
             zIndex: 2,
             pointerEvents: "none",
-            maxWidth: "80%",
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
           }}
         >
-          {sellerImageUrl ? (
-            <img
-              src={sellerImageUrl}
-              alt={sellerName}
-              style={{
-                width: "20px",
-                height: "20px",
-                borderRadius: "50%",
-                objectFit: "cover",
-                flexShrink: 0,
-              }}
-              onError={(e) => {
-                e.currentTarget.style.display = "none";
-              }}
-            />
-          ) : (
-            <i
-              className="fas fa-user-circle"
-              style={{
-                fontSize: "18px",
-                color: "#ccc",
-                flexShrink: 0,
-              }}
-            />
-          )}
-
-          <span
+          <div
             style={{
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
+              position: "relative",
+              width: "40px",
+              height: "40px",
             }}
           >
-            {sellerName}
-          </span>
+            {sellerImageUrl ? (
+              <img
+                src={sellerImageUrl}
+                alt={sellerName}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  borderRadius: "50%",
+                  objectFit: "cover",
+                  border: "2px solid rgba(255,255,255,0.9)",
+                  boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
+                }}
+                onError={(e) => {
+                  // If the image fails, hide it and show the fallback
+                  e.currentTarget.style.display = "none";
+                  const parent = e.currentTarget.parentElement;
+                  const fallback = parent.querySelector(".seller-avatar-fallback");
+                  if (fallback) {
+                    fallback.style.display = "flex";
+                  }
+                }}
+              />
+            ) : null}
+
+            {/* Fallback avatar (shown when no image or image fails) */}
+            <div
+              className="seller-avatar-fallback"
+              style={{
+                width: "100%",
+                height: "100%",
+                borderRadius: "50%",
+                background: "#e5e7eb",
+                display: sellerImageUrl ? "none" : "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                border: "2px solid rgba(255,255,255,0.9)",
+                boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
+              }}
+            >
+              <i
+                className="fas fa-user"
+                style={{
+                  fontSize: "18px",
+                  color: "#9ca3af",
+                }}
+              />
+            </div>
+
+            {isVerified && (
+              <div
+                style={{
+                  position: "absolute",
+                  bottom: 0,
+                  right: 0,
+                  width: "18px",
+                  height: "18px",
+                  background: "#1DA1F2",
+                  borderRadius: "50%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  border: "2px solid white",
+                  boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
+                }}
+              >
+                <svg
+                  width="10"
+                  height="10"
+                  viewBox="0 0 20 20"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M7.5 10.5L9.5 12.5L14 8"
+                    stroke="white"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* ========================================================

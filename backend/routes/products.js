@@ -892,7 +892,10 @@ router.get(
           )
             .populate(
               "sellerId",
-              "name phone email location avatar role"
+              // ─── UPDATED ────────────────────────────────────
+              // Now includes all possible image fields so the
+              // seller's profile picture appears on the frontend.
+              "name phone email location avatar profileImage photo photoURL role isVerified"
             )
             .sort({
               createdAt: -1,
@@ -984,7 +987,9 @@ router.get(
           id
         ).populate(
           "sellerId",
-          "name phone email location avatar role"
+          // ─── UPDATED ────────────────────────────────────────
+          // Now includes all possible image fields.
+          "name phone email location avatar profileImage photo photoURL role isVerified"
         );
 
       if (!product) {

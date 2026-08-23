@@ -24,6 +24,7 @@ import {
 } from "../services/api";
 
 import { messages } from "../services/messages";
+import VerifiedBadge from "../components/VerifiedBadge"; // NEW
 
 const Profile = () => {
   const { user, token } = useAuth();
@@ -727,6 +728,9 @@ const Profile = () => {
   const profileRole =
     user.role || "buyer";
 
+  const isVerified =
+    user.isVerified === true; // NEW
+
   // ================================================================
   // RENDER
   // ================================================================
@@ -783,6 +787,7 @@ const Profile = () => {
             fontWeight: 700,
             flexShrink: 0,
             overflow: "hidden",
+            position: "relative",
           }}
         >
           {profilePhoto ? (
@@ -816,6 +821,42 @@ const Profile = () => {
           ) : (
             profileInitial
           )}
+
+          {/* ─── Verified badge on avatar ─── */}
+          {isVerified && (
+            <div
+              style={{
+                position: "absolute",
+                bottom: 0,
+                right: 0,
+                width: "28px",
+                height: "28px",
+                background: "#1DA1F2",
+                borderRadius: "50%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                border: "2px solid white",
+                boxShadow: "0 1px 4px rgba(0,0,0,0.2)",
+              }}
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 20 20"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M7.5 10.5L9.5 12.5L14 8"
+                  stroke="white"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </div>
+          )}
         </div>
 
         {/* ========================================================
@@ -846,6 +887,11 @@ const Profile = () => {
             }}
           >
             {profileName}
+
+            {/* ─── VERIFIED BADGE (NEW) ─── */}
+            {isVerified && (
+              <VerifiedBadge size={24} showLabel />
+            )}
 
             {/* ADMIN */}
 

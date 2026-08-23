@@ -531,7 +531,6 @@ const productSchema = new mongoose.Schema(
     // COSMETICS – Complete list of fields
     // ========================================================
 
-    // Basic cosmetic info
     cosmeticType: {
       type: String,
       default: "",
@@ -550,7 +549,6 @@ const productSchema = new mongoose.Schema(
       trim: true,
     },
 
-    // Added fields to match frontend
     productLine: {
       type: String,
       default: "",
@@ -612,7 +610,6 @@ const productSchema = new mongoose.Schema(
       trim: true,
     },
 
-    // Existing fields
     skinType: {
       type: String,
       default: "",
@@ -644,7 +641,6 @@ const productSchema = new mongoose.Schema(
       trim: true,
     },
 
-    // Cosmetic booleans
     sealed: {
       type: Boolean,
       default: false,
@@ -761,6 +757,43 @@ productSchema.pre("save", function (next) {
 });
 
 // ============================================================
+// VIRTUAL: GET SELLER WITH VERIFICATION STATUS
+// ============================================================
+//
+// This virtual populates the sellerId field and includes
+// the isVerified flag from the User model.
+//
+// Usage: await Product.findById(id).populate('seller')
+//         .then(p => console.log(p.seller.isVerified))
+//
+// ============================================================
+
+productSchema.virtual("seller", {
+  ref: "User",
+  localField: "sellerId",
+  foreignField: "_id",
+  justOne: true,
+});
+
+// ============================================================
+// HELPER: CHECK IF SELLER IS VERIFIED
+// ============================================================
+//
+// This method can be used after populating the seller:
+//
+//   const product = await Product.findById(id).populate('seller');
+//   const isVerified = product.isSellerVerified();
+//
+// ============================================================
+
+productSchema.methods.isSellerVerified = function () {
+  // If seller is populated via virtual or direct population
+  const seller = this.seller || this.sellerId;
+  if (!seller) return false;
+  return seller.isVerified === true;
+};
+
+// ============================================================
 // TEXT INDEX
 // ============================================================
 
@@ -777,7 +810,6 @@ productSchema.index({
   cosmeticShade: "text",
   skinType: "text",
   ingredients: "text",
-  // Add new fields to text search
   productLine: "text",
   benefits: "text",
   skinConcern: "text",

@@ -5,7 +5,6 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { getImageUrl, updateProductStatus } from '../services/api';
 import SoldBadge from './SoldBadge';
-import VerifiedBadge from './VerifiedBadge'; // NEW
 
 const ProductCard = ({ product, onStatusToggle, appleStyle = false, videoPreview = false }) => {
   const { toggleFavorite, isFavorite } = useCart();
@@ -15,13 +14,6 @@ const ProductCard = ({ product, onStatusToggle, appleStyle = false, videoPreview
   const [isUpdating, setIsUpdating] = useState(false);
 
   if (!product) return null;
-
-  // ─── DEBUG: log product ──────────────────────────────────────
-  console.log(`📱 Product ${product._id}:`, {
-    title: product.title,
-    category: product.category,
-    simStatus: product.simStatus,
-  });
 
   const liked = isFavorite(product._id);
 
@@ -38,6 +30,26 @@ const ProductCard = ({ product, onStatusToggle, appleStyle = false, videoPreview
     (product.sellerId?._id && product.sellerId._id === user._id) ||
     product.sellerId === user._id
   );
+
+  // ─── Seller object ─────────────────────────────────────────────
+  const seller = product.sellerId || product.seller || {};
+  const sellerName = seller.name || seller.shopName || 'Seller';
+  const isVerified = seller.isVerified === true;
+
+  // ─── Seller profile image ─────────────────────────────────────
+  const sellerImage =
+    seller.profileImage ||
+    seller.avatar ||
+    seller.photo ||
+    seller.picture ||
+    seller.profilePicture ||
+    null;
+
+  const sellerImageUrl = sellerImage
+    ? sellerImage.startsWith('http')
+      ? sellerImage
+      : getImageUrl(sellerImage)
+    : null;
 
   // ─── Helper: render category‑specific specs ──────────────────
   const renderCategorySpecs = () => {
@@ -122,11 +134,6 @@ const ProductCard = ({ product, onStatusToggle, appleStyle = false, videoPreview
     }
   };
 
-  // ─── Helper: get seller name and verification status ─────────
-  const seller = product.sellerId || product.seller || {};
-  const sellerName = seller.name || seller.shopName || 'Seller';
-  const isSellerVerified = seller.isVerified === true;
-
   return (
     <div
       className={`product-card ${appleStyle ? 'product-card-apple' : ''}`}
@@ -197,6 +204,98 @@ const ProductCard = ({ product, onStatusToggle, appleStyle = false, videoPreview
             Promoted
           </span>
         )}
+
+        {/* ─── SELLER AVATAR + VERIFIED BADGE (on image) ─── */}
+        <div
+          style={{
+            position: 'absolute',
+            top: '10px',
+            left: '10px',
+            zIndex: 2,
+            pointerEvents: 'none',
+          }}
+        >
+          <div
+            style={{
+              position: 'relative',
+              width: '40px',
+              height: '40px',
+            }}
+          >
+            {sellerImageUrl ? (
+              <img
+                src={sellerImageUrl}
+                alt={sellerName}
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  borderRadius: '50%',
+                  objectFit: 'cover',
+                  border: '2px solid rgba(255,255,255,0.9)',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                }}
+              />
+            ) : (
+              <div
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  borderRadius: '50%',
+                  background: '#e5e7eb',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  border: '2px solid rgba(255,255,255,0.9)',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                }}
+              >
+                <i
+                  className="fas fa-user"
+                  style={{
+                    fontSize: '18px',
+                    color: '#9ca3af',
+                  }}
+                />
+              </div>
+            )}
+
+            {/* Verified badge */}
+            {isVerified && (
+              <div
+                style={{
+                  position: 'absolute',
+                  bottom: 0,
+                  right: 0,
+                  width: '18px',
+                  height: '18px',
+                  background: '#1DA1F2',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  border: '2px solid white',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                }}
+              >
+                <svg
+                  width="10"
+                  height="10"
+                  viewBox="0 0 20 20"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M7.5 10.5L9.5 12.5L14 8"
+                    stroke="white"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </div>
+            )}
+          </div>
+        </div>
 
         {videoPreview && (
           <div
@@ -297,21 +396,7 @@ const ProductCard = ({ product, onStatusToggle, appleStyle = false, videoPreview
           </div>
         </Link>
 
-        {/* ─── Seller Name + Verified Badge (NEW) ─── */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '4px',
-            fontSize: '12px',
-            color: '#555',
-            marginBottom: '4px',
-            flexWrap: 'wrap',
-          }}
-        >
-          <span>by {sellerName}</span>
-          {isSellerVerified && <VerifiedBadge size={14} />}
-        </div>
+        {/* ─── Seller name is now REMOVED ─── */}
 
         <div
           className="price"
