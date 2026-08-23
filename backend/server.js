@@ -130,10 +130,15 @@ console.log(
 const isAllowedOrigin = (
   origin
 ) => {
+  // Allow requests without Origin.
+  //
+  // This includes server-to-server requests,
+  // Postman, curl, etc.
   if (!origin) {
     return true;
   }
 
+  // Exact allowed origins.
   if (
     allowedOrigins.includes(
       origin
@@ -142,7 +147,7 @@ const isAllowedOrigin = (
     return true;
   }
 
-  // BuyUKUsed Vercel previews
+  // BuyUKUsed Vercel previews.
   if (
     /^https:\/\/buyukused-[a-zA-Z0-9-]+-nanaskatty13s-projects\.vercel\.app$/.test(
       origin
@@ -151,7 +156,7 @@ const isAllowedOrigin = (
     return true;
   }
 
-  // Any standard Vercel deployment
+  // Any standard Vercel deployment.
   if (
     /^https:\/\/[a-zA-Z0-9-]+\.vercel\.app$/.test(
       origin
@@ -389,10 +394,12 @@ const limiter =
     },
 
     standardHeaders: true,
+
     legacyHeaders: false,
 
     message: {
       success: false,
+
       message:
         "Too many requests, please try again later.",
     },
@@ -447,8 +454,10 @@ app.get(
   (req, res) => {
     res.status(200).json({
       success: true,
+
       message:
         "BuyUKUsed API is running",
+
       environment:
         process.env.NODE_ENV ||
         "development",
@@ -464,7 +473,9 @@ const healthResponse =
   (req, res) => {
     res.status(200).json({
       success: true,
+
       status: "ok",
+
       timestamp:
         new Date().toISOString(),
     });
@@ -511,14 +522,19 @@ const deliveryRoutes =
 const uploadRoutes =
   require("./routes/upload");
 
+// ============================================================
+// IMPORTANT:
+// Use sellerRoutes.js, not sellers.js
+// ============================================================
+
 const sellerRoutes =
-  require("./routes/sellers");
+  require("./routes/sellerRoutes");
 
 const categoryRoutes =
   require("./routes/categories");
 
 // ============================================================
-// NEW: VISUAL SEARCH ROUTE
+// VISUAL SEARCH ROUTE
 // ============================================================
 
 const visualSearchRoutes =
@@ -549,10 +565,26 @@ app.use(
 // ============================================================
 // SELLERS
 // ============================================================
+//
+// IMPORTANT:
+//
+// Frontend sellerService.js uses:
+//
+// /api/sellers/...
+//
+// Therefore the seller router must be mounted at:
+//
+// /api/sellers
+//
+// ============================================================
 
 app.use(
-  "/sellers",
+  "/api/sellers",
   sellerRoutes
+);
+
+console.log(
+  "🛒 Seller API mounted at /api/sellers"
 );
 
 // ============================================================
@@ -574,7 +606,7 @@ app.use(
 );
 
 console.log(
-  "🖼️ Visual image search API mounted at /api/visual-search"
+  "🖼️ Visual Search API mounted at /api/visual-search"
 );
 
 // ============================================================
@@ -668,16 +700,16 @@ app.use(
       ) ||
       req.path.startsWith(
         "/auth"
-      ) ||
-      req.path.startsWith(
-        "/sellers"
       )
     ) {
       return res.status(404).json({
         success: false,
+
         message:
           "API endpoint not found",
-        path: req.originalUrl,
+
+        path:
+          req.originalUrl,
       });
     }
 
@@ -703,6 +735,10 @@ app.use(
       err
     );
 
+    // --------------------------------------------------------
+    // CORS
+    // --------------------------------------------------------
+
     if (
       err &&
       err.message ===
@@ -710,9 +746,15 @@ app.use(
     ) {
       return res.status(403).json({
         success: false,
-        message: err.message,
+
+        message:
+          err.message,
       });
     }
+
+    // --------------------------------------------------------
+    // MULTER
+    // --------------------------------------------------------
 
     if (
       err &&
@@ -725,6 +767,7 @@ app.use(
       ) {
         return res.status(413).json({
           success: false,
+
           message:
             "File too large. Maximum size is 5MB.",
         });
@@ -732,11 +775,16 @@ app.use(
 
       return res.status(400).json({
         success: false,
+
         message:
           err.message ||
           "File upload error.",
       });
     }
+
+    // --------------------------------------------------------
+    // DUPLICATE KEY
+    // --------------------------------------------------------
 
     if (
       err &&
@@ -745,14 +793,20 @@ app.use(
       const field =
         Object.keys(
           err.keyPattern || {}
-        )[0] || "field";
+        )[0] ||
+        "field";
 
       return res.status(409).json({
         success: false,
+
         message:
           `${field} already exists`,
       });
     }
+
+    // --------------------------------------------------------
+    // MONGOOSE VALIDATION
+    // --------------------------------------------------------
 
     if (
       err &&
@@ -769,11 +823,18 @@ app.use(
 
       return res.status(400).json({
         success: false,
+
         message:
           "Validation error",
-        errors: messages,
+
+        errors:
+          messages,
       });
     }
+
+    // --------------------------------------------------------
+    // DEFAULT ERROR
+    // --------------------------------------------------------
 
     return res
       .status(
@@ -781,6 +842,7 @@ app.use(
       )
       .json({
         success: false,
+
         message:
           err?.message ||
           "Internal Server Error",
@@ -868,12 +930,17 @@ const createDefaultAdmin =
       if (!user) {
         user = new User({
           name: "Admin",
+
           email:
             normalizedEmail,
+
           password:
             adminPassword,
+
           phone: "",
+
           role: "admin",
+
           isActive: true,
         });
 
@@ -970,7 +1037,7 @@ const start =
             );
 
             console.log(
-              "🛒 Seller API: /sellers"
+              "🛒 Seller API: /api/sellers"
             );
 
             console.log(

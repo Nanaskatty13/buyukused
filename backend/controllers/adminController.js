@@ -1,4 +1,7 @@
+// ============================================================
 // backend/controllers/adminController.js
+// BuyUKUsed - Admin Controller
+// ============================================================
 
 const User = require("../models/User");
 const Product = require("../models/Product");
@@ -8,403 +11,788 @@ const Order = require("../models/Orders");
 // ADMIN DASHBOARD STATISTICS
 // ============================================================
 
-exports.getDashboardStats =
-  async (req, res) => {
-    try {
-      const [
+exports.getDashboardStats = async (req, res) => {
+  try {
+    const [
+      users,
+      products,
+      orders,
+      riders,
+      approvedRiders,
+      pendingRiders,
+      availableRiders,
+      sellers,
+      verifiedSellers,
+      pendingSellerVerifications,
+    ] = await Promise.all([
+      User.countDocuments(),
+
+      Product.countDocuments(),
+
+      Order.countDocuments(),
+
+      User.countDocuments({
+        role: "rider",
+      }),
+
+      User.countDocuments({
+        role: "rider",
+        "riderProfile.isApproved": true,
+      }),
+
+      User.countDocuments({
+        role: "rider",
+        "riderProfile.isApproved": false,
+      }),
+
+      User.countDocuments({
+        role: "rider",
+        "riderProfile.isApproved": true,
+        "riderProfile.isAvailable": true,
+        isActive: true,
+      }),
+
+      User.countDocuments({
+        role: "seller",
+      }),
+
+      User.countDocuments({
+        role: "seller",
+        isVerified: true,
+        verificationStatus: "approved",
+      }),
+
+      User.countDocuments({
+        role: "seller",
+        verificationStatus: "pending",
+      }),
+    ]);
+
+    return res.status(200).json({
+      success: true,
+
+      stats: {
         users,
         products,
         orders,
+
         riders,
         approvedRiders,
         pendingRiders,
         availableRiders,
-      ] = await Promise.all([
-        User.countDocuments(),
 
-        Product.countDocuments(),
+        sellers,
+        verifiedSellers,
+        pendingSellerVerifications,
+      },
+    });
+  } catch (error) {
+    console.error(
+      "❌ Admin dashboard stats error:",
+      error
+    );
 
-        Order.countDocuments(),
-
-        User.countDocuments({
-          role: "rider",
-        }),
-
-        User.countDocuments({
-          role: "rider",
-          "riderProfile.isApproved": true,
-        }),
-
-        User.countDocuments({
-          role: "rider",
-          "riderProfile.isApproved": false,
-        }),
-
-        User.countDocuments({
-          role: "rider",
-          "riderProfile.isApproved": true,
-          "riderProfile.isAvailable": true,
-          isActive: true,
-        }),
-      ]);
-
-      return res.status(200).json({
-        success: true,
-
-        stats: {
-          users,
-          products,
-          orders,
-          riders,
-          approvedRiders,
-          pendingRiders,
-          availableRiders,
-        },
-      });
-    } catch (error) {
-      console.error(
-        "❌ Admin dashboard stats error:",
-        error
-      );
-
-      return res.status(500).json({
-        success: false,
-        message:
-          "Failed to load dashboard statistics",
-      });
-    }
-  };
+    return res.status(500).json({
+      success: false,
+      message:
+        "Failed to load dashboard statistics",
+    });
+  }
+};
 
 // ============================================================
 // GET ALL USERS
+// GET /api/admin/users
 // ============================================================
 
-exports.getUsers =
-  async (req, res) => {
-    try {
-      const users =
-        await User.find()
+exports.getUsers = async (req, res) => {
+  try {
+    const {
+      page = 1,
+      limit = 20,
+      search = "",
+      role = "",
+      status = "",
+    } = req.query;
+
+    const currentPage = Math.max(
+      Number(page) || 1,
+      1
+    );
+
+    const currentLimit = Math.min(
+      Math.max(Number(limit) || 20, 1),
+      100
+    );
+
+    const filter = {};
+
+    // ----------------------------------------------------------
+    // Role filter
+    // ----------------------------------------------------------
+
+    if (role) {
+      filter.role = role;
+    }
+
+    // ----------------------------------------------------------
+    // Status filter
+    // ----------------------------------------------------------
+
+    if (status === "active") {
+      filter.isActive = true;
+    }
+
+    if (
+      status === "suspended" ||
+      status === "banned"
+    ) {
+      filter.isActive = false;
+    }
+
+    // ----------------------------------------------------------
+    // Search
+    // ----------------------------------------------------------
+
+    if (
+      search &&
+      String(search).trim()
+    ) {
+      const searchRegex = new RegExp(
+        String(search).trim(),
+        "i"
+      );
+
+      filter.$or = [
+        {
+          name: searchRegex,
+        },
+        {
+          email: searchRegex,
+        },
+        {
+          phone: searchRegex,
+        },
+        {
+          shopName: searchRegex,
+        },
+      ];
+    }
+
+    const skip =
+      (currentPage - 1) *
+      currentLimit;
+
+    const [users, total] =
+      await Promise.all([
+        User.find(filter)
           .select("-password")
           .sort({
             createdAt: -1,
           })
-          .lean();
+          .skip(skip)
+          .limit(currentLimit)
+          .lean(),
 
-      return res.status(200).json({
-        success: true,
-        count: users.length,
-        users,
-      });
-    } catch (error) {
-      console.error(
-        "❌ Get users error:",
-        error
-      );
+        User.countDocuments(filter),
+      ]);
 
-      return res.status(500).json({
-        success: false,
-        message:
-          "Failed to fetch users",
-      });
-    }
-  };
+    return res.status(200).json({
+      success: true,
+      count: users.length,
+      total,
+      page: currentPage,
+      limit: currentLimit,
+      users,
+    });
+  } catch (error) {
+    console.error(
+      "❌ Get users error:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message:
+        "Failed to fetch users",
+    });
+  }
+};
 
 // ============================================================
 // GET USER BY ID
+// GET /api/admin/users/:id
 // ============================================================
 
-exports.getUserById =
-  async (req, res) => {
-    try {
-      const user =
-        await User.findById(
-          req.params.id
-        )
-          .select("-password")
-          .lean();
+exports.getUserById = async (req, res) => {
+  try {
+    const user =
+      await User.findById(
+        req.params.id
+      )
+        .select("-password")
+        .lean();
 
-      if (!user) {
-        return res.status(404).json({
-          success: false,
-          message:
-            "User not found",
-        });
-      }
-
-      return res.status(200).json({
-        success: true,
-        user,
-      });
-    } catch (error) {
-      console.error(
-        "❌ Get user error:",
-        error
-      );
-
-      return res.status(500).json({
+    if (!user) {
+      return res.status(404).json({
         success: false,
         message:
-          "Failed to fetch user",
+          "User not found",
       });
     }
-  };
+
+    return res.status(200).json({
+      success: true,
+      user,
+    });
+  } catch (error) {
+    console.error(
+      "❌ Get user error:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message:
+        "Failed to fetch user",
+    });
+  }
+};
 
 // ============================================================
 // UPDATE USER ROLE
+// PATCH /api/admin/users/:id/role
 // ============================================================
 
-exports.updateUserRole =
-  async (req, res) => {
-    try {
-      const {
-        role,
-      } = req.body;
+exports.updateUserRole = async (
+  req,
+  res
+) => {
+  try {
+    const { role } = req.body;
 
-      const allowedRoles = [
-        "buyer",
-        "seller",
-        "rider",
-        "admin",
-      ];
+    const allowedRoles = [
+      "buyer",
+      "seller",
+      "rider",
+      "admin",
+    ];
 
-      if (
-        !allowedRoles.includes(role)
-      ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Invalid user role",
-        });
-      }
+    if (!allowedRoles.includes(role)) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Invalid user role",
+      });
+    }
 
-      const user =
-        await User.findById(
-          req.params.id
-        );
+    const user =
+      await User.findById(
+        req.params.id
+      );
 
-      if (!user) {
-        return res.status(404).json({
-          success: false,
-          message:
-            "User not found",
-        });
-      }
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message:
+          "User not found",
+      });
+    }
 
-      // Prevent admin from accidentally
-      // changing their own role.
-      if (
-        req.user &&
-        req.user._id.toString() ===
-          user._id.toString() &&
-        role !== "admin"
-      ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "You cannot remove your own admin role",
-        });
-      }
+    // Prevent admin from removing own admin role.
+    if (
+      req.user &&
+      req.user._id.toString() ===
+        user._id.toString() &&
+      role !== "admin"
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "You cannot remove your own admin role",
+      });
+    }
 
-      user.role = role;
+    // ----------------------------------------------------------
+    // If changing away from seller, remove verification.
+    // ----------------------------------------------------------
 
-      // If no longer a rider,
-      // force rider offline.
-      if (
-        role !== "rider" &&
-        user.riderProfile
-      ) {
+    if (role !== "seller") {
+      user.isVerified = false;
+      user.verifiedAt = null;
+      user.verifiedBy = null;
+      user.verificationStatus =
+        "not_submitted";
+      user.verificationRejectedReason =
+        "";
+    }
+
+    user.role = role;
+
+    // If no longer a rider,
+    // force rider offline.
+    if (
+      role !== "rider" &&
+      user.riderProfile
+    ) {
+      user.riderProfile.isAvailable =
+        false;
+    }
+
+    await user.save();
+
+    const safeUser =
+      await User.findById(
+        user._id
+      )
+        .select("-password")
+        .lean();
+
+    return res.status(200).json({
+      success: true,
+      message:
+        "User role updated successfully",
+      user: safeUser,
+    });
+  } catch (error) {
+    console.error(
+      "❌ Update user role error:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message:
+        "Failed to update user role",
+    });
+  }
+};
+
+// ============================================================
+// UPDATE USER ACCOUNT STATUS
+// PATCH /api/admin/users/:id/status
+// ============================================================
+
+exports.updateUserStatus = async (
+  req,
+  res
+) => {
+  try {
+    const { isActive } = req.body;
+
+    if (
+      typeof isActive !== "boolean"
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "isActive must be true or false",
+      });
+    }
+
+    if (
+      req.user &&
+      req.user._id.toString() ===
+        req.params.id &&
+      isActive === false
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "You cannot deactivate your own admin account",
+      });
+    }
+
+    const user =
+      await User.findById(
+        req.params.id
+      );
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message:
+          "User not found",
+      });
+    }
+
+    user.isActive = isActive;
+
+    if (
+      user.role === "rider" &&
+      user.riderProfile
+    ) {
+      if (!isActive) {
         user.riderProfile.isAvailable =
           false;
       }
+    }
 
-      await user.save();
+    await user.save();
 
-      const safeUser =
-        await User.findById(
-          user._id
-        )
-          .select("-password")
-          .lean();
+    return res.status(200).json({
+      success: true,
+      message: isActive
+        ? "User activated successfully"
+        : "User suspended successfully",
+      user: user.toJSON(),
+    });
+  } catch (error) {
+    console.error(
+      "❌ Update user status error:",
+      error
+    );
 
-      return res.status(200).json({
-        success: true,
-        message:
-          "User role updated successfully",
-        user: safeUser,
+    return res.status(500).json({
+      success: false,
+      message:
+        "Failed to update user status",
+    });
+  }
+};
+
+// ============================================================
+// VERIFY SELLER
+// PATCH /api/admin/users/:id/verify-seller
+// ============================================================
+
+exports.verifySeller = async (
+  req,
+  res
+) => {
+  try {
+    const seller =
+      await User.findOne({
+        _id: req.params.id,
+        role: "seller",
       });
-    } catch (error) {
-      console.error(
-        "❌ Update user role error:",
-        error
-      );
 
-      return res.status(500).json({
+    if (!seller) {
+      return res.status(404).json({
         success: false,
         message:
-          "Failed to update user role",
+          "Seller not found",
       });
     }
-  };
+
+    // ----------------------------------------------------------
+    // Already verified
+    // ----------------------------------------------------------
+
+    if (
+      seller.isVerified === true &&
+      seller.verificationStatus ===
+        "approved"
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Seller is already verified",
+      });
+    }
+
+    // ----------------------------------------------------------
+    // Verify seller
+    // ----------------------------------------------------------
+
+    seller.isVerified = true;
+
+    seller.verificationStatus =
+      "approved";
+
+    seller.verifiedAt = new Date();
+
+    seller.verifiedBy =
+      req.user?._id || null;
+
+    seller.verificationRejectedReason =
+      "";
+
+    // Seller is active after verification.
+    seller.isActive = true;
+
+    // Set seller status if not already set.
+    if (
+      !seller.sellerStatus ||
+      seller.sellerStatus ===
+        "pending"
+    ) {
+      seller.sellerStatus =
+        "active";
+    }
+
+    // Set sellerSince if empty.
+    if (!seller.sellerSince) {
+      seller.sellerSince =
+        new Date();
+    }
+
+    await seller.save();
+
+    const safeSeller =
+      await User.findById(
+        seller._id
+      )
+        .select("-password")
+        .populate(
+          "verifiedBy",
+          "name email"
+        )
+        .lean();
+
+    return res.status(200).json({
+      success: true,
+      message:
+        "Seller verified successfully",
+      seller: safeSeller,
+    });
+  } catch (error) {
+    console.error(
+      "❌ Verify seller error:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message:
+        "Failed to verify seller",
+    });
+  }
+};
+
+// ============================================================
+// UNVERIFY SELLER
+// PATCH /api/admin/users/:id/unverify-seller
+// ============================================================
+
+exports.unverifySeller = async (
+  req,
+  res
+) => {
+  try {
+    const seller =
+      await User.findOne({
+        _id: req.params.id,
+        role: "seller",
+      });
+
+    if (!seller) {
+      return res.status(404).json({
+        success: false,
+        message:
+          "Seller not found",
+      });
+    }
+
+    seller.isVerified = false;
+
+    seller.verificationStatus =
+      "rejected";
+
+    seller.verifiedAt = null;
+
+    seller.verifiedBy = null;
+
+    seller.verificationRejectedReason =
+      "Seller verification was removed by an administrator.";
+
+    await seller.save();
+
+    const safeSeller =
+      await User.findById(
+        seller._id
+      )
+        .select("-password")
+        .lean();
+
+    return res.status(200).json({
+      success: true,
+      message:
+        "Seller verification removed",
+      seller: safeSeller,
+    });
+  } catch (error) {
+    console.error(
+      "❌ Unverify seller error:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message:
+        "Failed to remove seller verification",
+    });
+  }
+};
 
 // ============================================================
 // DELETE USER
+// DELETE /api/admin/users/:id
 // ============================================================
 
-exports.deleteUser =
-  async (req, res) => {
-    try {
-      if (
-        req.user &&
-        req.user._id.toString() ===
-          req.params.id
-      ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "You cannot delete your own admin account",
-        });
-      }
-
-      const user =
-        await User.findByIdAndDelete(
-          req.params.id
-        );
-
-      if (!user) {
-        return res.status(404).json({
-          success: false,
-          message:
-            "User not found",
-        });
-      }
-
-      return res.status(200).json({
-        success: true,
-        message:
-          "User deleted successfully",
-      });
-    } catch (error) {
-      console.error(
-        "❌ Delete user error:",
-        error
-      );
-
-      return res.status(500).json({
+exports.deleteUser = async (
+  req,
+  res
+) => {
+  try {
+    if (
+      req.user &&
+      req.user._id.toString() ===
+        req.params.id
+    ) {
+      return res.status(400).json({
         success: false,
         message:
-          "Failed to delete user",
+          "You cannot delete your own admin account",
       });
     }
-  };
+
+    const user =
+      await User.findByIdAndDelete(
+        req.params.id
+      );
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message:
+          "User not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message:
+        "User deleted successfully",
+    });
+  } catch (error) {
+    console.error(
+      "❌ Delete user error:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message:
+        "Failed to delete user",
+    });
+  }
+};
 
 // ============================================================
 // GET ALL PRODUCTS
 // ============================================================
 
-exports.getProducts =
-  async (req, res) => {
-    try {
-      const products =
-        await Product.find()
-          .populate(
-            "sellerId",
-            "name email phone"
-          )
-          .sort({
-            createdAt: -1,
-          })
-          .lean();
+exports.getProducts = async (
+  req,
+  res
+) => {
+  try {
+    const products =
+      await Product.find()
+        .populate(
+          "sellerId",
+          "name email phone isVerified verificationStatus"
+        )
+        .sort({
+          createdAt: -1,
+        })
+        .lean();
 
-      return res.status(200).json({
-        success: true,
-        count: products.length,
-        products,
-      });
-    } catch (error) {
-      console.error(
-        "❌ Get products error:",
-        error
-      );
+    return res.status(200).json({
+      success: true,
+      count: products.length,
+      products,
+    });
+  } catch (error) {
+    console.error(
+      "❌ Get products error:",
+      error
+    );
 
-      return res.status(500).json({
-        success: false,
-        message:
-          "Failed to fetch products",
-      });
-    }
-  };
+    return res.status(500).json({
+      success: false,
+      message:
+        "Failed to fetch products",
+    });
+  }
+};
 
 // ============================================================
 // DELETE PRODUCT
 // ============================================================
 
-exports.deleteProduct =
-  async (req, res) => {
-    try {
-      const product =
-        await Product.findByIdAndDelete(
-          req.params.id
-        );
-
-      if (!product) {
-        return res.status(404).json({
-          success: false,
-          message:
-            "Product not found",
-        });
-      }
-
-      return res.status(200).json({
-        success: true,
-        message:
-          "Product deleted successfully",
-      });
-    } catch (error) {
-      console.error(
-        "❌ Delete product error:",
-        error
+exports.deleteProduct = async (
+  req,
+  res
+) => {
+  try {
+    const product =
+      await Product.findByIdAndDelete(
+        req.params.id
       );
 
-      return res.status(500).json({
+    if (!product) {
+      return res.status(404).json({
         success: false,
         message:
-          "Failed to delete product",
+          "Product not found",
       });
     }
-  };
+
+    return res.status(200).json({
+      success: true,
+      message:
+        "Product deleted successfully",
+    });
+  } catch (error) {
+    console.error(
+      "❌ Delete product error:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message:
+        "Failed to delete product",
+    });
+  }
+};
 
 // ============================================================
 // GET ALL ORDERS
 // ============================================================
 
-exports.getOrders =
-  async (req, res) => {
-    try {
-      const orders =
-        await Order.find()
-          .sort({
-            createdAt: -1,
-          })
-          .lean();
+exports.getOrders = async (
+  req,
+  res
+) => {
+  try {
+    const orders =
+      await Order.find()
+        .sort({
+          createdAt: -1,
+        })
+        .lean();
 
-      return res.status(200).json({
-        success: true,
-        count: orders.length,
-        orders,
-      });
-    } catch (error) {
-      console.error(
-        "❌ Get orders error:",
-        error
-      );
+    return res.status(200).json({
+      success: true,
+      count: orders.length,
+      orders,
+    });
+  } catch (error) {
+    console.error(
+      "❌ Get orders error:",
+      error
+    );
 
-      return res.status(500).json({
-        success: false,
-        message:
-          "Failed to fetch orders",
-      });
-    }
-  };
+    return res.status(500).json({
+      success: false,
+      message:
+        "Failed to fetch orders",
+    });
+  }
+};
 
 // ============================================================
 // UPDATE ORDER STATUS
@@ -413,9 +801,8 @@ exports.getOrders =
 exports.updateOrderStatus =
   async (req, res) => {
     try {
-      const {
-        status,
-      } = req.body;
+      const { status } =
+        req.body;
 
       if (!status) {
         return res.status(400).json({
@@ -467,137 +854,123 @@ exports.updateOrderStatus =
 
 // ============================================================
 // GET ALL RIDERS
-// GET /api/admin/riders
 // ============================================================
 
-exports.getRiders =
-  async (req, res) => {
-    try {
-      const {
-        status,
-        availability,
-        search,
-      } = req.query;
+exports.getRiders = async (
+  req,
+  res
+) => {
+  try {
+    const {
+      status,
+      availability,
+      search,
+    } = req.query;
 
-      const filter = {
-        role: "rider",
-      };
+    const filter = {
+      role: "rider",
+    };
 
-      // --------------------------------------------------------
-      // Approval status
-      // --------------------------------------------------------
-
-      if (
-        status === "approved"
-      ) {
-        filter[
-          "riderProfile.isApproved"
-        ] = true;
-      }
-
-      if (
-        status === "pending"
-      ) {
-        filter[
-          "riderProfile.isApproved"
-        ] = false;
-      }
-
-      // --------------------------------------------------------
-      // Availability
-      // --------------------------------------------------------
-
-      if (
-        availability === "available"
-      ) {
-        filter[
-          "riderProfile.isAvailable"
-        ] = true;
-
-        filter.isActive = true;
-      }
-
-      if (
-        availability === "unavailable"
-      ) {
-        filter[
-          "riderProfile.isAvailable"
-        ] = false;
-      }
-
-      // --------------------------------------------------------
-      // Search
-      // --------------------------------------------------------
-
-      if (
-        search &&
-        String(search).trim()
-      ) {
-        const searchRegex =
-          new RegExp(
-            String(search).trim(),
-            "i"
-          );
-
-        filter.$or = [
-          {
-            name: searchRegex,
-          },
-          {
-            email: searchRegex,
-          },
-          {
-            phone: searchRegex,
-          },
-          {
-            "riderProfile.bikeNumber":
-              searchRegex,
-          },
-          {
-            "riderProfile.bikeType":
-              searchRegex,
-          },
-          {
-            "riderProfile.serviceArea":
-              searchRegex,
-          },
-          {
-            "riderProfile.identificationNumber":
-              searchRegex,
-          },
-        ];
-      }
-
-      const riders =
-        await User.find(filter)
-          .select("-password")
-          .sort({
-            createdAt: -1,
-          })
-          .lean();
-
-      return res.status(200).json({
-        success: true,
-        count: riders.length,
-        riders,
-      });
-    } catch (error) {
-      console.error(
-        "❌ Get riders error:",
-        error
-      );
-
-      return res.status(500).json({
-        success: false,
-        message:
-          "Failed to fetch riders",
-      });
+    if (status === "approved") {
+      filter[
+        "riderProfile.isApproved"
+      ] = true;
     }
-  };
+
+    if (status === "pending") {
+      filter[
+        "riderProfile.isApproved"
+      ] = false;
+    }
+
+    if (
+      availability ===
+      "available"
+    ) {
+      filter[
+        "riderProfile.isAvailable"
+      ] = true;
+
+      filter.isActive = true;
+    }
+
+    if (
+      availability ===
+      "unavailable"
+    ) {
+      filter[
+        "riderProfile.isAvailable"
+      ] = false;
+    }
+
+    if (
+      search &&
+      String(search).trim()
+    ) {
+      const searchRegex =
+        new RegExp(
+          String(search).trim(),
+          "i"
+        );
+
+      filter.$or = [
+        {
+          name: searchRegex,
+        },
+        {
+          email: searchRegex,
+        },
+        {
+          phone: searchRegex,
+        },
+        {
+          "riderProfile.bikeNumber":
+            searchRegex,
+        },
+        {
+          "riderProfile.bikeType":
+            searchRegex,
+        },
+        {
+          "riderProfile.serviceArea":
+            searchRegex,
+        },
+        {
+          "riderProfile.identificationNumber":
+            searchRegex,
+        },
+      ];
+    }
+
+    const riders =
+      await User.find(filter)
+        .select("-password")
+        .sort({
+          createdAt: -1,
+        })
+        .lean();
+
+    return res.status(200).json({
+      success: true,
+      count: riders.length,
+      riders,
+    });
+  } catch (error) {
+    console.error(
+      "❌ Get riders error:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message:
+        "Failed to fetch riders",
+    });
+  }
+};
 
 // ============================================================
 // GET RIDER BY ID
-// GET /api/admin/riders/:id
 // ============================================================
 
 exports.getRiderById =
@@ -658,9 +1031,7 @@ exports.approveRider =
         });
       }
 
-      if (
-        !rider.riderProfile
-      ) {
+      if (!rider.riderProfile) {
         rider.riderProfile = {};
       }
 
@@ -716,9 +1087,7 @@ exports.rejectRider =
         });
       }
 
-      if (
-        !rider.riderProfile
-      ) {
+      if (!rider.riderProfile) {
         rider.riderProfile = {};
       }
 
@@ -758,9 +1127,8 @@ exports.rejectRider =
 exports.updateRiderStatus =
   async (req, res) => {
     try {
-      const {
-        isActive,
-      } = req.body;
+      const { isActive } =
+        req.body;
 
       if (
         typeof isActive !==
@@ -790,9 +1158,7 @@ exports.updateRiderStatus =
       rider.isActive =
         isActive;
 
-      if (
-        !rider.riderProfile
-      ) {
+      if (!rider.riderProfile) {
         rider.riderProfile = {};
       }
 
@@ -805,10 +1171,9 @@ exports.updateRiderStatus =
 
       return res.status(200).json({
         success: true,
-        message:
-          isActive
-            ? "Rider activated successfully"
-            : "Rider deactivated successfully",
+        message: isActive
+          ? "Rider activated successfully"
+          : "Rider deactivated successfully",
         rider:
           rider.toJSON(),
       });
@@ -856,15 +1221,9 @@ exports.updateRiderProfile =
         });
       }
 
-      if (
-        !rider.riderProfile
-      ) {
+      if (!rider.riderProfile) {
         rider.riderProfile = {};
       }
-
-      // --------------------------------------------------------
-      // Bike type
-      // --------------------------------------------------------
 
       if (
         bikeType !== undefined
@@ -875,10 +1234,6 @@ exports.updateRiderProfile =
           ).trim();
       }
 
-      // --------------------------------------------------------
-      // Bike number
-      // --------------------------------------------------------
-
       if (
         bikeNumber !== undefined
       ) {
@@ -887,10 +1242,6 @@ exports.updateRiderProfile =
             bikeNumber
           ).trim();
       }
-
-      // --------------------------------------------------------
-      // Service area
-      // --------------------------------------------------------
 
       if (
         serviceArea !== undefined
@@ -901,10 +1252,6 @@ exports.updateRiderProfile =
           ).trim();
       }
 
-      // --------------------------------------------------------
-      // Identification number
-      // --------------------------------------------------------
-
       if (
         identificationNumber !==
         undefined
@@ -914,10 +1261,6 @@ exports.updateRiderProfile =
             identificationNumber
           ).trim();
       }
-
-      // --------------------------------------------------------
-      // Rating
-      // --------------------------------------------------------
 
       if (
         rating !== undefined
@@ -942,10 +1285,6 @@ exports.updateRiderProfile =
         rider.riderProfile.rating =
           numericRating;
       }
-
-      // --------------------------------------------------------
-      // Completed deliveries
-      // --------------------------------------------------------
 
       if (
         completedDeliveries !==

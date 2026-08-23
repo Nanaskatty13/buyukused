@@ -140,7 +140,16 @@ const FeaturedProducts = ({
           ALL products are rendered.
       ====================================================== */}
 
-      <div className="featured-apple-grid">
+      <div
+        className="featured-apple-grid"
+        style={{
+          display: "grid",
+          gridTemplateColumns:
+            "repeat(4, minmax(0, 1fr))",
+          gap: "24px",
+          width: "100%",
+        }}
+      >
         {displayProducts.map(
           (product, index) => {
             // --------------------------------------------------
@@ -168,6 +177,10 @@ const FeaturedProducts = ({
               <div
                 key={productId}
                 className="featured-apple-item"
+                style={{
+                  minWidth: 0,
+                  width: "100%",
+                }}
               >
                 <ProductCard
                   product={product}
@@ -179,6 +192,55 @@ const FeaturedProducts = ({
           }
         )}
       </div>
+
+      {/* ======================================================
+          RESPONSIVE GRID
+          
+          Desktop:
+          4 products per row
+
+          Tablet:
+          3 products per row
+
+          Mobile:
+          2 products per row
+      ====================================================== */}
+
+      <style>
+        {`
+          .featured-apple-grid {
+            display: grid !important;
+            grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+            gap: 24px;
+            width: 100%;
+          }
+
+          .featured-apple-item {
+            min-width: 0;
+            width: 100%;
+          }
+
+          @media (max-width: 1024px) {
+            .featured-apple-grid {
+              grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+            }
+          }
+
+          @media (max-width: 768px) {
+            .featured-apple-grid {
+              grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+              gap: 16px;
+            }
+          }
+
+          @media (max-width: 480px) {
+            .featured-apple-grid {
+              grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+              gap: 12px;
+            }
+          }
+        `}
+      </style>
     </section>
   );
 };

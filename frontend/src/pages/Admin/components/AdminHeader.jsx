@@ -1,900 +1,399 @@
-// frontend/src/pages/Admin/components/AdminHeader.jsx
+// ============================================================
+// frontend/src/components/AdminHeader.jsx
+// BuyUKUsed - Admin Header
+// ============================================================
 
 import React, {
-  useState,
   useEffect,
-  useRef,
-  useCallback,
+  useState,
 } from "react";
-
-import { useAuth } from "../../../context/AuthContext";
 
 import {
   getNotifications,
-  markNotificationRead,
-} from "../../../services/api";
+  markAllNotificationsAsRead,
+} from "../services/api";
+
+import {
+  useAuth,
+} from "../context/AuthContext";
 
 const AdminHeader = ({
-  activePage,
-  sidebarOpen,
-  setSidebarOpen,
-  onRefresh,
-  onSearch,
-  searchTerm,
+  onMenuClick,
 }) => {
   const {
     user,
-    token,
-    logout,
   } = useAuth();
 
-  const [
-    notifications,
-    setNotifications,
-  ] = useState([]);
+  const [notifications, setNotifications] =
+    useState([]);
 
-  const [
-    showNotifications,
-    setShowNotifications,
-  ] = useState(false);
+  const [notificationLoading, setNotificationLoading] =
+    useState(false);
 
-  const [
-    showUserMenu,
-    setShowUserMenu,
-  ] = useState(false);
+  const [showNotifications, setShowNotifications] =
+    useState(false);
 
-  const [
-    loading,
-    setLoading,
-  ] = useState(false);
+  // ==========================================================
+  // GET REAL USER ID
+  // ==========================================================
 
-  const notificationRef =
-    useRef(null);
+  const userId =
+    user?._id ||
+    user?.id ||
+    user?.userId ||
+    null;
 
-  const userMenuRef =
-    useRef(null);
-
-  // ============================================================
+  // ==========================================================
   // FETCH ADMIN NOTIFICATIONS
-  // ============================================================
+  // ==========================================================
 
   const fetchNotifications =
-    useCallback(async () => {
-      if (!token) {
+    async () => {
+      if (!userId) {
+        console.warn(
+          "⚠️ Cannot fetch notifications: user ID is missing"
+        );
+
         return;
       }
 
       try {
-        setLoading(true);
+        setNotificationLoading(true);
 
         console.log(
-          "🔔 Fetching admin notifications..."
+          "🔔 Fetching admin notifications for user:",
+          userId
         );
 
-        // IMPORTANT:
-        // getForAdmin() expects ONLY the token.
-        const data =
-          await getNotifications(token);
+        const response =
+          await getNotifications(
+            userId
+          );
 
         console.log(
-          "✅ Admin notifications:",
-          data
+          "🔔 Admin notifications response:",
+          response
         );
+
+        const notificationList =
+          response?.notifications ||
+          response?.data?.notifications ||
+          [];
 
         setNotifications(
           Array.isArray(
-            data?.notifications
+            notificationList
           )
-            ? data.notifications
+            ? notificationList
             : []
         );
-      } catch (err) {
+      } catch (error) {
         console.error(
           "❌ Error fetching notifications:",
-          err
+          error
         );
 
-        // Do not log the user out here.
-        // A notification failure should not destroy
-        // an otherwise valid login session.
-
-        if (
-          err?.status === 401 ||
-          err?.status === 403
-        ) {
-          console.warn(
-            "⚠️ Notification endpoint rejected the current token."
-          );
-        }
+        setNotifications([]);
       } finally {
-        setLoading(false);
+        setNotificationLoading(
+          false
+        );
       }
-    }, [token]);
+    };
 
-  // ============================================================
-  // INITIAL NOTIFICATION LOAD
-  // ============================================================
+  // ==========================================================
+  // LOAD WHEN USER IS AVAILABLE
+  // ==========================================================
 
   useEffect(() => {
-    if (!token) {
-      setNotifications([]);
+    if (!userId) {
       return;
     }
 
     fetchNotifications();
-  }, [
-    token,
-    fetchNotifications,
-  ]);
-
-  // ============================================================
-  // AUTO REFRESH
-  // ============================================================
-
-  useEffect(() => {
-    if (!token) {
-      return;
-    }
 
     const interval =
-      setInterval(() => {
-        fetchNotifications();
-      }, 30000);
+      setInterval(
+        fetchNotifications,
+        30000
+      );
 
     return () => {
-      clearInterval(interval);
-    };
-  }, [
-    token,
-    fetchNotifications,
-  ]);
-
-  // ============================================================
-  // MARK ONE AS READ
-  // ============================================================
-
-  const handleMarkAsRead =
-    async (id) => {
-      if (!token || !id) {
-        return;
-      }
-
-      try {
-        await markNotificationRead(
-          id,
-          token
-        );
-
-        setNotifications(
-          (prev) =>
-            prev.map((notification) =>
-              notification._id === id
-                ? {
-                    ...notification,
-                    read: true,
-                  }
-                : notification
-            )
-        );
-      } catch (err) {
-        console.error(
-          "❌ Error marking notification as read:",
-          err
-        );
-      }
-    };
-
-  // ============================================================
-  // MARK ALL AS READ
-  // ============================================================
-
-  const handleMarkAllRead =
-    async () => {
-      if (!token) {
-        return;
-      }
-
-      const unread =
-        notifications.filter(
-          (notification) =>
-            !notification.read
-        );
-
-      if (unread.length === 0) {
-        return;
-      }
-
-      try {
-        await Promise.all(
-          unread.map(
-            (notification) =>
-              markNotificationRead(
-                notification._id,
-                token
-              )
-          )
-        );
-
-        setNotifications(
-          (prev) =>
-            prev.map(
-              (notification) => ({
-                ...notification,
-                read: true,
-              })
-            )
-        );
-      } catch (err) {
-        console.error(
-          "❌ Error marking all notifications as read:",
-          err
-        );
-      }
-    };
-
-  // ============================================================
-  // LOGOUT
-  // ============================================================
-
-  const handleLogout =
-    async () => {
-      setShowUserMenu(false);
-
-      try {
-        await logout();
-      } catch (err) {
-        console.error(
-          "Logout error:",
-          err
-        );
-      }
-    };
-
-  // ============================================================
-  // CLICK OUTSIDE
-  // ============================================================
-
-  useEffect(() => {
-    const handleClickOutside =
-      (event) => {
-        if (
-          notificationRef.current &&
-          !notificationRef.current.contains(
-            event.target
-          )
-        ) {
-          setShowNotifications(false);
-        }
-
-        if (
-          userMenuRef.current &&
-          !userMenuRef.current.contains(
-            event.target
-          )
-        ) {
-          setShowUserMenu(false);
-        }
-      };
-
-    document.addEventListener(
-      "mousedown",
-      handleClickOutside
-    );
-
-    return () => {
-      document.removeEventListener(
-        "mousedown",
-        handleClickOutside
+      clearInterval(
+        interval
       );
     };
-  }, []);
+  }, [userId]);
 
-  // ============================================================
+  // ==========================================================
   // UNREAD COUNT
-  // ============================================================
+  // ==========================================================
 
   const unreadCount =
     notifications.filter(
       (notification) =>
-        !notification.read
+        notification.isRead !== true
     ).length;
 
-  // ============================================================
-  // PAGE TITLE
-  // ============================================================
+  // ==========================================================
+  // MARK ALL AS READ
+  // ==========================================================
 
-  const pageTitle =
-    activePage
-      ? activePage
-          .charAt(0)
-          .toUpperCase() +
-        activePage.slice(1)
-      : "Dashboard";
+  const handleMarkAllRead =
+    async () => {
+      if (!userId) {
+        return;
+      }
 
-  // ============================================================
+      try {
+        await markAllNotificationsAsRead(
+          userId
+        );
+
+        setNotifications(
+          (previous) =>
+            previous.map(
+              (notification) => ({
+                ...notification,
+                isRead: true,
+              })
+            )
+        );
+      } catch (error) {
+        console.error(
+          "❌ Failed to mark notifications as read:",
+          error
+        );
+      }
+    };
+
+  // ==========================================================
+  // TOGGLE NOTIFICATIONS
+  // ==========================================================
+
+  const handleNotificationClick =
+    () => {
+      setShowNotifications(
+        (previous) =>
+          !previous
+      );
+    };
+
+  // ==========================================================
+  // FORMAT DATE
+  // ==========================================================
+
+  const formatNotificationDate =
+    (date) => {
+      if (!date) {
+        return "";
+      }
+
+      try {
+        return new Date(
+          date
+        ).toLocaleString();
+      } catch {
+        return "";
+      }
+    };
+
+  // ==========================================================
   // RENDER
-  // ============================================================
+  // ==========================================================
 
   return (
-    <header
-      className="admin-header"
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent:
-          "space-between",
-        padding: "12px 24px",
-        background: "white",
-        borderBottom:
-          "1px solid var(--gray-200)",
-        position: "sticky",
-        top: 0,
-        zIndex: 100,
-        flexWrap: "wrap",
-        gap: "8px",
-      }}
-    >
-      {/* ======================================================
-          LEFT SIDE
-      ====================================================== */}
+    <header className="sticky top-0 z-40 border-b bg-white">
+      <div className="flex h-16 items-center justify-between px-4 md:px-6">
 
-      <div
-        className="header-left"
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "12px",
-          flexWrap: "wrap",
-        }}
-      >
-        {/* Sidebar */}
-        <button
-          type="button"
-          onClick={() =>
-            setSidebarOpen(
-              !sidebarOpen
-            )
-          }
-          style={{
-            background: "none",
-            border: "none",
-            fontSize: "24px",
-            cursor: "pointer",
-          }}
-          aria-label="Toggle sidebar"
-        >
-          {sidebarOpen
-            ? "✕"
-            : "☰"}
-        </button>
+        {/* LEFT */}
+        <div className="flex items-center gap-3">
 
-        {/* Page title */}
-        <span
-          style={{
-            fontWeight: 600,
-            fontSize: "16px",
-            color:
-              "var(--gray-600)",
-          }}
-        >
-          {pageTitle}
-        </span>
-
-        {/* Search */}
-        {onSearch && (
-          <input
-            type="text"
-            placeholder="Search..."
-            value={
-              searchTerm || ""
-            }
-            onChange={(event) =>
-              onSearch(
-                event.target.value
-              )
-            }
-            className="search-input"
-            style={{
-              padding:
-                "8px 14px",
-              border:
-                "1.5px solid var(--gray-200)",
-              borderRadius:
-                "var(--radius-md)",
-              fontSize: "14px",
-              width: "200px",
-            }}
-          />
-        )}
-
-        {/* Refresh */}
-        {onRefresh && (
-          <button
-            type="button"
-            onClick={onRefresh}
-            style={{
-              padding:
-                "6px 14px",
-              background:
-                "var(--gray-100)",
-              border:
-                "1px solid var(--gray-200)",
-              borderRadius:
-                "var(--radius-sm)",
-              cursor: "pointer",
-              fontSize: "14px",
-            }}
-            aria-label="Refresh"
-          >
-            🔄
-          </button>
-        )}
-      </div>
-
-      {/* ======================================================
-          RIGHT SIDE
-      ====================================================== */}
-
-      <div
-        className="header-right"
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "16px",
-        }}
-      >
-        {/* ====================================================
-            NOTIFICATIONS
-        ==================================================== */}
-
-        <div
-          ref={notificationRef}
-          style={{
-            position: "relative",
-          }}
-        >
-          <button
-            type="button"
-            onClick={() =>
-              setShowNotifications(
-                (prev) => !prev
-              )
-            }
-            style={{
-              position:
-                "relative",
-              background: "none",
-              border: "none",
-              fontSize: "24px",
-              cursor: "pointer",
-              padding: "4px",
-            }}
-            aria-label="Notifications"
-          >
-            🔔
-
-            {unreadCount > 0 && (
-              <span
-                style={{
-                  position:
-                    "absolute",
-                  top: "-6px",
-                  right: "-6px",
-                  background:
-                    "#dc2626",
-                  color: "white",
-                  borderRadius:
-                    "50%",
-                  fontSize: "10px",
-                  fontWeight: 700,
-                  padding:
-                    "2px 6px",
-                  minWidth: "18px",
-                  height: "18px",
-                  display: "flex",
-                  alignItems:
-                    "center",
-                  justifyContent:
-                    "center",
-                  boxShadow:
-                    "0 2px 4px rgba(220,38,38,0.3)",
-                }}
-              >
-                {unreadCount > 9
-                  ? "9+"
-                  : unreadCount}
-              </span>
-            )}
-          </button>
-
-          {showNotifications && (
-            <div
-              className="notification-dropdown"
-              style={{
-                position:
-                  "absolute",
-                top:
-                  "calc(100% + 8px)",
-                right: 0,
-                width: "360px",
-                maxHeight: "400px",
-                background: "white",
-                borderRadius:
-                  "var(--radius-md)",
-                boxShadow:
-                  "0 8px 32px rgba(0,0,0,0.15)",
-                border:
-                  "1px solid var(--gray-200)",
-                overflow:
-                  "hidden",
-                zIndex: 1000,
-              }}
+          {onMenuClick && (
+            <button
+              type="button"
+              onClick={onMenuClick}
+              className="rounded-lg border px-3 py-2 text-sm hover:bg-gray-50"
             >
-              {/* Header */}
-              <div
-                style={{
-                  display:
-                    "flex",
-                  justifyContent:
-                    "space-between",
-                  alignItems:
-                    "center",
-                  padding:
-                    "12px 16px",
-                  borderBottom:
-                    "1px solid var(--gray-200)",
-                }}
-              >
-                <span
-                  style={{
-                    fontWeight: 700,
-                    fontSize: "14px",
-                  }}
-                >
-                  Notifications
-                </span>
-
-                {unreadCount >
-                  0 && (
-                  <button
-                    type="button"
-                    onClick={
-                      handleMarkAllRead
-                    }
-                    style={{
-                      background:
-                        "none",
-                      border: "none",
-                      color:
-                        "var(--primary)",
-                      fontSize:
-                        "12px",
-                      cursor:
-                        "pointer",
-                    }}
-                  >
-                    Mark all as read
-                  </button>
-                )}
-              </div>
-
-              {/* Notification list */}
-              <div
-                style={{
-                  overflowY:
-                    "auto",
-                  maxHeight:
-                    "340px",
-                }}
-              >
-                {loading ? (
-                  <div
-                    style={{
-                      padding:
-                        "20px",
-                      textAlign:
-                        "center",
-                      color:
-                        "var(--gray-400)",
-                    }}
-                  >
-                    Loading...
-                  </div>
-                ) : notifications.length ===
-                  0 ? (
-                  <div
-                    style={{
-                      padding:
-                        "20px",
-                      textAlign:
-                        "center",
-                      color:
-                        "var(--gray-400)",
-                    }}
-                  >
-                    No notifications
-                  </div>
-                ) : (
-                  notifications.map(
-                    (notif) => (
-                      <div
-                        key={
-                          notif._id
-                        }
-                        onClick={() =>
-                          handleMarkAsRead(
-                            notif._id
-                          )
-                        }
-                        style={{
-                          padding:
-                            "12px 16px",
-                          borderBottom:
-                            "1px solid var(--gray-100)",
-                          cursor:
-                            "pointer",
-                          background:
-                            notif.read
-                              ? "white"
-                              : "#f0f7ff",
-                          transition:
-                            "background 0.2s",
-                        }}
-                        onMouseEnter={(
-                          event
-                        ) => {
-                          event.currentTarget.style.background =
-                            notif.read
-                              ? "var(--gray-50)"
-                              : "#e8f0fe";
-                        }}
-                        onMouseLeave={(
-                          event
-                        ) => {
-                          event.currentTarget.style.background =
-                            notif.read
-                              ? "white"
-                              : "#f0f7ff";
-                        }}
-                      >
-                        <div
-                          style={{
-                            fontSize:
-                              "13px",
-                            color:
-                              "var(--gray-800)",
-                          }}
-                        >
-                          {
-                            notif.message
-                          }
-                        </div>
-
-                        <div
-                          style={{
-                            fontSize:
-                              "11px",
-                            color:
-                              "var(--gray-400)",
-                            marginTop:
-                              "4px",
-                          }}
-                        >
-                          {notif.createdAt
-                            ? new Date(
-                                notif.createdAt
-                              ).toLocaleDateString()
-                            : ""}
-                        </div>
-                      </div>
-                    )
-                  )
-                )}
-              </div>
-            </div>
+              ☰
+            </button>
           )}
+
+          <div>
+            <h1 className="text-lg font-semibold text-gray-900">
+              Admin Dashboard
+            </h1>
+
+            <p className="text-xs text-gray-500">
+              BuyUKUsed Administration
+            </p>
+          </div>
         </div>
 
-        {/* ====================================================
-            USER MENU
-        ==================================================== */}
+        {/* RIGHT */}
+        <div className="flex items-center gap-3">
 
-        <div
-          ref={userMenuRef}
-          style={{
-            position:
-              "relative",
-          }}
-        >
-          <button
-            type="button"
-            onClick={() =>
-              setShowUserMenu(
-                (prev) => !prev
-              )
-            }
-            style={{
-              display: "flex",
-              alignItems:
-                "center",
-              gap: "8px",
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              padding:
-                "4px 8px",
-            }}
-          >
-            <div
-              style={{
-                width: "32px",
-                height: "32px",
-                borderRadius:
-                  "50%",
-                background:
-                  "var(--primary)",
-                color: "white",
-                display: "flex",
-                alignItems:
-                  "center",
-                justifyContent:
-                  "center",
-                fontWeight: 600,
-                fontSize: "14px",
-              }}
+          {/* NOTIFICATIONS */}
+          <div className="relative">
+
+            <button
+              type="button"
+              onClick={
+                handleNotificationClick
+              }
+              className="relative flex h-10 w-10 items-center justify-center rounded-full border bg-white hover:bg-gray-50"
+              aria-label="Notifications"
             >
-              {user?.name
-                ?.charAt(0)
-                ?.toUpperCase() ||
-                "A"}
-            </div>
+              🔔
 
-            <span
-              style={{
-                fontSize: "14px",
-                fontWeight: 500,
-                color:
-                  "var(--gray-700)",
-              }}
-            >
-              {user?.name ||
-                "Admin"}
-            </span>
-          </button>
+              {unreadCount > 0 && (
+                <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold text-white">
+                  {unreadCount >
+                  99
+                    ? "99+"
+                    : unreadCount}
+                </span>
+              )}
+            </button>
 
-          {showUserMenu && (
-            <div
-              style={{
-                position:
-                  "absolute",
-                top:
-                  "calc(100% + 8px)",
-                right: 0,
-                width: "200px",
-                background:
-                  "white",
-                borderRadius:
-                  "var(--radius-md)",
-                boxShadow:
-                  "0 8px 32px rgba(0,0,0,0.15)",
-                border:
-                  "1px solid var(--gray-200)",
-                overflow:
-                  "hidden",
-                zIndex: 1000,
-              }}
-            >
-              <div
-                style={{
-                  padding: "8px",
-                }}
-              >
-                {/* Profile */}
-                <button
-                  type="button"
-                  onClick={() => {}}
-                  style={{
-                    width: "100%",
-                    padding:
-                      "8px 12px",
-                    textAlign:
-                      "left",
-                    background:
-                      "none",
-                    border: "none",
-                    cursor:
-                      "pointer",
-                    display:
-                      "flex",
-                    alignItems:
-                      "center",
-                    gap: "10px",
-                    fontSize:
-                      "14px",
-                    borderRadius:
-                      "var(--radius-sm)",
-                    color:
-                      "var(--gray-700)",
-                  }}
-                >
-                  👤 Profile
-                </button>
+            {showNotifications && (
+              <div className="absolute right-0 mt-3 w-80 overflow-hidden rounded-xl border bg-white shadow-xl">
 
-                {/* Settings */}
-                <button
-                  type="button"
-                  onClick={() => {}}
-                  style={{
-                    width: "100%",
-                    padding:
-                      "8px 12px",
-                    textAlign:
-                      "left",
-                    background:
-                      "none",
-                    border: "none",
-                    cursor:
-                      "pointer",
-                    display:
-                      "flex",
-                    alignItems:
-                      "center",
-                    gap: "10px",
-                    fontSize:
-                      "14px",
-                    borderRadius:
-                      "var(--radius-sm)",
-                    color:
-                      "var(--gray-700)",
-                  }}
-                >
-                  ⚙️ Settings
-                </button>
+                <div className="flex items-center justify-between border-b px-4 py-3">
 
-                <hr
-                  style={{
-                    margin:
-                      "4px 0",
-                    borderColor:
-                      "var(--gray-100)",
-                  }}
-                />
+                  <div>
+                    <h3 className="font-semibold text-gray-900">
+                      Notifications
+                    </h3>
 
-                {/* Logout */}
-                <button
-                  type="button"
-                  onClick={
-                    handleLogout
-                  }
-                  style={{
-                    width: "100%",
-                    padding:
-                      "8px 12px",
-                    textAlign:
-                      "left",
-                    background:
-                      "none",
-                    border: "none",
-                    cursor:
-                      "pointer",
-                    display:
-                      "flex",
-                    alignItems:
-                      "center",
-                    gap: "10px",
-                    fontSize:
-                      "14px",
-                    borderRadius:
-                      "var(--radius-sm)",
-                    color:
-                      "#dc2626",
-                  }}
-                >
-                  🚪 Logout
-                </button>
+                    <p className="text-xs text-gray-500">
+                      {unreadCount} unread
+                    </p>
+                  </div>
+
+                  {unreadCount >
+                    0 && (
+                    <button
+                      type="button"
+                      onClick={
+                        handleMarkAllRead
+                      }
+                      className="text-xs font-medium text-blue-600 hover:underline"
+                    >
+                      Mark all read
+                    </button>
+                  )}
+                </div>
+
+                <div className="max-h-96 overflow-y-auto">
+
+                  {notificationLoading && (
+                    <div className="px-4 py-6 text-center text-sm text-gray-500">
+                      Loading notifications...
+                    </div>
+                  )}
+
+                  {!notificationLoading &&
+                    notifications.length ===
+                      0 && (
+                      <div className="px-4 py-8 text-center text-sm text-gray-500">
+                        No notifications
+                      </div>
+                    )}
+
+                  {!notificationLoading &&
+                    notifications.map(
+                      (
+                        notification
+                      ) => (
+                        <div
+                          key={
+                            notification._id ||
+                            notification.id
+                          }
+                          className={`border-b px-4 py-3 ${
+                            notification.isRead
+                              ? "bg-white"
+                              : "bg-blue-50"
+                          }`}
+                        >
+                          <div className="flex gap-3">
+
+                            <div className="flex-1">
+
+                              <p className="text-sm font-semibold text-gray-900">
+                                {
+                                  notification.title
+                                }
+                              </p>
+
+                              <p className="mt-1 text-sm text-gray-600">
+                                {
+                                  notification.message
+                                }
+                              </p>
+
+                              <p className="mt-1 text-xs text-gray-400">
+                                {formatNotificationDate(
+                                  notification.createdAt
+                                )}
+                              </p>
+
+                            </div>
+
+                            {!notification.isRead && (
+                              <span className="mt-1 h-2 w-2 rounded-full bg-blue-600" />
+                            )}
+
+                          </div>
+                        </div>
+                      )
+                    )}
+                </div>
               </div>
+            )}
+          </div>
+
+          {/* ADMIN USER */}
+          <div className="hidden items-center gap-2 sm:flex">
+
+            <div className="text-right">
+              <p className="text-sm font-medium text-gray-900">
+                {user?.name ||
+                  "Administrator"}
+              </p>
+
+              <p className="text-xs text-gray-500">
+                {user?.email || ""}
+              </p>
             </div>
-          )}
+
+            {user?.profileImage ||
+            user?.avatar ? (
+              <img
+                src={
+                  user.profileImage ||
+                  user.avatar
+                }
+                alt={
+                  user.name ||
+                  "Admin"
+                }
+                className="h-9 w-9 rounded-full object-cover"
+              />
+            ) : (
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-900 text-sm font-bold text-white">
+                {(
+                  user?.name ||
+                  "A"
+                )
+                  .charAt(0)
+                  .toUpperCase()}
+              </div>
+            )}
+
+          </div>
+
         </div>
       </div>
     </header>

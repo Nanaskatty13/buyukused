@@ -1,258 +1,251 @@
+// ============================================================
+// backend/models/Orders.js
+// BuyUKUsed Order Model
+// ============================================================
+
 const mongoose = require("mongoose");
 
-
-
-const orderSchema = new mongoose.Schema(
-
-    {
-
-
-        // Customer who placed order
-        user: {
-
-            type: mongoose.Schema.Types.ObjectId,
-
-            ref: "User",
-
-            required: true
-
-        },
-
-
-        // Products inside order
-        items: [
-
-            {
-
-                product: {
-
-                    type: mongoose.Schema.Types.ObjectId,
-
-                    ref: "Product",
-
-                    required: true
-
-                },
-
-
-                seller: {
-
-                    type: mongoose.Schema.Types.ObjectId,
-
-                    ref: "User"
-
-                },
-
-
-                name: {
-
-                    type: String,
-
-                    required: true
-
-                },
-
-
-                image: {
-
-                    type: String,
-
-                    default: ""
-
-                },
-
-
-                quantity: {
-
-                    type: Number,
-
-                    required: true,
-
-                    default: 1
-
-                },
-
-
-                price: {
-
-                    type: Number,
-
-                    required: true
-
-                }
-
-
-            }
-
-        ],
-
-
-
-        // Total amount
-        totalAmount: {
-
-            type: Number,
-
-            required: true
-
-        },
-
-
-
-        // Payment information
-        payment: {
-
-
-            method: {
-
-                type: String,
-
-                enum: [
-
-                    "cash",
-
-                    "paystack",
-
-                    "mobile_money",
-
-                    "card"
-
-                ],
-
-                default: "paystack"
-
-            },
-
-
-            reference: {
-
-                type: String,
-
-                default: ""
-
-            },
-
-
-            status: {
-
-                type: String,
-
-                enum: [
-
-                    "pending",
-
-                    "paid",
-
-                    "failed",
-
-                    "refunded"
-
-                ],
-
-                default: "pending"
-
-            }
-
-
-        },
-
-
-
-        // Delivery details
-        shippingAddress: {
-
-
-            fullName: {
-
-                type: String,
-
-                required: true
-
-            },
-
-
-            phone: {
-
-                type: String,
-
-                required: true
-
-            },
-
-
-            location: {
-
-                type: String,
-
-                required: true
-
-            },
-
-
-            address: {
-
-                type: String,
-
-                default: ""
-
-            }
-
-
-        },
-
-
-
-        // Order status
-        status: {
-
-            type: String,
-
-            enum: [
-
-                "pending",
-
-                "processing",
-
-                "shipped",
-
-                "delivered",
-
-                "cancelled"
-
-            ],
-
-            default: "pending"
-
-        }
-
-
-
+// ============================================================
+// ORDER ITEM SCHEMA
+// ============================================================
+
+const orderItemSchema = new mongoose.Schema(
+  {
+    // --------------------------------------------------------
+    // Product
+    // --------------------------------------------------------
+
+    product: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Product",
+      required: true,
     },
 
-    {
+    // --------------------------------------------------------
+    // Seller
+    // --------------------------------------------------------
 
-        timestamps:true
+    seller: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
+    },
 
-    }
+    // --------------------------------------------------------
+    // Product snapshot
+    // --------------------------------------------------------
 
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+
+    image: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    // --------------------------------------------------------
+    // Quantity
+    // --------------------------------------------------------
+
+    quantity: {
+      type: Number,
+      required: true,
+      default: 1,
+      min: 1,
+    },
+
+    // --------------------------------------------------------
+    // Price at time of purchase
+    // --------------------------------------------------------
+
+    price: {
+      type: Number,
+      required: true,
+      min: 0,
+    },
+  },
+  {
+    _id: true,
+  }
 );
 
+// ============================================================
+// ORDER SCHEMA
+// ============================================================
 
+const orderSchema = new mongoose.Schema(
+  {
+    // ========================================================
+    // CUSTOMER
+    // ========================================================
 
-// Search optimization
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
+    },
+
+    // ========================================================
+    // PRODUCTS
+    // ========================================================
+
+    items: {
+      type: [orderItemSchema],
+      required: true,
+      validate: {
+        validator: (items) =>
+          Array.isArray(items) &&
+          items.length > 0,
+
+        message:
+          "An order must contain at least one item.",
+      },
+    },
+
+    // ========================================================
+    // TOTAL
+    // ========================================================
+
+    totalAmount: {
+      type: Number,
+      required: true,
+      min: 0,
+    },
+
+    // ========================================================
+    // PAYMENT
+    // ========================================================
+
+    payment: {
+      method: {
+        type: String,
+        enum: [
+          "cash",
+          "paystack",
+          "mobile_money",
+          "card",
+        ],
+        default: "paystack",
+      },
+
+      reference: {
+        type: String,
+        default: "",
+        trim: true,
+      },
+
+      status: {
+        type: String,
+        enum: [
+          "pending",
+          "paid",
+          "failed",
+          "refunded",
+        ],
+        default: "pending",
+      },
+
+      paidAt: {
+        type: Date,
+        default: null,
+      },
+    },
+
+    // ========================================================
+    // SHIPPING ADDRESS
+    // ========================================================
+
+    shippingAddress: {
+      fullName: {
+        type: String,
+        required: true,
+        trim: true,
+      },
+
+      phone: {
+        type: String,
+        required: true,
+        trim: true,
+      },
+
+      location: {
+        type: String,
+        required: true,
+        trim: true,
+      },
+
+      address: {
+        type: String,
+        default: "",
+        trim: true,
+      },
+    },
+
+    // ========================================================
+    // ORDER STATUS
+    // ========================================================
+
+    status: {
+      type: String,
+      enum: [
+        "pending",
+        "processing",
+        "shipped",
+        "delivered",
+        "cancelled",
+      ],
+      default: "pending",
+      index: true,
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
+
+// ============================================================
+// INDEXES
+// ============================================================
+
+// Customer orders
 orderSchema.index({
-
-    user:1,
-
-    createdAt:-1
-
+  user: 1,
+  createdAt: -1,
 });
 
+// Seller orders
+orderSchema.index({
+  "items.seller": 1,
+  createdAt: -1,
+});
 
-module.exports = mongoose.model(
+// Seller + status
+orderSchema.index({
+  "items.seller": 1,
+  status: 1,
+  createdAt: -1,
+});
 
+// Payment reference lookup
+orderSchema.index({
+  "payment.reference": 1,
+});
+
+// ============================================================
+// MODEL
+// ============================================================
+
+const Order =
+  mongoose.models.Order ||
+  mongoose.model(
     "Order",
-
     orderSchema
+  );
 
-);
+module.exports = Order;

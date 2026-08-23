@@ -140,12 +140,13 @@ const productSchema = new mongoose.Schema(
     // VISUAL SEARCH
     // ========================================================
     //
-    // CLIP image embedding.
+    // Stores the visual embedding generated for the product's
+    // primary image.
     //
-    // Xenova/clip-vit-base-patch32 produces 512 dimensions.
+    // The embedding is hidden from normal product queries.
+    // Visual-search code can explicitly request it with:
     //
-    // This field is NOT returned to the frontend in normal
-    // product responses because it is unnecessary there.
+    // .select("+imageEmbedding +imageEmbeddingModel")
     //
     // ========================================================
 
@@ -642,7 +643,7 @@ productSchema.index({
 });
 
 // ============================================================
-// OTHER INDEXES
+// COMPOUND INDEXES
 // ============================================================
 
 productSchema.index({
@@ -664,6 +665,10 @@ productSchema.index({
   createdAt: -1,
 });
 
+// ============================================================
+// FILTER INDEXES
+// ============================================================
+
 productSchema.index({
   simStatus: 1,
 });
@@ -678,14 +683,6 @@ productSchema.index({
 
 productSchema.index({
   compatibleWith: 1,
-});
-
-productSchema.index({
-  brand: 1,
-});
-
-productSchema.index({
-  model: 1,
 });
 
 productSchema.index({
@@ -751,6 +748,24 @@ productSchema.index({
 productSchema.index({
   bodyType: 1,
 });
+
+// ============================================================
+// IMPORTANT
+// ============================================================
+//
+// DO NOT add:
+//
+// productSchema.index({ brand: 1 });
+// productSchema.index({ model: 1 });
+//
+// because brand and model already use:
+//
+// index: true
+//
+// in their schema definitions.
+//
+// This prevents the Mongoose duplicate-index warnings.
+// ============================================================
 
 // ============================================================
 // MODEL

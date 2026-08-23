@@ -1,101 +1,52 @@
-// ================================================================
+// ============================================================
 // frontend/src/services/api.js
-// ================================================================
+// BuyUKUsed - API Service
+// ============================================================
 
-import {
-  getToken,
-  clearAuthData,
-} from "../utils/storage";
-
-// ================================================================
-// API CONFIG
-// ================================================================
-
-const RAW_API_URL =
+const API_URL =
   import.meta.env.VITE_API_URL ||
-  "http://localhost:5000";
-
-export const API_URL = String(RAW_API_URL).replace(
-  /\/+$/,
-  ""
-);
+  "https://buyukused.onrender.com";
 
 console.log("🔗 API_URL:", API_URL);
 
-// ================================================================
-// REQUEST CONFIG
-// ================================================================
+// ============================================================
+// HELPERS
+// ============================================================
 
-const REQUEST_TIMEOUT = 30000;
-const MAX_RETRIES = 2;
+const getStoredToken = () => {
+  return (
+    localStorage.getItem("token") ||
+    localStorage.getItem("authToken") ||
+    localStorage.getItem("accessToken") ||
+    ""
+  );
+};
 
-// ================================================================
-// HEADERS
-// ================================================================
-
-const getHeaders = (token = getToken()) => ({
-  "Content-Type": "application/json",
-
-  ...(token
-    ? {
-        Authorization: `Bearer ${token}`,
-      }
-    : {}),
-});
-
-// IMPORTANT:
-// Never manually set Content-Type for FormData.
-const getFileHeaders = (token = getToken()) => ({
-  ...(token
-    ? {
-        Authorization: `Bearer ${token}`,
-      }
-    : {}),
-});
-
-// ================================================================
-// RESPONSE HANDLER
-// ================================================================
+// ============================================================
+// HANDLE RESPONSE
+// ============================================================
 
 const handleResponse = async (response) => {
-  let data = {};
+  let data = null;
 
-  if (response.status !== 204) {
-    const contentType =
-      response.headers.get("content-type") || "";
-
-    try {
-      if (contentType.includes("application/json")) {
-        data = await response.json();
-      } else {
-        const text = await response.text();
-
-        if (text) {
-          data = {
-            message: text,
-          };
-        }
-      }
-    } catch (parseError) {
-      console.warn(
-        "⚠️ Could not parse API response:",
-        parseError
-      );
-
-      data = {};
-    }
+  try {
+    data = await response.json();
+  } catch {
+    data = null;
   }
 
   if (!response.ok) {
-    const error = new Error(
+    const message =
       data?.message ||
-        data?.error ||
-        `HTTP ${response.status}`
-    );
+      data?.error ||
+      (response.status === 404
+        ? "API endpoint not found"
+        : `Request failed with status ${response.status}`);
+
+    const error = new Error(message);
 
     error.status = response.status;
     error.data = data;
-    error.url = response.url;
 
     throw error;
   }
@@ -103,119 +54,48 @@ const handleResponse = async (response) => {
   return data;
 };
 
-// ================================================================
-// SLEEP
-// ================================================================
+// ============================================================
+// GENERIC REQUEST
+// ============================================================
 
-const sleep = (ms) =>
-  new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
-
-// ================================================================
-// REQUEST HELPER
-// ================================================================
-
-const request = async (
-  url,
-  options = {},
-  retries = MAX_RETRIES
+export const request = async (
+  endpoint,
+  options = {}
 ) => {
-  let controller;
-  let timeoutId;
+  const token = getStoredToken();
+
+  const cleanEndpoint = endpoint.startsWith("/")
+    ? endpoint
+    : `/${endpoint}`;
+
+  const url = `${API_URL}${cleanEndpoint}`;
+
+  const headers = {
+    ...(options.body instanceof FormData
+      ? {}
+      : {
+          "Content-Type": "application/json",
+        }),
+
+    ...(options.headers || {}),
+  };
+
+  // ----------------------------------------------------------
+  // Authorization
+  // ----------------------------------------------------------
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
 
   try {
-    controller = new AbortController();
-
-    timeoutId = setTimeout(() => {
-      controller.abort();
-    }, REQUEST_TIMEOUT);
-
     const response = await fetch(url, {
-      credentials: "include",
       ...options,
-
-      signal:
-        options.signal ||
-        controller.signal,
+      headers,
     });
-
-    clearTimeout(timeoutId);
 
     return await handleResponse(response);
   } catch (error) {
-    if (timeoutId) {
-      clearTimeout(timeoutId);
-    }
-
-    const isAbortError =
-      error?.name === "AbortError";
-
-    const isNetworkError =
-      error?.name === "TypeError" ||
-      error?.message === "Failed to fetch";
-
-    // ============================================================
-    // TIMEOUT
-    // ============================================================
-
-    if (isAbortError) {
-      if (retries > 0) {
-        console.warn(
-          `⏳ API timeout. Retrying... ${retries} attempt(s) left`,
-          url
-        );
-
-        await sleep(1500);
-
-        return request(
-          url,
-          options,
-          retries - 1
-        );
-      }
-
-      const timeoutError = new Error(
-        "The server took too long to respond."
-      );
-
-      timeoutError.code = "REQUEST_TIMEOUT";
-      timeoutError.url = url;
-
-      console.error(
-        "❌ API timeout:",
-        url
-      );
-
-      throw timeoutError;
-    }
-
-    // ============================================================
-    // NETWORK ERROR
-    // ============================================================
-
-    if (
-      isNetworkError &&
-      retries > 0
-    ) {
-      console.warn(
-        `🔄 Network error. Retrying... ${retries} attempt(s) left`,
-        url
-      );
-
-      await sleep(1000);
-
-      return request(
-        url,
-        options,
-        retries - 1
-      );
-    }
-
-    // ============================================================
-    // FINAL ERROR
-    // ============================================================
-
     console.error(
       "❌ API request failed:",
       url,
@@ -226,621 +106,187 @@ const request = async (
   }
 };
 
-// ================================================================
-// QUERY BUILDER
-// ================================================================
+// ============================================================
+// GET
+// ============================================================
 
-const buildQuery = (params = {}) => {
-  const searchParams = new URLSearchParams();
+export const get = async (
+  endpoint,
+  options = {}
+) => {
+  return request(endpoint, {
+    method: "GET",
+    ...options,
+  });
+};
+
+// ============================================================
+// POST
+// ============================================================
+
+export const post = async (
+  endpoint,
+  body,
+  options = {}
+) => {
+  return request(endpoint, {
+    method: "POST",
+    body:
+      body instanceof FormData
+        ? body
+        : JSON.stringify(body),
+    ...options,
+  });
+};
+
+// ============================================================
+// PATCH
+// ============================================================
+
+export const patch = async (
+  endpoint,
+  body,
+  options = {}
+) => {
+  return request(endpoint, {
+    method: "PATCH",
+    body:
+      body instanceof FormData
+        ? body
+        : JSON.stringify(body),
+    ...options,
+  });
+};
+
+// ============================================================
+// PUT
+// ============================================================
+
+export const put = async (
+  endpoint,
+  body,
+  options = {}
+) => {
+  return request(endpoint, {
+    method: "PUT",
+    body:
+      body instanceof FormData
+        ? body
+        : JSON.stringify(body),
+    ...options,
+  });
+};
+
+// ============================================================
+// DELETE
+// ============================================================
+
+export const del = async (
+  endpoint,
+  options = {}
+) => {
+  return request(endpoint, {
+    method: "DELETE",
+    ...options,
+  });
+};
+
+// ============================================================
+// AUTH
+// ============================================================
+
+export const loginUser = async (
+  credentials
+) => {
+  return post(
+    "/api/auth/login",
+    credentials
+  );
+};
+
+export const registerUser = async (
+  userData
+) => {
+  return post(
+    "/api/auth/register",
+    userData
+  );
+};
+
+export const getCurrentUser = async () => {
+  return get("/api/auth/me");
+};
+
+// ============================================================
+// ADMIN - USERS
+// ============================================================
+
+export const getAdminUsers = async (
+  params = {}
+) => {
+  const query = new URLSearchParams();
 
   Object.entries(params).forEach(
     ([key, value]) => {
       if (
-        value === undefined ||
-        value === null ||
-        value === ""
+        value !== undefined &&
+        value !== null &&
+        value !== ""
       ) {
-        return;
+        query.append(
+          key,
+          value
+        );
       }
-
-      if (
-        (key === "category" ||
-          key === "location") &&
-        value === "all"
-      ) {
-        return;
-      }
-
-      searchParams.set(
-        key,
-        String(value)
-      );
     }
   );
 
-  const query = searchParams.toString();
+  const queryString =
+    query.toString();
 
-  return query ? `?${query}` : "";
+  return get(
+    `/api/admin/users${
+      queryString
+        ? `?${queryString}`
+        : ""
+    }`
+  );
 };
 
-// ================================================================
-// IMAGE URL
-// ================================================================
-
-export const getImageUrl = (path) => {
-  if (!path) {
-    return "/placeholder.png";
+export const getAdminUserById = async (
+  userId
+) => {
+  if (!userId) {
+    throw new Error(
+      "User ID is required"
+    );
   }
 
-  if (typeof path !== "string") {
-    return "/placeholder.png";
-  }
-
-  const cleanPath = path.trim();
-
-  if (!cleanPath) {
-    return "/placeholder.png";
-  }
-
-  // ==============================================================
-  // EXTERNAL URL
-  // ==============================================================
-
-  if (
-    cleanPath.startsWith("http://") ||
-    cleanPath.startsWith("https://")
-  ) {
-    // Cloudinary optimization
-    if (
-      cleanPath.includes("res.cloudinary.com") &&
-      cleanPath.includes("/image/upload/")
-    ) {
-      return cleanPath.replace(
-        "/image/upload/",
-        "/image/upload/f_auto,q_auto,w_600/"
-      );
-    }
-
-    return cleanPath;
-  }
-
-  // ==============================================================
-  // BASE64
-  // ==============================================================
-
-  if (cleanPath.startsWith("data:")) {
-    return cleanPath;
-  }
-
-  // ==============================================================
-  // BLOB
-  // ==============================================================
-
-  if (cleanPath.startsWith("blob:")) {
-    return cleanPath;
-  }
-
-  // ==============================================================
-  // BACKEND RELATIVE PATH
-  // ==============================================================
-
-  return `${API_URL}${
-    cleanPath.startsWith("/")
-      ? cleanPath
-      : `/${cleanPath}`
-  }`;
+  return get(
+    `/api/admin/users/${userId}`
+  );
 };
 
-// ================================================================
-// HEALTH
-// ================================================================
-
-export const health = {
-  check: async () => {
-    return request(
-      `${API_URL}/health`,
-      {
-        method: "GET",
-
-        headers: {
-          Accept: "application/json",
-        },
-      }
+export const updateAdminUserRole = async (
+  userId,
+  role
+) => {
+  if (!userId) {
+    throw new Error(
+      "User ID is required"
     );
-  },
+  }
+
+  return patch(
+    `/api/admin/users/${userId}/role`,
+    { role }
+  );
 };
 
-// ================================================================
-// AUTH
-// ================================================================
-
-export const auth = {
-  login: async (
-    email,
-    password
-  ) => {
-    console.log(
-      "🔐 Login request:",
-      `${API_URL}/auth/login`
-    );
-
-    return request(
-      `${API_URL}/auth/login`,
-      {
-        method: "POST",
-
-        headers: {
-          "Content-Type":
-            "application/json",
-        },
-
-        body: JSON.stringify({
-          email: String(email || "")
-            .trim()
-            .toLowerCase(),
-
-          password: String(
-            password || ""
-          ),
-        }),
-      }
-    );
-  },
-
-  register: async (
-    userData = {}
-  ) => {
-    const registrationData = {
-      name: String(
-        userData.name || ""
-      ).trim(),
-
-      email: String(
-        userData.email || ""
-      )
-        .trim()
-        .toLowerCase(),
-
-      password: String(
-        userData.password || ""
-      ),
-
-      phone: String(
-        userData.phone || ""
-      ).trim(),
-
-      role: String(
-        userData.role || "buyer"
-      )
-        .trim()
-        .toLowerCase(),
-    };
-
-    console.log(
-      "📝 Registration:",
-      {
-        name:
-          registrationData.name,
-
-        email:
-          registrationData.email,
-
-        phone:
-          registrationData.phone,
-
-        role:
-          registrationData.role,
-
-        passwordProvided:
-          Boolean(
-            registrationData.password
-          ),
-      }
-    );
-
-    return request(
-      `${API_URL}/auth/register`,
-      {
-        method: "POST",
-
-        headers: {
-          "Content-Type":
-            "application/json",
-        },
-
-        body: JSON.stringify(
-          registrationData
-        ),
-      }
-    );
-  },
-
-  getMe: async (
-    token = getToken()
-  ) => {
-    if (!token) {
-      const error = new Error(
-        "Authentication token is missing."
-      );
-
-      error.status = 401;
-
-      throw error;
-    }
-
-    console.log(
-      "🔎 Checking:",
-      `${API_URL}/auth/me`
-    );
-
-    return request(
-      `${API_URL}/auth/me`,
-      {
-        method: "GET",
-
-        headers:
-          getHeaders(token),
-      }
-    );
-  },
-
-  logout: async (
-    token = getToken()
-  ) => {
-    if (!token) {
-      return {
-        success: true,
-      };
-    }
-
-    return request(
-      `${API_URL}/auth/logout`,
-      {
-        method: "POST",
-
-        headers:
-          getHeaders(token),
-      }
-    );
-  },
-};
-
-// ================================================================
-// PRODUCTS
-// ================================================================
-
-export const products = {
-  getAll: async (
-    params = {}
-  ) => {
-    const query =
-      buildQuery(params);
-
-    return request(
-      `${API_URL}/api/products${query}`,
-      {
-        method: "GET",
-
-        headers: {
-          Accept:
-            "application/json",
-        },
-      }
-    );
-  },
-
-  getById: async (
-    id
-  ) => {
-    if (!id) {
-      throw new Error(
-        "Product ID is required"
-      );
-    }
-
-    return request(
-      `${API_URL}/api/products/${encodeURIComponent(
-        id
-      )}`,
-      {
-        method: "GET",
-
-        headers: {
-          Accept:
-            "application/json",
-        },
-      }
-    );
-  },
-
-  create: async (
-    productData,
-    token = getToken()
-  ) => {
-    return request(
-      `${API_URL}/api/products`,
-      {
-        method: "POST",
-
-        headers:
-          getHeaders(token),
-
-        body: JSON.stringify(
-          productData
-        ),
-      }
-    );
-  },
-
-  createWithFiles: async (
-    formData,
-    token = getToken()
-  ) => {
-    return request(
-      `${API_URL}/api/products`,
-      {
-        method: "POST",
-
-        headers:
-          getFileHeaders(token),
-
-        body: formData,
-      }
-    );
-  },
-
-  update: async (
-    id,
-    productData,
-    token = getToken()
-  ) => {
-    if (!id) {
-      throw new Error(
-        "Product ID is required"
-      );
-    }
-
-    return request(
-      `${API_URL}/api/products/${encodeURIComponent(
-        id
-      )}`,
-      {
-        method: "PUT",
-
-        headers:
-          getHeaders(token),
-
-        body: JSON.stringify(
-          productData
-        ),
-      }
-    );
-  },
-
-  updateWithFiles: async (
-    id,
-    formData,
-    token = getToken()
-  ) => {
-    if (!id) {
-      throw new Error(
-        "Product ID is required"
-      );
-    }
-
-    return request(
-      `${API_URL}/api/products/${encodeURIComponent(
-        id
-      )}`,
-      {
-        method: "PUT",
-
-        headers:
-          getFileHeaders(token),
-
-        body: formData,
-      }
-    );
-  },
-
-  delete: async (
-    id,
-    token = getToken()
-  ) => {
-    if (!id) {
-      throw new Error(
-        "Product ID is required"
-      );
-    }
-
-    return request(
-      `${API_URL}/api/products/${encodeURIComponent(
-        id
-      )}`,
-      {
-        method: "DELETE",
-
-        headers:
-          getHeaders(token),
-      }
-    );
-  },
-
-  updateStatus: async (
-    productId,
-    status,
-    token = getToken()
-  ) => {
-    if (!productId) {
-      throw new Error(
-        "Product ID is required"
-      );
-    }
-
-    return request(
-      `${API_URL}/api/products/${encodeURIComponent(
-        productId
-      )}/status`,
-      {
-        method: "PATCH",
-
-        headers:
-          getHeaders(token),
-
-        body: JSON.stringify({
-          status,
-        }),
-      }
-    );
-  },
-};
-
-// ================================================================
-// USERS
-// ================================================================
-
-export const users = {
-  getAll: async (
-    params = {},
-    token = getToken()
-  ) => {
-    const query =
-      buildQuery(params);
-
-    return request(
-      `${API_URL}/api/users${query}`,
-      {
-        method: "GET",
-
-        headers:
-          getHeaders(token),
-      }
-    );
-  },
-
-  getById: async (
-    id,
-    token = getToken()
-  ) => {
-    if (!id) {
-      throw new Error(
-        "User ID is required"
-      );
-    }
-
-    return request(
-      `${API_URL}/api/users/${encodeURIComponent(
-        id
-      )}`,
-      {
-        method: "GET",
-
-        headers:
-          getHeaders(token),
-      }
-    );
-  },
-
-  update: async (
-    id,
-    userData,
-    token = getToken()
-  ) => {
-    if (!id) {
-      throw new Error(
-        "User ID is required"
-      );
-    }
-
-    return request(
-      `${API_URL}/api/users/${encodeURIComponent(
-        id
-      )}`,
-      {
-        method: "PUT",
-
-        headers:
-          getHeaders(token),
-
-        body: JSON.stringify(
-          userData
-        ),
-      }
-    );
-  },
-
-  updateWithFiles: async (
-    id,
-    formData,
-    token = getToken()
-  ) => {
-    if (!id) {
-      throw new Error(
-        "User ID is required"
-      );
-    }
-
-    return request(
-      `${API_URL}/api/users/${encodeURIComponent(
-        id
-      )}`,
-      {
-        method: "PUT",
-
-        headers:
-          getFileHeaders(token),
-
-        body: formData,
-      }
-    );
-  },
-
-  delete: async (
-    id,
-    token = getToken()
-  ) => {
-    if (!id) {
-      throw new Error(
-        "User ID is required"
-      );
-    }
-
-    return request(
-      `${API_URL}/api/users/${encodeURIComponent(
-        id
-      )}`,
-      {
-        method: "DELETE",
-
-        headers:
-          getHeaders(token),
-      }
-    );
-  },
-
-  getStats: async (
-    token = getToken()
-  ) => {
-    return request(
-      `${API_URL}/api/users/stats`,
-      {
-        method: "GET",
-
-        headers:
-          getHeaders(token),
-      }
-    );
-  },
-};
-
-// ================================================================
-// NOTIFICATIONS
-// ================================================================
-
-export const notifications = {
-  getForUser: async (
+export const updateAdminUserStatus =
+  async (
     userId,
-    token = getToken()
+    isActive
   ) => {
     if (!userId) {
       throw new Error(
@@ -848,1469 +294,350 @@ export const notifications = {
       );
     }
 
-    return request(
-      `${API_URL}/api/notifications/${encodeURIComponent(
-        userId
-      )}`,
-      {
-        method: "GET",
-
-        headers:
-          getHeaders(token),
-      }
+    return patch(
+      `/api/admin/users/${userId}/status`,
+      { isActive }
     );
-  },
+  };
 
-  getForAdmin: async (
-    token = getToken()
-  ) => {
-    return request(
-      `${API_URL}/api/notifications/admin`,
-      {
-        method: "GET",
+// ============================================================
+// ADMIN - SELLER VERIFICATION
+// ============================================================
 
-        headers:
-          getHeaders(token),
-      }
-    );
-  },
-
-  create: async (
-    data,
-    token = getToken()
-  ) => {
-    return request(
-      `${API_URL}/api/notifications`,
-      {
-        method: "POST",
-
-        headers:
-          getHeaders(token),
-
-        body: JSON.stringify(
-          data
-        ),
-      }
-    );
-  },
-
-  markRead: async (
-    id,
-    token = getToken()
-  ) => {
-    if (!id) {
+export const verifyAdminSeller =
+  async (sellerId) => {
+    if (!sellerId) {
       throw new Error(
-        "Notification ID is required"
+        "Seller ID is required"
       );
     }
 
-    return request(
-      `${API_URL}/api/notifications/${encodeURIComponent(
-        id
-      )}/read`,
-      {
-        method: "PUT",
-
-        headers:
-          getHeaders(token),
-      }
+    return patch(
+      `/api/admin/users/${sellerId}/verify-seller`
     );
-  },
+  };
 
-  delete: async (
-    id,
-    token = getToken()
-  ) => {
-    if (!id) {
+export const unverifyAdminSeller =
+  async (sellerId) => {
+    if (!sellerId) {
       throw new Error(
-        "Notification ID is required"
+        "Seller ID is required"
       );
     }
 
-    return request(
-      `${API_URL}/api/notifications/${encodeURIComponent(
-        id
-      )}`,
-      {
-        method: "DELETE",
-
-        headers:
-          getHeaders(token),
-      }
+    return patch(
+      `/api/admin/users/${sellerId}/unverify-seller`
     );
-  },
-};
+  };
 
-// ================================================================
-// ORDERS
-// ================================================================
+// ============================================================
+// ADMIN - DELETE USER
+// ============================================================
 
-export const orders = {
-  getAll: async (
-    params = {},
-    token = getToken()
-  ) => {
-    const query =
-      buildQuery(params);
-
-    return request(
-      `${API_URL}/api/orders${query}`,
-      {
-        method: "GET",
-
-        headers:
-          getHeaders(token),
-      }
-    );
-  },
-
-  getById: async (
-    id,
-    token = getToken()
-  ) => {
-    if (!id) {
-      throw new Error(
-        "Order ID is required"
-      );
-    }
-
-    return request(
-      `${API_URL}/api/orders/${encodeURIComponent(
-        id
-      )}`,
-      {
-        method: "GET",
-
-        headers:
-          getHeaders(token),
-      }
-    );
-  },
-
-  create: async (
-    orderData,
-    token = getToken()
-  ) => {
-    return request(
-      `${API_URL}/api/orders`,
-      {
-        method: "POST",
-
-        headers:
-          getHeaders(token),
-
-        body: JSON.stringify(
-          orderData
-        ),
-      }
-    );
-  },
-
-  update: async (
-    id,
-    updates,
-    token = getToken()
-  ) => {
-    if (!id) {
-      throw new Error(
-        "Order ID is required"
-      );
-    }
-
-    return request(
-      `${API_URL}/api/orders/${encodeURIComponent(
-        id
-      )}`,
-      {
-        method: "PUT",
-
-        headers:
-          getHeaders(token),
-
-        body: JSON.stringify(
-          updates
-        ),
-      }
-    );
-  },
-
-  delete: async (
-    id,
-    token = getToken()
-  ) => {
-    if (!id) {
-      throw new Error(
-        "Order ID is required"
-      );
-    }
-
-    return request(
-      `${API_URL}/api/orders/${encodeURIComponent(
-        id
-      )}`,
-      {
-        method: "DELETE",
-
-        headers:
-          getHeaders(token),
-      }
-    );
-  },
-};
-
-// ================================================================
-// MESSAGES
-// ================================================================
-
-export const messages = {
-  getForUser: async (
-    userId,
-    token = getToken()
-  ) => {
+export const deleteAdminUser =
+  async (userId) => {
     if (!userId) {
       throw new Error(
         "User ID is required"
       );
     }
 
-    return request(
-      `${API_URL}/api/messages/${encodeURIComponent(
-        userId
-      )}`,
-      {
-        method: "GET",
-
-        headers:
-          getHeaders(token),
-      }
+    return del(
+      `/api/admin/users/${userId}`
     );
-  },
+  };
 
-  getConversations: async (
-    token = getToken()
-  ) => {
-    return request(
-      `${API_URL}/api/messages/conversations`,
-      {
-        method: "GET",
+// ============================================================
+// ADMIN - PRODUCTS
+// ============================================================
 
-        headers:
-          getHeaders(token),
-      }
+export const getAdminProducts =
+  async () => {
+    return get(
+      "/api/admin/products"
     );
-  },
+  };
 
-  getConversation: async (
-    otherUserId,
-    token = getToken()
-  ) => {
-    if (!otherUserId) {
-      throw new Error(
-        "Other user ID is required"
-      );
-    }
-
-    return request(
-      `${API_URL}/api/messages/conversation/${encodeURIComponent(
-        otherUserId
-      )}`,
-      {
-        method: "GET",
-
-        headers:
-          getHeaders(token),
-      }
-    );
-  },
-
-  send: async (
-    receiver,
-    message,
-    productId,
-    token = getToken()
-  ) => {
-    return request(
-      `${API_URL}/api/messages`,
-      {
-        method: "POST",
-
-        headers:
-          getHeaders(token),
-
-        body: JSON.stringify({
-          receiver,
-          message,
-          productId,
-        }),
-      }
-    );
-  },
-
-  markRead: async (
-    messageId,
-    token = getToken()
-  ) => {
-    if (!messageId) {
-      throw new Error(
-        "Message ID is required"
-      );
-    }
-
-    return request(
-      `${API_URL}/api/messages/${encodeURIComponent(
-        messageId
-      )}/read`,
-      {
-        method: "PUT",
-
-        headers:
-          getHeaders(token),
-      }
-    );
-  },
-
-  delete: async (
-    messageId,
-    token = getToken()
-  ) => {
-    if (!messageId) {
-      throw new Error(
-        "Message ID is required"
-      );
-    }
-
-    return request(
-      `${API_URL}/api/messages/${encodeURIComponent(
-        messageId
-      )}`,
-      {
-        method: "DELETE",
-
-        headers:
-          getHeaders(token),
-      }
-    );
-  },
-};
-
-// ================================================================
-// FAVORITES
-// ================================================================
-
-export const favorites = {
-  getAll: async (
-    token = getToken()
-  ) => {
-    return request(
-      `${API_URL}/api/favorites`,
-      {
-        method: "GET",
-
-        headers:
-          getHeaders(token),
-      }
-    );
-  },
-
-  add: async (
-    productId,
-    token = getToken()
-  ) => {
+export const deleteAdminProduct =
+  async (productId) => {
     if (!productId) {
       throw new Error(
         "Product ID is required"
       );
     }
 
-    return request(
-      `${API_URL}/api/favorites`,
-      {
-        method: "POST",
-
-        headers:
-          getHeaders(token),
-
-        body: JSON.stringify({
-          productId,
-        }),
-      }
+    return del(
+      `/api/admin/products/${productId}`
     );
-  },
+  };
 
-  remove: async (
-    productId,
-    token = getToken()
-  ) => {
-    if (!productId) {
-      throw new Error(
-        "Product ID is required"
-      );
-    }
+// ============================================================
+// ADMIN - ORDERS
+// ============================================================
 
-    return request(
-      `${API_URL}/api/favorites/${encodeURIComponent(
-        productId
-      )}`,
-      {
-        method: "DELETE",
-
-        headers:
-          getHeaders(token),
-      }
+export const getAdminOrders =
+  async () => {
+    return get(
+      "/api/admin/orders"
     );
-  },
-};
+  };
 
-// ================================================================
-// ADMIN
-// ================================================================
-
-export const admin = {
-  getDashboardStats: async (
-    token = getToken()
+export const updateAdminOrderStatus =
+  async (
+    orderId,
+    status
   ) => {
-    return request(
-      `${API_URL}/api/admin/dashboard`,
-      {
-        method: "GET",
-
-        headers:
-          getHeaders(token),
-      }
-    );
-  },
-
-  getUsers: async (
-    params = {},
-    token = getToken()
-  ) => {
-    const query =
-      buildQuery(params);
-
-    return request(
-      `${API_URL}/api/admin/users${query}`,
-      {
-        method: "GET",
-
-        headers:
-          getHeaders(token),
-      }
-    );
-  },
-
-  getUserById: async (
-    id,
-    token = getToken()
-  ) => {
-    if (!id) {
-      throw new Error(
-        "User ID is required"
-      );
-    }
-
-    return request(
-      `${API_URL}/api/admin/users/${encodeURIComponent(
-        id
-      )}`,
-      {
-        method: "GET",
-
-        headers:
-          getHeaders(token),
-      }
-    );
-  },
-
-  updateUserRole: async (
-    id,
-    role,
-    token = getToken()
-  ) => {
-    if (!id) {
-      throw new Error(
-        "User ID is required"
-      );
-    }
-
-    return request(
-      `${API_URL}/api/admin/users/${encodeURIComponent(
-        id
-      )}/role`,
-      {
-        method: "PUT",
-
-        headers:
-          getHeaders(token),
-
-        body: JSON.stringify({
-          role,
-        }),
-      }
-    );
-  },
-
-  deleteUser: async (
-    id,
-    token = getToken()
-  ) => {
-    if (!id) {
-      throw new Error(
-        "User ID is required"
-      );
-    }
-
-    return request(
-      `${API_URL}/api/admin/users/${encodeURIComponent(
-        id
-      )}`,
-      {
-        method: "DELETE",
-
-        headers:
-          getHeaders(token),
-      }
-    );
-  },
-
-  getProducts: async (
-    params = {},
-    token = getToken()
-  ) => {
-    const query =
-      buildQuery(params);
-
-    return request(
-      `${API_URL}/api/admin/products${query}`,
-      {
-        method: "GET",
-
-        headers:
-          getHeaders(token),
-      }
-    );
-  },
-
-  deleteProduct: async (
-    id,
-    token = getToken()
-  ) => {
-    if (!id) {
-      throw new Error(
-        "Product ID is required"
-      );
-    }
-
-    return request(
-      `${API_URL}/api/admin/products/${encodeURIComponent(
-        id
-      )}`,
-      {
-        method: "DELETE",
-
-        headers:
-          getHeaders(token),
-      }
-    );
-  },
-
-  getOrders: async (
-    params = {},
-    token = getToken()
-  ) => {
-    const query =
-      buildQuery(params);
-
-    return request(
-      `${API_URL}/api/admin/orders${query}`,
-      {
-        method: "GET",
-
-        headers:
-          getHeaders(token),
-      }
-    );
-  },
-
-  updateOrderStatus: async (
-    id,
-    status,
-    token = getToken()
-  ) => {
-    if (!id) {
+    if (!orderId) {
       throw new Error(
         "Order ID is required"
       );
     }
 
-    return request(
-      `${API_URL}/api/admin/orders/${encodeURIComponent(
-        id
-      )}/status`,
-      {
-        method: "PUT",
-
-        headers:
-          getHeaders(token),
-
-        body: JSON.stringify({
-          status,
-        }),
-      }
+    return patch(
+      `/api/admin/orders/${orderId}/status`,
+      { status }
     );
-  },
+  };
 
-  getRiders: async (
-    params = {},
-    token = getToken()
-  ) => {
+// ============================================================
+// ADMIN - RIDERS
+// ============================================================
+
+export const getAdminRiders =
+  async (params = {}) => {
     const query =
-      buildQuery(params);
+      new URLSearchParams();
 
-    return request(
-      `${API_URL}/api/admin/riders${query}`,
-      {
-        method: "GET",
-
-        headers:
-          getHeaders(token),
+    Object.entries(params).forEach(
+      ([key, value]) => {
+        if (
+          value !== undefined &&
+          value !== null &&
+          value !== ""
+        ) {
+          query.append(
+            key,
+            value
+          );
+        }
       }
     );
-  },
 
-  getRiderById: async (
-    id,
-    token = getToken()
-  ) => {
-    if (!id) {
+    const queryString =
+      query.toString();
+
+    return get(
+      `/api/admin/riders${
+        queryString
+          ? `?${queryString}`
+          : ""
+      }`
+    );
+  };
+
+export const getAdminRiderById =
+  async (riderId) => {
+    if (!riderId) {
       throw new Error(
         "Rider ID is required"
       );
     }
 
-    return request(
-      `${API_URL}/api/admin/riders/${encodeURIComponent(
-        id
-      )}`,
-      {
-        method: "GET",
-
-        headers:
-          getHeaders(token),
-      }
+    return get(
+      `/api/admin/riders/${riderId}`
     );
-  },
+  };
 
-  approveRider: async (
-    id,
-    token = getToken()
-  ) => {
-    return request(
-      `${API_URL}/api/admin/riders/${encodeURIComponent(
-        id
-      )}/approve`,
-      {
-        method: "PUT",
-
-        headers:
-          getHeaders(token),
-      }
-    );
-  },
-
-  rejectRider: async (
-    id,
-    token = getToken()
-  ) => {
-    return request(
-      `${API_URL}/api/admin/riders/${encodeURIComponent(
-        id
-      )}/reject`,
-      {
-        method: "PUT",
-
-        headers:
-          getHeaders(token),
-      }
-    );
-  },
-
-  updateRiderApproval: async (
-    id,
-    isApproved,
-    token = getToken()
-  ) => {
-    return request(
-      `${API_URL}/api/admin/riders/${encodeURIComponent(
-        id
-      )}/approval`,
-      {
-        method: "PUT",
-
-        headers:
-          getHeaders(token),
-
-        body: JSON.stringify({
-          isApproved:
-            Boolean(isApproved),
-        }),
-      }
-    );
-  },
-
-  deleteRider: async (
-    id,
-    token = getToken()
-  ) => {
-    return request(
-      `${API_URL}/api/admin/riders/${encodeURIComponent(
-        id
-      )}`,
-      {
-        method: "DELETE",
-
-        headers:
-          getHeaders(token),
-      }
-    );
-  },
-
-  getDeliveries: async (
-    params = {},
-    token = getToken()
-  ) => {
-    const query =
-      buildQuery(params);
-
-    return request(
-      `${API_URL}/api/admin/deliveries${query}`,
-      {
-        method: "GET",
-
-        headers:
-          getHeaders(token),
-      }
-    );
-  },
-
-  getDeliveryById: async (
-    id,
-    token = getToken()
-  ) => {
-    if (!id) {
+export const approveAdminRider =
+  async (riderId) => {
+    if (!riderId) {
       throw new Error(
-        "Delivery ID is required"
+        "Rider ID is required"
       );
     }
 
-    return request(
-      `${API_URL}/api/admin/deliveries/${encodeURIComponent(
-        id
-      )}`,
-      {
-        method: "GET",
-
-        headers:
-          getHeaders(token),
-      }
+    return patch(
+      `/api/admin/riders/${riderId}/approve`
     );
-  },
+  };
 
-  updateDeliveryStatus: async (
-    id,
-    status,
-    token = getToken()
-  ) => {
-    if (!id) {
+export const rejectAdminRider =
+  async (riderId) => {
+    if (!riderId) {
       throw new Error(
-        "Delivery ID is required"
+        "Rider ID is required"
       );
     }
 
-    return request(
-      `${API_URL}/api/admin/deliveries/${encodeURIComponent(
-        id
-      )}/status`,
-      {
-        method: "PUT",
-
-        headers:
-          getHeaders(token),
-
-        body: JSON.stringify({
-          status,
-        }),
-      }
+    return patch(
+      `/api/admin/riders/${riderId}/reject`
     );
-  },
-};
+  };
 
-// ================================================================
-// DELIVERY
-// ================================================================
-
-export const deliveries = {
-  create: async (
-    deliveryData,
-    token = getToken()
+export const updateAdminRiderStatus =
+  async (
+    riderId,
+    isActive
   ) => {
-    return request(
-      `${API_URL}/api/deliveries`,
-      {
-        method: "POST",
-
-        headers:
-          getHeaders(token),
-
-        body: JSON.stringify(
-          deliveryData
-        ),
-      }
-    );
-  },
-
-  getCustomerDeliveries: async (
-    token = getToken()
-  ) => {
-    return request(
-      `${API_URL}/api/deliveries/customer`,
-      {
-        method: "GET",
-
-        headers:
-          getHeaders(token),
-      }
-    );
-  },
-
-  getAvailable: async (
-    token = getToken()
-  ) => {
-    return request(
-      `${API_URL}/api/deliveries/available`,
-      {
-        method: "GET",
-
-        headers:
-          getHeaders(token),
-      }
-    );
-  },
-
-  getMy: async (
-    token = getToken()
-  ) => {
-    return request(
-      `${API_URL}/api/deliveries/my`,
-      {
-        method: "GET",
-
-        headers:
-          getHeaders(token),
-      }
-    );
-  },
-
-  getRiderDeliveries: async (
-    token = getToken()
-  ) => {
-    return request(
-      `${API_URL}/api/deliveries/rider`,
-      {
-        method: "GET",
-
-        headers:
-          getHeaders(token),
-      }
-    );
-  },
-
-  updateAvailability: async (
-    isAvailable,
-    token = getToken()
-  ) => {
-    return request(
-      `${API_URL}/api/deliveries/rider/availability`,
-      {
-        method: "PATCH",
-
-        headers:
-          getHeaders(token),
-
-        body: JSON.stringify({
-          isAvailable:
-            Boolean(isAvailable),
-        }),
-      }
-    );
-  },
-
-  toggleAvailability: async (
-    isAvailable,
-    token = getToken()
-  ) => {
-    return request(
-      `${API_URL}/api/deliveries/rider/availability`,
-      {
-        method: "PATCH",
-
-        headers:
-          getHeaders(token),
-
-        body: JSON.stringify({
-          isAvailable:
-            Boolean(isAvailable),
-        }),
-      }
-    );
-  },
-
-  accept: async (
-    id,
-    token = getToken()
-  ) => {
-    if (!id) {
+    if (!riderId) {
       throw new Error(
-        "Delivery ID is required"
+        "Rider ID is required"
       );
     }
 
-    return request(
-      `${API_URL}/api/deliveries/${encodeURIComponent(
-        id
-      )}/accept`,
-      {
-        method: "PATCH",
-
-        headers:
-          getHeaders(token),
-      }
+    return patch(
+      `/api/admin/riders/${riderId}/status`,
+      { isActive }
     );
-  },
+  };
 
-  updateStatus: async (
-    id,
-    status,
-    token = getToken()
+export const updateAdminRiderProfile =
+  async (
+    riderId,
+    profile
   ) => {
-    if (!id) {
+    if (!riderId) {
       throw new Error(
-        "Delivery ID is required"
+        "Rider ID is required"
       );
     }
 
-    return request(
-      `${API_URL}/api/deliveries/${encodeURIComponent(
-        id
-      )}/status`,
-      {
-        method: "PATCH",
-
-        headers:
-          getHeaders(token),
-
-        body: JSON.stringify({
-          status,
-        }),
-      }
+    return patch(
+      `/api/admin/riders/${riderId}/profile`,
+      profile
     );
-  },
+  };
 
-  updateLocation: async (
-    id,
-    location,
-    token = getToken()
-  ) => {
-    if (!id) {
-      throw new Error(
-        "Delivery ID is required"
-      );
-    }
-
-    return request(
-      `${API_URL}/api/deliveries/${encodeURIComponent(
-        id
-      )}/location`,
-      {
-        method: "PATCH",
-
-        headers:
-          getHeaders(token),
-
-        body: JSON.stringify(
-          location
-        ),
-      }
-    );
-  },
-
-  getById: async (
-    id,
-    token = getToken()
-  ) => {
-    if (!id) {
-      throw new Error(
-        "Delivery ID is required"
-      );
-    }
-
-    return request(
-      `${API_URL}/api/deliveries/${encodeURIComponent(
-        id
-      )}`,
-      {
-        method: "GET",
-
-        headers:
-          getHeaders(token),
-      }
-    );
-  },
-
-  cancel: async (
-    id,
-    token = getToken()
-  ) => {
-    if (!id) {
-      throw new Error(
-        "Delivery ID is required"
-      );
-    }
-
-    return request(
-      `${API_URL}/api/deliveries/${encodeURIComponent(
-        id
-      )}/cancel`,
-      {
-        method: "PATCH",
-
-        headers:
-          getHeaders(token),
-      }
-    );
-  },
-};
-
-// ================================================================
-// NAMED AUTH EXPORTS
-// ================================================================
-
-export const login = auth.login;
-export const register = auth.register;
-export const getMe = auth.getMe;
-export const logout = auth.logout;
-
-// ================================================================
-// PRODUCT EXPORTS
-// ================================================================
-
-export const getProducts =
-  products.getAll;
-
-export const getProduct =
-  products.getById;
-
-export const createProduct =
-  products.create;
-
-export const createProductWithFiles =
-  products.createWithFiles;
-
-export const updateProduct =
-  products.update;
-
-export const updateProductWithFiles =
-  products.updateWithFiles;
-
-export const deleteProduct =
-  products.delete;
-
-export const updateProductStatus =
-  products.updateStatus;
-
-// ================================================================
-// SELLER PRODUCTS
-// ================================================================
-
-export const getSellerProducts = async (
-  sellerId
-) => {
-  if (!sellerId) {
-    throw new Error(
-      "Seller ID is required"
-    );
-  }
-
-  return products.getAll({
-    sellerId,
-  });
-};
-
-// ================================================================
-// USER EXPORTS
-// ================================================================
-
-export const getUsers =
-  users.getAll;
-
-export const getUser =
-  users.getById;
-
-export const updateUser =
-  users.update;
-
-export const updateUserWithFiles =
-  users.updateWithFiles;
-
-export const deleteUser =
-  users.delete;
-
-export const getUserStats =
-  users.getStats;
-
-// ================================================================
-// NOTIFICATION EXPORTS
-// ================================================================
-
-export const getNotifications =
-  notifications.getForUser;
-
-export const getAdminNotifications =
-  notifications.getForAdmin;
-
-export const getUserNotifications =
-  notifications.getForUser;
-
-export const createNotification =
-  notifications.create;
-
-export const markNotificationRead =
-  notifications.markRead;
-
-export const deleteNotification =
-  notifications.delete;
-
-// ================================================================
-// ORDER EXPORTS
-// ================================================================
-
-export const getOrders =
-  orders.getAll;
-
-export const getOrder =
-  orders.getById;
-
-export const createOrder =
-  orders.create;
-
-export const updateOrder =
-  orders.update;
-
-export const deleteOrder =
-  orders.delete;
-
-// ================================================================
-// MESSAGE EXPORTS
-// ================================================================
-
-export const getMessages =
-  messages.getForUser;
-
-export const getConversations =
-  messages.getConversations;
-
-export const getConversation =
-  messages.getConversation;
-
-export const sendMessage =
-  messages.send;
-
-export const markMessageRead =
-  messages.markRead;
-
-export const deleteMessage =
-  messages.delete;
-
-// ================================================================
-// FAVORITES
-// ================================================================
-
-export const getFavorites =
-  favorites.getAll;
-
-export const addFavorite =
-  favorites.add;
-
-export const removeFavorite =
-  favorites.remove;
-
-// ================================================================
-// ADMIN EXPORTS
-// ================================================================
+// ============================================================
+// ADMIN DASHBOARD
+// ============================================================
 
 export const getAdminDashboardStats =
-  admin.getDashboardStats;
+  async () => {
+    return get(
+      "/api/admin/stats"
+    );
+  };
 
-export const getAdminUsers =
-  admin.getUsers;
+// ============================================================
+// NOTIFICATIONS
+// IMPORTANT:
+// This endpoint expects USER ID, NOT JWT TOKEN.
+// ============================================================
 
-export const getAdminUserById =
-  admin.getUserById;
+export const getNotifications =
+  async (userId) => {
+    if (!userId) {
+      throw new Error(
+        "User ID is required to fetch notifications"
+      );
+    }
 
-export const updateAdminUserRole =
-  admin.updateUserRole;
+    return get(
+      `/api/notifications/${userId}`
+    );
+  };
 
-export const deleteAdminUser =
-  admin.deleteUser;
+export const markNotificationAsRead =
+  async (
+    notificationId
+  ) => {
+    if (!notificationId) {
+      throw new Error(
+        "Notification ID is required"
+      );
+    }
 
-export const getAdminProducts =
-  admin.getProducts;
+    return patch(
+      `/api/notifications/${notificationId}/read`
+    );
+  };
 
-export const deleteAdminProduct =
-  admin.deleteProduct;
+export const markAllNotificationsAsRead =
+  async (userId) => {
+    if (!userId) {
+      throw new Error(
+        "User ID is required"
+      );
+    }
 
-export const getAdminOrders =
-  admin.getOrders;
+    return patch(
+      `/api/notifications/user/${userId}/read-all`
+    );
+  };
 
-export const updateAdminOrderStatus =
-  admin.updateOrderStatus;
+// ============================================================
+// PASSWORD
+// ============================================================
 
-export const getRiders =
-  admin.getRiders;
+export const forgotPassword =
+  async (email) => {
+    return post(
+      "/api/password/forgot",
+      { email }
+    );
+  };
 
-export const getRiderById =
-  admin.getRiderById;
+export const resetPassword =
+  async (
+    token,
+    password
+  ) => {
+    return post(
+      "/api/password/reset",
+      {
+        token,
+        password,
+      }
+    );
+  };
 
-export const approveRider =
-  admin.approveRider;
+// ============================================================
+// EXPORT DEFAULT
+// ============================================================
 
-export const rejectRider =
-  admin.rejectRider;
-
-export const updateRiderApproval =
-  admin.updateRiderApproval;
-
-export const deleteRider =
-  admin.deleteRider;
-
-export const getAdminDeliveries =
-  admin.getDeliveries;
-
-export const getAdminDeliveryById =
-  admin.getDeliveryById;
-
-export const updateAdminDeliveryStatus =
-  admin.updateDeliveryStatus;
-
-// ================================================================
-// DELIVERY EXPORTS
-// ================================================================
-
-export const createDelivery =
-  deliveries.create;
-
-export const getCustomerDeliveries =
-  deliveries.getCustomerDeliveries;
-
-export const getAvailableDeliveries =
-  deliveries.getAvailable;
-
-export const getMyDeliveries =
-  deliveries.getMy;
-
-export const getRiderDeliveries =
-  deliveries.getRiderDeliveries;
-
-export const updateRiderAvailability =
-  deliveries.updateAvailability;
-
-export const toggleRiderAvailability =
-  deliveries.toggleAvailability;
-
-export const acceptDelivery =
-  deliveries.accept;
-
-export const updateDeliveryStatus =
-  deliveries.updateStatus;
-
-export const updateDeliveryLocation =
-  deliveries.updateLocation;
-
-export const getDelivery =
-  deliveries.getById;
-
-export const cancelDelivery =
-  deliveries.cancel;
-
-// ================================================================
-// DEFAULT API OBJECT
-// ================================================================
-
-const api = {
+export default {
   API_URL,
+  request,
+  get,
+  post,
+  patch,
+  put,
+  del,
 
-  health,
-
-  auth,
-
-  products,
-
-  users,
-
-  notifications,
-
-  orders,
-
-  messages,
-
-  favorites,
-
-  admin,
-
-  deliveries,
-
-  login,
-
-  register,
-
-  getMe,
-
-  logout,
-
-  getProducts,
-
-  getProduct,
-
-  createProduct,
-
-  createProductWithFiles,
-
-  updateProduct,
-
-  updateProductWithFiles,
-
-  deleteProduct,
-
-  updateProductStatus,
-
-  getSellerProducts,
-
-  getUsers,
-
-  getUser,
-
-  updateUser,
-
-  updateUserWithFiles,
-
-  deleteUser,
-
-  getUserStats,
-
-  getNotifications,
-
-  getAdminNotifications,
-
-  getUserNotifications,
-
-  createNotification,
-
-  markNotificationRead,
-
-  deleteNotification,
-
-  getOrders,
-
-  getOrder,
-
-  createOrder,
-
-  updateOrder,
-
-  deleteOrder,
-
-  getMessages,
-
-  getConversations,
-
-  getConversation,
-
-  sendMessage,
-
-  markMessageRead,
-
-  deleteMessage,
-
-  getFavorites,
-
-  addFavorite,
-
-  removeFavorite,
-
-  getAdminDashboardStats,
+  loginUser,
+  registerUser,
+  getCurrentUser,
 
   getAdminUsers,
-
   getAdminUserById,
-
   updateAdminUserRole,
+  updateAdminUserStatus,
+
+  verifyAdminSeller,
+  unverifyAdminSeller,
 
   deleteAdminUser,
 
   getAdminProducts,
-
   deleteAdminProduct,
 
   getAdminOrders,
-
   updateAdminOrderStatus,
 
-  getRiders,
+  getAdminRiders,
+  getAdminRiderById,
+  approveAdminRider,
+  rejectAdminRider,
+  updateAdminRiderStatus,
+  updateAdminRiderProfile,
 
-  getRiderById,
+  getAdminDashboardStats,
 
-  approveRider,
+  getNotifications,
+  markNotificationAsRead,
+  markAllNotificationsAsRead,
 
-  rejectRider,
-
-  updateRiderApproval,
-
-  deleteRider,
-
-  getAdminDeliveries,
-
-  getAdminDeliveryById,
-
-  updateAdminDeliveryStatus,
-
-  createDelivery,
-
-  getCustomerDeliveries,
-
-  getAvailableDeliveries,
-
-  getMyDeliveries,
-
-  getRiderDeliveries,
-
-  updateRiderAvailability,
-
-  toggleRiderAvailability,
-
-  acceptDelivery,
-
-  updateDeliveryStatus,
-
-  updateDeliveryLocation,
-
-  getDelivery,
-
-  cancelDelivery,
-
-  getImageUrl,
-
-  getToken,
-
-  clearAuthData,
+  forgotPassword,
+  resetPassword,
 };
-
-export default api;
