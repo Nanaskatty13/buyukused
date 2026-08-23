@@ -44,6 +44,52 @@ const PRODUCT_CONDITIONS = [
 ];
 
 // ============================================================
+// CATEGORY ALIASES
+//
+// Accept lowercase / uppercase / mixed-case values from frontend
+// and always store the official category name in MongoDB.
+// ============================================================
+
+const CATEGORY_ALIASES = {
+  cars: "Cars",
+  phones: "Phones",
+  laptops: "Laptops",
+  tablets: "Tablets",
+  accessories: "Accessories",
+  "real estate": "Real Estate",
+  jobs: "Jobs",
+  electronics: "Electronics",
+  fashion: "Fashion",
+  home: "Home",
+  tvs: "TVs",
+  "game consoles": "Game Consoles",
+  smartwatches: "Smartwatches",
+  cosmetics: "Cosmetics",
+  other: "Other",
+};
+
+// ============================================================
+// NORMALIZE CATEGORY
+// ============================================================
+
+const normalizeCategory = (value) => {
+  // Empty category
+  if (
+    value === undefined ||
+    value === null ||
+    String(value).trim() === ""
+  ) {
+    return "Other";
+  }
+
+  const normalized = String(value)
+    .trim()
+    .toLowerCase();
+
+  return CATEGORY_ALIASES[normalized] || value;
+};
+
+// ============================================================
 // PRODUCT SCHEMA
 // ============================================================
 
@@ -74,7 +120,18 @@ const productSchema = new mongoose.Schema(
 
     category: {
       type: String,
-      enum: PRODUCT_CATEGORIES,
+
+      // IMPORTANT:
+      // Convert "cosmetics" -> "Cosmetics"
+      // before enum validation happens.
+      set: normalizeCategory,
+
+      enum: {
+        values: PRODUCT_CATEGORIES,
+        message:
+          "Invalid product category: {VALUE}",
+      },
+
       default: "Other",
       index: true,
       trim: true,
@@ -514,27 +571,10 @@ const productSchema = new mongoose.Schema(
       type: String,
       default: "",
       trim: true,
-    },
-
-    cosmeticSubcategory: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    gender: {
-      type: String,
-      default: "",
-      trim: true,
+      index: true,
     },
 
     skinType: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    hairType: {
       type: String,
       default: "",
       trim: true,
@@ -552,19 +592,13 @@ const productSchema = new mongoose.Schema(
       trim: true,
     },
 
-    formulation: {
+    expiryDate: {
       type: String,
       default: "",
       trim: true,
     },
 
-    finish: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    fragrance: {
+    gender: {
       type: String,
       default: "",
       trim: true,
@@ -575,60 +609,6 @@ const productSchema = new mongoose.Schema(
       default: "",
       trim: true,
       maxlength: 3000,
-    },
-
-    benefits: {
-      type: String,
-      default: "",
-      trim: true,
-      maxlength: 2000,
-    },
-
-    suitableFor: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    skinConcern: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    spf: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    expirationDate: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    batchNumber: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    countryOfOrigin: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    authenticity: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    sealed: {
-      type: Boolean,
-      default: false,
     },
 
     // ========================================================
@@ -734,9 +714,7 @@ productSchema.index({
   compatibleWith: "text",
   compatibility: "text",
   cosmeticType: "text",
-  cosmeticSubcategory: "text",
   ingredients: "text",
-  benefits: "text",
 });
 
 // ============================================================
@@ -852,22 +830,6 @@ productSchema.index({
 
 productSchema.index({
   cosmeticType: 1,
-});
-
-productSchema.index({
-  cosmeticSubcategory: 1,
-});
-
-productSchema.index({
-  skinType: 1,
-});
-
-productSchema.index({
-  hairType: 1,
-});
-
-productSchema.index({
-  authenticity: 1,
 });
 
 // ============================================================
