@@ -55,30 +55,26 @@ const productSchema = new mongoose.Schema(
 
     title: {
       type: String,
-      required: [true, "Product title is required"],
+      required: true,
       trim: true,
       maxlength: 200,
     },
 
     price: {
       type: Number,
-      required: [true, "Product price is required"],
-      min: [0, "Price cannot be negative"],
+      required: true,
+      min: 0,
     },
 
     oldPrice: {
       type: Number,
       default: null,
-      min: [0, "Old price cannot be negative"],
+      min: 0,
     },
 
     category: {
       type: String,
-      required: [true, "Product category is required"],
-      enum: {
-        values: PRODUCT_CATEGORIES,
-        message: "Invalid product category: {VALUE}",
-      },
+      enum: PRODUCT_CATEGORIES,
       default: "Other",
       index: true,
       trim: true,
@@ -86,7 +82,6 @@ const productSchema = new mongoose.Schema(
 
     location: {
       type: String,
-      required: [true, "Product location is required"],
       default: "Ghana",
       trim: true,
       index: true,
@@ -114,14 +109,12 @@ const productSchema = new mongoose.Schema(
       type: String,
       default: "",
       trim: true,
-      maxlength: 150,
     },
 
     sellerPhone: {
       type: String,
       default: "",
       trim: true,
-      maxlength: 30,
     },
 
     // ========================================================
@@ -152,7 +145,6 @@ const productSchema = new mongoose.Schema(
       type: String,
       default: "",
       trim: true,
-      maxlength: 150,
       index: true,
     },
 
@@ -160,7 +152,6 @@ const productSchema = new mongoose.Schema(
       type: String,
       default: "",
       trim: true,
-      maxlength: 200,
       index: true,
     },
 
@@ -168,7 +159,6 @@ const productSchema = new mongoose.Schema(
       type: String,
       default: "",
       trim: true,
-      maxlength: 500,
     },
 
     condition: {
@@ -182,7 +172,6 @@ const productSchema = new mongoose.Schema(
       type: String,
       default: "",
       trim: true,
-      maxlength: 100,
     },
 
     // ========================================================
@@ -193,223 +182,94 @@ const productSchema = new mongoose.Schema(
       type: String,
       default: "",
       trim: true,
-      maxlength: 200,
     },
 
     ram: {
       type: String,
       default: "",
       trim: true,
-      maxlength: 100,
     },
 
     processor: {
       type: String,
       default: "",
       trim: true,
-      maxlength: 200,
     },
 
     graphics: {
       type: String,
       default: "",
       trim: true,
-      maxlength: 200,
     },
 
     screenSize: {
       type: String,
       default: "",
       trim: true,
-      maxlength: 100,
     },
 
     year: {
       type: String,
       default: "",
       trim: true,
-      maxlength: 20,
     },
 
     connectivity: {
       type: String,
       default: "",
       trim: true,
-      maxlength: 150,
     },
 
     // ========================================================
-    // PHONE
-    // ========================================================
-
-    batteryHealth: {
-      type: Number,
-      min: 0,
-      max: 100,
-      default: null,
-    },
-
-    faceId: {
-      type: String,
-      enum: [
-        "Working",
-        "Not Working",
-        "Not Available",
-        "",
-      ],
-      default: "",
-      trim: true,
-    },
-
-    simStatus: {
-      type: String,
-      enum: [
-        "eSIM Unlocked",
-        "SIM Unlocked",
-        "Locked",
-        "Bypass",
-        "Not Available",
-        "",
-      ],
-      default: "",
-      trim: true,
-    },
-
-    // ========================================================
-    // ACCESSORIES
-    // ========================================================
-
-    accessoryType: {
-      type: String,
-      default: "",
-      trim: true,
-      maxlength: 150,
-    },
-
-    compatibleWith: {
-      type: String,
-      default: "",
-      trim: true,
-      maxlength: 300,
-    },
-
-    compatibility: {
-      type: String,
-      default: "",
-      trim: true,
-      maxlength: 1000,
-    },
-
-    material: {
-      type: String,
-      default: "",
-      trim: true,
-      maxlength: 200,
-    },
-
-    cableType: {
-      type: String,
-      default: "",
-      trim: true,
-      maxlength: 150,
-    },
-
-    connectorType: {
-      type: String,
-      default: "",
-      trim: true,
-      maxlength: 150,
-    },
-
-    powerOutput: {
-      type: String,
-      default: "",
-      trim: true,
-      maxlength: 100,
-    },
-
-    capacity: {
-      type: String,
-      default: "",
-      trim: true,
-      maxlength: 100,
-    },
-
-    batteryCapacity: {
-      type: String,
-      default: "",
-      trim: true,
-      maxlength: 100,
-    },
-
-    wireless: {
-      type: Boolean,
-      default: false,
-    },
-
-    original: {
-      type: Boolean,
-      default: false,
-    },
-
-    // ========================================================
-    // GAME CONSOLES
+    // GAME CONSOLE
     // ========================================================
 
     videoOutput: {
       type: String,
       default: "",
       trim: true,
-      maxlength: 150,
     },
 
     region: {
       type: String,
       default: "",
       trim: true,
-      maxlength: 100,
     },
 
     consoleType: {
       type: String,
       default: "",
       trim: true,
-      maxlength: 100,
     },
 
     edition: {
       type: String,
       default: "",
       trim: true,
-      maxlength: 150,
     },
 
     discDrive: {
       type: String,
       default: "",
       trim: true,
-      maxlength: 100,
     },
 
     controllersIncluded: {
       type: String,
       default: "",
       trim: true,
-      maxlength: 100,
     },
 
     battery: {
       type: String,
       default: "",
       trim: true,
-      maxlength: 150,
     },
 
     resolution: {
       type: String,
       default: "",
       trim: true,
-      maxlength: 100,
     },
 
     // ========================================================
@@ -420,7 +280,6 @@ const productSchema = new mongoose.Schema(
       type: String,
       default: "",
       trim: true,
-      maxlength: 100,
     },
 
     // ========================================================
@@ -431,49 +290,42 @@ const productSchema = new mongoose.Schema(
       type: String,
       default: "",
       trim: true,
-      maxlength: 100,
     },
 
     displayTechnology: {
       type: String,
       default: "",
       trim: true,
-      maxlength: 150,
     },
 
     refreshRate: {
       type: String,
       default: "",
       trim: true,
-      maxlength: 100,
     },
 
     operatingSystem: {
       type: String,
       default: "",
       trim: true,
-      maxlength: 150,
     },
 
     hdr: {
       type: String,
       default: "",
       trim: true,
-      maxlength: 100,
     },
 
     hdmiPorts: {
       type: String,
       default: "",
       trim: true,
-      maxlength: 50,
     },
 
     usbPorts: {
       type: String,
       default: "",
       trim: true,
-      maxlength: 50,
     },
 
     smartTV: {
@@ -505,35 +357,30 @@ const productSchema = new mongoose.Schema(
       type: String,
       default: "",
       trim: true,
-      maxlength: 100,
     },
 
     fuelType: {
       type: String,
       default: "",
       trim: true,
-      maxlength: 100,
     },
 
     transmission: {
       type: String,
       default: "",
       trim: true,
-      maxlength: 100,
     },
 
     driveType: {
       type: String,
       default: "",
       trim: true,
-      maxlength: 100,
     },
 
     engineSize: {
       type: String,
       default: "",
       trim: true,
-      maxlength: 100,
     },
 
     seatingCapacity: {
@@ -546,14 +393,117 @@ const productSchema = new mongoose.Schema(
       type: String,
       default: "",
       trim: true,
-      maxlength: 100,
     },
 
     interiorColor: {
       type: String,
       default: "",
       trim: true,
-      maxlength: 100,
+    },
+
+    // ========================================================
+    // ACCESSORIES
+    // ========================================================
+
+    accessoryType: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    compatibleWith: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    compatibility: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 1000,
+    },
+
+    material: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    cableType: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    connectorType: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    powerOutput: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    capacity: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    batteryCapacity: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    wireless: {
+      type: Boolean,
+      default: false,
+    },
+
+    original: {
+      type: Boolean,
+      default: false,
+    },
+
+    // ========================================================
+    // PHONE
+    // ========================================================
+
+    batteryHealth: {
+      type: Number,
+      min: 0,
+      max: 100,
+      default: null,
+    },
+
+    faceId: {
+      type: String,
+      enum: [
+        "Working",
+        "Not Working",
+        "Not Available",
+        "",
+      ],
+      default: "",
+    },
+
+    simStatus: {
+      type: String,
+      enum: [
+        "eSIM Unlocked",
+        "SIM Unlocked",
+        "Locked",
+        "Bypass",
+        "Not Available",
+        "",
+      ],
+      default: "",
+      trim: true,
     },
 
     // ========================================================
@@ -564,77 +514,67 @@ const productSchema = new mongoose.Schema(
       type: String,
       default: "",
       trim: true,
-      maxlength: 150,
     },
 
     cosmeticSubcategory: {
       type: String,
       default: "",
       trim: true,
-      maxlength: 150,
     },
 
     gender: {
       type: String,
       default: "",
       trim: true,
-      maxlength: 100,
     },
 
     skinType: {
       type: String,
       default: "",
       trim: true,
-      maxlength: 200,
     },
 
     hairType: {
       type: String,
       default: "",
       trim: true,
-      maxlength: 200,
     },
 
     shade: {
       type: String,
       default: "",
       trim: true,
-      maxlength: 150,
     },
 
     volume: {
       type: String,
       default: "",
       trim: true,
-      maxlength: 100,
     },
 
     formulation: {
       type: String,
       default: "",
       trim: true,
-      maxlength: 150,
     },
 
     finish: {
       type: String,
       default: "",
       trim: true,
-      maxlength: 150,
     },
 
     fragrance: {
       type: String,
       default: "",
       trim: true,
-      maxlength: 150,
     },
 
     ingredients: {
       type: String,
       default: "",
       trim: true,
-      maxlength: 2000,
+      maxlength: 3000,
     },
 
     benefits: {
@@ -648,49 +588,42 @@ const productSchema = new mongoose.Schema(
       type: String,
       default: "",
       trim: true,
-      maxlength: 500,
     },
 
     skinConcern: {
       type: String,
       default: "",
       trim: true,
-      maxlength: 500,
     },
 
     spf: {
       type: String,
       default: "",
       trim: true,
-      maxlength: 50,
     },
 
     expirationDate: {
       type: String,
       default: "",
       trim: true,
-      maxlength: 50,
     },
 
     batchNumber: {
       type: String,
       default: "",
       trim: true,
-      maxlength: 100,
     },
 
     countryOfOrigin: {
       type: String,
       default: "",
       trim: true,
-      maxlength: 100,
     },
 
     authenticity: {
       type: String,
       default: "",
       trim: true,
-      maxlength: 100,
     },
 
     sealed: {
@@ -768,7 +701,6 @@ const productSchema = new mongoose.Schema(
   {
     timestamps: true,
     versionKey: false,
-    strict: true,
   }
 );
 
@@ -934,18 +866,8 @@ productSchema.index({
   hairType: 1,
 });
 
-// ============================================================
-// CLEAN JSON OUTPUT
-// ============================================================
-
-productSchema.set("toJSON", {
-  transform: (doc, ret) => {
-    ret.id = ret._id;
-    delete ret._id;
-    delete ret.__v;
-
-    return ret;
-  },
+productSchema.index({
+  authenticity: 1,
 });
 
 // ============================================================
