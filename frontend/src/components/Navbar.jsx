@@ -5,6 +5,9 @@ import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { getNotifications } from '../services/api';
 
+// ─── Helper to get token from localStorage ──────────────────
+const getToken = () => localStorage.getItem('token') || localStorage.getItem('authToken') || null;
+
 const Navbar = () => {
   const { user, logout } = useAuth();
   const { favorites } = useCart();
@@ -52,15 +55,31 @@ const Navbar = () => {
 
     const fetchCounts = async () => {
       try {
+        // 1. Notifications – using existing getNotifications
         const notifData = await getNotifications(user._id);
         const notifications = notifData?.notifications || notifData?.data || [];
         const unread = notifications.filter(n => !n.isRead).length;
         setUnreadNotifications(unread);
 
-        // Placeholder for messages – replace with real API call
-        // const msgData = await getUnreadMessagesCount(user._id);
-        // setUnreadMessages(msgData?.count || 0);
-        setUnreadMessages(0);
+        // 2. Messages – call the unread count endpoint
+        const token = getToken();
+        if (token) {
+          const response = await fetch(`${import.meta.env.VITE_API_URL}/api/messages/unread-count`, {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+          });
+          if (response.ok) {
+            const data = await response.json();
+            setUnreadMessages(data.count || 0);
+          } else {
+            console.warn('Failed to fetch unread message count:', response.status);
+            setUnreadMessages(0);
+          }
+        } else {
+          setUnreadMessages(0);
+        }
       } catch (error) {
         console.error('Failed to fetch unread counts:', error);
         setUnreadNotifications(0);
@@ -69,6 +88,8 @@ const Navbar = () => {
     };
 
     fetchCounts();
+
+    // Poll every 30 seconds for updates
     const interval = setInterval(fetchCounts, 30000);
     return () => clearInterval(interval);
   }, [user]);
