@@ -16,11 +16,16 @@ const {
   getSellerProfile,
   updateSellerProfile,
   getSellerDashboard,
+  getSellerAnalytics,
   getMyProducts,
   getSellerOrders,
+  getSellerOrderById,
+  updateSellerOrderStatus,
   getSellerEarnings,
   getPublicSellerProfile,
   getPublicSellerProducts,
+  verifySeller,
+  rejectSeller,
 } = require("../controllers/sellerController");
 
 // ============================================================
@@ -33,11 +38,15 @@ const {
 } = require("../middleware/authMiddleware");
 
 // ============================================================
-// SELLER ACCESS
+// ROLE MIDDLEWARE
 // ============================================================
 
 const requireSeller = requireRoles(
   "seller",
+  "admin"
+);
+
+const requireAdmin = requireRoles(
   "admin"
 );
 
@@ -93,6 +102,18 @@ router.get(
 );
 
 // ============================================================
+// SELLER ANALYTICS
+// ============================================================
+
+// GET /api/sellers/analytics
+router.get(
+  "/analytics",
+  authenticate,
+  requireSeller,
+  getSellerAnalytics
+);
+
+// ============================================================
 // SELLER EARNINGS
 // ============================================================
 
@@ -129,13 +150,40 @@ router.get(
 );
 
 // ============================================================
+// SINGLE SELLER ORDER
+// ============================================================
+
+// GET /api/sellers/orders/:orderId
+router.get(
+  "/orders/:orderId",
+  authenticate,
+  requireSeller,
+  getSellerOrderById
+);
+
+// ============================================================
+// UPDATE SELLER ORDER STATUS
+// ============================================================
+
+// PATCH /api/sellers/orders/:orderId/status
+router.patch(
+  "/orders/:orderId/status",
+  authenticate,
+  requireSeller,
+  updateSellerOrderStatus
+);
+
+// ============================================================
 // PUBLIC SELLER PRODUCTS
 // ============================================================
 //
 // IMPORTANT:
-// This route must come before:
+// These routes must appear before:
 //
 // /:sellerId
+//
+// Otherwise "/:sellerId" could catch "products"
+// incorrectly.
 //
 // ============================================================
 
@@ -153,6 +201,40 @@ router.get(
 router.get(
   "/:sellerId",
   getPublicSellerProfile
+);
+
+// ============================================================
+// ADMIN SELLER VERIFICATION
+// ============================================================
+//
+// These routes are intentionally NOT inside the normal
+// public seller routes.
+//
+// They are mounted separately by server.js at:
+//
+// /api/admin/sellers
+//
+// Therefore:
+//
+// POST /api/admin/sellers/:sellerId/verify
+// POST /api/admin/sellers/:sellerId/reject
+//
+// ============================================================
+
+// POST /api/admin/sellers/:sellerId/verify
+router.post(
+  "/:sellerId/verify",
+  authenticate,
+  requireAdmin,
+  verifySeller
+);
+
+// POST /api/admin/sellers/:sellerId/reject
+router.post(
+  "/:sellerId/reject",
+  authenticate,
+  requireAdmin,
+  rejectSeller
 );
 
 // ============================================================

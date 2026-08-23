@@ -23,7 +23,8 @@ const connectDB = require("./config/db");
 
 require("./config/passport")(passport);
 
-const activityMiddleware = require("./middleware/activity");
+const activityMiddleware =
+  require("./middleware/activity");
 
 const {
   ensureDefaultCategories,
@@ -40,13 +41,16 @@ const requiredEnv = [
   "JWT_SECRET",
 ];
 
-const missing = requiredEnv.filter(
-  (key) => !process.env[key]
-);
+const missing =
+  requiredEnv.filter(
+    (key) => !process.env[key]
+  );
 
 if (missing.length > 0) {
   console.error(
-    `❌ Missing environment variables: ${missing.join(", ")}`
+    `❌ Missing environment variables: ${missing.join(
+      ", "
+    )}`
   );
 
   process.exit(1);
@@ -86,7 +90,8 @@ app.use(compression());
 
 app.use(
   morgan(
-    process.env.NODE_ENV === "production"
+    process.env.NODE_ENV ===
+      "production"
       ? "combined"
       : "dev"
   )
@@ -99,6 +104,9 @@ app.use(
 const allowedOrigins = [
   "http://localhost:5173",
   "http://127.0.0.1:5173",
+
+  "http://localhost:3000",
+  "http://127.0.0.1:3000",
 
   "https://buyukused.vercel.app",
 
@@ -124,12 +132,16 @@ console.log(
 
 const isAllowedOrigin = (origin) => {
   // Allow requests without Origin.
+  // Useful for server-to-server requests,
+  // health checks and some development tools.
   if (!origin) {
     return true;
   }
 
-  // Exact allowed origins.
-  if (allowedOrigins.includes(origin)) {
+  // Exact origins.
+  if (
+    allowedOrigins.includes(origin)
+  ) {
     return true;
   }
 
@@ -159,14 +171,22 @@ const isAllowedOrigin = (origin) => {
 // ============================================================
 
 const corsOptions = {
-  origin: (origin, callback) => {
+  origin: (
+    origin,
+    callback
+  ) => {
     console.log(
       "🔍 Incoming origin:",
       origin || "undefined"
     );
 
-    if (isAllowedOrigin(origin)) {
-      return callback(null, true);
+    if (
+      isAllowedOrigin(origin)
+    ) {
+      return callback(
+        null,
+        true
+      );
     }
 
     console.log(
@@ -214,9 +234,14 @@ const corsOptions = {
 // APPLY CORS
 // ============================================================
 
-app.use(cors(corsOptions));
+app.use(
+  cors(corsOptions)
+);
 
-app.options("*", cors(corsOptions));
+app.options(
+  "*",
+  cors(corsOptions)
+);
 
 // ============================================================
 // BODY PARSERS
@@ -239,27 +264,31 @@ app.use(
 // STATIC UPLOADS
 // ============================================================
 
-const uploadsDirectory = path.join(
-  __dirname,
-  "public",
-  "uploads"
-);
+const uploadsDirectory =
+  path.join(
+    __dirname,
+    "public",
+    "uploads"
+  );
 
 app.use(
   "/uploads",
-  express.static(uploadsDirectory, {
-    setHeaders: (res) => {
-      res.setHeader(
-        "Access-Control-Allow-Origin",
-        "*"
-      );
+  express.static(
+    uploadsDirectory,
+    {
+      setHeaders: (res) => {
+        res.setHeader(
+          "Access-Control-Allow-Origin",
+          "*"
+        );
 
-      res.setHeader(
-        "Cross-Origin-Resource-Policy",
-        "cross-origin"
-      );
-    },
-  })
+        res.setHeader(
+          "Cross-Origin-Resource-Policy",
+          "cross-origin"
+        );
+      },
+    }
+  )
 );
 
 console.log(
@@ -271,13 +300,17 @@ console.log(
 // PASSPORT
 // ============================================================
 
-app.use(passport.initialize());
+app.use(
+  passport.initialize()
+);
 
 // ============================================================
 // ACTIVITY TRACKING
 // ============================================================
 
-app.use(activityMiddleware);
+app.use(
+  activityMiddleware
+);
 
 console.log(
   "🟢 Seller/user activity tracking enabled"
@@ -287,13 +320,19 @@ console.log(
 // RATE LIMITING
 // ============================================================
 
-const skipIfAdmin = (req, res, next) => {
+const skipIfAdmin = (
+  req,
+  res,
+  next
+) => {
   const authHeader =
     req.headers.authorization;
 
   if (
     !authHeader ||
-    !authHeader.startsWith("Bearer ")
+    !authHeader.startsWith(
+      "Bearer "
+    )
   ) {
     return next();
   }
@@ -302,16 +341,21 @@ const skipIfAdmin = (req, res, next) => {
     authHeader.split(" ")[1];
 
   try {
-    const decoded = jwt.verify(
-      token,
-      process.env.JWT_SECRET
-    );
+    const decoded =
+      jwt.verify(
+        token,
+        process.env.JWT_SECRET
+      );
 
-    if (decoded.role === "admin") {
-      req.skipRateLimit = true;
+    if (
+      decoded.role ===
+      "admin"
+    ) {
+      req.skipRateLimit =
+        true;
     }
   } catch (error) {
-    // Ignore invalid token.
+    // Ignore invalid tokens.
   }
 
   next();
@@ -319,43 +363,54 @@ const skipIfAdmin = (req, res, next) => {
 
 app.use(skipIfAdmin);
 
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
+const limiter =
+  rateLimit({
+    windowMs:
+      15 * 60 * 1000,
 
-  max:
-    process.env.NODE_ENV === "production"
-      ? 100
-      : 500,
-
-  skip: (req) => {
-    if (req.skipRateLimit) {
-      return true;
-    }
-
-    if (
+    max:
       process.env.NODE_ENV ===
-      "development"
-    ) {
-      return true;
-    }
+      "production"
+        ? 100
+        : 500,
 
-    return false;
-  },
+    skip: (req) => {
+      if (
+        req.skipRateLimit
+      ) {
+        return true;
+      }
 
-  standardHeaders: true,
+      if (
+        process.env.NODE_ENV ===
+        "development"
+      ) {
+        return true;
+      }
 
-  legacyHeaders: false,
+      return false;
+    },
 
-  message: {
-    success: false,
-    message:
-      "Too many requests, please try again later.",
-  },
-});
+    standardHeaders: true,
 
-app.use("/api", limiter);
+    legacyHeaders: false,
 
-app.use("/auth", limiter);
+    message: {
+      success: false,
+      message:
+        "Too many requests, please try again later.",
+    },
+  });
+
+app.use(
+  "/api",
+  limiter
+);
+
+app.use(
+  "/auth",
+  limiter
+);
 
 // ============================================================
 // DELIVERY REQUEST LOGGER
@@ -364,19 +419,24 @@ app.use("/auth", limiter);
 app.use(
   "/api/deliveries",
   (req, res, next) => {
-    const startedAt = Date.now();
+    const startedAt =
+      Date.now();
 
     console.log(
       `🚴 DELIVERY REQUEST → ${req.method} ${req.originalUrl}`
     );
 
-    res.on("finish", () => {
-      console.log(
-        `🚴 DELIVERY RESPONSE ← ${req.method} ${req.originalUrl} | ${res.statusCode} | ${
-          Date.now() - startedAt
-        }ms`
-      );
-    });
+    res.on(
+      "finish",
+      () => {
+        console.log(
+          `🚴 DELIVERY RESPONSE ← ${req.method} ${req.originalUrl} | ${res.statusCode} | ${
+            Date.now() -
+            startedAt
+          }ms`
+        );
+      }
+    );
 
     next();
   }
@@ -386,77 +446,130 @@ app.use(
 // ROOT
 // ============================================================
 
-app.get("/", (req, res) => {
-  res.status(200).json({
-    success: true,
+app.get(
+  "/",
+  (req, res) => {
+    res.status(200).json({
+      success: true,
 
-    message:
-      "BuyUKUsed API is running",
+      message:
+        "BuyUKUsed API is running",
 
-    environment:
-      process.env.NODE_ENV ||
-      "development",
-  });
-});
+      environment:
+        process.env.NODE_ENV ||
+        "development",
+    });
+  }
+);
 
 // ============================================================
 // HEALTH
 // ============================================================
 
-const healthResponse = (req, res) => {
-  res.status(200).json({
-    success: true,
+const healthResponse =
+  (req, res) => {
+    res.status(200).json({
+      success: true,
 
-    status: "ok",
+      status: "ok",
 
-    timestamp:
-      new Date().toISOString(),
-  });
-};
+      timestamp:
+        new Date().toISOString(),
+    });
+  };
 
-app.get("/health", healthResponse);
+app.get(
+  "/health",
+  healthResponse
+);
 
-app.get("/api/health", healthResponse);
+app.get(
+  "/api/health",
+  healthResponse
+);
 
 // ============================================================
 // LOAD ROUTES
 // ============================================================
 
 const passwordRoutes =
-  require("./routes/passwordRoutes");
+  require(
+    "./routes/passwordRoutes"
+  );
 
 const authRoutes =
-  require("./routes/auth");
+  require(
+    "./routes/auth"
+  );
 
 const productRoutes =
-  require("./routes/products");
+  require(
+    "./routes/products"
+  );
 
 const notificationRoutes =
-  require("./routes/notifications");
+  require(
+    "./routes/notifications"
+  );
 
 const userRoutes =
-  require("./routes/users");
+  require(
+    "./routes/users"
+  );
 
 const messageRoutes =
-  require("./routes/messages");
+  require(
+    "./routes/messages"
+  );
 
 const adminRoutes =
-  require("./routes/admin");
+  require(
+    "./routes/admin"
+  );
 
 const deliveryRoutes =
-  require("./routes/deliveryRoutes");
+  require(
+    "./routes/deliveryRoutes"
+  );
 
 const uploadRoutes =
-  require("./routes/upload");
+  require(
+    "./routes/upload"
+  );
 
 const sellerRoutes =
-  require("./routes/sellerRoutes");
+  require(
+    "./routes/sellerRoutes"
+  );
 
 const categoryRoutes =
-  require("./routes/categories");
+  require(
+    "./routes/categories"
+  );
 
 const visualSearchRoutes =
-  require("./routes/visualSearchRoutes");
+  require(
+    "./routes/visualSearchRoutes"
+  );
+
+// Seller admin controller handlers.
+const {
+  verifySeller,
+  rejectSeller,
+} = require(
+  "./controllers/sellerController"
+);
+
+// Auth middleware.
+const {
+  authenticate,
+  requireRoles,
+} = require(
+  "./middleware/authMiddleware"
+);
+
+const requireAdmin =
+  requireRoles("admin");
 
 console.log(
   "✅ Routes loaded successfully"
@@ -500,29 +613,33 @@ console.log(
 );
 
 // ============================================================
-// ADMIN SELLER COMPATIBILITY ROUTE
+// ADMIN SELLER VERIFICATION
 // ============================================================
 //
-// Your Admin Sellers frontend currently calls:
+// Admin-only endpoints:
 //
 // POST /api/admin/sellers/:sellerId/verify
+// POST /api/admin/sellers/:sellerId/reject
 //
-// The seller router already contains the seller
-// verification endpoint.
-//
-// Therefore we also mount the same seller router here:
-//
-// /api/admin/sellers
-//
-// This fixes:
-//
-// 404 API endpoint not found
+// IMPORTANT:
+// We do NOT mount the entire seller router here.
+// This prevents public seller routes from becoming
+// available through /api/admin/sellers.
 //
 // ============================================================
 
-app.use(
-  "/api/admin/sellers",
-  sellerRoutes
+app.post(
+  "/api/admin/sellers/:sellerId/verify",
+  authenticate,
+  requireAdmin,
+  verifySeller
+);
+
+app.post(
+  "/api/admin/sellers/:sellerId/reject",
+  authenticate,
+  requireAdmin,
+  rejectSeller
 );
 
 console.log(
@@ -634,37 +751,50 @@ console.log(
 // 404
 // ============================================================
 
-app.use((req, res) => {
-  console.log(
-    `❌ 404: ${req.method} ${req.originalUrl}`
-  );
+app.use(
+  (req, res) => {
+    console.log(
+      `❌ 404: ${req.method} ${req.originalUrl}`
+    );
 
-  if (
-    req.path.startsWith("/api") ||
-    req.path.startsWith("/auth")
-  ) {
-    return res.status(404).json({
-      success: false,
+    if (
+      req.path.startsWith(
+        "/api"
+      ) ||
+      req.path.startsWith(
+        "/auth"
+      )
+    ) {
+      return res
+        .status(404)
+        .json({
+          success: false,
 
-      message:
-        "API endpoint not found",
+          message:
+            "API endpoint not found",
 
-      path:
-        req.originalUrl,
-    });
+          path:
+            req.originalUrl,
+        });
+    }
+
+    return res
+      .status(404)
+      .send("Not Found");
   }
-
-  return res
-    .status(404)
-    .send("Not Found");
-});
+);
 
 // ============================================================
 // GLOBAL ERROR HANDLER
 // ============================================================
 
 app.use(
-  (err, req, res, next) => {
+  (
+    err,
+    req,
+    res,
+    next
+  ) => {
     console.error(
       "❌ Global error:",
       err
@@ -679,12 +809,14 @@ app.use(
       err.message ===
         "CORS not allowed for this origin"
     ) {
-      return res.status(403).json({
-        success: false,
+      return res
+        .status(403)
+        .json({
+          success: false,
 
-        message:
-          err.message,
-      });
+          message:
+            err.message,
+        });
     }
 
     // --------------------------------------------------------
@@ -693,27 +825,32 @@ app.use(
 
     if (
       err &&
-      err.name === "MulterError"
+      err.name ===
+        "MulterError"
     ) {
       if (
         err.code ===
         "LIMIT_FILE_SIZE"
       ) {
-        return res.status(413).json({
+        return res
+          .status(413)
+          .json({
+            success: false,
+
+            message:
+              "File too large. Maximum size is 5MB.",
+          });
+      }
+
+      return res
+        .status(400)
+        .json({
           success: false,
 
           message:
-            "File too large. Maximum size is 5MB.",
+            err.message ||
+            "File upload error.",
         });
-      }
-
-      return res.status(400).json({
-        success: false,
-
-        message:
-          err.message ||
-          "File upload error.",
-      });
     }
 
     // --------------------------------------------------------
@@ -727,14 +864,17 @@ app.use(
       const field =
         Object.keys(
           err.keyPattern || {}
-        )[0] || "field";
+        )[0] ||
+        "field";
 
-      return res.status(409).json({
-        success: false,
+      return res
+        .status(409)
+        .json({
+          success: false,
 
-        message:
-          `${field} already exists`,
-      });
+          message:
+            `${field} already exists`,
+        });
     }
 
     // --------------------------------------------------------
@@ -754,15 +894,36 @@ app.use(
             error.message
         );
 
-      return res.status(400).json({
-        success: false,
+      return res
+        .status(400)
+        .json({
+          success: false,
 
-        message:
-          "Validation error",
+          message:
+            "Validation error",
 
-        errors:
-          messages,
-      });
+          errors:
+            messages,
+        });
+    }
+
+    // --------------------------------------------------------
+    // INVALID OBJECT ID
+    // --------------------------------------------------------
+
+    if (
+      err &&
+      err.name ===
+        "CastError"
+    ) {
+      return res
+        .status(400)
+        .json({
+          success: false,
+
+          message:
+            "Invalid ID.",
+        });
     }
 
     // --------------------------------------------------------
@@ -830,7 +991,9 @@ const createDefaultAdmin =
   async () => {
     try {
       const User =
-        require("./models/User");
+        require(
+          "./models/User"
+        );
 
       const adminEmail =
         process.env.ADMIN_EMAIL;
@@ -909,112 +1072,116 @@ const createDefaultAdmin =
 // START SERVER
 // ============================================================
 
-const start = async () => {
-  try {
-    const connection =
-      await connectDB();
+const start =
+  async () => {
+    try {
+      const connection =
+        await connectDB();
 
-    console.log(
-      `✅ MongoDB connected to: ${connection.name}`
-    );
-
-    await ensureDefaultCategories();
-
-    console.log(
-      "✅ Default categories check completed"
-    );
-
-    await createDefaultAdmin();
-
-    const server =
-      app.listen(
-        PORT,
-        () => {
-          console.log(
-            "============================================================"
-          );
-
-          console.log(
-            `🚀 Server running on port ${PORT}`
-          );
-
-          console.log(
-            `🌍 Environment: ${
-              process.env.NODE_ENV ||
-              "development"
-            }`
-          );
-
-          console.log(
-            `🔗 Base URL: ${
-              process.env.BASE_URL ||
-              "(auto-detected)"
-            }`
-          );
-
-          console.log(
-            `📁 Uploads: ${uploadsDirectory}`
-          );
-
-          console.log(
-            "🔐 Admin API: /api/admin"
-          );
-
-          console.log(
-            "👑 Admin Seller API: /api/admin/sellers"
-          );
-
-          console.log(
-            "🚴 Delivery API: /api/deliveries"
-          );
-
-          console.log(
-            "📤 Upload API: /api/upload"
-          );
-
-          console.log(
-            "🛒 Seller API: /api/sellers"
-          );
-
-          console.log(
-            "📂 Categories API: /api/categories"
-          );
-
-          console.log(
-            "🖼️ Visual Search API: /api/visual-search"
-          );
-
-          console.log(
-            "🟢 Activity tracking: ENABLED"
-          );
-
-          console.log(
-            "🟢 CORS: ENABLED"
-          );
-
-          console.log(
-            "============================================================"
-          );
-        }
+      console.log(
+        `✅ MongoDB connected to: ${connection.name}`
       );
 
-    // --------------------------------------------------------
-    // TIMEOUTS
-    // --------------------------------------------------------
+      await ensureDefaultCategories();
 
-    server.timeout = 120000;
+      console.log(
+        "✅ Default categories check completed"
+      );
 
-    server.keepAliveTimeout = 65000;
+      await createDefaultAdmin();
 
-    server.headersTimeout = 66000;
-  } catch (error) {
-    console.error(
-      "❌ Server failed:",
-      error
-    );
+      const server =
+        app.listen(
+          PORT,
+          () => {
+            console.log(
+              "============================================================"
+            );
 
-    process.exit(1);
-  }
-};
+            console.log(
+              `🚀 Server running on port ${PORT}`
+            );
+
+            console.log(
+              `🌍 Environment: ${
+                process.env.NODE_ENV ||
+                "development"
+              }`
+            );
+
+            console.log(
+              `🔗 Base URL: ${
+                process.env.BASE_URL ||
+                "(auto-detected)"
+              }`
+            );
+
+            console.log(
+              `📁 Uploads: ${uploadsDirectory}`
+            );
+
+            console.log(
+              "🔐 Admin API: /api/admin"
+            );
+
+            console.log(
+              "👑 Admin Seller API: /api/admin/sellers"
+            );
+
+            console.log(
+              "🚴 Delivery API: /api/deliveries"
+            );
+
+            console.log(
+              "📤 Upload API: /api/upload"
+            );
+
+            console.log(
+              "🛒 Seller API: /api/sellers"
+            );
+
+            console.log(
+              "📂 Categories API: /api/categories"
+            );
+
+            console.log(
+              "🖼️ Visual Search API: /api/visual-search"
+            );
+
+            console.log(
+              "🟢 Activity tracking: ENABLED"
+            );
+
+            console.log(
+              "🟢 CORS: ENABLED"
+            );
+
+            console.log(
+              "============================================================"
+            );
+          }
+        );
+
+      // ------------------------------------------------------
+      // TIMEOUTS
+      // ------------------------------------------------------
+
+      server.timeout =
+        120000;
+
+      server.keepAliveTimeout =
+        65000;
+
+      server.headersTimeout =
+        66000;
+    } catch (error) {
+      console.error(
+        "❌ Server failed:",
+        error
+      );
+
+      process.exit(1);
+    }
+  };
 
 start();
