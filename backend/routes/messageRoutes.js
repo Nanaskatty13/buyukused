@@ -1,23 +1,10 @@
 // ============================================================
-// backend/routes/messages.js
-// BuyUKUsed - Message Routes
+// backend/routes/messageRoutes.js
 // ============================================================
 
 const express = require("express");
 
 const router = express.Router();
-
-// ============================================================
-// AUTHENTICATION MIDDLEWARE
-// ============================================================
-
-const {
-  protect,
-} = require("../middleware/auth");
-
-// ============================================================
-// MESSAGE CONTROLLER
-// ============================================================
 
 const {
   getUserMessages,
@@ -29,17 +16,19 @@ const {
   deleteMessage,
 } = require("../controllers/messageController");
 
+const { protect } = require("../middleware/auth");
+
 // ============================================================
 // AUTHENTICATION
 // ============================================================
 //
-// Every message endpoint requires a valid JWT.
+// All message endpoints require a valid JWT.
 //
-// protect comes from:
+// Frontend sends:
 //
-// backend/middleware/auth.js
+// Authorization: Bearer <token>
 //
-// It attaches:
+// protect middleware verifies the token and sets:
 //
 // req.user
 // req.userId
@@ -47,152 +36,126 @@ const {
 //
 // ============================================================
 
-router.use(protect);
 
 // ============================================================
 // GET UNREAD MESSAGE COUNT
-// GET /api/messages/unread/count
+// GET /api/messages/unread-count
 // ============================================================
 //
-// Returns:
-//
-// {
-//   success: true,
-//   count: 3
-// }
-//
 // IMPORTANT:
-// This route must come BEFORE /:userId.
+//
+// This MUST come BEFORE:
+//
+// /:userId
 //
 // Otherwise Express could interpret:
 //
-// /unread/count
+// /unread-count
 //
 // as:
 //
 // /:userId
+//
 // ============================================================
 
 router.get(
-  "/unread/count",
+  "/unread-count",
+  protect,
   getUnreadMessageCount
 );
+
 
 // ============================================================
 // GET CONVERSATION BETWEEN TWO USERS
 // GET /api/messages/conversation/:userId
 // ============================================================
 //
-// Example:
+// This MUST also come BEFORE:
 //
-// GET /api/messages/conversation/64f123...
+// /:userId
 //
-// Returns only messages exchanged between:
-// - logged-in user
-// - requested user
+// Otherwise "conversation" could be interpreted
+// as a userId.
 //
-// ============================================================
 
 router.get(
   "/conversation/:userId",
+  protect,
   getConversation
 );
 
+
 // ============================================================
-// MARK CONVERSATION AS READ
+// MARK ALL MESSAGES FROM A USER AS READ
 // PUT /api/messages/conversation/:userId/read
 // ============================================================
 //
-// The :userId represents the OTHER user.
+// IMPORTANT:
 //
-// Example:
+// This route must come before:
 //
-// PUT /api/messages/conversation/64f123.../read
+// /:id/read
 //
-// This marks unread messages sent by that user
-// to the currently authenticated user as read.
+// because "conversation" is a fixed route segment.
 //
-// ============================================================
 
 router.put(
   "/conversation/:userId/read",
+  protect,
   markConversationAsRead
 );
+
 
 // ============================================================
 // SEND MESSAGE
 // POST /api/messages
 // ============================================================
-//
-// Example request body:
-//
-// {
-//   "receiver": "64f123...",
-//   "productId": "65a456...",
-//   "message": "Is this laptop still available?"
-// }
-//
-// productId is optional.
-//
-// ============================================================
 
 router.post(
   "/",
+  protect,
   sendMessage
 );
 
+
 // ============================================================
-// MARK ONE MESSAGE AS READ
+// MARK SINGLE MESSAGE AS READ
 // PUT /api/messages/:id/read
-// ============================================================
-//
-// Only the receiver of the message is allowed
-// to mark it as read.
-//
 // ============================================================
 
 router.put(
   "/:id/read",
+  protect,
   markMessageAsRead
 );
+
 
 // ============================================================
 // DELETE MESSAGE
 // DELETE /api/messages/:id
 // ============================================================
-//
-// Allowed:
-// - message sender
-// - message receiver
-// - admin
-//
-// ============================================================
 
 router.delete(
   "/:id",
+  protect,
   deleteMessage
 );
+
 
 // ============================================================
 // GET ALL MESSAGES FOR A USER
 // GET /api/messages/:userId
 // ============================================================
 //
-// The controller only allows:
+// Keep this route AFTER all fixed routes above.
 //
-// 1. The logged-in user to request their own messages
-// 2. An admin to request another user's messages
-//
-// Example:
-//
-// GET /api/messages/64f123...
-//
-// ============================================================
 
 router.get(
   "/:userId",
+  protect,
   getUserMessages
 );
+
 
 // ============================================================
 // EXPORT ROUTER
