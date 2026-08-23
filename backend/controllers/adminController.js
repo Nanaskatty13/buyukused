@@ -19,7 +19,6 @@ const isValidObjectId = (id) => {
 
 // ------------------------------------------------------------
 // Escape user input before putting it into RegExp.
-// Prevents malformed regular expressions and regex abuse.
 // ------------------------------------------------------------
 
 const escapeRegex = (value) => {
@@ -36,12 +35,14 @@ const escapeRegex = (value) => {
 const getCurrentUserId = (req) => {
   return req.user?._id
     ? String(req.user._id)
-    : null;
+    : req.user?.id
+      ? String(req.user.id)
+      : null;
 };
 
 // ============================================================
 // ADMIN DASHBOARD STATISTICS
-// GET /api/admin/stats
+// GET /api/admin/dashboard
 // ============================================================
 
 exports.getDashboardStats = async (req, res) => {
@@ -60,28 +61,16 @@ exports.getDashboardStats = async (req, res) => {
       verifiedSellers,
       pendingSellerVerifications,
     ] = await Promise.all([
-      // --------------------------------------------------------
       // USERS
-      // --------------------------------------------------------
-
       User.countDocuments(),
 
-      // --------------------------------------------------------
       // PRODUCTS
-      // --------------------------------------------------------
-
       Product.countDocuments(),
 
-      // --------------------------------------------------------
       // ORDERS
-      // --------------------------------------------------------
-
       Order.countDocuments(),
 
-      // --------------------------------------------------------
       // RIDERS
-      // --------------------------------------------------------
-
       User.countDocuments({
         role: "rider",
       }),
@@ -103,28 +92,41 @@ exports.getDashboardStats = async (req, res) => {
         isActive: true,
       }),
 
-      // --------------------------------------------------------
       // SELLERS
-      // --------------------------------------------------------
-
       User.countDocuments({
         role: "seller",
       }),
 
       User.countDocuments({
         role: "seller",
-        isVerified: true,
-        verificationStatus: "approved",
+        $or: [
+          {
+            isVerified: true,
+            verificationStatus: "approved",
+          },
+          {
+            sellerVerified: true,
+            sellerVerificationStatus: "approved",
+          },
+        ],
       }),
 
       User.countDocuments({
         role: "seller",
-        verificationStatus: "pending",
+        $or: [
+          {
+            verificationStatus: "pending",
+          },
+          {
+            sellerVerificationStatus: "pending",
+          },
+        ],
       }),
     ]);
 
     return res.status(200).json({
       success: true,
+
       stats: {
         users,
         products,
@@ -184,10 +186,7 @@ exports.getUsers = async (req, res) => {
 
     const filter = {};
 
-    // ----------------------------------------------------------
-    // ROLE FILTER
-    // ----------------------------------------------------------
-
+    // ROLE
     const allowedRoles = [
       "buyer",
       "seller",
@@ -206,10 +205,7 @@ exports.getUsers = async (req, res) => {
       filter.role = role;
     }
 
-    // ----------------------------------------------------------
-    // STATUS FILTER
-    // ----------------------------------------------------------
-
+    // STATUS
     if (status === "active") {
       filter.isActive = true;
     } else if (
@@ -224,10 +220,7 @@ exports.getUsers = async (req, res) => {
       });
     }
 
-    // ----------------------------------------------------------
     // SEARCH
-    // ----------------------------------------------------------
-
     const cleanSearch = String(
       search || ""
     ).trim();
@@ -253,10 +246,6 @@ exports.getUsers = async (req, res) => {
         },
       ];
     }
-
-    // ----------------------------------------------------------
-    // PAGINATION
-    // ----------------------------------------------------------
 
     const skip =
       (currentPage - 1) *
@@ -290,10 +279,13 @@ exports.getUsers = async (req, res) => {
       page: currentPage,
       limit: currentLimit,
       totalPages,
+
       hasNextPage:
         currentPage < totalPages,
+
       hasPreviousPage:
         currentPage > 1,
+
       users,
     });
   } catch (error) {
@@ -407,7 +399,7 @@ exports.updateUserRole = async (
       getCurrentUserId(req);
 
     // ----------------------------------------------------------
-    // NEVER ALLOW ADMIN TO REMOVE THEIR OWN ADMIN ROLE
+    // ADMIN CANNOT REMOVE OWN ADMIN ROLE
     // ----------------------------------------------------------
 
     if (
@@ -424,8 +416,8 @@ exports.updateUserRole = async (
     }
 
     // ----------------------------------------------------------
-    // If changing away from seller,
-    // remove seller verification.
+    // CHANGING AWAY FROM SELLER
+    // Remove seller verification.
     // ----------------------------------------------------------
 
     if (role !== "seller") {
@@ -438,11 +430,21 @@ exports.updateUserRole = async (
 
       user.verificationRejectedReason =
         "";
+
+      // Keep seller-controller fields synchronized.
+      user.sellerVerified = false;
+      user.sellerVerifiedAt = null;
+      user.sellerVerifiedBy = null;
+
+      user.sellerVerificationStatus =
+        "not_submitted";
+
+      user.sellerVerificationNote =
+        "";
     }
 
     // ----------------------------------------------------------
-    // If changing away from rider,
-    // force rider offline.
+    // CHANGING AWAY FROM RIDER
     // ----------------------------------------------------------
 
     if (
@@ -517,10 +519,6 @@ exports.updateUserStatus = async (
     const currentAdminId =
       getCurrentUserId(req);
 
-    // ----------------------------------------------------------
-    // ADMIN CANNOT DEACTIVATE THEMSELVES
-    // ----------------------------------------------------------
-
     if (
       currentAdminId &&
       currentAdminId === id &&
@@ -544,8 +542,7 @@ exports.updateUserStatus = async (
     }
 
     // ----------------------------------------------------------
-    // Never allow the last active admin to be accidentally
-    // disabled through this endpoint.
+    // NEVER DEACTIVATE LAST ACTIVE ADMIN
     // ----------------------------------------------------------
 
     if (
@@ -570,7 +567,7 @@ exports.updateUserStatus = async (
     user.isActive = isActive;
 
     // ----------------------------------------------------------
-    // Deactivate rider availability automatically.
+    // DEACTIVATE RIDER AVAILABILITY
     // ----------------------------------------------------------
 
     if (
@@ -593,9 +590,11 @@ exports.updateUserStatus = async (
 
     return res.status(200).json({
       success: true,
+
       message: isActive
         ? "User activated successfully"
         : "User suspended successfully",
+
       user: safeUser,
     });
   } catch (error) {
@@ -615,6 +614,13 @@ exports.updateUserStatus = async (
 // ============================================================
 // VERIFY SELLER
 // PATCH /api/admin/users/:id/verify-seller
+//
+// IMPORTANT:
+// Updates BOTH:
+//   1. Original User verification fields
+//   2. Seller-controller verification fields
+//
+// This keeps the entire application synchronized.
 // ============================================================
 
 exports.verifySeller = async (
@@ -644,41 +650,52 @@ exports.verifySeller = async (
       });
     }
 
-    if (
-      seller.isVerified === true &&
-      seller.verificationStatus ===
-        "approved"
-    ) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Seller is already verified",
-      });
-    }
+    const adminId =
+      getCurrentUserId(req);
 
-    // ----------------------------------------------------------
-    // VERIFY SELLER
-    // ----------------------------------------------------------
+    const now = new Date();
+
+    // ==========================================================
+    // PRIMARY VERIFICATION FIELDS
+    // Used by User model / Admin dashboard
+    // ==========================================================
 
     seller.isVerified = true;
 
     seller.verificationStatus =
       "approved";
 
-    seller.verifiedAt =
-      new Date();
+    seller.verifiedAt = now;
 
     seller.verifiedBy =
-      req.user?._id || null;
+      adminId || null;
 
     seller.verificationRejectedReason =
       "";
 
-    seller.isActive = true;
+    // ==========================================================
+    // SELLER VERIFICATION FIELDS
+    // Used by sellerController/public seller profile
+    // ==========================================================
 
-    // ----------------------------------------------------------
+    seller.sellerVerified = true;
+
+    seller.sellerVerificationStatus =
+      "approved";
+
+    seller.sellerVerifiedAt = now;
+
+    seller.sellerVerifiedBy =
+      adminId || null;
+
+    seller.sellerVerificationNote =
+      "";
+
+    // ==========================================================
     // SELLER STATUS
-    // ----------------------------------------------------------
+    // ==========================================================
+
+    seller.isActive = true;
 
     if (
       !seller.sellerStatus ||
@@ -689,16 +706,19 @@ exports.verifySeller = async (
         "active";
     }
 
-    // ----------------------------------------------------------
+    // ==========================================================
     // SELLER SINCE
-    // ----------------------------------------------------------
+    // ==========================================================
 
     if (!seller.sellerSince) {
-      seller.sellerSince =
-        new Date();
+      seller.sellerSince = now;
     }
 
     await seller.save();
+
+    // ==========================================================
+    // RETURN UPDATED SELLER
+    // ==========================================================
 
     const safeSeller =
       await User.findById(
@@ -709,13 +729,41 @@ exports.verifySeller = async (
           "verifiedBy",
           "name email"
         )
+        .populate(
+          "sellerVerifiedBy",
+          "name email"
+        )
         .lean();
 
     return res.status(200).json({
       success: true,
+
       message:
         "Seller verified successfully",
+
       seller: safeSeller,
+
+      verification: {
+        verified: true,
+        isVerified: true,
+        sellerVerified: true,
+
+        verificationStatus:
+          "approved",
+
+        sellerVerificationStatus:
+          "approved",
+
+        verifiedAt: now,
+
+        sellerVerifiedAt: now,
+
+        verifiedBy:
+          adminId || null,
+
+        sellerVerifiedBy:
+          adminId || null,
+      },
     });
   } catch (error) {
     console.error(
@@ -726,6 +774,7 @@ exports.verifySeller = async (
     return res.status(500).json({
       success: false,
       message:
+        error.message ||
         "Failed to verify seller",
     });
   }
@@ -763,6 +812,10 @@ exports.unverifySeller = async (
       });
     }
 
+    // ==========================================================
+    // PRIMARY VERIFICATION FIELDS
+    // ==========================================================
+
     seller.isVerified = false;
 
     seller.verificationStatus =
@@ -773,6 +826,22 @@ exports.unverifySeller = async (
     seller.verifiedBy = null;
 
     seller.verificationRejectedReason =
+      "Seller verification was removed by an administrator.";
+
+    // ==========================================================
+    // SELLER VERIFICATION FIELDS
+    // ==========================================================
+
+    seller.sellerVerified = false;
+
+    seller.sellerVerificationStatus =
+      "rejected";
+
+    seller.sellerVerifiedAt = null;
+
+    seller.sellerVerifiedBy = null;
+
+    seller.sellerVerificationNote =
       "Seller verification was removed by an administrator.";
 
     await seller.save();
@@ -786,9 +855,23 @@ exports.unverifySeller = async (
 
     return res.status(200).json({
       success: true,
+
       message:
         "Seller verification removed",
+
       seller: safeSeller,
+
+      verification: {
+        verified: false,
+        isVerified: false,
+        sellerVerified: false,
+
+        verificationStatus:
+          "rejected",
+
+        sellerVerificationStatus:
+          "rejected",
+      },
     });
   } catch (error) {
     console.error(
@@ -826,10 +909,6 @@ exports.deleteUser = async (
     const currentAdminId =
       getCurrentUserId(req);
 
-    // ----------------------------------------------------------
-    // ADMIN CANNOT DELETE THEMSELVES
-    // ----------------------------------------------------------
-
     if (
       currentAdminId &&
       currentAdminId === id
@@ -850,10 +929,6 @@ exports.deleteUser = async (
         message: "User not found",
       });
     }
-
-    // ----------------------------------------------------------
-    // Prevent deleting the last admin account.
-    // ----------------------------------------------------------
 
     if (user.role === "admin") {
       const adminCount =
@@ -907,7 +982,7 @@ exports.getProducts = async (
       await Product.find()
         .populate(
           "sellerId",
-          "name email phone isVerified verificationStatus"
+          "name email phone isVerified verificationStatus sellerVerified sellerVerificationStatus"
         )
         .sort({
           createdAt: -1,
@@ -1063,12 +1138,6 @@ exports.updateOrderStatus =
         });
       }
 
-      // --------------------------------------------------------
-      // Mongoose schema validation is still applied here.
-      // If Order.status has an enum, invalid values will fail
-      // during save().
-      // --------------------------------------------------------
-
       order.status =
         cleanStatus;
 
@@ -1088,7 +1157,7 @@ exports.updateOrderStatus =
 
       if (
         error.name ===
-          "ValidationError"
+        "ValidationError"
       ) {
         return res.status(400).json({
           success: false,
@@ -1127,10 +1196,7 @@ exports.getRiders = async (
       role: "rider",
     };
 
-    // ----------------------------------------------------------
     // APPROVAL STATUS
-    // ----------------------------------------------------------
-
     if (status === "approved") {
       filter[
         "riderProfile.isApproved"
@@ -1149,10 +1215,7 @@ exports.getRiders = async (
       });
     }
 
-    // ----------------------------------------------------------
     // AVAILABILITY
-    // ----------------------------------------------------------
-
     if (
       availability ===
       "available"
@@ -1166,9 +1229,7 @@ exports.getRiders = async (
       availability ===
       "unavailable"
     ) {
-      filter[
-        "$or"
-      ] = [
+      filter.$or = [
         {
           "riderProfile.isAvailable":
             false,
@@ -1187,10 +1248,7 @@ exports.getRiders = async (
       });
     }
 
-    // ----------------------------------------------------------
     // SEARCH
-    // ----------------------------------------------------------
-
     const cleanSearch = String(
       search || ""
     ).trim();
@@ -1228,10 +1286,6 @@ exports.getRiders = async (
             searchRegex,
         },
       ];
-
-      // --------------------------------------------------------
-      // Preserve existing filters when availability uses $or.
-      // --------------------------------------------------------
 
       if (filter.$or) {
         filter.$and = [
@@ -1361,14 +1415,9 @@ exports.approveRider =
         rider.riderProfile = {};
       }
 
-      // --------------------------------------------------------
-      // APPROVE
-      // --------------------------------------------------------
-
       rider.riderProfile.isApproved =
         true;
 
-      // Rider must manually become available.
       rider.riderProfile.isAvailable =
         false;
 
@@ -1518,10 +1567,6 @@ exports.updateRiderStatus =
         rider.riderProfile = {};
       }
 
-      // --------------------------------------------------------
-      // A rider cannot be activated unless approved.
-      // --------------------------------------------------------
-
       if (
         isActive === true &&
         rider.riderProfile
@@ -1553,9 +1598,11 @@ exports.updateRiderStatus =
 
       return res.status(200).json({
         success: true,
+
         message: isActive
           ? "Rider activated successfully"
           : "Rider deactivated successfully",
+
         rider: safeRider,
       });
     } catch (error) {
@@ -1615,75 +1662,48 @@ exports.updateRiderProfile =
         rider.riderProfile = {};
       }
 
-      // --------------------------------------------------------
       // BIKE TYPE
-      // --------------------------------------------------------
-
       if (
         bikeType !== undefined
       ) {
-        const value =
+        rider.riderProfile.bikeType =
           String(
             bikeType
           ).trim();
-
-        rider.riderProfile.bikeType =
-          value;
       }
 
-      // --------------------------------------------------------
       // BIKE NUMBER
-      // --------------------------------------------------------
-
       if (
         bikeNumber !== undefined
       ) {
-        const value =
+        rider.riderProfile.bikeNumber =
           String(
             bikeNumber
           ).trim();
-
-        rider.riderProfile.bikeNumber =
-          value;
       }
 
-      // --------------------------------------------------------
       // SERVICE AREA
-      // --------------------------------------------------------
-
       if (
         serviceArea !== undefined
       ) {
-        const value =
+        rider.riderProfile.serviceArea =
           String(
             serviceArea
           ).trim();
-
-        rider.riderProfile.serviceArea =
-          value;
       }
 
-      // --------------------------------------------------------
-      // IDENTIFICATION NUMBER
-      // --------------------------------------------------------
-
+      // IDENTIFICATION
       if (
         identificationNumber !==
         undefined
       ) {
-        const value =
+        rider.riderProfile.identificationNumber =
           String(
             identificationNumber
           ).trim();
-
-        rider.riderProfile.identificationNumber =
-          value;
       }
 
-      // --------------------------------------------------------
       // RATING
-      // --------------------------------------------------------
-
       if (
         rating !== undefined
       ) {
@@ -1708,10 +1728,7 @@ exports.updateRiderProfile =
           numericRating;
       }
 
-      // --------------------------------------------------------
       // COMPLETED DELIVERIES
-      // --------------------------------------------------------
-
       if (
         completedDeliveries !==
         undefined
@@ -1761,7 +1778,7 @@ exports.updateRiderProfile =
 
       if (
         error.name ===
-          "ValidationError"
+        "ValidationError"
       ) {
         return res.status(400).json({
           success: false,
@@ -1781,5 +1798,61 @@ exports.updateRiderProfile =
   };
 
 // ============================================================
-// END OF ADMIN CONTROLLER
+// EXPORT
 // ============================================================
+
+module.exports = {
+  getDashboardStats:
+    exports.getDashboardStats,
+
+  getUsers:
+    exports.getUsers,
+
+  getUserById:
+    exports.getUserById,
+
+  updateUserRole:
+    exports.updateUserRole,
+
+  updateUserStatus:
+    exports.updateUserStatus,
+
+  verifySeller:
+    exports.verifySeller,
+
+  unverifySeller:
+    exports.unverifySeller,
+
+  deleteUser:
+    exports.deleteUser,
+
+  getProducts:
+    exports.getProducts,
+
+  deleteProduct:
+    exports.deleteProduct,
+
+  getOrders:
+    exports.getOrders,
+
+  updateOrderStatus:
+    exports.updateOrderStatus,
+
+  getRiders:
+    exports.getRiders,
+
+  getRiderById:
+    exports.getRiderById,
+
+  approveRider:
+    exports.approveRider,
+
+  rejectRider:
+    exports.rejectRider,
+
+  updateRiderStatus:
+    exports.updateRiderStatus,
+
+  updateRiderProfile:
+    exports.updateRiderProfile,
+};

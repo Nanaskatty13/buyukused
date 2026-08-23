@@ -12,6 +12,7 @@ const router = express.Router();
 // ============================================================
 
 const {
+  // Dashboard
   getDashboardStats,
 
   // Users
@@ -19,11 +20,9 @@ const {
   getUserById,
   updateUserRole,
   updateUserStatus,
-  deleteUser,
-
-  // Sellers
   verifySeller,
   unverifySeller,
+  deleteUser,
 
   // Products
   getProducts,
@@ -55,7 +54,7 @@ const {
 // GLOBAL ADMIN PROTECTION
 // ============================================================
 //
-// Every route below requires:
+// EVERY route below requires:
 //
 // 1. Valid JWT
 // 2. Existing user
@@ -77,105 +76,143 @@ router.get(
   getDashboardStats
 );
 
+// Optional alias:
+//
+// GET /api/admin/stats
+//
+// Useful if your frontend currently calls /stats.
+
+router.get(
+  "/stats",
+  getDashboardStats
+);
+
 // ============================================================
 // USERS
 // ============================================================
 
+// ------------------------------------------------------------
+// GET ALL USERS
 // GET /api/admin/users
+// ------------------------------------------------------------
+
 router.get(
   "/users",
   getUsers
 );
 
+// ------------------------------------------------------------
+// GET SINGLE USER
 // GET /api/admin/users/:id
+// ------------------------------------------------------------
+
 router.get(
   "/users/:id",
   getUserById
 );
 
-// PUT /api/admin/users/:id/role
-router.put(
-  "/users/:id/role",
-  updateUserRole
-);
-
+// ------------------------------------------------------------
+// UPDATE USER ROLE
 // PATCH /api/admin/users/:id/role
+// ------------------------------------------------------------
+
 router.patch(
   "/users/:id/role",
   updateUserRole
 );
 
+// Also allow PUT for frontend compatibility.
+router.put(
+  "/users/:id/role",
+  updateUserRole
+);
+
+// ------------------------------------------------------------
+// UPDATE USER ACCOUNT STATUS
 // PATCH /api/admin/users/:id/status
+// ------------------------------------------------------------
+
 router.patch(
   "/users/:id/status",
   updateUserStatus
 );
 
-// PUT /api/admin/users/:id/status
+// Also allow PUT for frontend compatibility.
 router.put(
   "/users/:id/status",
   updateUserStatus
 );
 
+// ============================================================
+// SELLER VERIFICATION
+// ============================================================
+
+// ------------------------------------------------------------
+// VERIFY SELLER
+// PATCH /api/admin/users/:id/verify-seller
+// ------------------------------------------------------------
+//
+// This is the endpoint the Admin Dashboard should call when
+// the administrator clicks "Verify Seller".
+//
+// ------------------------------------------------------------
+
+router.patch(
+  "/users/:id/verify-seller",
+  verifySeller
+);
+
+// Also allow PUT for frontend compatibility.
+router.put(
+  "/users/:id/verify-seller",
+  verifySeller
+);
+
+// ------------------------------------------------------------
+// UNVERIFY SELLER
+// PATCH /api/admin/users/:id/unverify-seller
+// ------------------------------------------------------------
+
+router.patch(
+  "/users/:id/unverify-seller",
+  unverifySeller
+);
+
+// Also allow PUT for frontend compatibility.
+router.put(
+  "/users/:id/unverify-seller",
+  unverifySeller
+);
+
+// ------------------------------------------------------------
+// DELETE USER
 // DELETE /api/admin/users/:id
+// ------------------------------------------------------------
+
 router.delete(
   "/users/:id",
   deleteUser
 );
 
 // ============================================================
-// SELLERS
-// ============================================================
-//
-// IMPORTANT:
-//
-// Frontend is calling:
-//
-// /api/admin/sellers/:id/verify
-//
-// The controller already contains:
-//
-// verifySeller()
-// unverifySeller()
-//
-// These routes were missing from admin.js.
-// ============================================================
-
-// PATCH /api/admin/sellers/:id/verify
-router.patch(
-  "/sellers/:id/verify",
-  verifySeller
-);
-
-// PUT /api/admin/sellers/:id/verify
-router.put(
-  "/sellers/:id/verify",
-  verifySeller
-);
-
-// PATCH /api/admin/sellers/:id/unverify
-router.patch(
-  "/sellers/:id/unverify",
-  unverifySeller
-);
-
-// PUT /api/admin/sellers/:id/unverify
-router.put(
-  "/sellers/:id/unverify",
-  unverifySeller
-);
-
-// ============================================================
 // PRODUCTS
 // ============================================================
 
+// ------------------------------------------------------------
+// GET ALL PRODUCTS
 // GET /api/admin/products
+// ------------------------------------------------------------
+
 router.get(
   "/products",
   getProducts
 );
 
+// ------------------------------------------------------------
+// DELETE PRODUCT
 // DELETE /api/admin/products/:id
+// ------------------------------------------------------------
+
 router.delete(
   "/products/:id",
   deleteProduct
@@ -185,19 +222,27 @@ router.delete(
 // ORDERS
 // ============================================================
 
+// ------------------------------------------------------------
+// GET ALL ORDERS
 // GET /api/admin/orders
+// ------------------------------------------------------------
+
 router.get(
   "/orders",
   getOrders
 );
 
+// ------------------------------------------------------------
+// UPDATE ORDER STATUS
 // PATCH /api/admin/orders/:id/status
+// ------------------------------------------------------------
+
 router.patch(
   "/orders/:id/status",
   updateOrderStatus
 );
 
-// PUT /api/admin/orders/:id/status
+// Also allow PUT for frontend compatibility.
 router.put(
   "/orders/:id/status",
   updateOrderStatus
@@ -207,61 +252,85 @@ router.put(
 // RIDERS
 // ============================================================
 
+// ------------------------------------------------------------
+// GET ALL RIDERS
 // GET /api/admin/riders
+// ------------------------------------------------------------
+
 router.get(
   "/riders",
   getRiders
 );
 
+// ------------------------------------------------------------
+// GET RIDER BY ID
 // GET /api/admin/riders/:id
+// ------------------------------------------------------------
+
 router.get(
   "/riders/:id",
   getRiderById
 );
 
+// ------------------------------------------------------------
+// APPROVE RIDER
 // PATCH /api/admin/riders/:id/approve
+// ------------------------------------------------------------
+
 router.patch(
   "/riders/:id/approve",
   approveRider
 );
 
-// PUT /api/admin/riders/:id/approve
+// Also allow PUT.
 router.put(
   "/riders/:id/approve",
   approveRider
 );
 
+// ------------------------------------------------------------
+// REJECT RIDER
 // PATCH /api/admin/riders/:id/reject
+// ------------------------------------------------------------
+
 router.patch(
   "/riders/:id/reject",
   rejectRider
 );
 
-// PUT /api/admin/riders/:id/reject
+// Also allow PUT.
 router.put(
   "/riders/:id/reject",
   rejectRider
 );
 
+// ------------------------------------------------------------
+// UPDATE RIDER ACCOUNT STATUS
 // PATCH /api/admin/riders/:id/status
+// ------------------------------------------------------------
+
 router.patch(
   "/riders/:id/status",
   updateRiderStatus
 );
 
-// PUT /api/admin/riders/:id/status
+// Also allow PUT.
 router.put(
   "/riders/:id/status",
   updateRiderStatus
 );
 
+// ------------------------------------------------------------
+// UPDATE RIDER PROFILE
 // PATCH /api/admin/riders/:id/profile
+// ------------------------------------------------------------
+
 router.patch(
   "/riders/:id/profile",
   updateRiderProfile
 );
 
-// PUT /api/admin/riders/:id/profile
+// Also allow PUT.
 router.put(
   "/riders/:id/profile",
   updateRiderProfile
