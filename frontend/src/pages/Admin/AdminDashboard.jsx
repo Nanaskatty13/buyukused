@@ -14,7 +14,7 @@ import Settings from "./components/Settings";
 import Toast from "./components/Toast";
 import RecentProducts from "./components/RecentProducts";
 
-// ─── Seller Management (existing) ────────────────────────────
+// ─── Seller Management ──────────────────────────────────────
 import Sellers from "../../admin/Sellers";
 
 // ─── API ──────────────────────────────────────────────────────
@@ -23,6 +23,8 @@ import {
   getUsers,
   getUserStats,
   getRiders,
+  getUnverifiedSellers,
+  verifySeller,
 } from "../../services/api";
 
 import "./styles/admin.css";
@@ -46,6 +48,10 @@ const AdminDashboard = () => {
   const [notification, setNotification] = useState(null);
   const [error, setError] = useState("");
 
+  // ─── New state for verification widget ────────────────────
+  const [unverifiedSellers, setUnverifiedSellers] = useState([]);
+  const [verifying, setVerifying] = useState({});
+
   // ─── Toast helper ──────────────────────────────────────────
   const showNotification = useCallback((message, type = "success") => {
     setNotification({ message, type });
@@ -58,17 +64,19 @@ const AdminDashboard = () => {
     setError("");
 
     try {
-      const [productsData, usersData, statsData, ridersData] = await Promise.all([
+      const [productsData, usersData, statsData, ridersData, unverifiedData] = await Promise.all([
         getProducts({ limit: 50 }),
         getUsers({}, token),
         getUserStats(token),
         getRiders({}, token),
+        getUnverifiedSellers(token),
       ]);
 
       setProducts(productsData?.products || []);
       setUsers(usersData?.users || []);
       setStats(statsData?.stats || {});
       setRiders(ridersData?.riders || []);
+      setUnverifiedSellers(unverifiedData?.sellers || []);
     } catch (err) {
       console.error("❌ Admin fetch error:", err);
       setError(err.message || "Failed to load dashboard data");
@@ -128,6 +136,21 @@ const AdminDashboard = () => {
     );
   }, [riders, searchTerm]);
 
+  // ─── Verification handler ──────────────────────────────────
+  const handleVerify = async (sellerId) => {
+    setVerifying(prev => ({ ...prev, [sellerId]: true }));
+    try {
+      await verifySeller(sellerId, token);
+      setUnverifiedSellers(prev => prev.filter(s => s._id !== sellerId));
+      showNotification('Seller verified successfully!', 'success');
+      refreshData();
+    } catch (err) {
+      showNotification(err.message || 'Verification failed', 'error');
+    } finally {
+      setVerifying(prev => ({ ...prev, [sellerId]: false }));
+    }
+  };
+
   // ─── Shared props ──────────────────────────────────────────
   const sharedProps = {
     products: filteredProducts,
@@ -146,22 +169,91 @@ const AdminDashboard = () => {
         return (
           <>
             <StatsCards stats={stats} products={filteredProducts} users={filteredUsers} />
+
+            {/* ─── Pending Verifications Widget ───────────────── */}
+            <div className="pending-verifications-widget" style={{
+              background: '#fff',
+              borderRadius: '12px',
+              padding: '20px',
+              margin: '24px 0',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+              border: '1px solid #e5e7eb'
+            }}>
+              <h3 style={{ margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span>📋</span> Pending Seller Verifications
+                <span style={{ fontSize: '14px', background: '#f3f4f6', padding: '2px 10px', borderRadius: '20px', marginLeft: '8px' }}>
+                  {unverifiedSellers.length}
+                </span>
+              </h3>
+
+              {unverifiedSellers.length === 0 ? (
+                <p style={{ color: '#6b7280', margin: '8px 0' }}>All sellers are verified 🎉</p>
+              ) : (
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                  {unverifiedSellers.slice(0, 5).map(seller => (
+                    <li key={seller._id} style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: '12px 0',
+                      borderBottom: '1px solid #f3f4f6'
+                    }}>
+                      <div>
+                        <strong>{seller.name || seller.shopName}</strong>
+                        <span style={{ marginLeft: '12px', color: '#6b7280', fontSize: '14px' }}>
+                          {seller.email}
+                        </span>
+                        <span style={{ marginLeft: '12px', fontSize: '12px', color: '#9ca3af' }}>
+                          Joined {new Date(seller.createdAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => handleVerify(seller._id)}
+                        disabled={verifying[seller._id]}
+                        style={{
+                          background: '#2563eb',
+                          color: 'white',
+                          border: 'none',
+                          padding: '6px 16px',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          fontWeight: 500,
+                          fontSize: '14px',
+                          opacity: verifying[seller._id] ? 0.6 : 1,
+                        }}
+                      >
+                        {verifying[seller._id] ? 'Verifying...' : '✓ Verify'}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {unverifiedSellers.length > 5 && (
+                <p style={{ marginTop: '8px', textAlign: 'right' }}>
+                  <a href="#" onClick={() => setActivePage('sellers')} style={{ color: '#2563eb' }}>
+                    View all {unverifiedSellers.length} pending →
+                  </a>
+                </p>
+              )}
+            </div>
+
             <RecentProducts products={filteredProducts.slice(0, 5)} />
-            <div style={{ marginTop: "24px", display: "flex", justifyContent: "center" }}>
+
+            <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'center' }}>
               <button
                 type="button"
-                onClick={() => setActivePage("sellers")}
+                onClick={() => setActivePage('sellers')}
                 style={{
-                  padding: "12px 24px",
-                  background: "#2563eb",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "8px",
+                  padding: '12px 24px',
+                  background: '#2563eb',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
                   fontWeight: 600,
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
                 }}
               >
                 <i className="fas fa-users" /> Manage Sellers & Users

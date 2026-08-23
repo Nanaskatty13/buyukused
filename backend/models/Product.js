@@ -528,9 +528,10 @@ const productSchema = new mongoose.Schema(
     },
 
     // ========================================================
-    // COSMETICS
+    // COSMETICS – Complete list of fields
     // ========================================================
 
+    // Basic cosmetic info
     cosmeticType: {
       type: String,
       default: "",
@@ -549,6 +550,69 @@ const productSchema = new mongoose.Schema(
       trim: true,
     },
 
+    // Added fields to match frontend
+    productLine: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    scent: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    coverage: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    cosmeticSize: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    benefits: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 2000,
+    },
+
+    skinConcern: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    spf: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    expirationDate: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    batchNumber: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    countryOfOrigin: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    // Existing fields
     skinType: {
       type: String,
       default: "",
@@ -578,6 +642,32 @@ const productSchema = new mongoose.Schema(
       type: String,
       default: "",
       trim: true,
+    },
+
+    // Cosmetic booleans
+    sealed: {
+      type: Boolean,
+      default: false,
+    },
+
+    authentic: {
+      type: Boolean,
+      default: false,
+    },
+
+    crueltyFree: {
+      type: Boolean,
+      default: false,
+    },
+
+    vegan: {
+      type: Boolean,
+      default: false,
+    },
+
+    parabenFree: {
+      type: Boolean,
+      default: false,
     },
 
     // ========================================================
@@ -687,6 +777,10 @@ productSchema.index({
   cosmeticShade: "text",
   skinType: "text",
   ingredients: "text",
+  // Add new fields to text search
+  productLine: "text",
+  benefits: "text",
+  skinConcern: "text",
 });
 
 // ============================================================

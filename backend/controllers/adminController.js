@@ -8,10 +8,40 @@ const Order = require("../models/Orders");
 // ADMIN DASHBOARD STATISTICS
 // ============================================================
 
-exports.getDashboardStats =
-  async (req, res) => {
-    try {
-      const [
+exports.getDashboardStats = async (req, res) => {
+  try {
+    const [
+      users,
+      products,
+      orders,
+      riders,
+      approvedRiders,
+      pendingRiders,
+      availableRiders,
+    ] = await Promise.all([
+      User.countDocuments(),
+      Product.countDocuments(),
+      Order.countDocuments(),
+      User.countDocuments({ role: "rider" }),
+      User.countDocuments({
+        role: "rider",
+        "riderProfile.isApproved": true,
+      }),
+      User.countDocuments({
+        role: "rider",
+        "riderProfile.isApproved": false,
+      }),
+      User.countDocuments({
+        role: "rider",
+        "riderProfile.isApproved": true,
+        "riderProfile.isAvailable": true,
+        isActive: true,
+      }),
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      stats: {
         users,
         products,
         orders,
@@ -19,979 +49,707 @@ exports.getDashboardStats =
         approvedRiders,
         pendingRiders,
         availableRiders,
-      ] = await Promise.all([
-        User.countDocuments(),
-
-        Product.countDocuments(),
-
-        Order.countDocuments(),
-
-        User.countDocuments({
-          role: "rider",
-        }),
-
-        User.countDocuments({
-          role: "rider",
-          "riderProfile.isApproved": true,
-        }),
-
-        User.countDocuments({
-          role: "rider",
-          "riderProfile.isApproved": false,
-        }),
-
-        User.countDocuments({
-          role: "rider",
-          "riderProfile.isApproved": true,
-          "riderProfile.isAvailable": true,
-          isActive: true,
-        }),
-      ]);
-
-      return res.status(200).json({
-        success: true,
-
-        stats: {
-          users,
-          products,
-          orders,
-          riders,
-          approvedRiders,
-          pendingRiders,
-          availableRiders,
-        },
-      });
-    } catch (error) {
-      console.error(
-        "❌ Admin dashboard stats error:",
-        error
-      );
-
-      return res.status(500).json({
-        success: false,
-        message:
-          "Failed to load dashboard statistics",
-      });
-    }
-  };
+      },
+    });
+  } catch (error) {
+    console.error("❌ Admin dashboard stats error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to load dashboard statistics",
+    });
+  }
+};
 
 // ============================================================
 // GET ALL USERS
 // ============================================================
 
-exports.getUsers =
-  async (req, res) => {
-    try {
-      const users =
-        await User.find()
-          .select("-password")
-          .sort({
-            createdAt: -1,
-          })
-          .lean();
+exports.getUsers = async (req, res) => {
+  try {
+    const users = await User.find()
+      .select("-password")
+      .sort({ createdAt: -1 })
+      .lean();
 
-      return res.status(200).json({
-        success: true,
-        count: users.length,
-        users,
-      });
-    } catch (error) {
-      console.error(
-        "❌ Get users error:",
-        error
-      );
-
-      return res.status(500).json({
-        success: false,
-        message:
-          "Failed to fetch users",
-      });
-    }
-  };
+    return res.status(200).json({
+      success: true,
+      count: users.length,
+      users,
+    });
+  } catch (error) {
+    console.error("❌ Get users error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch users",
+    });
+  }
+};
 
 // ============================================================
 // GET USER BY ID
 // ============================================================
 
-exports.getUserById =
-  async (req, res) => {
-    try {
-      const user =
-        await User.findById(
-          req.params.id
-        )
-          .select("-password")
-          .lean();
+exports.getUserById = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id)
+      .select("-password")
+      .lean();
 
-      if (!user) {
-        return res.status(404).json({
-          success: false,
-          message:
-            "User not found",
-        });
-      }
-
-      return res.status(200).json({
-        success: true,
-        user,
-      });
-    } catch (error) {
-      console.error(
-        "❌ Get user error:",
-        error
-      );
-
-      return res.status(500).json({
+    if (!user) {
+      return res.status(404).json({
         success: false,
-        message:
-          "Failed to fetch user",
+        message: "User not found",
       });
     }
-  };
+
+    return res.status(200).json({
+      success: true,
+      user,
+    });
+  } catch (error) {
+    console.error("❌ Get user error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch user",
+    });
+  }
+};
 
 // ============================================================
 // UPDATE USER ROLE
 // ============================================================
 
-exports.updateUserRole =
-  async (req, res) => {
-    try {
-      const {
-        role,
-      } = req.body;
+exports.updateUserRole = async (req, res) => {
+  try {
+    const { role } = req.body;
+    const allowedRoles = ["buyer", "seller", "rider", "admin"];
 
-      const allowedRoles = [
-        "buyer",
-        "seller",
-        "rider",
-        "admin",
-      ];
-
-      if (
-        !allowedRoles.includes(role)
-      ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Invalid user role",
-        });
-      }
-
-      const user =
-        await User.findById(
-          req.params.id
-        );
-
-      if (!user) {
-        return res.status(404).json({
-          success: false,
-          message:
-            "User not found",
-        });
-      }
-
-      // Prevent admin from accidentally
-      // changing their own role.
-      if (
-        req.user &&
-        req.user._id.toString() ===
-          user._id.toString() &&
-        role !== "admin"
-      ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "You cannot remove your own admin role",
-        });
-      }
-
-      user.role = role;
-
-      // If no longer a rider,
-      // force rider offline.
-      if (
-        role !== "rider" &&
-        user.riderProfile
-      ) {
-        user.riderProfile.isAvailable =
-          false;
-      }
-
-      await user.save();
-
-      const safeUser =
-        await User.findById(
-          user._id
-        )
-          .select("-password")
-          .lean();
-
-      return res.status(200).json({
-        success: true,
-        message:
-          "User role updated successfully",
-        user: safeUser,
-      });
-    } catch (error) {
-      console.error(
-        "❌ Update user role error:",
-        error
-      );
-
-      return res.status(500).json({
+    if (!allowedRoles.includes(role)) {
+      return res.status(400).json({
         success: false,
-        message:
-          "Failed to update user role",
+        message: "Invalid user role",
       });
     }
-  };
+
+    const user = await User.findById(req.params.id);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    if (req.user && req.user._id.toString() === user._id.toString() && role !== "admin") {
+      return res.status(400).json({
+        success: false,
+        message: "You cannot remove your own admin role",
+      });
+    }
+
+    user.role = role;
+
+    if (role !== "rider" && user.riderProfile) {
+      user.riderProfile.isAvailable = false;
+    }
+
+    await user.save();
+
+    const safeUser = await User.findById(user._id).select("-password").lean();
+
+    return res.status(200).json({
+      success: true,
+      message: "User role updated successfully",
+      user: safeUser,
+    });
+  } catch (error) {
+    console.error("❌ Update user role error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to update user role",
+    });
+  }
+};
 
 // ============================================================
 // DELETE USER
 // ============================================================
 
-exports.deleteUser =
-  async (req, res) => {
-    try {
-      if (
-        req.user &&
-        req.user._id.toString() ===
-          req.params.id
-      ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "You cannot delete your own admin account",
-        });
-      }
-
-      const user =
-        await User.findByIdAndDelete(
-          req.params.id
-        );
-
-      if (!user) {
-        return res.status(404).json({
-          success: false,
-          message:
-            "User not found",
-        });
-      }
-
-      return res.status(200).json({
-        success: true,
-        message:
-          "User deleted successfully",
-      });
-    } catch (error) {
-      console.error(
-        "❌ Delete user error:",
-        error
-      );
-
-      return res.status(500).json({
+exports.deleteUser = async (req, res) => {
+  try {
+    if (req.user && req.user._id.toString() === req.params.id) {
+      return res.status(400).json({
         success: false,
-        message:
-          "Failed to delete user",
+        message: "You cannot delete your own admin account",
       });
     }
-  };
+
+    const user = await User.findByIdAndDelete(req.params.id);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "User deleted successfully",
+    });
+  } catch (error) {
+    console.error("❌ Delete user error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to delete user",
+    });
+  }
+};
 
 // ============================================================
 // GET ALL PRODUCTS
 // ============================================================
 
-exports.getProducts =
-  async (req, res) => {
-    try {
-      const products =
-        await Product.find()
-          .populate(
-            "sellerId",
-            "name email phone"
-          )
-          .sort({
-            createdAt: -1,
-          })
-          .lean();
+exports.getProducts = async (req, res) => {
+  try {
+    const products = await Product.find()
+      .populate("sellerId", "name email phone isVerified shopName")
+      .sort({ createdAt: -1 })
+      .lean();
 
-      return res.status(200).json({
-        success: true,
-        count: products.length,
-        products,
-      });
-    } catch (error) {
-      console.error(
-        "❌ Get products error:",
-        error
-      );
-
-      return res.status(500).json({
-        success: false,
-        message:
-          "Failed to fetch products",
-      });
-    }
-  };
+    return res.status(200).json({
+      success: true,
+      count: products.length,
+      products,
+    });
+  } catch (error) {
+    console.error("❌ Get products error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch products",
+    });
+  }
+};
 
 // ============================================================
 // DELETE PRODUCT
 // ============================================================
 
-exports.deleteProduct =
-  async (req, res) => {
-    try {
-      const product =
-        await Product.findByIdAndDelete(
-          req.params.id
-        );
+exports.deleteProduct = async (req, res) => {
+  try {
+    const product = await Product.findByIdAndDelete(req.params.id);
 
-      if (!product) {
-        return res.status(404).json({
-          success: false,
-          message:
-            "Product not found",
-        });
-      }
-
-      return res.status(200).json({
-        success: true,
-        message:
-          "Product deleted successfully",
-      });
-    } catch (error) {
-      console.error(
-        "❌ Delete product error:",
-        error
-      );
-
-      return res.status(500).json({
+    if (!product) {
+      return res.status(404).json({
         success: false,
-        message:
-          "Failed to delete product",
+        message: "Product not found",
       });
     }
-  };
+
+    return res.status(200).json({
+      success: true,
+      message: "Product deleted successfully",
+    });
+  } catch (error) {
+    console.error("❌ Delete product error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to delete product",
+    });
+  }
+};
 
 // ============================================================
 // GET ALL ORDERS
 // ============================================================
 
-exports.getOrders =
-  async (req, res) => {
-    try {
-      const orders =
-        await Order.find()
-          .sort({
-            createdAt: -1,
-          })
-          .lean();
+exports.getOrders = async (req, res) => {
+  try {
+    const orders = await Order.find().sort({ createdAt: -1 }).lean();
 
-      return res.status(200).json({
-        success: true,
-        count: orders.length,
-        orders,
-      });
-    } catch (error) {
-      console.error(
-        "❌ Get orders error:",
-        error
-      );
-
-      return res.status(500).json({
-        success: false,
-        message:
-          "Failed to fetch orders",
-      });
-    }
-  };
+    return res.status(200).json({
+      success: true,
+      count: orders.length,
+      orders,
+    });
+  } catch (error) {
+    console.error("❌ Get orders error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch orders",
+    });
+  }
+};
 
 // ============================================================
 // UPDATE ORDER STATUS
 // ============================================================
 
-exports.updateOrderStatus =
-  async (req, res) => {
-    try {
-      const {
-        status,
-      } = req.body;
+exports.updateOrderStatus = async (req, res) => {
+  try {
+    const { status } = req.body;
 
-      if (!status) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Order status is required",
-        });
-      }
-
-      const order =
-        await Order.findByIdAndUpdate(
-          req.params.id,
-          {
-            status,
-          },
-          {
-            new: true,
-            runValidators: true,
-          }
-        );
-
-      if (!order) {
-        return res.status(404).json({
-          success: false,
-          message:
-            "Order not found",
-        });
-      }
-
-      return res.status(200).json({
-        success: true,
-        message:
-          "Order status updated successfully",
-        order,
-      });
-    } catch (error) {
-      console.error(
-        "❌ Update order status error:",
-        error
-      );
-
-      return res.status(500).json({
+    if (!status) {
+      return res.status(400).json({
         success: false,
-        message:
-          "Failed to update order status",
+        message: "Order status is required",
       });
     }
-  };
+
+    const order = await Order.findByIdAndUpdate(
+      req.params.id,
+      { status },
+      {
+        new: true,
+        runValidators: true,
+      }
+    );
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Order status updated successfully",
+      order,
+    });
+  } catch (error) {
+    console.error("❌ Update order status error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to update order status",
+    });
+  }
+};
 
 // ============================================================
 // GET ALL RIDERS
-// GET /api/admin/riders
 // ============================================================
 
-exports.getRiders =
-  async (req, res) => {
-    try {
-      const {
-        status,
-        availability,
-        search,
-      } = req.query;
+exports.getRiders = async (req, res) => {
+  try {
+    const { status, availability, search } = req.query;
+    const filter = { role: "rider" };
 
-      const filter = {
-        role: "rider",
-      };
-
-      // --------------------------------------------------------
-      // Approval status
-      // --------------------------------------------------------
-
-      if (
-        status === "approved"
-      ) {
-        filter[
-          "riderProfile.isApproved"
-        ] = true;
-      }
-
-      if (
-        status === "pending"
-      ) {
-        filter[
-          "riderProfile.isApproved"
-        ] = false;
-      }
-
-      // --------------------------------------------------------
-      // Availability
-      // --------------------------------------------------------
-
-      if (
-        availability === "available"
-      ) {
-        filter[
-          "riderProfile.isAvailable"
-        ] = true;
-
-        filter.isActive = true;
-      }
-
-      if (
-        availability === "unavailable"
-      ) {
-        filter[
-          "riderProfile.isAvailable"
-        ] = false;
-      }
-
-      // --------------------------------------------------------
-      // Search
-      // --------------------------------------------------------
-
-      if (
-        search &&
-        String(search).trim()
-      ) {
-        const searchRegex =
-          new RegExp(
-            String(search).trim(),
-            "i"
-          );
-
-        filter.$or = [
-          {
-            name: searchRegex,
-          },
-          {
-            email: searchRegex,
-          },
-          {
-            phone: searchRegex,
-          },
-          {
-            "riderProfile.bikeNumber":
-              searchRegex,
-          },
-          {
-            "riderProfile.bikeType":
-              searchRegex,
-          },
-          {
-            "riderProfile.serviceArea":
-              searchRegex,
-          },
-          {
-            "riderProfile.identificationNumber":
-              searchRegex,
-          },
-        ];
-      }
-
-      const riders =
-        await User.find(filter)
-          .select("-password")
-          .sort({
-            createdAt: -1,
-          })
-          .lean();
-
-      return res.status(200).json({
-        success: true,
-        count: riders.length,
-        riders,
-      });
-    } catch (error) {
-      console.error(
-        "❌ Get riders error:",
-        error
-      );
-
-      return res.status(500).json({
-        success: false,
-        message:
-          "Failed to fetch riders",
-      });
+    if (status === "approved") {
+      filter["riderProfile.isApproved"] = true;
     }
-  };
+    if (status === "pending") {
+      filter["riderProfile.isApproved"] = false;
+    }
+
+    if (availability === "available") {
+      filter["riderProfile.isAvailable"] = true;
+      filter.isActive = true;
+    }
+    if (availability === "unavailable") {
+      filter["riderProfile.isAvailable"] = false;
+    }
+
+    if (search && String(search).trim()) {
+      const searchRegex = new RegExp(String(search).trim(), "i");
+      filter.$or = [
+        { name: searchRegex },
+        { email: searchRegex },
+        { phone: searchRegex },
+        { "riderProfile.bikeNumber": searchRegex },
+        { "riderProfile.bikeType": searchRegex },
+        { "riderProfile.serviceArea": searchRegex },
+        { "riderProfile.identificationNumber": searchRegex },
+      ];
+    }
+
+    const riders = await User.find(filter)
+      .select("-password")
+      .sort({ createdAt: -1 })
+      .lean();
+
+    return res.status(200).json({
+      success: true,
+      count: riders.length,
+      riders,
+    });
+  } catch (error) {
+    console.error("❌ Get riders error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch riders",
+    });
+  }
+};
 
 // ============================================================
 // GET RIDER BY ID
-// GET /api/admin/riders/:id
 // ============================================================
 
-exports.getRiderById =
-  async (req, res) => {
-    try {
-      const rider =
-        await User.findOne({
-          _id: req.params.id,
-          role: "rider",
-        })
-          .select("-password")
-          .lean();
+exports.getRiderById = async (req, res) => {
+  try {
+    const rider = await User.findOne({
+      _id: req.params.id,
+      role: "rider",
+    })
+      .select("-password")
+      .lean();
 
-      if (!rider) {
-        return res.status(404).json({
-          success: false,
-          message:
-            "Rider not found",
-        });
-      }
-
-      return res.status(200).json({
-        success: true,
-        rider,
-      });
-    } catch (error) {
-      console.error(
-        "❌ Get rider error:",
-        error
-      );
-
-      return res.status(500).json({
+    if (!rider) {
+      return res.status(404).json({
         success: false,
-        message:
-          "Failed to fetch rider",
+        message: "Rider not found",
       });
     }
-  };
+
+    return res.status(200).json({
+      success: true,
+      rider,
+    });
+  } catch (error) {
+    console.error("❌ Get rider error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch rider",
+    });
+  }
+};
 
 // ============================================================
 // APPROVE RIDER
 // ============================================================
 
-exports.approveRider =
-  async (req, res) => {
-    try {
-      const rider =
-        await User.findOne({
-          _id: req.params.id,
-          role: "rider",
-        });
+exports.approveRider = async (req, res) => {
+  try {
+    const rider = await User.findOne({
+      _id: req.params.id,
+      role: "rider",
+    });
 
-      if (!rider) {
-        return res.status(404).json({
-          success: false,
-          message:
-            "Rider not found",
-        });
-      }
-
-      if (
-        !rider.riderProfile
-      ) {
-        rider.riderProfile = {};
-      }
-
-      rider.riderProfile.isApproved =
-        true;
-
-      rider.riderProfile.isAvailable =
-        false;
-
-      rider.isActive = true;
-
-      await rider.save();
-
-      return res.status(200).json({
-        success: true,
-        message:
-          "Rider approved successfully",
-        rider:
-          rider.toJSON(),
-      });
-    } catch (error) {
-      console.error(
-        "❌ Approve rider error:",
-        error
-      );
-
-      return res.status(500).json({
+    if (!rider) {
+      return res.status(404).json({
         success: false,
-        message:
-          "Failed to approve rider",
+        message: "Rider not found",
       });
     }
-  };
+
+    if (!rider.riderProfile) {
+      rider.riderProfile = {};
+    }
+
+    rider.riderProfile.isApproved = true;
+    rider.riderProfile.isAvailable = false;
+    rider.isActive = true;
+
+    await rider.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Rider approved successfully",
+      rider: rider.toJSON(),
+    });
+  } catch (error) {
+    console.error("❌ Approve rider error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to approve rider",
+    });
+  }
+};
 
 // ============================================================
 // REJECT RIDER
 // ============================================================
 
-exports.rejectRider =
-  async (req, res) => {
-    try {
-      const rider =
-        await User.findOne({
-          _id: req.params.id,
-          role: "rider",
-        });
+exports.rejectRider = async (req, res) => {
+  try {
+    const rider = await User.findOne({
+      _id: req.params.id,
+      role: "rider",
+    });
 
-      if (!rider) {
-        return res.status(404).json({
-          success: false,
-          message:
-            "Rider not found",
-        });
-      }
-
-      if (
-        !rider.riderProfile
-      ) {
-        rider.riderProfile = {};
-      }
-
-      rider.riderProfile.isApproved =
-        false;
-
-      rider.riderProfile.isAvailable =
-        false;
-
-      await rider.save();
-
-      return res.status(200).json({
-        success: true,
-        message:
-          "Rider application rejected",
-        rider:
-          rider.toJSON(),
-      });
-    } catch (error) {
-      console.error(
-        "❌ Reject rider error:",
-        error
-      );
-
-      return res.status(500).json({
+    if (!rider) {
+      return res.status(404).json({
         success: false,
-        message:
-          "Failed to reject rider",
+        message: "Rider not found",
       });
     }
-  };
+
+    if (!rider.riderProfile) {
+      rider.riderProfile = {};
+    }
+
+    rider.riderProfile.isApproved = false;
+    rider.riderProfile.isAvailable = false;
+
+    await rider.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Rider application rejected",
+      rider: rider.toJSON(),
+    });
+  } catch (error) {
+    console.error("❌ Reject rider error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to reject rider",
+    });
+  }
+};
 
 // ============================================================
 // UPDATE RIDER STATUS
 // ============================================================
 
-exports.updateRiderStatus =
-  async (req, res) => {
-    try {
-      const {
-        isActive,
-      } = req.body;
+exports.updateRiderStatus = async (req, res) => {
+  try {
+    const { isActive } = req.body;
 
-      if (
-        typeof isActive !==
-        "boolean"
-      ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "isActive must be true or false",
-        });
-      }
-
-      const rider =
-        await User.findOne({
-          _id: req.params.id,
-          role: "rider",
-        });
-
-      if (!rider) {
-        return res.status(404).json({
-          success: false,
-          message:
-            "Rider not found",
-        });
-      }
-
-      rider.isActive =
-        isActive;
-
-      if (
-        !rider.riderProfile
-      ) {
-        rider.riderProfile = {};
-      }
-
-      if (!isActive) {
-        rider.riderProfile.isAvailable =
-          false;
-      }
-
-      await rider.save();
-
-      return res.status(200).json({
-        success: true,
-        message:
-          isActive
-            ? "Rider activated successfully"
-            : "Rider deactivated successfully",
-        rider:
-          rider.toJSON(),
-      });
-    } catch (error) {
-      console.error(
-        "❌ Update rider status error:",
-        error
-      );
-
-      return res.status(500).json({
+    if (typeof isActive !== "boolean") {
+      return res.status(400).json({
         success: false,
-        message:
-          "Failed to update rider status",
+        message: "isActive must be true or false",
       });
     }
-  };
+
+    const rider = await User.findOne({
+      _id: req.params.id,
+      role: "rider",
+    });
+
+    if (!rider) {
+      return res.status(404).json({
+        success: false,
+        message: "Rider not found",
+      });
+    }
+
+    rider.isActive = isActive;
+
+    if (!rider.riderProfile) {
+      rider.riderProfile = {};
+    }
+
+    if (!isActive) {
+      rider.riderProfile.isAvailable = false;
+    }
+
+    await rider.save();
+
+    return res.status(200).json({
+      success: true,
+      message: isActive ? "Rider activated successfully" : "Rider deactivated successfully",
+      rider: rider.toJSON(),
+    });
+  } catch (error) {
+    console.error("❌ Update rider status error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to update rider status",
+    });
+  }
+};
 
 // ============================================================
 // UPDATE RIDER PROFILE
 // ============================================================
 
-exports.updateRiderProfile =
-  async (req, res) => {
-    try {
-      const {
-        bikeType,
-        bikeNumber,
-        serviceArea,
-        identificationNumber,
-        rating,
-        completedDeliveries,
-      } = req.body;
+exports.updateRiderProfile = async (req, res) => {
+  try {
+    const {
+      bikeType,
+      bikeNumber,
+      serviceArea,
+      identificationNumber,
+      rating,
+      completedDeliveries,
+    } = req.body;
 
-      const rider =
-        await User.findOne({
-          _id: req.params.id,
-          role: "rider",
-        });
+    const rider = await User.findOne({
+      _id: req.params.id,
+      role: "rider",
+    });
 
-      if (!rider) {
-        return res.status(404).json({
-          success: false,
-          message:
-            "Rider not found",
-        });
-      }
-
-      if (
-        !rider.riderProfile
-      ) {
-        rider.riderProfile = {};
-      }
-
-      // --------------------------------------------------------
-      // Bike type
-      // --------------------------------------------------------
-
-      if (
-        bikeType !== undefined
-      ) {
-        rider.riderProfile.bikeType =
-          String(
-            bikeType
-          ).trim();
-      }
-
-      // --------------------------------------------------------
-      // Bike number
-      // --------------------------------------------------------
-
-      if (
-        bikeNumber !== undefined
-      ) {
-        rider.riderProfile.bikeNumber =
-          String(
-            bikeNumber
-          ).trim();
-      }
-
-      // --------------------------------------------------------
-      // Service area
-      // --------------------------------------------------------
-
-      if (
-        serviceArea !== undefined
-      ) {
-        rider.riderProfile.serviceArea =
-          String(
-            serviceArea
-          ).trim();
-      }
-
-      // --------------------------------------------------------
-      // Identification number
-      // --------------------------------------------------------
-
-      if (
-        identificationNumber !==
-        undefined
-      ) {
-        rider.riderProfile.identificationNumber =
-          String(
-            identificationNumber
-          ).trim();
-      }
-
-      // --------------------------------------------------------
-      // Rating
-      // --------------------------------------------------------
-
-      if (
-        rating !== undefined
-      ) {
-        const numericRating =
-          Number(rating);
-
-        if (
-          Number.isNaN(
-            numericRating
-          ) ||
-          numericRating < 0 ||
-          numericRating > 5
-        ) {
-          return res.status(400).json({
-            success: false,
-            message:
-              "Rating must be between 0 and 5",
-          });
-        }
-
-        rider.riderProfile.rating =
-          numericRating;
-      }
-
-      // --------------------------------------------------------
-      // Completed deliveries
-      // --------------------------------------------------------
-
-      if (
-        completedDeliveries !==
-        undefined
-      ) {
-        const deliveries =
-          Number(
-            completedDeliveries
-          );
-
-        if (
-          Number.isNaN(
-            deliveries
-          ) ||
-          deliveries < 0
-        ) {
-          return res.status(400).json({
-            success: false,
-            message:
-              "Completed deliveries cannot be negative",
-          });
-        }
-
-        rider.riderProfile.completedDeliveries =
-          deliveries;
-      }
-
-      await rider.save();
-
-      return res.status(200).json({
-        success: true,
-        message:
-          "Rider profile updated successfully",
-        rider:
-          rider.toJSON(),
-      });
-    } catch (error) {
-      console.error(
-        "❌ Update rider profile error:",
-        error
-      );
-
-      return res.status(500).json({
+    if (!rider) {
+      return res.status(404).json({
         success: false,
-        message:
-          "Failed to update rider profile",
+        message: "Rider not found",
       });
     }
-  };
+
+    if (!rider.riderProfile) {
+      rider.riderProfile = {};
+    }
+
+    if (bikeType !== undefined) {
+      rider.riderProfile.bikeType = String(bikeType).trim();
+    }
+
+    if (bikeNumber !== undefined) {
+      rider.riderProfile.bikeNumber = String(bikeNumber).trim();
+    }
+
+    if (serviceArea !== undefined) {
+      rider.riderProfile.serviceArea = String(serviceArea).trim();
+    }
+
+    if (identificationNumber !== undefined) {
+      rider.riderProfile.identificationNumber = String(identificationNumber).trim();
+    }
+
+    if (rating !== undefined) {
+      const numericRating = Number(rating);
+      if (Number.isNaN(numericRating) || numericRating < 0 || numericRating > 5) {
+        return res.status(400).json({
+          success: false,
+          message: "Rating must be between 0 and 5",
+        });
+      }
+      rider.riderProfile.rating = numericRating;
+    }
+
+    if (completedDeliveries !== undefined) {
+      const deliveries = Number(completedDeliveries);
+      if (Number.isNaN(deliveries) || deliveries < 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Completed deliveries cannot be negative",
+        });
+      }
+      rider.riderProfile.completedDeliveries = deliveries;
+    }
+
+    await rider.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Rider profile updated successfully",
+      rider: rider.toJSON(),
+    });
+  } catch (error) {
+    console.error("❌ Update rider profile error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to update rider profile",
+    });
+  }
+};
+
+// ============================================================
+// SELLER VERIFICATION – GET UNVERIFIED SELLERS
+// ============================================================
+
+exports.getUnverifiedSellers = async (req, res) => {
+  try {
+    const sellers = await User.find({
+      role: "seller",
+      isVerified: false,
+    })
+      .select("_id name email phone shopName createdAt profileImage")
+      .sort({ createdAt: -1 })
+      .lean();
+
+    return res.status(200).json({
+      success: true,
+      sellers,
+    });
+  } catch (error) {
+    console.error("❌ Get unverified sellers error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch unverified sellers",
+    });
+  }
+};
+
+// ============================================================
+// SELLER VERIFICATION – VERIFY A SELLER
+// ============================================================
+
+exports.verifySeller = async (req, res) => {
+  try {
+    const sellerId = req.params.id;
+
+    const seller = await User.findOne({
+      _id: sellerId,
+      role: "seller",
+    });
+
+    if (!seller) {
+      return res.status(404).json({
+        success: false,
+        message: "Seller not found",
+      });
+    }
+
+    if (seller.isVerified) {
+      return res.status(400).json({
+        success: false,
+        message: "Seller is already verified",
+      });
+    }
+
+    seller.isVerified = true;
+    seller.verifiedAt = new Date();
+    seller.verifiedBy = req.user._id;
+    await seller.save();
+
+    // Optional: send email notification
+    // await sendVerificationEmail(seller.email, seller.name);
+
+    return res.status(200).json({
+      success: true,
+      message: "Seller verified successfully",
+      seller: {
+        _id: seller._id,
+        name: seller.name,
+        isVerified: seller.isVerified,
+      },
+    });
+  } catch (error) {
+    console.error("❌ Verify seller error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to verify seller",
+    });
+  }
+};
+
+// ============================================================
+// SELLER VERIFICATION – REVOKE VERIFICATION
+// ============================================================
+
+exports.revokeVerification = async (req, res) => {
+  try {
+    const sellerId = req.params.id;
+
+    const seller = await User.findOne({
+      _id: sellerId,
+      role: "seller",
+    });
+
+    if (!seller) {
+      return res.status(404).json({
+        success: false,
+        message: "Seller not found",
+      });
+    }
+
+    seller.isVerified = false;
+    seller.verifiedAt = null;
+    seller.verifiedBy = null;
+    await seller.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Verification revoked successfully",
+    });
+  } catch (error) {
+    console.error("❌ Revoke verification error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to revoke verification",
+    });
+  }
+};

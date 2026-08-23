@@ -32,6 +32,11 @@ const {
   rejectRider,
   updateRiderStatus,
   updateRiderProfile,
+
+  // ─── NEW: Seller Verification ──────────────────────────────
+  getUnverifiedSellers,
+  verifySeller,
+  revokeVerification,
 } = require("../controllers/adminController");
 
 // ============================================================
@@ -123,40 +128,59 @@ router.put(
 // RIDERS
 // ============================================================
 
-// GET /api/admin/riders
 router.get(
   "/riders",
   getRiders
 );
 
-// GET /api/admin/riders/:id
 router.get(
   "/riders/:id",
   getRiderById
 );
 
-// PUT /api/admin/riders/:id/approve
 router.put(
   "/riders/:id/approve",
   approveRider
 );
 
-// PUT /api/admin/riders/:id/reject
 router.put(
   "/riders/:id/reject",
   rejectRider
 );
 
-// PUT /api/admin/riders/:id/status
 router.put(
   "/riders/:id/status",
   updateRiderStatus
 );
 
-// PUT /api/admin/riders/:id/profile
 router.put(
   "/riders/:id/profile",
   updateRiderProfile
+);
+
+// ============================================================
+// SELLER VERIFICATION (NEW)
+// ============================================================
+
+// GET /api/admin/unverified-sellers
+// List all sellers with isVerified = false
+router.get(
+  "/unverified-sellers",
+  getUnverifiedSellers
+);
+
+// POST /api/admin/verify-seller/:id
+// Mark a seller as verified
+router.post(
+  "/verify-seller/:id",
+  verifySeller
+);
+
+// PUT /api/admin/revoke-verification/:id
+// Revoke verification from a seller
+router.put(
+  "/revoke-verification/:id",
+  revokeVerification
 );
 
 // ============================================================

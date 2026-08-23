@@ -81,10 +81,7 @@ const normalizeCategory = (value) => {
     .trim();
 
   const categoryMap = {
-    // ----------------------------------------------------------
-    // CARS
-    // ----------------------------------------------------------
-
+    // Cars
     car: "Cars",
     cars: "Cars",
     automobile: "Cars",
@@ -98,10 +95,7 @@ const normalizeCategory = (value) => {
     "motor vehicle": "Cars",
     "motor vehicles": "Cars",
 
-    // ----------------------------------------------------------
-    // PHONES
-    // ----------------------------------------------------------
-
+    // Phones
     phone: "Phones",
     phones: "Phones",
     mobile: "Phones",
@@ -119,10 +113,7 @@ const normalizeCategory = (value) => {
     "cell phone": "Phones",
     "cell phones": "Phones",
 
-    // ----------------------------------------------------------
-    // LAPTOPS
-    // ----------------------------------------------------------
-
+    // Laptops
     laptop: "Laptops",
     laptops: "Laptops",
     notebook: "Laptops",
@@ -134,10 +125,7 @@ const normalizeCategory = (value) => {
     macbook: "Laptops",
     macbooks: "Laptops",
 
-    // ----------------------------------------------------------
-    // TABLETS
-    // ----------------------------------------------------------
-
+    // Tablets
     tablet: "Tablets",
     tablets: "Tablets",
     ipad: "Tablets",
@@ -145,10 +133,7 @@ const normalizeCategory = (value) => {
     "tablet computer": "Tablets",
     "tablet computers": "Tablets",
 
-    // ----------------------------------------------------------
-    // ACCESSORIES
-    // ----------------------------------------------------------
-
+    // Accessories
     accessory: "Accessories",
     accessories: "Accessories",
     "phone accessory": "Accessories",
@@ -166,10 +151,7 @@ const normalizeCategory = (value) => {
     earbud: "Accessories",
     earbuds: "Accessories",
 
-    // ----------------------------------------------------------
-    // REAL ESTATE
-    // ----------------------------------------------------------
-
+    // Real Estate
     "real estate": "Real Estate",
     realestate: "Real Estate",
     property: "Real Estate",
@@ -181,10 +163,7 @@ const normalizeCategory = (value) => {
     apartment: "Real Estate",
     apartments: "Real Estate",
 
-    // ----------------------------------------------------------
-    // JOBS
-    // ----------------------------------------------------------
-
+    // Jobs
     job: "Jobs",
     jobs: "Jobs",
     employment: "Jobs",
@@ -193,10 +172,7 @@ const normalizeCategory = (value) => {
     career: "Jobs",
     careers: "Jobs",
 
-    // ----------------------------------------------------------
-    // ELECTRONICS
-    // ----------------------------------------------------------
-
+    // Electronics
     electronic: "Electronics",
     electronics: "Electronics",
     gadget: "Electronics",
@@ -204,10 +180,7 @@ const normalizeCategory = (value) => {
     device: "Electronics",
     devices: "Electronics",
 
-    // ----------------------------------------------------------
-    // FASHION
-    // ----------------------------------------------------------
-
+    // Fashion
     fashion: "Fashion",
     clothing: "Fashion",
     clothes: "Fashion",
@@ -216,10 +189,7 @@ const normalizeCategory = (value) => {
     bag: "Fashion",
     bags: "Fashion",
 
-    // ----------------------------------------------------------
-    // HOME
-    // ----------------------------------------------------------
-
+    // Home
     home: "Home",
     homes: "Home",
     furniture: "Home",
@@ -229,10 +199,7 @@ const normalizeCategory = (value) => {
     appliance: "Home",
     appliances: "Home",
 
-    // ----------------------------------------------------------
-    // TVS
-    // ----------------------------------------------------------
-
+    // TVs
     tv: "TVs",
     tvs: "TVs",
     television: "TVs",
@@ -242,10 +209,7 @@ const normalizeCategory = (value) => {
     "smart television": "TVs",
     "smart televisions": "TVs",
 
-    // ----------------------------------------------------------
-    // GAME CONSOLES
-    // ----------------------------------------------------------
-
+    // Game Consoles
     console: "Game Consoles",
     consoles: "Game Consoles",
     gaming: "Game Consoles",
@@ -266,10 +230,7 @@ const normalizeCategory = (value) => {
     "nintendo switch": "Game Consoles",
     switch: "Game Consoles",
 
-    // ----------------------------------------------------------
-    // SMARTWATCHES
-    // ----------------------------------------------------------
-
+    // Smartwatches
     watch: "Smartwatches",
     watches: "Smartwatches",
     smartwatch: "Smartwatches",
@@ -281,10 +242,7 @@ const normalizeCategory = (value) => {
     applewatch: "Smartwatches",
     "apple watch": "Smartwatches",
 
-    // ----------------------------------------------------------
-    // COSMETICS / BEAUTY
-    // ----------------------------------------------------------
-
+    // Cosmetics / Beauty
     cosmetic: "Cosmetics",
     cosmetics: "Cosmetics",
     beauty: "Cosmetics",
@@ -315,10 +273,7 @@ const normalizeCategory = (value) => {
     "beauty product": "Cosmetics",
     "beauty products": "Cosmetics",
 
-    // ----------------------------------------------------------
-    // OTHER
-    // ----------------------------------------------------------
-
+    // Other
     other: "Other",
   };
 
@@ -338,10 +293,7 @@ const normalizeCategory = (value) => {
     return canonicalCategory;
   }
 
-  // ----------------------------------------------------------
-  // FALLBACK MATCHING
-  // ----------------------------------------------------------
-
+  // ─── Fallback matching ──────────────────────────────────
   if (
     normalized.includes("phone") ||
     normalized.includes("mobile") ||
@@ -853,422 +805,164 @@ const uploadProductFiles =
 // BUILD PRODUCT DATA
 // ============================================================
 
-const buildProductData = (
-  body,
-  req
-) => {
+const buildProductData = (body, req) => {
   const normalizedCategory =
-    normalizeCategory(
-      body?.category
-    );
+    normalizeCategory(body?.category);
 
   return {
     // --------------------------------------------------------
     // BASIC PRODUCT INFORMATION
     // --------------------------------------------------------
 
-    title: cleanString(
-      body.title
-    ),
-
-    price: toNumberOrNull(
-      body.price
-    ),
-
-    oldPrice:
-      toNumberOrNull(
-        body.oldPrice
-      ),
-
-    category:
-      normalizedCategory,
-
-    location:
-      cleanString(
-        body.location
-      ) || "Ghana",
-
-    description:
-      cleanString(
-        body.description
-      ),
+    title: cleanString(body.title),
+    price: toNumberOrNull(body.price),
+    oldPrice: toNumberOrNull(body.oldPrice),
+    category: normalizedCategory,
+    location: cleanString(body.location) || "Ghana",
+    description: cleanString(body.description),
 
     // --------------------------------------------------------
     // SELLER
     // --------------------------------------------------------
 
-    sellerId:
-      getUserId(req),
-
-    sellerName:
-      cleanString(
-        body.sellerName
-      ) ||
-      cleanString(
-        req.user?.name
-      ),
-
-    sellerPhone:
-      cleanString(
-        body.sellerPhone
-      ) ||
-      cleanString(
-        req.user?.phone
-      ),
+    sellerId: getUserId(req),
+    sellerName: cleanString(body.sellerName) || cleanString(req.user?.name),
+    sellerPhone: cleanString(body.sellerPhone) || cleanString(req.user?.phone),
 
     // --------------------------------------------------------
     // GENERAL
     // --------------------------------------------------------
 
-    brand: cleanString(
-      body.brand
-    ),
-
-    model: cleanString(
-      body.model
-    ),
-
-    color: cleanString(
-      body.color
-    ),
-
-    condition:
-      normalizeCondition(
-        body.condition
-      ),
-
-    warranty: cleanString(
-      body.warranty
-    ),
+    brand: cleanString(body.brand),
+    model: cleanString(body.model),
+    color: cleanString(body.color),
+    condition: normalizeCondition(body.condition),
+    warranty: cleanString(body.warranty),
 
     // --------------------------------------------------------
     // PHONES / LAPTOPS / TABLETS
     // --------------------------------------------------------
 
-    storage: cleanString(
-      body.storage
-    ),
-
-    ram: cleanString(
-      body.ram
-    ),
-
-    processor: cleanString(
-      body.processor
-    ),
-
-    graphics: cleanString(
-      body.graphics
-    ),
-
-    screenSize:
-      cleanString(
-        body.screenSize
-      ),
-
-    year: cleanString(
-      body.year
-    ),
-
-    connectivity:
-      cleanString(
-        body.connectivity
-      ),
-
-    battery: cleanString(
-      body.battery
-    ),
-
-    resolution:
-      cleanString(
-        body.resolution
-      ),
-
-    operatingSystem:
-      cleanString(
-        body.operatingSystem
-      ),
-
-    batteryHealth:
-      toNumberOrNull(
-        body.batteryHealth
-      ),
-
-    faceId: cleanString(
-      body.faceId
-    ),
-
-    simStatus:
-      cleanString(
-        body.simStatus
-      ),
+    storage: cleanString(body.storage),
+    ram: cleanString(body.ram),
+    processor: cleanString(body.processor),
+    graphics: cleanString(body.graphics),
+    screenSize: cleanString(body.screenSize),
+    year: cleanString(body.year),
+    connectivity: cleanString(body.connectivity),
+    battery: cleanString(body.battery),
+    resolution: cleanString(body.resolution),
+    operatingSystem: cleanString(body.operatingSystem),
+    batteryHealth: toNumberOrNull(body.batteryHealth),
+    faceId: cleanString(body.faceId),
+    simStatus: cleanString(body.simStatus),
 
     // --------------------------------------------------------
     // GAME CONSOLES
     // --------------------------------------------------------
 
-    videoOutput:
-      cleanString(
-        body.videoOutput
-      ),
-
-    region: cleanString(
-      body.region
-    ),
-
-    consoleType:
-      cleanString(
-        body.consoleType
-      ),
-
-    edition: cleanString(
-      body.edition
-    ),
-
-    discDrive:
-      cleanString(
-        body.discDrive
-      ),
-
-    controllersIncluded:
-      cleanString(
-        body.controllersIncluded
-      ),
+    videoOutput: cleanString(body.videoOutput),
+    region: cleanString(body.region),
+    consoleType: cleanString(body.consoleType),
+    edition: cleanString(body.edition),
+    discDrive: cleanString(body.discDrive),
+    controllersIncluded: cleanString(body.controllersIncluded),
 
     // --------------------------------------------------------
     // SMARTWATCHES
     // --------------------------------------------------------
 
-    watchSize:
-      cleanString(
-        body.watchSize
-      ),
+    watchSize: cleanString(body.watchSize),
 
     // --------------------------------------------------------
     // TV
     // --------------------------------------------------------
 
-    tvType: cleanString(
-      body.tvType
-    ),
-
-    displayTechnology:
-      cleanString(
-        body.displayTechnology
-      ),
-
-    refreshRate:
-      cleanString(
-        body.refreshRate
-      ),
-
-    hdr: cleanString(
-      body.hdr
-    ),
-
-    hdmiPorts:
-      cleanString(
-        body.hdmiPorts
-      ),
-
-    usbPorts:
-      cleanString(
-        body.usbPorts
-      ),
+    tvType: cleanString(body.tvType),
+    displayTechnology: cleanString(body.displayTechnology),
+    refreshRate: cleanString(body.refreshRate),
+    hdr: cleanString(body.hdr),
+    hdmiPorts: cleanString(body.hdmiPorts),
+    usbPorts: cleanString(body.usbPorts),
 
     // --------------------------------------------------------
     // CARS
     // --------------------------------------------------------
 
-    mileage:
-      toNumberOrNull(
-        body.mileage
-      ),
-
-    bodyType:
-      cleanString(
-        body.bodyType
-      ),
-
-    fuelType:
-      cleanString(
-        body.fuelType
-      ),
-
-    transmission:
-      cleanString(
-        body.transmission
-      ),
-
-    driveType:
-      cleanString(
-        body.driveType
-      ),
-
-    engineSize:
-      cleanString(
-        body.engineSize
-      ),
-
-    seatingCapacity:
-      toNumberOrNull(
-        body.seatingCapacity
-      ),
-
-    exteriorColor:
-      cleanString(
-        body.exteriorColor
-      ),
-
-    interiorColor:
-      cleanString(
-        body.interiorColor
-      ),
+    mileage: toNumberOrNull(body.mileage),
+    bodyType: cleanString(body.bodyType),
+    fuelType: cleanString(body.fuelType),
+    transmission: cleanString(body.transmission),
+    driveType: cleanString(body.driveType),
+    engineSize: cleanString(body.engineSize),
+    seatingCapacity: toNumberOrNull(body.seatingCapacity),
+    exteriorColor: cleanString(body.exteriorColor),
+    interiorColor: cleanString(body.interiorColor),
 
     // --------------------------------------------------------
     // ACCESSORIES
     // --------------------------------------------------------
 
-    accessoryType:
-      cleanString(
-        body.accessoryType
-      ),
-
-    compatibleWith:
-      cleanString(
-        body.compatibleWith
-      ),
-
-    compatibility:
-      cleanString(
-        body.compatibility
-      ),
-
-    material:
-      cleanString(
-        body.material
-      ),
-
-    cableType:
-      cleanString(
-        body.cableType
-      ),
-
-    connectorType:
-      cleanString(
-        body.connectorType
-      ),
-
-    powerOutput:
-      cleanString(
-        body.powerOutput
-      ),
-
-    capacity:
-      cleanString(
-        body.capacity
-      ),
-
-    batteryCapacity:
-      cleanString(
-        body.batteryCapacity
-      ),
+    accessoryType: cleanString(body.accessoryType),
+    compatibleWith: cleanString(body.compatibleWith),
+    compatibility: cleanString(body.compatibility),
+    material: cleanString(body.material),
+    cableType: cleanString(body.cableType),
+    connectorType: cleanString(body.connectorType),
+    powerOutput: cleanString(body.powerOutput),
+    capacity: cleanString(body.capacity),
+    batteryCapacity: cleanString(body.batteryCapacity),
 
     // --------------------------------------------------------
-    // COSMETICS / BEAUTY
+    // COSMETICS / BEAUTY – All fields from frontend
     // --------------------------------------------------------
 
-    cosmeticType:
-      cleanString(
-        body.cosmeticType
-      ),
+    cosmeticType: cleanString(body.cosmeticType),
+    productType: cleanString(body.productType),     // may be used for subcategory
+    skinType: cleanString(body.skinType),
+    hairType: cleanString(body.hairType),
+    gender: cleanString(body.gender),
+    shade: cleanString(body.shade),
+    volume: cleanString(body.volume),
+    ingredients: cleanString(body.ingredients),
+    expiryDate: cleanString(body.expiryDate),
 
-    productType:
-      cleanString(
-        body.productType
-      ),
+    // ─── Additional cosmetics fields ──────────────────────────
+    productLine: cleanString(body.productLine),
+    scent: cleanString(body.scent),
+    coverage: cleanString(body.coverage),
+    cosmeticSize: cleanString(body.cosmeticSize),
+    benefits: cleanString(body.benefits),
+    skinConcern: cleanString(body.skinConcern),
+    spf: cleanString(body.spf),
+    expirationDate: cleanString(body.expirationDate),
+    batchNumber: cleanString(body.batchNumber),
+    countryOfOrigin: cleanString(body.countryOfOrigin),
 
-    skinType:
-      cleanString(
-        body.skinType
-      ),
-
-    hairType:
-      cleanString(
-        body.hairType
-      ),
-
-    gender:
-      cleanString(
-        body.gender
-      ),
-
-    shade:
-      cleanString(
-        body.shade
-      ),
-
-    volume:
-      cleanString(
-        body.volume
-      ),
-
-    ingredients:
-      cleanString(
-        body.ingredients
-      ),
-
-    expiryDate:
-      cleanString(
-        body.expiryDate
-      ),
+    // ─── Cosmetics booleans ──────────────────────────────────
+    sealed: toBoolean(body.sealed),
+    authentic: toBoolean(body.authentic),
+    crueltyFree: toBoolean(body.crueltyFree),
+    vegan: toBoolean(body.vegan),
+    parabenFree: toBoolean(body.parabenFree),
 
     // --------------------------------------------------------
-    // BOOLEAN FIELDS
+    // BOOLEAN FIELDS (general)
     // --------------------------------------------------------
 
-    smartTV: toBoolean(
-      body.smartTV
-    ),
-
-    voiceControl:
-      toBoolean(
-        body.voiceControl
-      ),
-
-    wallMountable:
-      toBoolean(
-        body.wallMountable
-      ),
-
-    wireless:
-      toBoolean(
-        body.wireless
-      ),
-
-    original:
-      toBoolean(
-        body.original
-      ),
-
-    negotiation:
-      toBoolean(
-        body.negotiation
-      ),
-
-    swapAccepted:
-      toBoolean(
-        body.swapAccepted
-      ),
+    smartTV: toBoolean(body.smartTV),
+    voiceControl: toBoolean(body.voiceControl),
+    wallMountable: toBoolean(body.wallMountable),
+    wireless: toBoolean(body.wireless),
+    original: toBoolean(body.original),
+    negotiation: toBoolean(body.negotiation),
+    swapAccepted: toBoolean(body.swapAccepted),
 
     // --------------------------------------------------------
     // STATUS
     // --------------------------------------------------------
 
-    status:
-      normalizeStatus(
-        body.status
-      ),
+    status: normalizeStatus(body.status),
   };
 };
 
@@ -2258,7 +1952,7 @@ exports.updateProduct =
       }
 
       // --------------------------------------------------------
-      // ALLOWED FIELDS
+      // ALLOWED FIELDS – includes all cosmetics fields
       // --------------------------------------------------------
 
       const allowedFields = [
@@ -2325,6 +2019,7 @@ exports.updateProduct =
         "capacity",
         "batteryCapacity",
 
+        // ─── Cosmetics ────────────────────────────────────────
         "cosmeticType",
         "productType",
         "skinType",
@@ -2334,7 +2029,18 @@ exports.updateProduct =
         "volume",
         "ingredients",
         "expiryDate",
+        "productLine",
+        "scent",
+        "coverage",
+        "cosmeticSize",
+        "benefits",
+        "skinConcern",
+        "spf",
+        "expirationDate",
+        "batchNumber",
+        "countryOfOrigin",
 
+        // ─── Other ────────────────────────────────────────────
         "batteryHealth",
         "faceId",
         "simStatus",
@@ -2347,6 +2053,12 @@ exports.updateProduct =
         "wallMountable",
         "wireless",
         "original",
+
+        "sealed",
+        "authentic",
+        "crueltyFree",
+        "vegan",
+        "parabenFree",
 
         "status",
       ];
@@ -2367,6 +2079,11 @@ exports.updateProduct =
         "wallMountable",
         "wireless",
         "original",
+        "sealed",
+        "authentic",
+        "crueltyFree",
+        "vegan",
+        "parabenFree",
       ];
 
       // --------------------------------------------------------

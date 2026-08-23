@@ -1642,6 +1642,68 @@ export const admin = {
       }
     );
   },
+
+  // ─── NEW: Seller Verification ──────────────────────────────
+
+  getUnverifiedSellers: async (
+    token = getToken()
+  ) => {
+    return request(
+      `${API_URL}/api/admin/unverified-sellers`,
+      {
+        method: "GET",
+
+        headers:
+          getHeaders(token),
+      }
+    );
+  },
+
+  verifySeller: async (
+    sellerId,
+    token = getToken()
+  ) => {
+    if (!sellerId) {
+      throw new Error(
+        "Seller ID is required"
+      );
+    }
+
+    return request(
+      `${API_URL}/api/admin/verify-seller/${encodeURIComponent(
+        sellerId
+      )}`,
+      {
+        method: "POST",
+
+        headers:
+          getHeaders(token),
+      }
+    );
+  },
+
+  revokeVerification: async (
+    sellerId,
+    token = getToken()
+  ) => {
+    if (!sellerId) {
+      throw new Error(
+        "Seller ID is required"
+      );
+    }
+
+    return request(
+      `${API_URL}/api/admin/revoke-verification/${encodeURIComponent(
+        sellerId
+      )}`,
+      {
+        method: "PUT",
+
+        headers:
+          getHeaders(token),
+      }
+    );
+  },
 };
 
 // ================================================================
@@ -2101,6 +2163,17 @@ export const getAdminDeliveryById =
 export const updateAdminDeliveryStatus =
   admin.updateDeliveryStatus;
 
+// ─── NEW: Seller Verification Exports ─────────────────────────
+
+export const getUnverifiedSellers =
+  admin.getUnverifiedSellers;
+
+export const verifySeller =
+  admin.verifySeller;
+
+export const revokeVerification =
+  admin.revokeVerification;
+
 // ================================================================
 // DELIVERY EXPORTS
 // ================================================================
@@ -2281,6 +2354,14 @@ const api = {
   getAdminDeliveryById,
 
   updateAdminDeliveryStatus,
+
+  // ─── NEW: Verification functions in default object ─────────
+
+  getUnverifiedSellers,
+
+  verifySeller,
+
+  revokeVerification,
 
   createDelivery,
 

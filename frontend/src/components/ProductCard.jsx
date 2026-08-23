@@ -5,6 +5,7 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { getImageUrl, updateProductStatus } from '../services/api';
 import SoldBadge from './SoldBadge';
+import VerifiedBadge from './VerifiedBadge'; // NEW
 
 const ProductCard = ({ product, onStatusToggle, appleStyle = false, videoPreview = false }) => {
   const { toggleFavorite, isFavorite } = useCart();
@@ -120,6 +121,11 @@ const ProductCard = ({ product, onStatusToggle, appleStyle = false, videoPreview
       setIsUpdating(false);
     }
   };
+
+  // ─── Helper: get seller name and verification status ─────────
+  const seller = product.sellerId || product.seller || {};
+  const sellerName = seller.name || seller.shopName || 'Seller';
+  const isSellerVerified = seller.isVerified === true;
 
   return (
     <div
@@ -290,6 +296,22 @@ const ProductCard = ({ product, onStatusToggle, appleStyle = false, videoPreview
             {product.title || 'Untitled'}
           </div>
         </Link>
+
+        {/* ─── Seller Name + Verified Badge (NEW) ─── */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px',
+            fontSize: '12px',
+            color: '#555',
+            marginBottom: '4px',
+            flexWrap: 'wrap',
+          }}
+        >
+          <span>by {sellerName}</span>
+          {isSellerVerified && <VerifiedBadge size={14} />}
+        </div>
 
         <div
           className="price"

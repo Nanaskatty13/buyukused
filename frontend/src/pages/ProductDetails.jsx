@@ -16,6 +16,7 @@ import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
 
 import SoldBadge from "../components/SoldBadge";
+import VerifiedBadge from "../components/VerifiedBadge"; // NEW
 
 // ── Laptop constants ──────────────────────────────────────────────
 import {
@@ -1563,12 +1564,11 @@ const ProductDetails = () => {
     product?.sellerId?.toString() === user._id?.toString()
   );
 
-  const sellerName = (() => {
-    const seller = product.seller || product.sellerId || {};
-    return seller.name || product.sellerName || 'Seller';
-  })();
-
-  const sellerId = product.sellerId?._id || product.sellerId || product.seller?._id || '';
+  // ─── NEW: Get seller object and verification status ──────────
+  const sellerObj = product.seller || product.sellerId || {};
+  const sellerName = sellerObj.name || product.sellerName || 'Seller';
+  const sellerId = sellerObj._id || product.sellerId?._id || product.sellerId || product.seller?._id || '';
+  const isVerified = sellerObj.isVerified === true;
 
   // ================================================================
   // RENDER
@@ -1942,7 +1942,7 @@ const ProductDetails = () => {
               {product.description || "No description provided."}
             </div>
 
-            {/* SELLER CARD */}
+            {/* SELLER CARD – UPDATED WITH VERIFIED BADGE */}
             <div
               className="seller"
               style={{
@@ -1974,20 +1974,19 @@ const ProductDetails = () => {
                 }}
               >
                 {(() => {
-                  const seller = product.seller || product.sellerId || {};
                   const imageField =
-                    seller.profileImage ||
-                    seller.photo ||
-                    seller.avatar ||
-                    seller.profilePicture ||
-                    seller.profilePic ||
-                    seller.picture ||
-                    seller.image ||
-                    seller.profile_pic ||
-                    seller.profile_picture ||
+                    sellerObj.profileImage ||
+                    sellerObj.photo ||
+                    sellerObj.avatar ||
+                    sellerObj.profilePicture ||
+                    sellerObj.profilePic ||
+                    sellerObj.picture ||
+                    sellerObj.image ||
+                    sellerObj.profile_pic ||
+                    sellerObj.profile_picture ||
                     null;
 
-                  const name = seller.name || product.sellerName || 'KN Seller';
+                  const name = sellerName;
 
                   let avatarUrl = null;
                   if (imageField) {
@@ -2023,11 +2022,10 @@ const ProductDetails = () => {
                 <span
                   className={`seller-status-dot ${
                     (() => {
-                      const seller = product.seller || product.sellerId || {};
-                      if (seller.online === true) return 'online';
-                      if (seller.online === false) return 'offline';
-                      if (seller.lastActive) {
-                        const last = new Date(seller.lastActive);
+                      if (sellerObj.online === true) return 'online';
+                      if (sellerObj.online === false) return 'offline';
+                      if (sellerObj.lastActive) {
+                        const last = new Date(sellerObj.lastActive);
                         const now = new Date();
                         const diffMs = now - last;
                         const diffMin = diffMs / 60000;
@@ -2040,24 +2038,27 @@ const ProductDetails = () => {
               </div>
 
               <div style={{ flex: 1 }}>
-                <Link
-                  to={`/seller/${sellerId}`}
-                  style={{
-                    fontWeight: 700,
-                    fontSize: '16px',
-                    marginBottom: '2px',
-                    color: 'var(--primary)',
-                    textDecoration: 'underline',
-                    textDecorationColor: 'var(--primary)',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                  }}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <i className="fas fa-user" />
-                  {sellerName}
-                </Link>
+                <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '6px' }}>
+                  <Link
+                    to={`/seller/${sellerId}`}
+                    style={{
+                      fontWeight: 700,
+                      fontSize: '16px',
+                      marginBottom: '2px',
+                      color: 'var(--primary)',
+                      textDecoration: 'underline',
+                      textDecorationColor: 'var(--primary)',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <i className="fas fa-user" />
+                    {sellerName}
+                  </Link>
+                  {isVerified && <VerifiedBadge size={18} />}
+                </div>
 
                 {user ? (
                   product.sellerPhone && (
@@ -2083,18 +2084,12 @@ const ProductDetails = () => {
                   </div>
                 )}
 
-                {(() => {
-                  const seller = product.seller || product.sellerId || {};
-                  if (seller.createdAt) {
-                    return (
-                      <div style={{ fontSize: '12px', color: 'var(--gray-400)', marginTop: '4px' }}>
-                        <i className="fas fa-calendar-alt" style={{ marginRight: '4px' }} />
-                        Member since {new Date(seller.createdAt).toLocaleDateString()}
-                      </div>
-                    );
-                  }
-                  return null;
-                })()}
+                {sellerObj.createdAt && (
+                  <div style={{ fontSize: '12px', color: 'var(--gray-400)', marginTop: '4px' }}>
+                    <i className="fas fa-calendar-alt" style={{ marginRight: '4px' }} />
+                    Member since {new Date(sellerObj.createdAt).toLocaleDateString()}
+                  </div>
+                )}
               </div>
             </div>
 

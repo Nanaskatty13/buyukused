@@ -22,6 +22,7 @@ import {
 } from "../services/sellerService";
 
 import ProductCard from "../components/ProductCard";
+import VerifiedBadge from "../components/VerifiedBadge"; // NEW
 
 // ============================================================
 // TIME AGO
@@ -131,13 +132,6 @@ const timeAgo = (
 // ============================================================
 // IMAGE URL HELPER
 // ============================================================
-//
-// IMPORTANT:
-// If Cloudinary already gives us a complete URL,
-// use it directly.
-//
-// Otherwise use your existing getImageUrl() helper.
-// ============================================================
 
 const getSellerImageUrl = (
   image
@@ -153,7 +147,6 @@ const getSellerImageUrl = (
     return null;
   }
 
-  // Cloudinary / external URL
   if (
     value.startsWith(
       "http://"
@@ -239,10 +232,6 @@ const SellerPage = () => {
           return;
         }
 
-        // ----------------------------------------------------
-        // Require authentication
-        // ----------------------------------------------------
-
         if (!user) {
           setLoading(false);
 
@@ -252,10 +241,6 @@ const SellerPage = () => {
         try {
           setLoading(true);
           setError("");
-
-          // ==================================================
-          // PROFILE
-          // ==================================================
 
           const profileData =
             await getPublicSellerProfile(
@@ -306,7 +291,6 @@ const SellerPage = () => {
               sellerData.location ||
               "",
 
-            // Use backend's resolved avatar.
             avatar:
               sellerData.avatar ||
               sellerData.profileImage ||
@@ -365,11 +349,11 @@ const SellerPage = () => {
                 sellerData.productsCount ||
                   0
               ),
-          });
 
-          // ==================================================
-          // PRODUCTS
-          // ==================================================
+            // ─── NEW: verification status ───────────────────
+            isVerified:
+              sellerData.isVerified === true,
+          });
 
           const productsData =
             await getPublicSellerProducts(
@@ -409,10 +393,6 @@ const SellerPage = () => {
             "❌ Error fetching seller data:",
             err
           );
-
-          // --------------------------------------------------
-          // If backend says unauthorized, send user to login.
-          // --------------------------------------------------
 
           if (
             err?.response?.status ===
@@ -723,6 +703,9 @@ const SellerPage = () => {
       seller.avatar
     );
 
+  const isVerified =
+    seller.isVerified === true;
+
   // ==========================================================
   // WHATSAPP
   // ==========================================================
@@ -935,18 +918,39 @@ const SellerPage = () => {
                 "250px",
             }}
           >
-            <h1
+            {/* ─── Name + Verified Badge (NEW) ─── */}
+            <div
               style={{
-                fontSize:
-                  "28px",
-                fontWeight:
-                  800,
+                display:
+                  "flex",
+                alignItems:
+                  "center",
+                flexWrap:
+                  "wrap",
+                gap: "8px",
                 marginBottom:
-                  "8px",
+                  "4px",
               }}
             >
-              {sellerName}
-            </h1>
+              <h1
+                style={{
+                  fontSize:
+                    "28px",
+                  fontWeight:
+                    800,
+                  margin: 0,
+                }}
+              >
+                {sellerName}
+              </h1>
+
+              {isVerified && (
+                <VerifiedBadge
+                  size={28}
+                  showLabel
+                />
+              )}
+            </div>
 
             {/* Location */}
 
