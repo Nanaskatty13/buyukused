@@ -1,4 +1,3 @@
-
 // ============================================================
 // backend/models/Product.js
 // BuyUKUsed Product Model
@@ -42,35 +41,6 @@ const PRODUCT_CONDITIONS = [
   "Good",
   "Fair",
   "Poor",
-];
-
-const FACE_ID_STATUSES = [
-  "Working",
-  "Not Working",
-  "Not Available",
-  "",
-];
-
-const SIM_STATUSES = [
-  "eSIM Unlocked",
-  "SIM Unlocked",
-  "Locked",
-  "Bypass",
-  "Not Available",
-  "",
-];
-
-const COSMETIC_TYPES = [
-  "",
-  "Makeup",
-  "Skincare",
-  "Haircare",
-  "Fragrance",
-  "Body Care",
-  "Nail Care",
-  "Men's Grooming",
-  "Beauty Tools",
-  "Other",
 ];
 
 // ============================================================
@@ -513,13 +483,26 @@ const productSchema = new mongoose.Schema(
 
     faceId: {
       type: String,
-      enum: FACE_ID_STATUSES,
+      enum: [
+        "Working",
+        "Not Working",
+        "Not Available",
+        "",
+      ],
       default: "",
+      trim: true,
     },
 
     simStatus: {
       type: String,
-      enum: SIM_STATUSES,
+      enum: [
+        "eSIM Unlocked",
+        "SIM Unlocked",
+        "Locked",
+        "Bypass",
+        "Not Available",
+        "",
+      ],
       default: "",
       trim: true,
     },
@@ -530,7 +513,6 @@ const productSchema = new mongoose.Schema(
 
     cosmeticType: {
       type: String,
-      enum: COSMETIC_TYPES,
       default: "",
       trim: true,
       index: true,
@@ -548,7 +530,13 @@ const productSchema = new mongoose.Schema(
       trim: true,
     },
 
-    size: {
+    volume: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    expiryDate: {
       type: String,
       default: "",
       trim: true,
@@ -565,24 +553,6 @@ const productSchema = new mongoose.Schema(
       default: "",
       trim: true,
       maxlength: 3000,
-    },
-
-    expiryDate: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    volume: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    scent: {
-      type: String,
-      default: "",
-      trim: true,
     },
 
     // ========================================================
@@ -707,7 +677,7 @@ productSchema.index({
 });
 
 // ============================================================
-// SORTING / FILTERING INDEXES
+// SORTING INDEXES
 // ============================================================
 
 productSchema.index({
@@ -718,6 +688,10 @@ productSchema.index({
   price: 1,
 });
 
+// ============================================================
+// PHONE INDEXES
+// ============================================================
+
 productSchema.index({
   simStatus: 1,
 });
@@ -725,6 +699,10 @@ productSchema.index({
 productSchema.index({
   batteryHealth: 1,
 });
+
+// ============================================================
+// ACCESSORY INDEXES
+// ============================================================
 
 productSchema.index({
   accessoryType: 1,
@@ -742,6 +720,10 @@ productSchema.index({
   original: 1,
 });
 
+// ============================================================
+// GAME CONSOLE INDEXES
+// ============================================================
+
 productSchema.index({
   videoOutput: 1,
 });
@@ -754,9 +736,17 @@ productSchema.index({
   resolution: 1,
 });
 
+// ============================================================
+// SMARTWATCH INDEX
+// ============================================================
+
 productSchema.index({
   watchSize: 1,
 });
+
+// ============================================================
+// TV INDEXES
+// ============================================================
 
 productSchema.index({
   tvType: 1,
@@ -782,6 +772,10 @@ productSchema.index({
   smartTV: 1,
 });
 
+// ============================================================
+// CAR INDEXES
+// ============================================================
+
 productSchema.index({
   mileage: 1,
 });
@@ -805,5 +799,9 @@ productSchema.index({
 const Product =
   mongoose.models.Product ||
   mongoose.model("Product", productSchema);
+
+// ============================================================
+// EXPORT
+// ============================================================
 
 module.exports = Product;
