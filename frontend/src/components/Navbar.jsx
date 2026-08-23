@@ -22,7 +22,7 @@ const Navbar = () => {
   // ─── Unread message count ──────────────────────────────────
   const [unreadMessages, setUnreadMessages] = useState(0);
 
-  // Close logged-in dropdown on outside click
+  // ─── Close dropdowns on outside click ──────────────────────
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -33,7 +33,6 @@ const Navbar = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Close non-logged-in dropdown on outside click
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (mobileDropdownRef.current && !mobileDropdownRef.current.contains(event.target)) {
@@ -44,7 +43,7 @@ const Navbar = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // ─── Fetch unread counts when user logs in ─────────────────
+  // ─── Fetch unread counts ────────────────────────────────────
   useEffect(() => {
     if (!user) {
       setUnreadNotifications(0);
@@ -54,13 +53,11 @@ const Navbar = () => {
 
     const fetchCounts = async () => {
       try {
-        // 1. Notifications
         const notifData = await getNotifications(user._id);
         const notifications = notifData?.notifications || notifData?.data || [];
         const unread = notifications.filter(n => !n.isRead).length;
         setUnreadNotifications(unread);
 
-        // 2. Messages – using the corrected endpoint
         const token = getToken();
         if (token) {
           const response = await fetch(`${import.meta.env.VITE_API_URL}/api/messages/unread-count`, {
@@ -87,8 +84,6 @@ const Navbar = () => {
     };
 
     fetchCounts();
-
-    // Poll every 30 seconds for updates
     const interval = setInterval(fetchCounts, 30000);
     return () => clearInterval(interval);
   }, [user]);
@@ -114,7 +109,6 @@ const Navbar = () => {
 
   const profileImageUrl = getProfileImage();
 
-  // ─── Handle heart click ─────────────────────────────────────────
   const handleHeartClick = (e) => {
     if (!user) {
       e.preventDefault();
@@ -124,7 +118,6 @@ const Navbar = () => {
 
   return (
     <>
-      {/* ─── Responsive CSS with @media queries ─── */}
       <style>
         {`
           .navbar-container {
@@ -249,9 +242,9 @@ const Navbar = () => {
               top: -5px;
               right: -5px;
             }
-            /* ─── Increased gap for icons ─── */
+            /* ─── More spacing for icons ─── */
             .navbar-container > div:last-child {
-              gap: 14px !important;
+              gap: 22px !important;
             }
             .navbar-post-ad-btn {
               padding: 4px 10px !important;
@@ -290,9 +283,8 @@ const Navbar = () => {
               top: -4px;
               right: -4px;
             }
-            /* ─── Slightly reduced gap on very small screens ─── */
             .navbar-container > div:last-child {
-              gap: 10px !important;
+              gap: 16px !important;
             }
           }
         `}
@@ -351,7 +343,6 @@ const Navbar = () => {
 
           {/* Right side */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            {/* ─── Heart icon ─── */}
             <Link
               to="/wishlist"
               onClick={handleHeartClick}
@@ -363,7 +354,6 @@ const Navbar = () => {
               )}
             </Link>
 
-            {/* ─── Notification icon ─── */}
             {user && (
               <Link to="/notifications" className="navbar-bell">
                 <i className="fas fa-bell"></i>
@@ -375,7 +365,6 @@ const Navbar = () => {
               </Link>
             )}
 
-            {/* ─── Message icon ─── */}
             {user && (
               <Link to="/messages" className="navbar-envelope">
                 <i className="fas fa-envelope"></i>
@@ -388,7 +377,6 @@ const Navbar = () => {
             )}
 
             {user ? (
-              // ---------- LOGGED IN ----------
               <div ref={dropdownRef} style={{ position: 'relative' }}>
                 <div
                   onClick={toggleDropdown}
@@ -590,7 +578,6 @@ const Navbar = () => {
                 )}
               </div>
             ) : (
-              // ---------- NOT LOGGED IN ----------
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <Link
                   to="/login"
@@ -629,7 +616,6 @@ const Navbar = () => {
                   Sign Up
                 </Link>
 
-                {/* Mobile dropdown toggle */}
                 <div ref={mobileDropdownRef} style={{ position: 'relative' }}>
                   <div
                     onClick={toggleMobileDropdown}
