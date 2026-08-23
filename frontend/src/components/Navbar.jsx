@@ -249,8 +249,9 @@ const Navbar = () => {
               top: -5px;
               right: -5px;
             }
+            /* ─── Increased gap for icons ─── */
             .navbar-container > div:last-child {
-              gap: 8px !important;
+              gap: 14px !important;
             }
             .navbar-post-ad-btn {
               padding: 4px 10px !important;
@@ -288,6 +289,10 @@ const Navbar = () => {
               min-width: 10px;
               top: -4px;
               right: -4px;
+            }
+            /* ─── Slightly reduced gap on very small screens ─── */
+            .navbar-container > div:last-child {
+              gap: 10px !important;
             }
           }
         `}
