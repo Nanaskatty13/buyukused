@@ -3,12 +3,45 @@
 // BuyUKUsed - Admin Controller
 // ============================================================
 
+const mongoose = require("mongoose");
+
 const User = require("../models/User");
 const Product = require("../models/Product");
 const Order = require("../models/Orders");
 
 // ============================================================
+// HELPERS
+// ============================================================
+
+const isValidObjectId = (id) => {
+  return mongoose.Types.ObjectId.isValid(id);
+};
+
+// ------------------------------------------------------------
+// Escape user input before putting it into RegExp.
+// Prevents malformed regular expressions and regex abuse.
+// ------------------------------------------------------------
+
+const escapeRegex = (value) => {
+  return String(value).replace(
+    /[.*+?^${}()|[\]\\]/g,
+    "\\$&"
+  );
+};
+
+// ------------------------------------------------------------
+// Get authenticated admin ID safely.
+// ------------------------------------------------------------
+
+const getCurrentUserId = (req) => {
+  return req.user?._id
+    ? String(req.user._id)
+    : null;
+};
+
+// ============================================================
 // ADMIN DASHBOARD STATISTICS
+// GET /api/admin/stats
 // ============================================================
 
 exports.getDashboardStats = async (req, res) => {
@@ -17,19 +50,37 @@ exports.getDashboardStats = async (req, res) => {
       users,
       products,
       orders,
+
       riders,
       approvedRiders,
       pendingRiders,
       availableRiders,
+
       sellers,
       verifiedSellers,
       pendingSellerVerifications,
     ] = await Promise.all([
+      // --------------------------------------------------------
+      // USERS
+      // --------------------------------------------------------
+
       User.countDocuments(),
+
+      // --------------------------------------------------------
+      // PRODUCTS
+      // --------------------------------------------------------
 
       Product.countDocuments(),
 
+      // --------------------------------------------------------
+      // ORDERS
+      // --------------------------------------------------------
+
       Order.countDocuments(),
+
+      // --------------------------------------------------------
+      // RIDERS
+      // --------------------------------------------------------
 
       User.countDocuments({
         role: "rider",
@@ -52,6 +103,10 @@ exports.getDashboardStats = async (req, res) => {
         isActive: true,
       }),
 
+      // --------------------------------------------------------
+      // SELLERS
+      // --------------------------------------------------------
+
       User.countDocuments({
         role: "seller",
       }),
@@ -70,7 +125,6 @@ exports.getDashboardStats = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-
       stats: {
         users,
         products,
@@ -116,50 +170,71 @@ exports.getUsers = async (req, res) => {
     } = req.query;
 
     const currentPage = Math.max(
-      Number(page) || 1,
+      parseInt(page, 10) || 1,
       1
     );
 
     const currentLimit = Math.min(
-      Math.max(Number(limit) || 20, 1),
+      Math.max(
+        parseInt(limit, 10) || 20,
+        1
+      ),
       100
     );
 
     const filter = {};
 
     // ----------------------------------------------------------
-    // Role filter
+    // ROLE FILTER
     // ----------------------------------------------------------
 
+    const allowedRoles = [
+      "buyer",
+      "seller",
+      "rider",
+      "admin",
+    ];
+
     if (role) {
+      if (!allowedRoles.includes(role)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid role filter",
+        });
+      }
+
       filter.role = role;
     }
 
     // ----------------------------------------------------------
-    // Status filter
+    // STATUS FILTER
     // ----------------------------------------------------------
 
     if (status === "active") {
       filter.isActive = true;
-    }
-
-    if (
+    } else if (
       status === "suspended" ||
       status === "banned"
     ) {
       filter.isActive = false;
+    } else if (status) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid status filter",
+      });
     }
 
     // ----------------------------------------------------------
-    // Search
+    // SEARCH
     // ----------------------------------------------------------
 
-    if (
-      search &&
-      String(search).trim()
-    ) {
+    const cleanSearch = String(
+      search || ""
+    ).trim();
+
+    if (cleanSearch) {
       const searchRegex = new RegExp(
-        String(search).trim(),
+        escapeRegex(cleanSearch),
         "i"
       );
 
@@ -179,23 +254,34 @@ exports.getUsers = async (req, res) => {
       ];
     }
 
+    // ----------------------------------------------------------
+    // PAGINATION
+    // ----------------------------------------------------------
+
     const skip =
       (currentPage - 1) *
       currentLimit;
 
-    const [users, total] =
-      await Promise.all([
-        User.find(filter)
-          .select("-password")
-          .sort({
-            createdAt: -1,
-          })
-          .skip(skip)
-          .limit(currentLimit)
-          .lean(),
+    const [
+      users,
+      total,
+    ] = await Promise.all([
+      User.find(filter)
+        .select("-password")
+        .sort({
+          createdAt: -1,
+        })
+        .skip(skip)
+        .limit(currentLimit)
+        .lean(),
 
-        User.countDocuments(filter),
-      ]);
+      User.countDocuments(filter),
+    ]);
+
+    const totalPages =
+      Math.ceil(
+        total / currentLimit
+      );
 
     return res.status(200).json({
       success: true,
@@ -203,6 +289,11 @@ exports.getUsers = async (req, res) => {
       total,
       page: currentPage,
       limit: currentLimit,
+      totalPages,
+      hasNextPage:
+        currentPage < totalPages,
+      hasPreviousPage:
+        currentPage > 1,
       users,
     });
   } catch (error) {
@@ -224,20 +315,29 @@ exports.getUsers = async (req, res) => {
 // GET /api/admin/users/:id
 // ============================================================
 
-exports.getUserById = async (req, res) => {
+exports.getUserById = async (
+  req,
+  res
+) => {
   try {
+    const { id } = req.params;
+
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid user ID",
+      });
+    }
+
     const user =
-      await User.findById(
-        req.params.id
-      )
+      await User.findById(id)
         .select("-password")
         .lean();
 
     if (!user) {
       return res.status(404).json({
         success: false,
-        message:
-          "User not found",
+        message: "User not found",
       });
     }
 
@@ -269,7 +369,15 @@ exports.updateUserRole = async (
   res
 ) => {
   try {
+    const { id } = req.params;
     const { role } = req.body;
+
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid user ID",
+      });
+    }
 
     const allowedRoles = [
       "buyer",
@@ -281,29 +389,31 @@ exports.updateUserRole = async (
     if (!allowedRoles.includes(role)) {
       return res.status(400).json({
         success: false,
-        message:
-          "Invalid user role",
+        message: "Invalid user role",
       });
     }
 
     const user =
-      await User.findById(
-        req.params.id
-      );
+      await User.findById(id);
 
     if (!user) {
       return res.status(404).json({
         success: false,
-        message:
-          "User not found",
+        message: "User not found",
       });
     }
 
-    // Prevent admin from removing own admin role.
+    const currentAdminId =
+      getCurrentUserId(req);
+
+    // ----------------------------------------------------------
+    // NEVER ALLOW ADMIN TO REMOVE THEIR OWN ADMIN ROLE
+    // ----------------------------------------------------------
+
     if (
-      req.user &&
-      req.user._id.toString() ===
-        user._id.toString() &&
+      currentAdminId &&
+      currentAdminId ===
+        String(user._id) &&
       role !== "admin"
     ) {
       return res.status(400).json({
@@ -314,23 +424,27 @@ exports.updateUserRole = async (
     }
 
     // ----------------------------------------------------------
-    // If changing away from seller, remove verification.
+    // If changing away from seller,
+    // remove seller verification.
     // ----------------------------------------------------------
 
     if (role !== "seller") {
       user.isVerified = false;
       user.verifiedAt = null;
       user.verifiedBy = null;
+
       user.verificationStatus =
         "not_submitted";
+
       user.verificationRejectedReason =
         "";
     }
 
-    user.role = role;
-
-    // If no longer a rider,
+    // ----------------------------------------------------------
+    // If changing away from rider,
     // force rider offline.
+    // ----------------------------------------------------------
+
     if (
       role !== "rider" &&
       user.riderProfile
@@ -338,6 +452,8 @@ exports.updateUserRole = async (
       user.riderProfile.isAvailable =
         false;
     }
+
+    user.role = role;
 
     await user.save();
 
@@ -378,7 +494,15 @@ exports.updateUserStatus = async (
   res
 ) => {
   try {
+    const { id } = req.params;
     const { isActive } = req.body;
+
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid user ID",
+      });
+    }
 
     if (
       typeof isActive !== "boolean"
@@ -390,10 +514,16 @@ exports.updateUserStatus = async (
       });
     }
 
+    const currentAdminId =
+      getCurrentUserId(req);
+
+    // ----------------------------------------------------------
+    // ADMIN CANNOT DEACTIVATE THEMSELVES
+    // ----------------------------------------------------------
+
     if (
-      req.user &&
-      req.user._id.toString() ===
-        req.params.id &&
+      currentAdminId &&
+      currentAdminId === id &&
       isActive === false
     ) {
       return res.status(400).json({
@@ -404,38 +534,69 @@ exports.updateUserStatus = async (
     }
 
     const user =
-      await User.findById(
-        req.params.id
-      );
+      await User.findById(id);
 
     if (!user) {
       return res.status(404).json({
         success: false,
-        message:
-          "User not found",
+        message: "User not found",
       });
+    }
+
+    // ----------------------------------------------------------
+    // Never allow the last active admin to be accidentally
+    // disabled through this endpoint.
+    // ----------------------------------------------------------
+
+    if (
+      user.role === "admin" &&
+      isActive === false
+    ) {
+      const activeAdmins =
+        await User.countDocuments({
+          role: "admin",
+          isActive: true,
+        });
+
+      if (activeAdmins <= 1) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "You cannot deactivate the last active admin account",
+        });
+      }
     }
 
     user.isActive = isActive;
 
+    // ----------------------------------------------------------
+    // Deactivate rider availability automatically.
+    // ----------------------------------------------------------
+
     if (
       user.role === "rider" &&
-      user.riderProfile
+      user.riderProfile &&
+      !isActive
     ) {
-      if (!isActive) {
-        user.riderProfile.isAvailable =
-          false;
-      }
+      user.riderProfile.isAvailable =
+        false;
     }
 
     await user.save();
+
+    const safeUser =
+      await User.findById(
+        user._id
+      )
+        .select("-password")
+        .lean();
 
     return res.status(200).json({
       success: true,
       message: isActive
         ? "User activated successfully"
         : "User suspended successfully",
-      user: user.toJSON(),
+      user: safeUser,
     });
   } catch (error) {
     console.error(
@@ -461,23 +622,27 @@ exports.verifySeller = async (
   res
 ) => {
   try {
+    const { id } = req.params;
+
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid seller ID",
+      });
+    }
+
     const seller =
       await User.findOne({
-        _id: req.params.id,
+        _id: id,
         role: "seller",
       });
 
     if (!seller) {
       return res.status(404).json({
         success: false,
-        message:
-          "Seller not found",
+        message: "Seller not found",
       });
     }
-
-    // ----------------------------------------------------------
-    // Already verified
-    // ----------------------------------------------------------
 
     if (
       seller.isVerified === true &&
@@ -492,7 +657,7 @@ exports.verifySeller = async (
     }
 
     // ----------------------------------------------------------
-    // Verify seller
+    // VERIFY SELLER
     // ----------------------------------------------------------
 
     seller.isVerified = true;
@@ -500,7 +665,8 @@ exports.verifySeller = async (
     seller.verificationStatus =
       "approved";
 
-    seller.verifiedAt = new Date();
+    seller.verifiedAt =
+      new Date();
 
     seller.verifiedBy =
       req.user?._id || null;
@@ -508,10 +674,12 @@ exports.verifySeller = async (
     seller.verificationRejectedReason =
       "";
 
-    // Seller is active after verification.
     seller.isActive = true;
 
-    // Set seller status if not already set.
+    // ----------------------------------------------------------
+    // SELLER STATUS
+    // ----------------------------------------------------------
+
     if (
       !seller.sellerStatus ||
       seller.sellerStatus ===
@@ -521,7 +689,10 @@ exports.verifySeller = async (
         "active";
     }
 
-    // Set sellerSince if empty.
+    // ----------------------------------------------------------
+    // SELLER SINCE
+    // ----------------------------------------------------------
+
     if (!seller.sellerSince) {
       seller.sellerSince =
         new Date();
@@ -570,17 +741,25 @@ exports.unverifySeller = async (
   res
 ) => {
   try {
+    const { id } = req.params;
+
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid seller ID",
+      });
+    }
+
     const seller =
       await User.findOne({
-        _id: req.params.id,
+        _id: id,
         role: "seller",
       });
 
     if (!seller) {
       return res.status(404).json({
         success: false,
-        message:
-          "Seller not found",
+        message: "Seller not found",
       });
     }
 
@@ -635,10 +814,25 @@ exports.deleteUser = async (
   res
 ) => {
   try {
+    const { id } = req.params;
+
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid user ID",
+      });
+    }
+
+    const currentAdminId =
+      getCurrentUserId(req);
+
+    // ----------------------------------------------------------
+    // ADMIN CANNOT DELETE THEMSELVES
+    // ----------------------------------------------------------
+
     if (
-      req.user &&
-      req.user._id.toString() ===
-        req.params.id
+      currentAdminId &&
+      currentAdminId === id
     ) {
       return res.status(400).json({
         success: false,
@@ -648,17 +842,37 @@ exports.deleteUser = async (
     }
 
     const user =
-      await User.findByIdAndDelete(
-        req.params.id
-      );
+      await User.findById(id);
 
     if (!user) {
       return res.status(404).json({
         success: false,
-        message:
-          "User not found",
+        message: "User not found",
       });
     }
+
+    // ----------------------------------------------------------
+    // Prevent deleting the last admin account.
+    // ----------------------------------------------------------
+
+    if (user.role === "admin") {
+      const adminCount =
+        await User.countDocuments({
+          role: "admin",
+        });
+
+      if (adminCount <= 1) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "You cannot delete the last admin account",
+        });
+      }
+    }
+
+    await User.deleteOne({
+      _id: user._id,
+    });
 
     return res.status(200).json({
       success: true,
@@ -681,6 +895,7 @@ exports.deleteUser = async (
 
 // ============================================================
 // GET ALL PRODUCTS
+// GET /api/admin/products
 // ============================================================
 
 exports.getProducts = async (
@@ -720,6 +935,7 @@ exports.getProducts = async (
 
 // ============================================================
 // DELETE PRODUCT
+// DELETE /api/admin/products/:id
 // ============================================================
 
 exports.deleteProduct = async (
@@ -727,18 +943,28 @@ exports.deleteProduct = async (
   res
 ) => {
   try {
+    const { id } = req.params;
+
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid product ID",
+      });
+    }
+
     const product =
-      await Product.findByIdAndDelete(
-        req.params.id
-      );
+      await Product.findById(id);
 
     if (!product) {
       return res.status(404).json({
         success: false,
-        message:
-          "Product not found",
+        message: "Product not found",
       });
     }
+
+    await Product.deleteOne({
+      _id: product._id,
+    });
 
     return res.status(200).json({
       success: true,
@@ -761,6 +987,7 @@ exports.deleteProduct = async (
 
 // ============================================================
 // GET ALL ORDERS
+// GET /api/admin/orders
 // ============================================================
 
 exports.getOrders = async (
@@ -796,15 +1023,26 @@ exports.getOrders = async (
 
 // ============================================================
 // UPDATE ORDER STATUS
+// PATCH /api/admin/orders/:id/status
 // ============================================================
 
 exports.updateOrderStatus =
   async (req, res) => {
     try {
-      const { status } =
-        req.body;
+      const { id } = req.params;
+      const { status } = req.body;
 
-      if (!status) {
+      if (!isValidObjectId(id)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid order ID",
+        });
+      }
+
+      if (
+        typeof status !== "string" ||
+        !status.trim()
+      ) {
         return res.status(400).json({
           success: false,
           message:
@@ -812,25 +1050,29 @@ exports.updateOrderStatus =
         });
       }
 
+      const cleanStatus =
+        status.trim();
+
       const order =
-        await Order.findByIdAndUpdate(
-          req.params.id,
-          {
-            status,
-          },
-          {
-            new: true,
-            runValidators: true,
-          }
-        );
+        await Order.findById(id);
 
       if (!order) {
         return res.status(404).json({
           success: false,
-          message:
-            "Order not found",
+          message: "Order not found",
         });
       }
+
+      // --------------------------------------------------------
+      // Mongoose schema validation is still applied here.
+      // If Order.status has an enum, invalid values will fail
+      // during save().
+      // --------------------------------------------------------
+
+      order.status =
+        cleanStatus;
+
+      await order.save();
 
       return res.status(200).json({
         success: true,
@@ -844,6 +1086,19 @@ exports.updateOrderStatus =
         error
       );
 
+      if (
+        error.name ===
+          "ValidationError"
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Invalid order status",
+          error:
+            error.message,
+        });
+      }
+
       return res.status(500).json({
         success: false,
         message:
@@ -854,6 +1109,7 @@ exports.updateOrderStatus =
 
 // ============================================================
 // GET ALL RIDERS
+// GET /api/admin/riders
 // ============================================================
 
 exports.getRiders = async (
@@ -871,17 +1127,31 @@ exports.getRiders = async (
       role: "rider",
     };
 
+    // ----------------------------------------------------------
+    // APPROVAL STATUS
+    // ----------------------------------------------------------
+
     if (status === "approved") {
       filter[
         "riderProfile.isApproved"
       ] = true;
-    }
-
-    if (status === "pending") {
+    } else if (
+      status === "pending"
+    ) {
       filter[
         "riderProfile.isApproved"
       ] = false;
+    } else if (status) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Invalid rider status filter",
+      });
     }
+
+    // ----------------------------------------------------------
+    // AVAILABILITY
+    // ----------------------------------------------------------
 
     if (
       availability ===
@@ -892,28 +1162,46 @@ exports.getRiders = async (
       ] = true;
 
       filter.isActive = true;
-    }
-
-    if (
+    } else if (
       availability ===
       "unavailable"
     ) {
       filter[
-        "riderProfile.isAvailable"
-      ] = false;
+        "$or"
+      ] = [
+        {
+          "riderProfile.isAvailable":
+            false,
+        },
+        {
+          isActive: false,
+        },
+      ];
+    } else if (
+      availability
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Invalid availability filter",
+      });
     }
 
-    if (
-      search &&
-      String(search).trim()
-    ) {
-      const searchRegex =
-        new RegExp(
-          String(search).trim(),
-          "i"
-        );
+    // ----------------------------------------------------------
+    // SEARCH
+    // ----------------------------------------------------------
 
-      filter.$or = [
+    const cleanSearch = String(
+      search || ""
+    ).trim();
+
+    if (cleanSearch) {
+      const searchRegex = new RegExp(
+        escapeRegex(cleanSearch),
+        "i"
+      );
+
+      const searchConditions = [
         {
           name: searchRegex,
         },
@@ -940,6 +1228,26 @@ exports.getRiders = async (
             searchRegex,
         },
       ];
+
+      // --------------------------------------------------------
+      // Preserve existing filters when availability uses $or.
+      // --------------------------------------------------------
+
+      if (filter.$or) {
+        filter.$and = [
+          {
+            $or: filter.$or,
+          },
+          {
+            $or: searchConditions,
+          },
+        ];
+
+        delete filter.$or;
+      } else {
+        filter.$or =
+          searchConditions;
+      }
     }
 
     const riders =
@@ -971,14 +1279,24 @@ exports.getRiders = async (
 
 // ============================================================
 // GET RIDER BY ID
+// GET /api/admin/riders/:id
 // ============================================================
 
 exports.getRiderById =
   async (req, res) => {
     try {
+      const { id } = req.params;
+
+      if (!isValidObjectId(id)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid rider ID",
+        });
+      }
+
       const rider =
         await User.findOne({
-          _id: req.params.id,
+          _id: id,
           role: "rider",
         })
           .select("-password")
@@ -987,8 +1305,7 @@ exports.getRiderById =
       if (!rider) {
         return res.status(404).json({
           success: false,
-          message:
-            "Rider not found",
+          message: "Rider not found",
         });
       }
 
@@ -1012,22 +1329,31 @@ exports.getRiderById =
 
 // ============================================================
 // APPROVE RIDER
+// PATCH /api/admin/riders/:id/approve
 // ============================================================
 
 exports.approveRider =
   async (req, res) => {
     try {
+      const { id } = req.params;
+
+      if (!isValidObjectId(id)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid rider ID",
+        });
+      }
+
       const rider =
         await User.findOne({
-          _id: req.params.id,
+          _id: id,
           role: "rider",
         });
 
       if (!rider) {
         return res.status(404).json({
           success: false,
-          message:
-            "Rider not found",
+          message: "Rider not found",
         });
       }
 
@@ -1035,9 +1361,14 @@ exports.approveRider =
         rider.riderProfile = {};
       }
 
+      // --------------------------------------------------------
+      // APPROVE
+      // --------------------------------------------------------
+
       rider.riderProfile.isApproved =
         true;
 
+      // Rider must manually become available.
       rider.riderProfile.isAvailable =
         false;
 
@@ -1045,12 +1376,18 @@ exports.approveRider =
 
       await rider.save();
 
+      const safeRider =
+        await User.findById(
+          rider._id
+        )
+          .select("-password")
+          .lean();
+
       return res.status(200).json({
         success: true,
         message:
           "Rider approved successfully",
-        rider:
-          rider.toJSON(),
+        rider: safeRider,
       });
     } catch (error) {
       console.error(
@@ -1068,22 +1405,31 @@ exports.approveRider =
 
 // ============================================================
 // REJECT RIDER
+// PATCH /api/admin/riders/:id/reject
 // ============================================================
 
 exports.rejectRider =
   async (req, res) => {
     try {
+      const { id } = req.params;
+
+      if (!isValidObjectId(id)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid rider ID",
+        });
+      }
+
       const rider =
         await User.findOne({
-          _id: req.params.id,
+          _id: id,
           role: "rider",
         });
 
       if (!rider) {
         return res.status(404).json({
           success: false,
-          message:
-            "Rider not found",
+          message: "Rider not found",
         });
       }
 
@@ -1099,12 +1445,18 @@ exports.rejectRider =
 
       await rider.save();
 
+      const safeRider =
+        await User.findById(
+          rider._id
+        )
+          .select("-password")
+          .lean();
+
       return res.status(200).json({
         success: true,
         message:
           "Rider application rejected",
-        rider:
-          rider.toJSON(),
+        rider: safeRider,
       });
     } catch (error) {
       console.error(
@@ -1121,14 +1473,22 @@ exports.rejectRider =
   };
 
 // ============================================================
-// UPDATE RIDER STATUS
+// UPDATE RIDER ACCOUNT STATUS
+// PATCH /api/admin/riders/:id/status
 // ============================================================
 
 exports.updateRiderStatus =
   async (req, res) => {
     try {
-      const { isActive } =
-        req.body;
+      const { id } = req.params;
+      const { isActive } = req.body;
+
+      if (!isValidObjectId(id)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid rider ID",
+        });
+      }
 
       if (
         typeof isActive !==
@@ -1143,24 +1503,39 @@ exports.updateRiderStatus =
 
       const rider =
         await User.findOne({
-          _id: req.params.id,
+          _id: id,
           role: "rider",
         });
 
       if (!rider) {
         return res.status(404).json({
           success: false,
+          message: "Rider not found",
+        });
+      }
+
+      if (!rider.riderProfile) {
+        rider.riderProfile = {};
+      }
+
+      // --------------------------------------------------------
+      // A rider cannot be activated unless approved.
+      // --------------------------------------------------------
+
+      if (
+        isActive === true &&
+        rider.riderProfile
+          .isApproved !== true
+      ) {
+        return res.status(400).json({
+          success: false,
           message:
-            "Rider not found",
+            "Rider must be approved before activation",
         });
       }
 
       rider.isActive =
         isActive;
-
-      if (!rider.riderProfile) {
-        rider.riderProfile = {};
-      }
 
       if (!isActive) {
         rider.riderProfile.isAvailable =
@@ -1169,13 +1544,19 @@ exports.updateRiderStatus =
 
       await rider.save();
 
+      const safeRider =
+        await User.findById(
+          rider._id
+        )
+          .select("-password")
+          .lean();
+
       return res.status(200).json({
         success: true,
         message: isActive
           ? "Rider activated successfully"
           : "Rider deactivated successfully",
-        rider:
-          rider.toJSON(),
+        rider: safeRider,
       });
     } catch (error) {
       console.error(
@@ -1193,11 +1574,14 @@ exports.updateRiderStatus =
 
 // ============================================================
 // UPDATE RIDER PROFILE
+// PATCH /api/admin/riders/:id/profile
 // ============================================================
 
 exports.updateRiderProfile =
   async (req, res) => {
     try {
+      const { id } = req.params;
+
       const {
         bikeType,
         bikeNumber,
@@ -1207,17 +1591,23 @@ exports.updateRiderProfile =
         completedDeliveries,
       } = req.body;
 
+      if (!isValidObjectId(id)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid rider ID",
+        });
+      }
+
       const rider =
         await User.findOne({
-          _id: req.params.id,
+          _id: id,
           role: "rider",
         });
 
       if (!rider) {
         return res.status(404).json({
           success: false,
-          message:
-            "Rider not found",
+          message: "Rider not found",
         });
       }
 
@@ -1225,42 +1615,74 @@ exports.updateRiderProfile =
         rider.riderProfile = {};
       }
 
+      // --------------------------------------------------------
+      // BIKE TYPE
+      // --------------------------------------------------------
+
       if (
         bikeType !== undefined
       ) {
-        rider.riderProfile.bikeType =
+        const value =
           String(
             bikeType
           ).trim();
+
+        rider.riderProfile.bikeType =
+          value;
       }
+
+      // --------------------------------------------------------
+      // BIKE NUMBER
+      // --------------------------------------------------------
 
       if (
         bikeNumber !== undefined
       ) {
-        rider.riderProfile.bikeNumber =
+        const value =
           String(
             bikeNumber
           ).trim();
+
+        rider.riderProfile.bikeNumber =
+          value;
       }
+
+      // --------------------------------------------------------
+      // SERVICE AREA
+      // --------------------------------------------------------
 
       if (
         serviceArea !== undefined
       ) {
-        rider.riderProfile.serviceArea =
+        const value =
           String(
             serviceArea
           ).trim();
+
+        rider.riderProfile.serviceArea =
+          value;
       }
+
+      // --------------------------------------------------------
+      // IDENTIFICATION NUMBER
+      // --------------------------------------------------------
 
       if (
         identificationNumber !==
         undefined
       ) {
-        rider.riderProfile.identificationNumber =
+        const value =
           String(
             identificationNumber
           ).trim();
+
+        rider.riderProfile.identificationNumber =
+          value;
       }
+
+      // --------------------------------------------------------
+      // RATING
+      // --------------------------------------------------------
 
       if (
         rating !== undefined
@@ -1269,7 +1691,7 @@ exports.updateRiderProfile =
           Number(rating);
 
         if (
-          Number.isNaN(
+          !Number.isFinite(
             numericRating
           ) ||
           numericRating < 0 ||
@@ -1286,6 +1708,10 @@ exports.updateRiderProfile =
           numericRating;
       }
 
+      // --------------------------------------------------------
+      // COMPLETED DELIVERIES
+      // --------------------------------------------------------
+
       if (
         completedDeliveries !==
         undefined
@@ -1296,7 +1722,7 @@ exports.updateRiderProfile =
           );
 
         if (
-          Number.isNaN(
+          !Number.isInteger(
             deliveries
           ) ||
           deliveries < 0
@@ -1304,7 +1730,7 @@ exports.updateRiderProfile =
           return res.status(400).json({
             success: false,
             message:
-              "Completed deliveries cannot be negative",
+              "Completed deliveries must be a non-negative integer",
           });
         }
 
@@ -1314,18 +1740,37 @@ exports.updateRiderProfile =
 
       await rider.save();
 
+      const safeRider =
+        await User.findById(
+          rider._id
+        )
+          .select("-password")
+          .lean();
+
       return res.status(200).json({
         success: true,
         message:
           "Rider profile updated successfully",
-        rider:
-          rider.toJSON(),
+        rider: safeRider,
       });
     } catch (error) {
       console.error(
         "❌ Update rider profile error:",
         error
       );
+
+      if (
+        error.name ===
+          "ValidationError"
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Invalid rider profile data",
+          error:
+            error.message,
+        });
+      }
 
       return res.status(500).json({
         success: false,
@@ -1334,3 +1779,7 @@ exports.updateRiderProfile =
       });
     }
   };
+
+// ============================================================
+// END OF ADMIN CONTROLLER
+// ============================================================

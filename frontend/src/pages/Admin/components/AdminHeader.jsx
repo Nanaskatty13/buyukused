@@ -4,6 +4,7 @@
 // ============================================================
 
 import React, {
+  useCallback,
   useEffect,
   useState,
 } from "react";
@@ -13,16 +14,111 @@ import {
   markAllNotificationsAsRead,
 } from "../services/api";
 
-import {
-  useAuth,
-} from "../context/AuthContext";
+import { useAuth } from "../context/AuthContext";
+
+// ============================================================
+// MONGODB OBJECTID CHECK
+// ============================================================
+
+const isValidObjectId = (value) => {
+  return (
+    typeof value === "string" &&
+    /^[a-fA-F0-9]{24}$/.test(value)
+  );
+};
+
+// ============================================================
+// GET USER ID FROM JWT
+//
+// Fallback only.
+// AuthContext user ID is preferred.
+// ============================================================
+
+const getUserIdFromToken = () => {
+  try {
+    const token =
+      localStorage.getItem("token") ||
+      localStorage.getItem("authToken") ||
+      localStorage.getItem("accessToken");
+
+    if (!token) {
+      return null;
+    }
+
+    const parts = token.split(".");
+
+    if (parts.length !== 3) {
+      return null;
+    }
+
+    const base64Url = parts[1];
+
+    const base64 = base64Url
+      .replace(/-/g, "+")
+      .replace(/_/g, "/");
+
+    const padded =
+      base64 +
+      "=".repeat(
+        (4 - (base64.length % 4)) % 4
+      );
+
+    const payload = JSON.parse(
+      atob(padded)
+    );
+
+    const id =
+      payload?.id ||
+      payload?._id ||
+      payload?.userId ||
+      null;
+
+    if (isValidObjectId(id)) {
+      return id;
+    }
+
+    return null;
+  } catch (error) {
+    console.warn(
+      "⚠️ Unable to extract user ID from JWT:",
+      error
+    );
+
+    return null;
+  }
+};
+
+// ============================================================
+// GET REAL USER ID
+// ============================================================
+
+const getRealUserId = (user) => {
+  const candidates = [
+    user?._id,
+    user?.id,
+    user?.userId,
+    user?.user?._id,
+    user?.user?.id,
+    user?.user?.userId,
+  ];
+
+  for (const candidate of candidates) {
+    if (isValidObjectId(candidate)) {
+      return candidate;
+    }
+  }
+
+  return getUserIdFromToken();
+};
+
+// ============================================================
+// COMPONENT
+// ============================================================
 
 const AdminHeader = ({
   onMenuClick,
 }) => {
-  const {
-    user,
-  } = useAuth();
+  const { user } = useAuth();
 
   const [notifications, setNotifications] =
     useState([]);
@@ -34,24 +130,29 @@ const AdminHeader = ({
     useState(false);
 
   // ==========================================================
-  // GET REAL USER ID
+  // REAL USER ID
   // ==========================================================
 
-  const userId =
-    user?._id ||
-    user?.id ||
-    user?.userId ||
-    null;
+  const userId = getRealUserId(user);
 
   // ==========================================================
-  // FETCH ADMIN NOTIFICATIONS
+  // FETCH NOTIFICATIONS
   // ==========================================================
 
-  const fetchNotifications =
+  const fetchNotifications = useCallback(
     async () => {
       if (!userId) {
         console.warn(
-          "⚠️ Cannot fetch notifications: user ID is missing"
+          "⚠️ Cannot fetch notifications: valid user ID is missing."
+        );
+
+        return;
+      }
+
+      if (!isValidObjectId(userId)) {
+        console.error(
+          "❌ Refusing to request notifications with invalid user ID:",
+          userId
         );
 
         return;
@@ -78,12 +179,11 @@ const AdminHeader = ({
         const notificationList =
           response?.notifications ||
           response?.data?.notifications ||
+          response?.data ||
           [];
 
         setNotifications(
-          Array.isArray(
-            notificationList
-          )
+          Array.isArray(notificationList)
             ? notificationList
             : []
         );
@@ -95,35 +195,37 @@ const AdminHeader = ({
 
         setNotifications([]);
       } finally {
-        setNotificationLoading(
-          false
-        );
+        setNotificationLoading(false);
       }
-    };
+    },
+    [userId]
+  );
 
   // ==========================================================
-  // LOAD WHEN USER IS AVAILABLE
+  // LOAD NOTIFICATIONS
   // ==========================================================
 
   useEffect(() => {
     if (!userId) {
-      return;
+      return undefined;
     }
 
     fetchNotifications();
 
-    const interval =
-      setInterval(
-        fetchNotifications,
-        30000
-      );
+    const interval = setInterval(
+      () => {
+        fetchNotifications();
+      },
+      30000
+    );
 
     return () => {
-      clearInterval(
-        interval
-      );
+      clearInterval(interval);
     };
-  }, [userId]);
+  }, [
+    userId,
+    fetchNotifications,
+  ]);
 
   // ==========================================================
   // UNREAD COUNT
@@ -132,71 +234,101 @@ const AdminHeader = ({
   const unreadCount =
     notifications.filter(
       (notification) =>
-        notification.isRead !== true
+        notification?.isRead !== true
     ).length;
 
   // ==========================================================
   // MARK ALL AS READ
   // ==========================================================
 
-  const handleMarkAllRead =
-    async () => {
-      if (!userId) {
-        return;
-      }
+  const handleMarkAllRead = async () => {
+    if (!userId) {
+      console.warn(
+        "⚠️ Cannot mark notifications as read: user ID missing."
+      );
 
-      try {
-        await markAllNotificationsAsRead(
-          userId
-        );
+      return;
+    }
 
-        setNotifications(
-          (previous) =>
-            previous.map(
-              (notification) => ({
-                ...notification,
-                isRead: true,
-              })
-            )
-        );
-      } catch (error) {
-        console.error(
-          "❌ Failed to mark notifications as read:",
-          error
-        );
-      }
-    };
+    try {
+      await markAllNotificationsAsRead(
+        userId
+      );
+
+      setNotifications(
+        (previous) =>
+          previous.map(
+            (notification) => ({
+              ...notification,
+              isRead: true,
+            })
+          )
+      );
+    } catch (error) {
+      console.error(
+        "❌ Failed to mark notifications as read:",
+        error
+      );
+    }
+  };
 
   // ==========================================================
   // TOGGLE NOTIFICATIONS
   // ==========================================================
 
-  const handleNotificationClick =
-    () => {
-      setShowNotifications(
-        (previous) =>
-          !previous
-      );
-    };
+  const handleNotificationClick = () => {
+    setShowNotifications(
+      (previous) => !previous
+    );
+  };
 
   // ==========================================================
   // FORMAT DATE
   // ==========================================================
 
-  const formatNotificationDate =
-    (date) => {
-      if (!date) {
+  const formatNotificationDate = (
+    date
+  ) => {
+    if (!date) {
+      return "";
+    }
+
+    try {
+      const parsedDate =
+        new Date(date);
+
+      if (
+        Number.isNaN(
+          parsedDate.getTime()
+        )
+      ) {
         return "";
       }
 
-      try {
-        return new Date(
-          date
-        ).toLocaleString();
-      } catch {
-        return "";
-      }
-    };
+      return parsedDate.toLocaleString();
+    } catch {
+      return "";
+    }
+  };
+
+  // ==========================================================
+  // ADMIN AVATAR
+  // ==========================================================
+
+  const avatar =
+    user?.profileImage ||
+    user?.avatar ||
+    user?.photo ||
+    user?.photoURL ||
+    null;
+
+  const adminName =
+    user?.name ||
+    user?.fullName ||
+    "Administrator";
+
+  const adminEmail =
+    user?.email || "";
 
   // ==========================================================
   // RENDER
@@ -214,6 +346,7 @@ const AdminHeader = ({
               type="button"
               onClick={onMenuClick}
               className="rounded-lg border px-3 py-2 text-sm hover:bg-gray-50"
+              aria-label="Open menu"
             >
               ☰
             </button>
@@ -243,13 +376,15 @@ const AdminHeader = ({
               }
               className="relative flex h-10 w-10 items-center justify-center rounded-full border bg-white hover:bg-gray-50"
               aria-label="Notifications"
+              aria-expanded={
+                showNotifications
+              }
             >
               🔔
 
               {unreadCount > 0 && (
                 <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold text-white">
-                  {unreadCount >
-                  99
+                  {unreadCount > 99
                     ? "99+"
                     : unreadCount}
                 </span>
@@ -259,6 +394,7 @@ const AdminHeader = ({
             {showNotifications && (
               <div className="absolute right-0 mt-3 w-80 overflow-hidden rounded-xl border bg-white shadow-xl">
 
+                {/* HEADER */}
                 <div className="flex items-center justify-between border-b px-4 py-3">
 
                   <div>
@@ -271,8 +407,7 @@ const AdminHeader = ({
                     </p>
                   </div>
 
-                  {unreadCount >
-                    0 && (
+                  {unreadCount > 0 && (
                     <button
                       type="button"
                       onClick={
@@ -285,6 +420,7 @@ const AdminHeader = ({
                   )}
                 </div>
 
+                {/* NOTIFICATION LIST */}
                 <div className="max-h-96 overflow-y-auto">
 
                   {notificationLoading && (
@@ -294,60 +430,62 @@ const AdminHeader = ({
                   )}
 
                   {!notificationLoading &&
-                    notifications.length ===
-                      0 && (
+                    notifications.length === 0 && (
                       <div className="px-4 py-8 text-center text-sm text-gray-500">
                         No notifications
                       </div>
                     )}
 
                   {!notificationLoading &&
+                    notifications.length > 0 &&
                     notifications.map(
-                      (
-                        notification
-                      ) => (
-                        <div
-                          key={
-                            notification._id ||
-                            notification.id
-                          }
-                          className={`border-b px-4 py-3 ${
-                            notification.isRead
-                              ? "bg-white"
-                              : "bg-blue-50"
-                          }`}
-                        >
-                          <div className="flex gap-3">
+                      (notification) => {
+                        const notificationId =
+                          notification?._id ||
+                          notification?.id ||
+                          Math.random();
 
-                            <div className="flex-1">
+                        return (
+                          <div
+                            key={
+                              notificationId
+                            }
+                            className={`border-b px-4 py-3 ${
+                              notification?.isRead
+                                ? "bg-white"
+                                : "bg-blue-50"
+                            }`}
+                          >
+                            <div className="flex gap-3">
 
-                              <p className="text-sm font-semibold text-gray-900">
-                                {
-                                  notification.title
-                                }
-                              </p>
+                              <div className="flex-1">
 
-                              <p className="mt-1 text-sm text-gray-600">
-                                {
-                                  notification.message
-                                }
-                              </p>
+                                <p className="text-sm font-semibold text-gray-900">
+                                  {notification?.title ||
+                                    "Notification"}
+                                </p>
 
-                              <p className="mt-1 text-xs text-gray-400">
-                                {formatNotificationDate(
-                                  notification.createdAt
-                                )}
-                              </p>
+                                <p className="mt-1 text-sm text-gray-600">
+                                  {notification?.message ||
+                                    ""}
+                                </p>
+
+                                <p className="mt-1 text-xs text-gray-400">
+                                  {formatNotificationDate(
+                                    notification?.createdAt
+                                  )}
+                                </p>
+
+                              </div>
+
+                              {!notification?.isRead && (
+                                <span className="mt-1 h-2 w-2 rounded-full bg-blue-600" />
+                              )}
 
                             </div>
-
-                            {!notification.isRead && (
-                              <span className="mt-1 h-2 w-2 rounded-full bg-blue-600" />
-                            )}
-
                           </div>
-                        </div>
-                      )
+                        );
+                      }
                     )}
                 </div>
               </div>
@@ -359,34 +497,27 @@ const AdminHeader = ({
 
             <div className="text-right">
               <p className="text-sm font-medium text-gray-900">
-                {user?.name ||
-                  "Administrator"}
+                {adminName}
               </p>
 
               <p className="text-xs text-gray-500">
-                {user?.email || ""}
+                {adminEmail}
               </p>
             </div>
 
-            {user?.profileImage ||
-            user?.avatar ? (
+            {avatar ? (
               <img
-                src={
-                  user.profileImage ||
-                  user.avatar
-                }
-                alt={
-                  user.name ||
-                  "Admin"
-                }
+                src={avatar}
+                alt={adminName}
                 className="h-9 w-9 rounded-full object-cover"
+                onError={(event) => {
+                  event.currentTarget.style.display =
+                    "none";
+                }}
               />
             ) : (
               <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-900 text-sm font-bold text-white">
-                {(
-                  user?.name ||
-                  "A"
-                )
+                {adminName
                   .charAt(0)
                   .toUpperCase()}
               </div>

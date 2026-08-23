@@ -3,9 +3,10 @@
 // BuyUKUsed - API Service
 // ============================================================
 
-const API_URL =
+const API_URL = (
   import.meta.env.VITE_API_URL ||
-  "https://buyukused.onrender.com";
+  "https://buyukused.onrender.com"
+).replace(/\/+$/, "");
 
 console.log("🔗 API_URL:", API_URL);
 
@@ -14,12 +15,79 @@ console.log("🔗 API_URL:", API_URL);
 // ============================================================
 
 const getStoredToken = () => {
+  try {
+    return (
+      localStorage.getItem("token") ||
+      localStorage.getItem("authToken") ||
+      localStorage.getItem("accessToken") ||
+      ""
+    );
+  } catch (error) {
+    console.warn("⚠️ Unable to access localStorage:", error);
+    return "";
+  }
+};
+
+// ============================================================
+// MONGODB OBJECTID VALIDATION
+// ============================================================
+
+const isValidObjectId = (value) => {
   return (
-    localStorage.getItem("token") ||
-    localStorage.getItem("authToken") ||
-    localStorage.getItem("accessToken") ||
-    ""
+    typeof value === "string" &&
+    /^[a-fA-F0-9]{24}$/.test(value)
   );
+};
+
+// ============================================================
+// GET USER ID FROM JWT
+//
+// This is only a fallback.
+// The actual user object from AuthContext is preferred.
+// ============================================================
+
+const getUserIdFromToken = () => {
+  const token = getStoredToken();
+
+  if (!token) {
+    return null;
+  }
+
+  try {
+    const parts = token.split(".");
+
+    if (parts.length !== 3) {
+      return null;
+    }
+
+    const payload = JSON.parse(
+      decodeURIComponent(
+        atob(parts[1].replace(/-/g, "+").replace(/_/g, "/"))
+          .split("")
+          .map(
+            (char) =>
+              "%" +
+              ("00" + char.charCodeAt(0).toString(16)).slice(-2)
+          )
+          .join("")
+      )
+    );
+
+    const id =
+      payload?.id ||
+      payload?._id ||
+      payload?.userId ||
+      null;
+
+    return isValidObjectId(id) ? id : null;
+  } catch (error) {
+    console.warn(
+      "⚠️ Could not decode user ID from token:",
+      error
+    );
+
+    return null;
+  }
 };
 
 // ============================================================
@@ -30,7 +98,18 @@ const handleResponse = async (response) => {
   let data = null;
 
   try {
-    data = await response.json();
+    const contentType =
+      response.headers.get("content-type") || "";
+
+    if (contentType.includes("application/json")) {
+      data = await response.json();
+    } else {
+      const text = await response.text();
+
+      data = text
+        ? { message: text }
+        : null;
+    }
   } catch {
     data = null;
   }
@@ -39,7 +118,13 @@ const handleResponse = async (response) => {
     const message =
       data?.message ||
       data?.error ||
-      (response.status === 404
+      (response.status === 400
+        ? "Bad request"
+        : response.status === 401
+        ? "Unauthorized. Please log in again."
+        : response.status === 403
+        ? "You do not have permission to perform this action."
+        : response.status === 404
         ? "API endpoint not found"
         : `Request failed with status ${response.status}`);
 
@@ -80,9 +165,9 @@ export const request = async (
     ...(options.headers || {}),
   };
 
-  // ----------------------------------------------------------
-  // Authorization
-  // ----------------------------------------------------------
+  // ==========================================================
+  // AUTHORIZATION
+  // ==========================================================
 
   if (token) {
     headers.Authorization = `Bearer ${token}`;
@@ -115,8 +200,8 @@ export const get = async (
   options = {}
 ) => {
   return request(endpoint, {
-    method: "GET",
     ...options,
+    method: "GET",
   });
 };
 
@@ -130,12 +215,12 @@ export const post = async (
   options = {}
 ) => {
   return request(endpoint, {
+    ...options,
     method: "POST",
     body:
       body instanceof FormData
         ? body
-        : JSON.stringify(body),
-    ...options,
+        : JSON.stringify(body ?? {}),
   });
 };
 
@@ -149,12 +234,16 @@ export const patch = async (
   options = {}
 ) => {
   return request(endpoint, {
-    method: "PATCH",
-    body:
-      body instanceof FormData
-        ? body
-        : JSON.stringify(body),
     ...options,
+    method: "PATCH",
+    ...(body !== undefined
+      ? {
+          body:
+            body instanceof FormData
+              ? body
+              : JSON.stringify(body ?? {}),
+        }
+      : {}),
   });
 };
 
@@ -168,12 +257,16 @@ export const put = async (
   options = {}
 ) => {
   return request(endpoint, {
-    method: "PUT",
-    body:
-      body instanceof FormData
-        ? body
-        : JSON.stringify(body),
     ...options,
+    method: "PUT",
+    ...(body !== undefined
+      ? {
+          body:
+            body instanceof FormData
+              ? body
+              : JSON.stringify(body ?? {}),
+        }
+      : {}),
   });
 };
 
@@ -186,27 +279,60 @@ export const del = async (
   options = {}
 ) => {
   return request(endpoint, {
-    method: "DELETE",
     ...options,
+    method: "DELETE",
   });
+};
+
+// ============================================================
+// IMAGE URL HELPER
+// ============================================================
+
+export const getImageUrl = (image) => {
+  if (!image) {
+    return "/placeholder.png";
+  }
+
+  if (typeof image !== "string") {
+    return "/placeholder.png";
+  }
+
+  const trimmed = image.trim();
+
+  if (!trimmed) {
+    return "/placeholder.png";
+  }
+
+  // Already a complete URL
+  if (
+    trimmed.startsWith("http://") ||
+    trimmed.startsWith("https://") ||
+    trimmed.startsWith("blob:") ||
+    trimmed.startsWith("data:")
+  ) {
+    return trimmed;
+  }
+
+  // Local/public path
+  if (trimmed.startsWith("/")) {
+    return trimmed;
+  }
+
+  return `/${trimmed}`;
 };
 
 // ============================================================
 // AUTH
 // ============================================================
 
-export const loginUser = async (
-  credentials
-) => {
+export const loginUser = async (credentials) => {
   return post(
     "/api/auth/login",
     credentials
   );
 };
 
-export const registerUser = async (
-  userData
-) => {
+export const registerUser = async (userData) => {
   return post(
     "/api/auth/register",
     userData
@@ -235,14 +361,13 @@ export const getAdminUsers = async (
       ) {
         query.append(
           key,
-          value
+          String(value)
         );
       }
     }
   );
 
-  const queryString =
-    query.toString();
+  const queryString = query.toString();
 
   return get(
     `/api/admin/users${
@@ -256,10 +381,8 @@ export const getAdminUsers = async (
 export const getAdminUserById = async (
   userId
 ) => {
-  if (!userId) {
-    throw new Error(
-      "User ID is required"
-    );
+  if (!isValidObjectId(userId)) {
+    throw new Error("Valid User ID is required");
   }
 
   return get(
@@ -271,10 +394,12 @@ export const updateAdminUserRole = async (
   userId,
   role
 ) => {
-  if (!userId) {
-    throw new Error(
-      "User ID is required"
-    );
+  if (!isValidObjectId(userId)) {
+    throw new Error("Valid User ID is required");
+  }
+
+  if (!role) {
+    throw new Error("User role is required");
   }
 
   return patch(
@@ -283,230 +408,234 @@ export const updateAdminUserRole = async (
   );
 };
 
-export const updateAdminUserStatus =
-  async (
-    userId,
-    isActive
-  ) => {
-    if (!userId) {
-      throw new Error(
-        "User ID is required"
-      );
-    }
+export const updateAdminUserStatus = async (
+  userId,
+  isActive
+) => {
+  if (!isValidObjectId(userId)) {
+    throw new Error("Valid User ID is required");
+  }
 
-    return patch(
-      `/api/admin/users/${userId}/status`,
-      { isActive }
-    );
-  };
+  return patch(
+    `/api/admin/users/${userId}/status`,
+    { isActive: Boolean(isActive) }
+  );
+};
 
 // ============================================================
 // ADMIN - SELLER VERIFICATION
 // ============================================================
 
-export const verifyAdminSeller =
-  async (sellerId) => {
-    if (!sellerId) {
-      throw new Error(
-        "Seller ID is required"
-      );
-    }
-
-    return patch(
-      `/api/admin/users/${sellerId}/verify-seller`
+export const verifyAdminSeller = async (
+  sellerId
+) => {
+  if (!isValidObjectId(sellerId)) {
+    throw new Error(
+      "Valid Seller ID is required"
     );
-  };
+  }
 
-export const unverifyAdminSeller =
-  async (sellerId) => {
-    if (!sellerId) {
-      throw new Error(
-        "Seller ID is required"
-      );
-    }
+  return patch(
+    `/api/admin/users/${sellerId}/verify-seller`
+  );
+};
 
-    return patch(
-      `/api/admin/users/${sellerId}/unverify-seller`
+export const unverifyAdminSeller = async (
+  sellerId
+) => {
+  if (!isValidObjectId(sellerId)) {
+    throw new Error(
+      "Valid Seller ID is required"
     );
-  };
+  }
+
+  return patch(
+    `/api/admin/users/${sellerId}/unverify-seller`
+  );
+};
 
 // ============================================================
 // ADMIN - DELETE USER
 // ============================================================
 
-export const deleteAdminUser =
-  async (userId) => {
-    if (!userId) {
-      throw new Error(
-        "User ID is required"
-      );
-    }
+export const deleteAdminUser = async (
+  userId
+) => {
+  if (!isValidObjectId(userId)) {
+    throw new Error("Valid User ID is required");
+  }
 
-    return del(
-      `/api/admin/users/${userId}`
-    );
-  };
+  return del(
+    `/api/admin/users/${userId}`
+  );
+};
 
 // ============================================================
 // ADMIN - PRODUCTS
 // ============================================================
 
-export const getAdminProducts =
-  async () => {
-    return get(
-      "/api/admin/products"
-    );
-  };
+export const getAdminProducts = async () => {
+  return get(
+    "/api/admin/products"
+  );
+};
 
-export const deleteAdminProduct =
-  async (productId) => {
-    if (!productId) {
-      throw new Error(
-        "Product ID is required"
-      );
-    }
-
-    return del(
-      `/api/admin/products/${productId}`
+export const deleteAdminProduct = async (
+  productId
+) => {
+  if (!isValidObjectId(productId)) {
+    throw new Error(
+      "Valid Product ID is required"
     );
-  };
+  }
+
+  return del(
+    `/api/admin/products/${productId}`
+  );
+};
 
 // ============================================================
 // ADMIN - ORDERS
 // ============================================================
 
-export const getAdminOrders =
-  async () => {
-    return get(
-      "/api/admin/orders"
-    );
-  };
+export const getAdminOrders = async () => {
+  return get(
+    "/api/admin/orders"
+  );
+};
 
-export const updateAdminOrderStatus =
-  async (
-    orderId,
-    status
-  ) => {
-    if (!orderId) {
-      throw new Error(
-        "Order ID is required"
-      );
-    }
-
-    return patch(
-      `/api/admin/orders/${orderId}/status`,
-      { status }
+export const updateAdminOrderStatus = async (
+  orderId,
+  status
+) => {
+  if (!isValidObjectId(orderId)) {
+    throw new Error(
+      "Valid Order ID is required"
     );
-  };
+  }
+
+  if (!status) {
+    throw new Error(
+      "Order status is required"
+    );
+  }
+
+  return patch(
+    `/api/admin/orders/${orderId}/status`,
+    { status }
+  );
+};
 
 // ============================================================
 // ADMIN - RIDERS
 // ============================================================
 
-export const getAdminRiders =
-  async (params = {}) => {
-    const query =
-      new URLSearchParams();
+export const getAdminRiders = async (
+  params = {}
+) => {
+  const query = new URLSearchParams();
 
-    Object.entries(params).forEach(
-      ([key, value]) => {
-        if (
-          value !== undefined &&
-          value !== null &&
-          value !== ""
-        ) {
-          query.append(
-            key,
-            value
-          );
-        }
+  Object.entries(params).forEach(
+    ([key, value]) => {
+      if (
+        value !== undefined &&
+        value !== null &&
+        value !== ""
+      ) {
+        query.append(
+          key,
+          String(value)
+        );
       }
-    );
-
-    const queryString =
-      query.toString();
-
-    return get(
-      `/api/admin/riders${
-        queryString
-          ? `?${queryString}`
-          : ""
-      }`
-    );
-  };
-
-export const getAdminRiderById =
-  async (riderId) => {
-    if (!riderId) {
-      throw new Error(
-        "Rider ID is required"
-      );
     }
+  );
 
-    return get(
-      `/api/admin/riders/${riderId}`
+  const queryString = query.toString();
+
+  return get(
+    `/api/admin/riders${
+      queryString
+        ? `?${queryString}`
+        : ""
+    }`
+  );
+};
+
+export const getAdminRiderById = async (
+  riderId
+) => {
+  if (!isValidObjectId(riderId)) {
+    throw new Error(
+      "Valid Rider ID is required"
     );
-  };
+  }
 
-export const approveAdminRider =
-  async (riderId) => {
-    if (!riderId) {
-      throw new Error(
-        "Rider ID is required"
-      );
+  return get(
+    `/api/admin/riders/${riderId}`
+  );
+};
+
+export const approveAdminRider = async (
+  riderId
+) => {
+  if (!isValidObjectId(riderId)) {
+    throw new Error(
+      "Valid Rider ID is required"
+    );
+  }
+
+  return patch(
+    `/api/admin/riders/${riderId}/approve`
+  );
+};
+
+export const rejectAdminRider = async (
+  riderId
+) => {
+  if (!isValidObjectId(riderId)) {
+    throw new Error(
+      "Valid Rider ID is required"
+    );
+  }
+
+  return patch(
+    `/api/admin/riders/${riderId}/reject`
+  );
+};
+
+export const updateAdminRiderStatus = async (
+  riderId,
+  isActive
+) => {
+  if (!isValidObjectId(riderId)) {
+    throw new Error(
+      "Valid Rider ID is required"
+    );
+  }
+
+  return patch(
+    `/api/admin/riders/${riderId}/status`,
+    {
+      isActive: Boolean(isActive),
     }
+  );
+};
 
-    return patch(
-      `/api/admin/riders/${riderId}/approve`
+export const updateAdminRiderProfile = async (
+  riderId,
+  profile
+) => {
+  if (!isValidObjectId(riderId)) {
+    throw new Error(
+      "Valid Rider ID is required"
     );
-  };
+  }
 
-export const rejectAdminRider =
-  async (riderId) => {
-    if (!riderId) {
-      throw new Error(
-        "Rider ID is required"
-      );
-    }
-
-    return patch(
-      `/api/admin/riders/${riderId}/reject`
-    );
-  };
-
-export const updateAdminRiderStatus =
-  async (
-    riderId,
-    isActive
-  ) => {
-    if (!riderId) {
-      throw new Error(
-        "Rider ID is required"
-      );
-    }
-
-    return patch(
-      `/api/admin/riders/${riderId}/status`,
-      { isActive }
-    );
-  };
-
-export const updateAdminRiderProfile =
-  async (
-    riderId,
+  return patch(
+    `/api/admin/riders/${riderId}/profile`,
     profile
-  ) => {
-    if (!riderId) {
-      throw new Error(
-        "Rider ID is required"
-      );
-    }
-
-    return patch(
-      `/api/admin/riders/${riderId}/profile`,
-      profile
-    );
-  };
+  );
+};
 
 // ============================================================
 // ADMIN DASHBOARD
@@ -521,30 +650,31 @@ export const getAdminDashboardStats =
 
 // ============================================================
 // NOTIFICATIONS
+//
 // IMPORTANT:
-// This endpoint expects USER ID, NOT JWT TOKEN.
+// This endpoint expects MongoDB USER ID.
+// It must NEVER receive the JWT.
 // ============================================================
 
-export const getNotifications =
-  async (userId) => {
-    if (!userId) {
-      throw new Error(
-        "User ID is required to fetch notifications"
-      );
-    }
-
-    return get(
-      `/api/notifications/${userId}`
+export const getNotifications = async (
+  userId
+) => {
+  if (!isValidObjectId(userId)) {
+    throw new Error(
+      "Valid User ID is required to fetch notifications"
     );
-  };
+  }
+
+  return get(
+    `/api/notifications/${userId}`
+  );
+};
 
 export const markNotificationAsRead =
-  async (
-    notificationId
-  ) => {
-    if (!notificationId) {
+  async (notificationId) => {
+    if (!isValidObjectId(notificationId)) {
       throw new Error(
-        "Notification ID is required"
+        "Valid Notification ID is required"
       );
     }
 
@@ -555,9 +685,9 @@ export const markNotificationAsRead =
 
 export const markAllNotificationsAsRead =
   async (userId) => {
-    if (!userId) {
+    if (!isValidObjectId(userId)) {
       throw new Error(
-        "User ID is required"
+        "Valid User ID is required"
       );
     }
 
@@ -570,27 +700,27 @@ export const markAllNotificationsAsRead =
 // PASSWORD
 // ============================================================
 
-export const forgotPassword =
-  async (email) => {
-    return post(
-      "/api/password/forgot",
-      { email }
-    );
-  };
+export const forgotPassword = async (
+  email
+) => {
+  return post(
+    "/api/password/forgot",
+    { email }
+  );
+};
 
-export const resetPassword =
-  async (
-    token,
-    password
-  ) => {
-    return post(
-      "/api/password/reset",
-      {
-        token,
-        password,
-      }
-    );
-  };
+export const resetPassword = async (
+  token,
+  password
+) => {
+  return post(
+    "/api/password/reset",
+    {
+      token,
+      password,
+    }
+  );
+};
 
 // ============================================================
 // EXPORT DEFAULT
@@ -598,12 +728,15 @@ export const resetPassword =
 
 export default {
   API_URL,
+
   request,
   get,
   post,
   patch,
   put,
   del,
+
+  getImageUrl,
 
   loginUser,
   registerUser,
