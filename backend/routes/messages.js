@@ -1,7 +1,6 @@
-// backend/routes/messages.js
 const express = require('express');
 const router = express.Router();
-const auth = require('../middleware/auth');
+const auth = require('../middleware/auth'); // now returns the verifyToken function
 const Message = require('../models/Message');
 
 // ─── GET unread message count ────────────────────────────────
@@ -23,7 +22,6 @@ router.get('/unread-count', auth, async (req, res) => {
 router.get('/:userId', auth, async (req, res) => {
   try {
     const { userId } = req.params;
-    // Ensure the user can only see their own messages
     if (userId !== req.user._id.toString()) {
       return res.status(403).json({ success: false, message: 'Forbidden' });
     }

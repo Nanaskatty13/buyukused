@@ -1,5 +1,4 @@
 // backend/middleware/auth.js
-
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 
@@ -11,7 +10,6 @@ const verifyToken = async (req, res, next) => {
   try {
     if (!process.env.JWT_SECRET) {
       console.error("❌ JWT_SECRET is not configured");
-
       return res.status(500).json({
         success: false,
         message: "Server authentication is not configured",
@@ -19,7 +17,6 @@ const verifyToken = async (req, res, next) => {
     }
 
     const authHeader = req.headers.authorization || "";
-
     if (!authHeader.startsWith("Bearer ")) {
       return res.status(401).json({
         success: false,
@@ -28,7 +25,6 @@ const verifyToken = async (req, res, next) => {
     }
 
     const token = authHeader.substring(7).trim();
-
     if (!token) {
       return res.status(401).json({
         success: false,
@@ -36,16 +32,8 @@ const verifyToken = async (req, res, next) => {
       });
     }
 
-    const decoded = jwt.verify(
-      token,
-      process.env.JWT_SECRET
-    );
-
-    const userId =
-      decoded.id ||
-      decoded._id ||
-      decoded.userId;
-
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const userId = decoded.id || decoded._id || decoded.userId;
     if (!userId) {
       return res.status(401).json({
         success: false,
@@ -54,7 +42,6 @@ const verifyToken = async (req, res, next) => {
     }
 
     const user = await User.findById(userId).select("-password");
-
     if (!user) {
       return res.status(401).json({
         success: false,
@@ -69,40 +56,19 @@ const verifyToken = async (req, res, next) => {
       });
     }
 
-    // Attach full user document
     req.user = user;
-
-    // Convenient user ID
     req.userId = user._id.toString();
-
-    // Keep decoded JWT available
     req.auth = decoded;
-
     next();
   } catch (error) {
-    console.error(
-      "❌ Auth middleware error:",
-      error.message
-    );
-
+    console.error("❌ Auth middleware error:", error.message);
     if (error.name === "TokenExpiredError") {
-      return res.status(401).json({
-        success: false,
-        message: "Token expired",
-      });
+      return res.status(401).json({ success: false, message: "Token expired" });
     }
-
     if (error.name === "JsonWebTokenError") {
-      return res.status(401).json({
-        success: false,
-        message: "Invalid token",
-      });
+      return res.status(401).json({ success: false, message: "Invalid token" });
     }
-
-    return res.status(401).json({
-      success: false,
-      message: "Authentication failed",
-    });
+    return res.status(401).json({ success: false, message: "Authentication failed" });
   }
 };
 
@@ -111,17 +77,8 @@ const verifyToken = async (req, res, next) => {
 // ============================================================
 
 const isAdmin = (req, res, next) => {
-  if (
-    req.user &&
-    req.user.role === "admin"
-  ) {
-    return next();
-  }
-
-  return res.status(403).json({
-    success: false,
-    message: "Access denied. Admin only.",
-  });
+  if (req.user && req.user.role === "admin") return next();
+  return res.status(403).json({ success: false, message: "Access denied. Admin only." });
 };
 
 // ============================================================
@@ -129,20 +86,8 @@ const isAdmin = (req, res, next) => {
 // ============================================================
 
 const isSeller = (req, res, next) => {
-  if (
-    req.user &&
-    (
-      req.user.role === "seller" ||
-      req.user.role === "admin"
-    )
-  ) {
-    return next();
-  }
-
-  return res.status(403).json({
-    success: false,
-    message: "Access denied. Seller only.",
-  });
+  if (req.user && (req.user.role === "seller" || req.user.role === "admin")) return next();
+  return res.status(403).json({ success: false, message: "Access denied. Seller only." });
 };
 
 // ============================================================
@@ -150,17 +95,8 @@ const isSeller = (req, res, next) => {
 // ============================================================
 
 const isRider = (req, res, next) => {
-  if (
-    req.user &&
-    req.user.role === "rider"
-  ) {
-    return next();
-  }
-
-  return res.status(403).json({
-    success: false,
-    message: "Access denied. Rider only.",
-  });
+  if (req.user && req.user.role === "rider") return next();
+  return res.status(403).json({ success: false, message: "Access denied. Rider only." });
 };
 
 // ============================================================
@@ -168,33 +104,13 @@ const isRider = (req, res, next) => {
 // ============================================================
 
 const isCustomer = (req, res, next) => {
-  if (
-    req.user &&
-    (
-      req.user.role === "buyer" ||
-      req.user.role === "seller"
-    )
-  ) {
-    return next();
-  }
-
-  return res.status(403).json({
-    success: false,
-    message: "Access denied. Customer only.",
-  });
+  if (req.user && (req.user.role === "buyer" || req.user.role === "seller")) return next();
+  return res.status(403).json({ success: false, message: "Access denied. Customer only." });
 };
 
 // ============================================================
 // BACKWARD-COMPATIBILITY ALIASES
 // ============================================================
-//
-// Your existing routes were using:
-//
-// const { protect } = require("../middleware/auth");
-// const seller = require("../middleware/seller");
-//
-// These aliases prevent undefined middleware errors.
-//
 
 const protect = verifyToken;
 const seller = isSeller;
@@ -203,16 +119,14 @@ const seller = isSeller;
 // EXPORTS
 // ============================================================
 
-module.exports = {
-  verifyToken,
-  protect,
+// Default export: the main authentication middleware (so require('auth') returns a function)
+module.exports = verifyToken;
 
-  isAdmin,
-  isSeller,
-
-  isRider,
-  isCustomer,
-
-  // Compatibility aliases
-  seller,
-};
+// Also export named properties for flexibility
+module.exports.verifyToken = verifyToken;
+module.exports.protect = protect;
+module.exports.isAdmin = isAdmin;
+module.exports.isSeller = isSeller;
+module.exports.isRider = isRider;
+module.exports.isCustomer = isCustomer;
+module.exports.seller = seller;
