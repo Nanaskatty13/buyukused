@@ -8,7 +8,7 @@ const express = require("express");
 const router = express.Router();
 
 // ============================================================
-// AUTHENTICATION MIDDLEWARE
+// AUTHENTICATION
 // ============================================================
 
 const {
@@ -30,47 +30,19 @@ const {
 } = require("../controllers/messageController");
 
 // ============================================================
-// AUTHENTICATION
-// ============================================================
-//
-// Every message endpoint requires a valid JWT.
-//
-// protect comes from:
-//
-// backend/middleware/auth.js
-//
-// It attaches:
-//
-// req.user
-// req.userId
-// req.auth
-//
+// AUTHENTICATION FOR ALL MESSAGE ROUTES
 // ============================================================
 
 router.use(protect);
 
 // ============================================================
 // GET UNREAD MESSAGE COUNT
-// GET /api/messages/unread/count
 // ============================================================
 //
-// Returns:
+// Primary endpoint:
 //
-// {
-//   success: true,
-//   count: 3
-// }
+// GET /api/messages/unread/count
 //
-// IMPORTANT:
-// This route must come BEFORE /:userId.
-//
-// Otherwise Express could interpret:
-//
-// /unread/count
-//
-// as:
-//
-// /:userId
 // ============================================================
 
 router.get(
@@ -79,17 +51,26 @@ router.get(
 );
 
 // ============================================================
-// GET CONVERSATION BETWEEN TWO USERS
-// GET /api/messages/conversation/:userId
+// COMPATIBILITY ENDPOINT
 // ============================================================
 //
-// Example:
+// Supports:
 //
-// GET /api/messages/conversation/64f123...
+// GET /api/messages/unread-count
 //
-// Returns only messages exchanged between:
-// - logged-in user
-// - requested user
+// This prevents older frontend code from breaking.
+// ============================================================
+
+router.get(
+  "/unread-count",
+  getUnreadMessageCount
+);
+
+// ============================================================
+// GET CONVERSATION
+// ============================================================
+//
+// GET /api/messages/conversation/:userId
 //
 // ============================================================
 
@@ -100,17 +81,9 @@ router.get(
 
 // ============================================================
 // MARK CONVERSATION AS READ
-// PUT /api/messages/conversation/:userId/read
 // ============================================================
 //
-// The :userId represents the OTHER user.
-//
-// Example:
-//
-// PUT /api/messages/conversation/64f123.../read
-//
-// This marks unread messages sent by that user
-// to the currently authenticated user as read.
+// PUT /api/messages/conversation/:userId/read
 //
 // ============================================================
 
@@ -121,15 +94,16 @@ router.put(
 
 // ============================================================
 // SEND MESSAGE
-// POST /api/messages
 // ============================================================
 //
-// Example request body:
+// POST /api/messages
+//
+// Body:
 //
 // {
-//   "receiver": "64f123...",
-//   "productId": "65a456...",
-//   "message": "Is this laptop still available?"
+//   "receiver": "USER_ID",
+//   "productId": "PRODUCT_ID",
+//   "message": "Is this product still available?"
 // }
 //
 // productId is optional.
@@ -143,11 +117,9 @@ router.post(
 
 // ============================================================
 // MARK ONE MESSAGE AS READ
-// PUT /api/messages/:id/read
 // ============================================================
 //
-// Only the receiver of the message is allowed
-// to mark it as read.
+// PUT /api/messages/:id/read
 //
 // ============================================================
 
@@ -158,13 +130,9 @@ router.put(
 
 // ============================================================
 // DELETE MESSAGE
-// DELETE /api/messages/:id
 // ============================================================
 //
-// Allowed:
-// - message sender
-// - message receiver
-// - admin
+// DELETE /api/messages/:id
 //
 // ============================================================
 
@@ -174,18 +142,13 @@ router.delete(
 );
 
 // ============================================================
-// GET ALL MESSAGES FOR A USER
-// GET /api/messages/:userId
+// GET ALL MESSAGES FOR USER
 // ============================================================
 //
-// The controller only allows:
+// GET /api/messages/:userId
 //
-// 1. The logged-in user to request their own messages
-// 2. An admin to request another user's messages
-//
-// Example:
-//
-// GET /api/messages/64f123...
+// IMPORTANT:
+// This remains AFTER all fixed routes above.
 //
 // ============================================================
 
@@ -195,7 +158,7 @@ router.get(
 );
 
 // ============================================================
-// EXPORT ROUTER
+// EXPORT
 // ============================================================
 
 module.exports = router;
