@@ -18,296 +18,488 @@ const isValidObjectId = (id) => {
 };
 
 // ------------------------------------------------------------
-// Escape user input before putting it into RegExp.
+// SANITIZE USER
 // ------------------------------------------------------------
 
-const escapeRegex = (value) => {
-  return String(value).replace(
-    /[.*+?^${}()|[\]\\]/g,
-    "\\$&"
+const sanitizeUser = (user) => {
+  if (!user) return null;
+
+  const obj = user.toObject
+    ? user.toObject()
+    : { ...user };
+
+  delete obj.password;
+  delete obj.__v;
+  delete obj.resetPasswordToken;
+  delete obj.resetPasswordExpires;
+
+  return obj;
+};
+
+// ------------------------------------------------------------
+// PAGINATION
+// ------------------------------------------------------------
+
+const getPagination = (
+  page = 1,
+  limit = 20,
+  maxLimit = 100
+) => {
+  const pageNumber = Math.max(
+    1,
+    parseInt(page, 10) || 1
   );
+
+  const limitNumber = Math.min(
+    Math.max(
+      1,
+      parseInt(limit, 10) || 20
+    ),
+    maxLimit
+  );
+
+  return {
+    page: pageNumber,
+    limit: limitNumber,
+    skip:
+      (pageNumber - 1) *
+      limitNumber,
+  };
 };
 
 // ------------------------------------------------------------
-// Get authenticated admin ID safely.
+// SORT
 // ------------------------------------------------------------
 
-const getCurrentUserId = (req) => {
-  return req.user?._id
-    ? String(req.user._id)
-    : req.user?.id
-      ? String(req.user.id)
-      : null;
+const parseSort = (
+  sort = "-createdAt"
+) => {
+  const sortObject = {};
+
+  String(sort)
+    .split(",")
+    .forEach((field) => {
+      field = field.trim();
+
+      if (!field) return;
+
+      const descending =
+        field.startsWith("-");
+
+      const key = descending
+        ? field.substring(1)
+        : field;
+
+      if (!key) return;
+
+      sortObject[key] =
+        descending ? -1 : 1;
+    });
+
+  return Object.keys(sortObject).length
+    ? sortObject
+    : {
+        createdAt: -1,
+      };
 };
 
 // ============================================================
-// ADMIN DASHBOARD STATISTICS
-// GET /api/admin/dashboard
+// 1. ADMIN DASHBOARD
 // ============================================================
 
-exports.getDashboardStats = async (req, res) => {
+const getDashboardStats = async (
+  req,
+  res
+) => {
   try {
     const [
-      users,
-      products,
-      orders,
-
-      riders,
-      approvedRiders,
-      pendingRiders,
-      availableRiders,
-
-      sellers,
+      totalUsers,
+      totalSellers,
+      totalBuyers,
+      totalAdmins,
+      totalRiders,
       verifiedSellers,
-      pendingSellerVerifications,
+      pendingSellerVerification,
+      activeUsers,
+      totalProducts,
+      activeProducts,
+      totalOrders,
+      pendingOrders,
+      completedOrders,
     ] = await Promise.all([
-      // USERS
       User.countDocuments(),
 
-      // PRODUCTS
+      User.countDocuments({
+        role: "seller",
+      }),
+
+      User.countDocuments({
+        role: "buyer",
+      }),
+
+      User.countDocuments({
+        role: "admin",
+      }),
+
+      User.countDocuments({
+        role: "rider",
+      }),
+
+      User.countDocuments({
+        role: "seller",
+        sellerVerified: true,
+        sellerVerificationStatus:
+          "approved",
+      }),
+
+      User.countDocuments({
+        role: "seller",
+        sellerVerificationStatus:
+          "pending",
+      }),
+
+      User.countDocuments({
+        isActive: {
+          $ne: false,
+        },
+      }),
+
       Product.countDocuments(),
 
-      // ORDERS
+      Product.countDocuments({
+        status: "active",
+      }),
+
       Order.countDocuments(),
 
-      // RIDERS
-      User.countDocuments({
-        role: "rider",
+      Order.countDocuments({
+        status: "pending",
       }),
 
-      User.countDocuments({
-        role: "rider",
-        "riderProfile.isApproved": true,
-      }),
-
-      User.countDocuments({
-        role: "rider",
-        "riderProfile.isApproved": false,
-      }),
-
-      User.countDocuments({
-        role: "rider",
-        "riderProfile.isApproved": true,
-        "riderProfile.isAvailable": true,
-        isActive: true,
-      }),
-
-      // SELLERS
-      User.countDocuments({
-        role: "seller",
-      }),
-
-      User.countDocuments({
-        role: "seller",
-        $or: [
-          {
-            isVerified: true,
-            verificationStatus: "approved",
-          },
-          {
-            sellerVerified: true,
-            sellerVerificationStatus: "approved",
-          },
-        ],
-      }),
-
-      User.countDocuments({
-        role: "seller",
-        $or: [
-          {
-            verificationStatus: "pending",
-          },
-          {
-            sellerVerificationStatus: "pending",
-          },
-        ],
+      Order.countDocuments({
+        status: "completed",
       }),
     ]);
 
-    return res.status(200).json({
+    // ----------------------------------------------------------
+    // TOTAL SALES
+    // ----------------------------------------------------------
+
+    const salesResult =
+      await Order.aggregate([
+        {
+          $match: {
+            status: {
+              $in: [
+                "paid",
+                "processing",
+                "shipped",
+                "delivered",
+                "completed",
+              ],
+            },
+          },
+        },
+
+        {
+          $unwind: {
+            path: "$items",
+            preserveNullAndEmptyArrays: true,
+          },
+        },
+
+        {
+          $group: {
+            _id: null,
+
+            totalSales: {
+              $sum: {
+                $multiply: [
+                  {
+                    $convert: {
+                      input:
+                        "$items.price",
+                      to: "double",
+                      onError: 0,
+                      onNull: 0,
+                    },
+                  },
+                  {
+                    $convert: {
+                      input:
+                        "$items.quantity",
+                      to: "double",
+                      onError: 0,
+                      onNull: 0,
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        },
+      ]);
+
+    const totalSales =
+      Number(
+        salesResult?.[0]?.totalSales || 0
+      );
+
+    // ----------------------------------------------------------
+    // RECENT USERS
+    // ----------------------------------------------------------
+
+    const recentUsers =
+      await User.find()
+        .select(
+          "-password -__v -resetPasswordToken -resetPasswordExpires"
+        )
+        .sort({
+          createdAt: -1,
+        })
+        .limit(10)
+        .lean();
+
+    // ----------------------------------------------------------
+    // RECENT PRODUCTS
+    // ----------------------------------------------------------
+
+    const recentProducts =
+      await Product.find()
+        .sort({
+          createdAt: -1,
+        })
+        .limit(10)
+        .lean();
+
+    // ----------------------------------------------------------
+    // RECENT ORDERS
+    // ----------------------------------------------------------
+
+    const recentOrders =
+      await Order.find()
+        .populate(
+          "user",
+          "name email phone"
+        )
+        .sort({
+          createdAt: -1,
+        })
+        .limit(10)
+        .lean();
+
+    return res.json({
       success: true,
 
       stats: {
-        users,
-        products,
-        orders,
+        totalUsers,
+        totalSellers,
+        totalBuyers,
+        totalAdmins,
+        totalRiders,
 
-        riders,
-        approvedRiders,
-        pendingRiders,
-        availableRiders,
-
-        sellers,
         verifiedSellers,
-        pendingSellerVerifications,
+        pendingSellerVerification,
+
+        activeUsers,
+
+        totalProducts,
+        activeProducts,
+
+        totalOrders,
+        pendingOrders,
+        completedOrders,
+
+        totalSales,
       },
+
+      recentUsers,
+      recentProducts,
+      recentOrders,
     });
   } catch (error) {
     console.error(
-      "❌ Admin dashboard stats error:",
+      "❌ Admin dashboard error:",
       error
     );
 
     return res.status(500).json({
       success: false,
       message:
-        "Failed to load dashboard statistics",
+        error.message ||
+        "Failed to load admin dashboard.",
     });
   }
 };
 
 // ============================================================
-// GET ALL USERS
-// GET /api/admin/users
+// 2. GET ALL USERS
 // ============================================================
 
-exports.getUsers = async (req, res) => {
+const getUsers = async (
+  req,
+  res
+) => {
   try {
     const {
-      page = 1,
-      limit = 20,
-      search = "",
-      role = "",
-      status = "",
-    } = req.query;
-
-    const currentPage = Math.max(
-      parseInt(page, 10) || 1,
-      1
+      page,
+      limit,
+      skip,
+    } = getPagination(
+      req.query.page,
+      req.query.limit,
+      100
     );
 
-    const currentLimit = Math.min(
-      Math.max(
-        parseInt(limit, 10) || 20,
-        1
-      ),
-      100
+    const sort = parseSort(
+      req.query.sort ||
+        "-createdAt"
     );
 
     const filter = {};
 
-    // ROLE
-    const allowedRoles = [
-      "buyer",
-      "seller",
-      "rider",
-      "admin",
-    ];
+    // ----------------------------------------------------------
+    // ROLE FILTER
+    // ----------------------------------------------------------
 
-    if (role) {
-      if (!allowedRoles.includes(role)) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid role filter",
-        });
+    if (req.query.role) {
+      filter.role = req.query.role;
+    }
+
+    // ----------------------------------------------------------
+    // STATUS FILTER
+    // ----------------------------------------------------------
+
+    if (
+      req.query.status !==
+      undefined
+    ) {
+      if (
+        req.query.status ===
+        "active"
+      ) {
+        filter.isActive = true;
       }
 
-      filter.role = role;
+      if (
+        req.query.status ===
+        "inactive"
+      ) {
+        filter.isActive = false;
+      }
     }
 
-    // STATUS
-    if (status === "active") {
-      filter.isActive = true;
-    } else if (
-      status === "suspended" ||
-      status === "banned"
+    // ----------------------------------------------------------
+    // VERIFICATION FILTER
+    // ----------------------------------------------------------
+
+    if (
+      req.query.verified ===
+      "true"
     ) {
-      filter.isActive = false;
-    } else if (status) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid status filter",
-      });
+      filter.sellerVerified = true;
     }
 
+    if (
+      req.query.verified ===
+      "false"
+    ) {
+      filter.sellerVerified = {
+        $ne: true,
+      };
+    }
+
+    // ----------------------------------------------------------
     // SEARCH
-    const cleanSearch = String(
-      search || ""
-    ).trim();
+    // ----------------------------------------------------------
 
-    if (cleanSearch) {
-      const searchRegex = new RegExp(
-        escapeRegex(cleanSearch),
-        "i"
-      );
+    if (req.query.search) {
+      const search =
+        String(
+          req.query.search
+        ).trim();
 
-      filter.$or = [
-        {
-          name: searchRegex,
-        },
-        {
-          email: searchRegex,
-        },
-        {
-          phone: searchRegex,
-        },
-        {
-          shopName: searchRegex,
-        },
-      ];
+      if (search) {
+        filter.$or = [
+          {
+            name: {
+              $regex: search,
+              $options: "i",
+            },
+          },
+          {
+            email: {
+              $regex: search,
+              $options: "i",
+            },
+          },
+          {
+            phone: {
+              $regex: search,
+              $options: "i",
+            },
+          },
+          {
+            shopName: {
+              $regex: search,
+              $options: "i",
+            },
+          },
+        ];
+      }
     }
-
-    const skip =
-      (currentPage - 1) *
-      currentLimit;
 
     const [
       users,
       total,
     ] = await Promise.all([
       User.find(filter)
-        .select("-password")
-        .sort({
-          createdAt: -1,
-        })
+        .select(
+          "-password -__v -resetPasswordToken -resetPasswordExpires"
+        )
+        .sort(sort)
         .skip(skip)
-        .limit(currentLimit)
+        .limit(limit)
         .lean(),
 
       User.countDocuments(filter),
     ]);
 
-    const totalPages =
-      Math.ceil(
-        total / currentLimit
-      );
-
-    return res.status(200).json({
+    return res.json({
       success: true,
-      count: users.length,
-      total,
-      page: currentPage,
-      limit: currentLimit,
-      totalPages,
-
-      hasNextPage:
-        currentPage < totalPages,
-
-      hasPreviousPage:
-        currentPage > 1,
 
       users,
+
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages:
+          Math.ceil(
+            total / limit
+          ),
+      },
     });
   } catch (error) {
     console.error(
-      "❌ Get users error:",
+      "❌ Get admin users error:",
       error
     );
 
     return res.status(500).json({
       success: false,
       message:
-        "Failed to fetch users",
+        error.message ||
+        "Failed to fetch users.",
     });
   }
 };
 
 // ============================================================
-// GET USER BY ID
-// GET /api/admin/users/:id
+// 3. GET SINGLE USER
 // ============================================================
 
-exports.getUserById = async (
+const getUserById = async (
   req,
   res
 ) => {
@@ -317,46 +509,67 @@ exports.getUserById = async (
     if (!isValidObjectId(id)) {
       return res.status(400).json({
         success: false,
-        message: "Invalid user ID",
+        message:
+          "Invalid user ID.",
       });
     }
 
     const user =
       await User.findById(id)
-        .select("-password")
+        .select(
+          "-password -__v -resetPasswordToken -resetPasswordExpires"
+        )
         .lean();
 
     if (!user) {
       return res.status(404).json({
         success: false,
-        message: "User not found",
+        message:
+          "User not found.",
       });
     }
 
-    return res.status(200).json({
+    // ----------------------------------------------------------
+    // USER PRODUCTS
+    // ----------------------------------------------------------
+
+    const products =
+      await Product.find({
+        sellerId: id,
+      })
+        .sort({
+          createdAt: -1,
+        })
+        .limit(50)
+        .lean();
+
+    return res.json({
       success: true,
+
       user,
+
+      products,
     });
   } catch (error) {
     console.error(
-      "❌ Get user error:",
+      "❌ Get admin user error:",
       error
     );
 
     return res.status(500).json({
       success: false,
       message:
-        "Failed to fetch user",
+        error.message ||
+        "Failed to fetch user.",
     });
   }
 };
 
 // ============================================================
-// UPDATE USER ROLE
-// PATCH /api/admin/users/:id/role
+// 4. UPDATE USER ROLE
 // ============================================================
 
-exports.updateUserRole = async (
+const updateUserRole = async (
   req,
   res
 ) => {
@@ -367,7 +580,8 @@ exports.updateUserRole = async (
     if (!isValidObjectId(id)) {
       return res.status(400).json({
         success: false,
-        message: "Invalid user ID",
+        message:
+          "Invalid user ID.",
       });
     }
 
@@ -378,10 +592,33 @@ exports.updateUserRole = async (
       "admin",
     ];
 
-    if (!allowedRoles.includes(role)) {
+    if (
+      !allowedRoles.includes(role)
+    ) {
       return res.status(400).json({
         success: false,
-        message: "Invalid user role",
+        message:
+          "Invalid role.",
+      });
+    }
+
+    // ----------------------------------------------------------
+    // PREVENT ADMIN FROM CHANGING THEIR OWN ROLE
+    // ----------------------------------------------------------
+
+    const currentAdminId =
+      req.user?._id ||
+      req.user?.id;
+
+    if (
+      currentAdminId &&
+      String(currentAdminId) ===
+        String(id)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "You cannot change your own admin role.",
       });
     }
 
@@ -391,86 +628,62 @@ exports.updateUserRole = async (
     if (!user) {
       return res.status(404).json({
         success: false,
-        message: "User not found",
-      });
-    }
-
-    const currentAdminId =
-      getCurrentUserId(req);
-
-    // ----------------------------------------------------------
-    // ADMIN CANNOT REMOVE OWN ADMIN ROLE
-    // ----------------------------------------------------------
-
-    if (
-      currentAdminId &&
-      currentAdminId ===
-        String(user._id) &&
-      role !== "admin"
-    ) {
-      return res.status(400).json({
-        success: false,
         message:
-          "You cannot remove your own admin role",
+          "User not found.",
       });
-    }
-
-    // ----------------------------------------------------------
-    // CHANGING AWAY FROM SELLER
-    // Remove seller verification.
-    // ----------------------------------------------------------
-
-    if (role !== "seller") {
-      user.isVerified = false;
-      user.verifiedAt = null;
-      user.verifiedBy = null;
-
-      user.verificationStatus =
-        "not_submitted";
-
-      user.verificationRejectedReason =
-        "";
-
-      // Keep seller-controller fields synchronized.
-      user.sellerVerified = false;
-      user.sellerVerifiedAt = null;
-      user.sellerVerifiedBy = null;
-
-      user.sellerVerificationStatus =
-        "not_submitted";
-
-      user.sellerVerificationNote =
-        "";
-    }
-
-    // ----------------------------------------------------------
-    // CHANGING AWAY FROM RIDER
-    // ----------------------------------------------------------
-
-    if (
-      role !== "rider" &&
-      user.riderProfile
-    ) {
-      user.riderProfile.isAvailable =
-        false;
     }
 
     user.role = role;
 
+    // ----------------------------------------------------------
+    // SELLER INITIALIZATION
+    // ----------------------------------------------------------
+
+    if (role === "seller") {
+      if (!user.sellerStatus) {
+        user.sellerStatus =
+          "active";
+      }
+
+      if (
+        !user.sellerVerificationStatus
+      ) {
+        user.sellerVerificationStatus =
+          "not_submitted";
+      }
+
+      if (
+        user.sellerVerified !== true
+      ) {
+        user.sellerVerified =
+          false;
+      }
+    }
+
+    // ----------------------------------------------------------
+    // NON-SELLER RESET
+    // ----------------------------------------------------------
+
+    if (role !== "seller") {
+      user.sellerVerified =
+        false;
+
+      user.sellerVerificationStatus =
+        "not_submitted";
+
+      user.sellerVerifiedAt = null;
+      user.sellerVerifiedBy = null;
+    }
+
     await user.save();
 
-    const safeUser =
-      await User.findById(
-        user._id
-      )
-        .select("-password")
-        .lean();
-
-    return res.status(200).json({
+    return res.json({
       success: true,
+
       message:
-        "User role updated successfully",
-      user: safeUser,
+        "User role updated successfully.",
+
+      user: sanitizeUser(user),
     });
   } catch (error) {
     console.error(
@@ -481,121 +694,107 @@ exports.updateUserRole = async (
     return res.status(500).json({
       success: false,
       message:
-        "Failed to update user role",
+        error.message ||
+        "Failed to update user role.",
     });
   }
 };
 
 // ============================================================
-// UPDATE USER ACCOUNT STATUS
-// PATCH /api/admin/users/:id/status
+// 5. UPDATE USER ACCOUNT STATUS
 // ============================================================
 
-exports.updateUserStatus = async (
+const updateUserStatus = async (
   req,
   res
 ) => {
   try {
     const { id } = req.params;
-    const { isActive } = req.body;
+
+    const {
+      isActive,
+      status,
+    } = req.body;
 
     if (!isValidObjectId(id)) {
       return res.status(400).json({
         success: false,
-        message: "Invalid user ID",
-      });
-    }
-
-    if (
-      typeof isActive !== "boolean"
-    ) {
-      return res.status(400).json({
-        success: false,
         message:
-          "isActive must be true or false",
+          "Invalid user ID.",
       });
     }
 
     const currentAdminId =
-      getCurrentUserId(req);
+      req.user?._id ||
+      req.user?.id;
 
     if (
       currentAdminId &&
-      currentAdminId === id &&
-      isActive === false
+      String(currentAdminId) ===
+        String(id)
     ) {
       return res.status(400).json({
         success: false,
         message:
-          "You cannot deactivate your own admin account",
+          "You cannot deactivate your own account.",
+      });
+    }
+
+    let activeValue;
+
+    if (
+      typeof isActive ===
+      "boolean"
+    ) {
+      activeValue = isActive;
+    } else if (
+      status !== undefined
+    ) {
+      activeValue =
+        status === "active" ||
+        status === "enabled";
+    } else {
+      return res.status(400).json({
+        success: false,
+        message:
+          "isActive or status is required.",
       });
     }
 
     const user =
-      await User.findById(id);
+      await User.findByIdAndUpdate(
+        id,
+        {
+          $set: {
+            isActive:
+              activeValue,
+          },
+        },
+        {
+          new: true,
+          runValidators: true,
+        }
+      )
+        .select(
+          "-password -__v -resetPasswordToken -resetPasswordExpires"
+        );
 
     if (!user) {
       return res.status(404).json({
         success: false,
-        message: "User not found",
+        message:
+          "User not found.",
       });
     }
 
-    // ----------------------------------------------------------
-    // NEVER DEACTIVATE LAST ACTIVE ADMIN
-    // ----------------------------------------------------------
-
-    if (
-      user.role === "admin" &&
-      isActive === false
-    ) {
-      const activeAdmins =
-        await User.countDocuments({
-          role: "admin",
-          isActive: true,
-        });
-
-      if (activeAdmins <= 1) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "You cannot deactivate the last active admin account",
-        });
-      }
-    }
-
-    user.isActive = isActive;
-
-    // ----------------------------------------------------------
-    // DEACTIVATE RIDER AVAILABILITY
-    // ----------------------------------------------------------
-
-    if (
-      user.role === "rider" &&
-      user.riderProfile &&
-      !isActive
-    ) {
-      user.riderProfile.isAvailable =
-        false;
-    }
-
-    await user.save();
-
-    const safeUser =
-      await User.findById(
-        user._id
-      )
-        .select("-password")
-        .lean();
-
-    return res.status(200).json({
+    return res.json({
       success: true,
 
-      message: isActive
-        ? "User activated successfully"
-        : "User suspended successfully",
+      message: activeValue
+        ? "User activated successfully."
+        : "User deactivated successfully.",
 
-      user: safeUser,
+      user: sanitizeUser(user),
     });
   } catch (error) {
     console.error(
@@ -606,24 +805,17 @@ exports.updateUserStatus = async (
     return res.status(500).json({
       success: false,
       message:
-        "Failed to update user status",
+        error.message ||
+        "Failed to update user status.",
     });
   }
 };
 
 // ============================================================
-// VERIFY SELLER
-// PATCH /api/admin/users/:id/verify-seller
-//
-// IMPORTANT:
-// Updates BOTH:
-//   1. Original User verification fields
-//   2. Seller-controller verification fields
-//
-// This keeps the entire application synchronized.
+// 6. VERIFY SELLER
 // ============================================================
 
-exports.verifySeller = async (
+const verifySeller = async (
   req,
   res
 ) => {
@@ -633,137 +825,113 @@ exports.verifySeller = async (
     if (!isValidObjectId(id)) {
       return res.status(400).json({
         success: false,
-        message: "Invalid seller ID",
-      });
-    }
-
-    const seller =
-      await User.findOne({
-        _id: id,
-        role: "seller",
-      });
-
-    if (!seller) {
-      return res.status(404).json({
-        success: false,
-        message: "Seller not found",
+        message:
+          "Invalid seller ID.",
       });
     }
 
     const adminId =
-      getCurrentUserId(req);
+      req.user?._id ||
+      req.user?.id;
 
-    const now = new Date();
+    const seller =
+      await User.findById(id);
 
-    // ==========================================================
-    // PRIMARY VERIFICATION FIELDS
-    // Used by User model / Admin dashboard
-    // ==========================================================
+    if (!seller) {
+      return res.status(404).json({
+        success: false,
+        message:
+          "Seller not found.",
+      });
+    }
 
-    seller.isVerified = true;
+    // ----------------------------------------------------------
+    // MUST BE SELLER
+    // ----------------------------------------------------------
 
-    seller.verificationStatus =
-      "approved";
+    if (
+      seller.role !== "seller"
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Only seller accounts can be verified.",
+      });
+    }
 
-    seller.verifiedAt = now;
+    // ----------------------------------------------------------
+    // VERIFY
+    // ----------------------------------------------------------
 
-    seller.verifiedBy =
-      adminId || null;
-
-    seller.verificationRejectedReason =
-      "";
-
-    // ==========================================================
-    // SELLER VERIFICATION FIELDS
-    // Used by sellerController/public seller profile
-    // ==========================================================
-
-    seller.sellerVerified = true;
+    seller.sellerVerified =
+      true;
 
     seller.sellerVerificationStatus =
       "approved";
 
-    seller.sellerVerifiedAt = now;
+    seller.sellerVerifiedAt =
+      new Date();
 
     seller.sellerVerifiedBy =
       adminId || null;
 
     seller.sellerVerificationNote =
-      "";
+      req.body?.note
+        ? String(
+            req.body.note
+          ).trim()
+        : seller.sellerVerificationNote ||
+          "";
 
-    // ==========================================================
-    // SELLER STATUS
-    // ==========================================================
-
-    seller.isActive = true;
-
-    if (
-      !seller.sellerStatus ||
-      seller.sellerStatus ===
-        "pending"
-    ) {
+    // Ensure seller remains active.
+    if (!seller.sellerStatus) {
       seller.sellerStatus =
         "active";
     }
 
-    // ==========================================================
-    // SELLER SINCE
-    // ==========================================================
-
-    if (!seller.sellerSince) {
-      seller.sellerSince = now;
-    }
-
     await seller.save();
 
-    // ==========================================================
-    // RETURN UPDATED SELLER
-    // ==========================================================
+    const cleanSeller =
+      sanitizeUser(seller);
 
-    const safeSeller =
-      await User.findById(
-        seller._id
-      )
-        .select("-password")
-        .populate(
-          "verifiedBy",
-          "name email"
-        )
-        .populate(
-          "sellerVerifiedBy",
-          "name email"
-        )
-        .lean();
+    console.log(
+      "✅ Seller verified:",
+      {
+        sellerId:
+          seller._id.toString(),
 
-    return res.status(200).json({
+        name:
+          seller.name,
+
+        sellerVerified:
+          seller.sellerVerified,
+
+        sellerVerificationStatus:
+          seller.sellerVerificationStatus,
+
+        sellerVerifiedAt:
+          seller.sellerVerifiedAt,
+
+        sellerVerifiedBy:
+          seller.sellerVerifiedBy,
+      }
+    );
+
+    return res.json({
       success: true,
 
       message:
-        "Seller verified successfully",
+        "Seller verified successfully.",
 
-      seller: safeSeller,
+      seller: cleanSeller,
 
-      verification: {
-        verified: true,
-        isVerified: true,
-        sellerVerified: true,
+      // Convenient frontend fields.
+      verified: true,
 
-        verificationStatus:
-          "approved",
+      sellerVerified: true,
 
-        sellerVerificationStatus:
-          "approved",
-
-        verifiedAt: now,
-
-        sellerVerifiedAt: now,
-
-        verifiedBy:
-          adminId || null,
-
-        sellerVerifiedBy:
-          adminId || null,
-      },
+      sellerVerificationStatus:
+        "approved",
     });
   } catch (error) {
     console.error(
@@ -775,17 +943,16 @@ exports.verifySeller = async (
       success: false,
       message:
         error.message ||
-        "Failed to verify seller",
+        "Failed to verify seller.",
     });
   }
 };
 
 // ============================================================
-// UNVERIFY SELLER
-// PATCH /api/admin/users/:id/unverify-seller
+// 7. UNVERIFY SELLER
 // ============================================================
 
-exports.unverifySeller = async (
+const unverifySeller = async (
   req,
   res
 ) => {
@@ -795,83 +962,89 @@ exports.unverifySeller = async (
     if (!isValidObjectId(id)) {
       return res.status(400).json({
         success: false,
-        message: "Invalid seller ID",
+        message:
+          "Invalid seller ID.",
       });
     }
 
     const seller =
-      await User.findOne({
-        _id: id,
-        role: "seller",
-      });
+      await User.findById(id);
 
     if (!seller) {
       return res.status(404).json({
         success: false,
-        message: "Seller not found",
+        message:
+          "Seller not found.",
       });
     }
 
-    // ==========================================================
-    // PRIMARY VERIFICATION FIELDS
-    // ==========================================================
+    if (
+      seller.role !== "seller"
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Only seller accounts can have seller verification removed.",
+      });
+    }
 
-    seller.isVerified = false;
+    // ----------------------------------------------------------
+    // REMOVE VERIFICATION
+    // ----------------------------------------------------------
 
-    seller.verificationStatus =
-      "rejected";
-
-    seller.verifiedAt = null;
-
-    seller.verifiedBy = null;
-
-    seller.verificationRejectedReason =
-      "Seller verification was removed by an administrator.";
-
-    // ==========================================================
-    // SELLER VERIFICATION FIELDS
-    // ==========================================================
-
-    seller.sellerVerified = false;
+    seller.sellerVerified =
+      false;
 
     seller.sellerVerificationStatus =
-      "rejected";
+      "not_submitted";
 
-    seller.sellerVerifiedAt = null;
+    seller.sellerVerifiedAt =
+      null;
 
-    seller.sellerVerifiedBy = null;
+    seller.sellerVerifiedBy =
+      null;
 
     seller.sellerVerificationNote =
-      "Seller verification was removed by an administrator.";
+      req.body?.note
+        ? String(
+            req.body.note
+          ).trim()
+        : "";
 
     await seller.save();
 
-    const safeSeller =
-      await User.findById(
-        seller._id
-      )
-        .select("-password")
-        .lean();
+    console.log(
+      "⚪ Seller verification removed:",
+      {
+        sellerId:
+          seller._id.toString(),
 
-    return res.status(200).json({
+        name:
+          seller.name,
+
+        sellerVerified:
+          seller.sellerVerified,
+
+        sellerVerificationStatus:
+          seller.sellerVerificationStatus,
+      }
+    );
+
+    return res.json({
       success: true,
 
       message:
-        "Seller verification removed",
+        "Seller verification removed successfully.",
 
-      seller: safeSeller,
+      seller:
+        sanitizeUser(seller),
 
-      verification: {
-        verified: false,
-        isVerified: false,
-        sellerVerified: false,
+      verified: false,
 
-        verificationStatus:
-          "rejected",
+      sellerVerified: false,
 
-        sellerVerificationStatus:
-          "rejected",
-      },
+      sellerVerificationStatus:
+        "not_submitted",
     });
   } catch (error) {
     console.error(
@@ -882,17 +1055,17 @@ exports.unverifySeller = async (
     return res.status(500).json({
       success: false,
       message:
-        "Failed to remove seller verification",
+        error.message ||
+        "Failed to remove seller verification.",
     });
   }
 };
 
 // ============================================================
-// DELETE USER
-// DELETE /api/admin/users/:id
+// 8. DELETE USER
 // ============================================================
 
-exports.deleteUser = async (
+const deleteUser = async (
   req,
   res
 ) => {
@@ -902,21 +1075,24 @@ exports.deleteUser = async (
     if (!isValidObjectId(id)) {
       return res.status(400).json({
         success: false,
-        message: "Invalid user ID",
+        message:
+          "Invalid user ID.",
       });
     }
 
-    const currentAdminId =
-      getCurrentUserId(req);
+    const adminId =
+      req.user?._id ||
+      req.user?.id;
 
     if (
-      currentAdminId &&
-      currentAdminId === id
+      adminId &&
+      String(adminId) ===
+        String(id)
     ) {
       return res.status(400).json({
         success: false,
         message:
-          "You cannot delete your own admin account",
+          "You cannot delete your own admin account.",
       });
     }
 
@@ -926,33 +1102,32 @@ exports.deleteUser = async (
     if (!user) {
       return res.status(404).json({
         success: false,
-        message: "User not found",
+        message:
+          "User not found.",
       });
     }
 
-    if (user.role === "admin") {
-      const adminCount =
-        await User.countDocuments({
-          role: "admin",
-        });
+    // ----------------------------------------------------------
+    // DELETE USER
+    // ----------------------------------------------------------
 
-      if (adminCount <= 1) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "You cannot delete the last admin account",
-        });
-      }
-    }
+    await User.findByIdAndDelete(id);
 
-    await User.deleteOne({
-      _id: user._id,
+    // ----------------------------------------------------------
+    // DELETE USER PRODUCTS
+    // ----------------------------------------------------------
+
+    await Product.deleteMany({
+      sellerId: id,
     });
 
-    return res.status(200).json({
+    return res.json({
       success: true,
+
       message:
-        "User deleted successfully",
+        "User deleted successfully.",
+
+      deletedUserId: id,
     });
   } catch (error) {
     console.error(
@@ -963,57 +1138,147 @@ exports.deleteUser = async (
     return res.status(500).json({
       success: false,
       message:
-        "Failed to delete user",
+        error.message ||
+        "Failed to delete user.",
     });
   }
 };
 
 // ============================================================
-// GET ALL PRODUCTS
-// GET /api/admin/products
+// 9. GET ALL PRODUCTS
 // ============================================================
 
-exports.getProducts = async (
+const getProducts = async (
   req,
   res
 ) => {
   try {
-    const products =
-      await Product.find()
+    const {
+      page,
+      limit,
+      skip,
+    } = getPagination(
+      req.query.page,
+      req.query.limit,
+      100
+    );
+
+    const sort = parseSort(
+      req.query.sort ||
+        "-createdAt"
+    );
+
+    const filter = {};
+
+    if (req.query.status) {
+      filter.status =
+        req.query.status;
+    }
+
+    if (req.query.category) {
+      filter.category =
+        req.query.category;
+    }
+
+    if (req.query.sellerId) {
+      if (
+        !isValidObjectId(
+          req.query.sellerId
+        )
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Invalid seller ID.",
+        });
+      }
+
+      filter.sellerId =
+        req.query.sellerId;
+    }
+
+    if (req.query.search) {
+      const search =
+        String(
+          req.query.search
+        ).trim();
+
+      if (search) {
+        filter.$or = [
+          {
+            title: {
+              $regex: search,
+              $options: "i",
+            },
+          },
+          {
+            description: {
+              $regex: search,
+              $options: "i",
+            },
+          },
+          {
+            sellerName: {
+              $regex: search,
+              $options: "i",
+            },
+          },
+        ];
+      }
+    }
+
+    const [
+      products,
+      total,
+    ] = await Promise.all([
+      Product.find(filter)
         .populate(
           "sellerId",
-          "name email phone isVerified verificationStatus sellerVerified sellerVerificationStatus"
+          "name email phone shopName sellerVerified sellerVerificationStatus"
         )
-        .sort({
-          createdAt: -1,
-        })
-        .lean();
+        .sort(sort)
+        .skip(skip)
+        .limit(limit)
+        .lean(),
 
-    return res.status(200).json({
+      Product.countDocuments(filter),
+    ]);
+
+    return res.json({
       success: true,
-      count: products.length,
+
       products,
+
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages:
+          Math.ceil(
+            total / limit
+          ),
+      },
     });
   } catch (error) {
     console.error(
-      "❌ Get products error:",
+      "❌ Admin products error:",
       error
     );
 
     return res.status(500).json({
       success: false,
       message:
-        "Failed to fetch products",
+        error.message ||
+        "Failed to fetch products.",
     });
   }
 };
 
 // ============================================================
-// DELETE PRODUCT
-// DELETE /api/admin/products/:id
+// 10. DELETE PRODUCT
 // ============================================================
 
-exports.deleteProduct = async (
+const deleteProduct = async (
   req,
   res
 ) => {
@@ -1023,7 +1288,8 @@ exports.deleteProduct = async (
     if (!isValidObjectId(id)) {
       return res.status(400).json({
         success: false,
-        message: "Invalid product ID",
+        message:
+          "Invalid product ID.",
       });
     }
 
@@ -1033,289 +1299,358 @@ exports.deleteProduct = async (
     if (!product) {
       return res.status(404).json({
         success: false,
-        message: "Product not found",
+        message:
+          "Product not found.",
       });
     }
 
-    await Product.deleteOne({
-      _id: product._id,
-    });
+    await Product.findByIdAndDelete(
+      id
+    );
 
-    return res.status(200).json({
+    return res.json({
       success: true,
+
       message:
-        "Product deleted successfully",
+        "Product deleted successfully.",
+
+      deletedProductId: id,
     });
   } catch (error) {
     console.error(
-      "❌ Delete product error:",
+      "❌ Admin delete product error:",
       error
     );
 
     return res.status(500).json({
       success: false,
       message:
-        "Failed to delete product",
+        error.message ||
+        "Failed to delete product.",
     });
   }
 };
 
 // ============================================================
-// GET ALL ORDERS
-// GET /api/admin/orders
+// 11. GET ALL ORDERS
 // ============================================================
 
-exports.getOrders = async (
-  req,
-  res
-) => {
-  try {
-    const orders =
-      await Order.find()
-        .sort({
-          createdAt: -1,
-        })
-        .lean();
-
-    return res.status(200).json({
-      success: true,
-      count: orders.length,
-      orders,
-    });
-  } catch (error) {
-    console.error(
-      "❌ Get orders error:",
-      error
-    );
-
-    return res.status(500).json({
-      success: false,
-      message:
-        "Failed to fetch orders",
-    });
-  }
-};
-
-// ============================================================
-// UPDATE ORDER STATUS
-// PATCH /api/admin/orders/:id/status
-// ============================================================
-
-exports.updateOrderStatus =
-  async (req, res) => {
-    try {
-      const { id } = req.params;
-      const { status } = req.body;
-
-      if (!isValidObjectId(id)) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid order ID",
-        });
-      }
-
-      if (
-        typeof status !== "string" ||
-        !status.trim()
-      ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Order status is required",
-        });
-      }
-
-      const cleanStatus =
-        status.trim();
-
-      const order =
-        await Order.findById(id);
-
-      if (!order) {
-        return res.status(404).json({
-          success: false,
-          message: "Order not found",
-        });
-      }
-
-      order.status =
-        cleanStatus;
-
-      await order.save();
-
-      return res.status(200).json({
-        success: true,
-        message:
-          "Order status updated successfully",
-        order,
-      });
-    } catch (error) {
-      console.error(
-        "❌ Update order status error:",
-        error
-      );
-
-      if (
-        error.name ===
-        "ValidationError"
-      ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Invalid order status",
-          error:
-            error.message,
-        });
-      }
-
-      return res.status(500).json({
-        success: false,
-        message:
-          "Failed to update order status",
-      });
-    }
-  };
-
-// ============================================================
-// GET ALL RIDERS
-// GET /api/admin/riders
-// ============================================================
-
-exports.getRiders = async (
+const getOrders = async (
   req,
   res
 ) => {
   try {
     const {
+      page,
+      limit,
+      skip,
+    } = getPagination(
+      req.query.page,
+      req.query.limit,
+      100
+    );
+
+    const sort = parseSort(
+      req.query.sort ||
+        "-createdAt"
+    );
+
+    const filter = {};
+
+    if (req.query.status) {
+      filter.status =
+        req.query.status;
+    }
+
+    if (req.query.userId) {
+      if (
+        !isValidObjectId(
+          req.query.userId
+        )
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Invalid user ID.",
+        });
+      }
+
+      filter.user =
+        req.query.userId;
+    }
+
+    const [
+      orders,
+      total,
+    ] = await Promise.all([
+      Order.find(filter)
+        .populate(
+          "user",
+          "name email phone"
+        )
+        .populate(
+          "items.product",
+          "title price images"
+        )
+        .sort(sort)
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+
+      Order.countDocuments(filter),
+    ]);
+
+    return res.json({
+      success: true,
+
+      orders,
+
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages:
+          Math.ceil(
+            total / limit
+          ),
+      },
+    });
+  } catch (error) {
+    console.error(
+      "❌ Admin orders error:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message:
+        error.message ||
+        "Failed to fetch orders.",
+    });
+  }
+};
+
+// ============================================================
+// 12. UPDATE ORDER STATUS
+// ============================================================
+
+const updateOrderStatus = async (
+  req,
+  res
+) => {
+  try {
+    const { id } = req.params;
+    const {
       status,
-      availability,
-      search,
-    } = req.query;
+    } = req.body;
+
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Invalid order ID.",
+      });
+    }
+
+    if (!status) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Order status is required.",
+      });
+    }
+
+    const allowedStatuses = [
+      "pending",
+      "paid",
+      "processing",
+      "confirmed",
+      "shipped",
+      "delivered",
+      "completed",
+      "cancelled",
+      "canceled",
+      "failed",
+      "refunded",
+    ];
+
+    if (
+      !allowedStatuses.includes(
+        status
+      )
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Invalid order status.",
+      });
+    }
+
+    const order =
+      await Order.findByIdAndUpdate(
+        id,
+        {
+          $set: {
+            status,
+          },
+        },
+        {
+          new: true,
+          runValidators: true,
+        }
+      )
+        .populate(
+          "user",
+          "name email phone"
+        )
+        .lean();
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message:
+          "Order not found.",
+      });
+    }
+
+    return res.json({
+      success: true,
+
+      message:
+        "Order status updated successfully.",
+
+      order,
+    });
+  } catch (error) {
+    console.error(
+      "❌ Update order status error:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message:
+        error.message ||
+        "Failed to update order status.",
+    });
+  }
+};
+
+// ============================================================
+// 13. GET RIDERS
+// ============================================================
+//
+// This implementation uses the User collection with
+// role === "rider".
+// It does NOT require a separate Rider model.
+// ============================================================
+
+const getRiders = async (
+  req,
+  res
+) => {
+  try {
+    const {
+      page,
+      limit,
+      skip,
+    } = getPagination(
+      req.query.page,
+      req.query.limit,
+      100
+    );
+
+    const sort = parseSort(
+      req.query.sort ||
+        "-createdAt"
+    );
 
     const filter = {
       role: "rider",
     };
 
-    // APPROVAL STATUS
-    if (status === "approved") {
-      filter[
-        "riderProfile.isApproved"
-      ] = true;
-    } else if (
-      status === "pending"
-    ) {
-      filter[
-        "riderProfile.isApproved"
-      ] = false;
-    } else if (status) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Invalid rider status filter",
-      });
+    if (req.query.status) {
+      filter.riderStatus =
+        req.query.status;
     }
 
-    // AVAILABILITY
     if (
-      availability ===
-      "available"
+      req.query.approved ===
+      "true"
     ) {
-      filter[
-        "riderProfile.isAvailable"
-      ] = true;
-
-      filter.isActive = true;
-    } else if (
-      availability ===
-      "unavailable"
-    ) {
-      filter.$or = [
-        {
-          "riderProfile.isAvailable":
-            false,
-        },
-        {
-          isActive: false,
-        },
-      ];
-    } else if (
-      availability
-    ) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Invalid availability filter",
-      });
+      filter.riderApproved =
+        true;
     }
 
-    // SEARCH
-    const cleanSearch = String(
-      search || ""
-    ).trim();
+    if (
+      req.query.approved ===
+      "false"
+    ) {
+      filter.riderApproved = {
+        $ne: true,
+      };
+    }
 
-    if (cleanSearch) {
-      const searchRegex = new RegExp(
-        escapeRegex(cleanSearch),
-        "i"
-      );
+    if (req.query.search) {
+      const search =
+        String(
+          req.query.search
+        ).trim();
 
-      const searchConditions = [
-        {
-          name: searchRegex,
-        },
-        {
-          email: searchRegex,
-        },
-        {
-          phone: searchRegex,
-        },
-        {
-          "riderProfile.bikeNumber":
-            searchRegex,
-        },
-        {
-          "riderProfile.bikeType":
-            searchRegex,
-        },
-        {
-          "riderProfile.serviceArea":
-            searchRegex,
-        },
-        {
-          "riderProfile.identificationNumber":
-            searchRegex,
-        },
-      ];
-
-      if (filter.$or) {
-        filter.$and = [
+      if (search) {
+        filter.$or = [
           {
-            $or: filter.$or,
+            name: {
+              $regex: search,
+              $options: "i",
+            },
           },
           {
-            $or: searchConditions,
+            email: {
+              $regex: search,
+              $options: "i",
+            },
+          },
+          {
+            phone: {
+              $regex: search,
+              $options: "i",
+            },
           },
         ];
-
-        delete filter.$or;
-      } else {
-        filter.$or =
-          searchConditions;
       }
     }
 
-    const riders =
-      await User.find(filter)
-        .select("-password")
-        .sort({
-          createdAt: -1,
-        })
-        .lean();
-
-    return res.status(200).json({
-      success: true,
-      count: riders.length,
+    const [
       riders,
+      total,
+    ] = await Promise.all([
+      User.find(filter)
+        .select(
+          "-password -__v -resetPasswordToken -resetPasswordExpires"
+        )
+        .sort(sort)
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+
+      User.countDocuments(filter),
+    ]);
+
+    return res.json({
+      success: true,
+
+      riders,
+
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages:
+          Math.ceil(
+            total / limit
+          ),
+      },
     });
   } catch (error) {
     console.error(
@@ -1326,533 +1661,430 @@ exports.getRiders = async (
     return res.status(500).json({
       success: false,
       message:
-        "Failed to fetch riders",
+        error.message ||
+        "Failed to fetch riders.",
     });
   }
 };
 
 // ============================================================
-// GET RIDER BY ID
-// GET /api/admin/riders/:id
+// 14. GET RIDER BY ID
 // ============================================================
 
-exports.getRiderById =
-  async (req, res) => {
-    try {
-      const { id } = req.params;
+const getRiderById = async (
+  req,
+  res
+) => {
+  try {
+    const { id } = req.params;
 
-      if (!isValidObjectId(id)) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid rider ID",
-        });
-      }
-
-      const rider =
-        await User.findOne({
-          _id: id,
-          role: "rider",
-        })
-          .select("-password")
-          .lean();
-
-      if (!rider) {
-        return res.status(404).json({
-          success: false,
-          message: "Rider not found",
-        });
-      }
-
-      return res.status(200).json({
-        success: true,
-        rider,
-      });
-    } catch (error) {
-      console.error(
-        "❌ Get rider error:",
-        error
-      );
-
-      return res.status(500).json({
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({
         success: false,
         message:
-          "Failed to fetch rider",
+          "Invalid rider ID.",
       });
     }
-  };
 
-// ============================================================
-// APPROVE RIDER
-// PATCH /api/admin/riders/:id/approve
-// ============================================================
-
-exports.approveRider =
-  async (req, res) => {
-    try {
-      const { id } = req.params;
-
-      if (!isValidObjectId(id)) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid rider ID",
-        });
-      }
-
-      const rider =
-        await User.findOne({
-          _id: id,
-          role: "rider",
-        });
-
-      if (!rider) {
-        return res.status(404).json({
-          success: false,
-          message: "Rider not found",
-        });
-      }
-
-      if (!rider.riderProfile) {
-        rider.riderProfile = {};
-      }
-
-      rider.riderProfile.isApproved =
-        true;
-
-      rider.riderProfile.isAvailable =
-        false;
-
-      rider.isActive = true;
-
-      await rider.save();
-
-      const safeRider =
-        await User.findById(
-          rider._id
+    const rider =
+      await User.findOne({
+        _id: id,
+        role: "rider",
+      })
+        .select(
+          "-password -__v -resetPasswordToken -resetPasswordExpires"
         )
-          .select("-password")
-          .lean();
+        .lean();
 
-      return res.status(200).json({
-        success: true,
-        message:
-          "Rider approved successfully",
-        rider: safeRider,
-      });
-    } catch (error) {
-      console.error(
-        "❌ Approve rider error:",
-        error
-      );
-
-      return res.status(500).json({
+    if (!rider) {
+      return res.status(404).json({
         success: false,
         message:
-          "Failed to approve rider",
+          "Rider not found.",
       });
     }
-  };
+
+    return res.json({
+      success: true,
+
+      rider,
+    });
+  } catch (error) {
+    console.error(
+      "❌ Get rider error:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message:
+        error.message ||
+        "Failed to fetch rider.",
+    });
+  }
+};
 
 // ============================================================
-// REJECT RIDER
-// PATCH /api/admin/riders/:id/reject
+// 15. APPROVE RIDER
 // ============================================================
 
-exports.rejectRider =
-  async (req, res) => {
-    try {
-      const { id } = req.params;
+const approveRider = async (
+  req,
+  res
+) => {
+  try {
+    const { id } = req.params;
 
-      if (!isValidObjectId(id)) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid rider ID",
-        });
-      }
-
-      const rider =
-        await User.findOne({
-          _id: id,
-          role: "rider",
-        });
-
-      if (!rider) {
-        return res.status(404).json({
-          success: false,
-          message: "Rider not found",
-        });
-      }
-
-      if (!rider.riderProfile) {
-        rider.riderProfile = {};
-      }
-
-      rider.riderProfile.isApproved =
-        false;
-
-      rider.riderProfile.isAvailable =
-        false;
-
-      await rider.save();
-
-      const safeRider =
-        await User.findById(
-          rider._id
-        )
-          .select("-password")
-          .lean();
-
-      return res.status(200).json({
-        success: true,
-        message:
-          "Rider application rejected",
-        rider: safeRider,
-      });
-    } catch (error) {
-      console.error(
-        "❌ Reject rider error:",
-        error
-      );
-
-      return res.status(500).json({
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({
         success: false,
         message:
-          "Failed to reject rider",
+          "Invalid rider ID.",
       });
     }
-  };
+
+    const rider =
+      await User.findOne({
+        _id: id,
+        role: "rider",
+      });
+
+    if (!rider) {
+      return res.status(404).json({
+        success: false,
+        message:
+          "Rider not found.",
+      });
+    }
+
+    rider.riderApproved =
+      true;
+
+    rider.riderStatus =
+      "approved";
+
+    rider.riderApprovedAt =
+      new Date();
+
+    rider.riderApprovedBy =
+      req.user?._id ||
+      req.user?.id ||
+      null;
+
+    await rider.save();
+
+    return res.json({
+      success: true,
+
+      message:
+        "Rider approved successfully.",
+
+      rider:
+        sanitizeUser(rider),
+    });
+  } catch (error) {
+    console.error(
+      "❌ Approve rider error:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message:
+        error.message ||
+        "Failed to approve rider.",
+    });
+  }
+};
 
 // ============================================================
-// UPDATE RIDER ACCOUNT STATUS
-// PATCH /api/admin/riders/:id/status
+// 16. REJECT RIDER
 // ============================================================
 
-exports.updateRiderStatus =
-  async (req, res) => {
-    try {
-      const { id } = req.params;
-      const { isActive } = req.body;
+const rejectRider = async (
+  req,
+  res
+) => {
+  try {
+    const { id } = req.params;
 
-      if (!isValidObjectId(id)) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid rider ID",
-        });
-      }
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Invalid rider ID.",
+      });
+    }
 
-      if (
-        typeof isActive !==
-        "boolean"
-      ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "isActive must be true or false",
-        });
-      }
+    const rider =
+      await User.findOne({
+        _id: id,
+        role: "rider",
+      });
 
-      const rider =
-        await User.findOne({
-          _id: id,
-          role: "rider",
-        });
+    if (!rider) {
+      return res.status(404).json({
+        success: false,
+        message:
+          "Rider not found.",
+      });
+    }
 
-      if (!rider) {
-        return res.status(404).json({
-          success: false,
-          message: "Rider not found",
-        });
-      }
+    rider.riderApproved =
+      false;
 
-      if (!rider.riderProfile) {
-        rider.riderProfile = {};
-      }
+    rider.riderStatus =
+      "rejected";
 
-      if (
-        isActive === true &&
-        rider.riderProfile
-          .isApproved !== true
-      ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Rider must be approved before activation",
-        });
-      }
+    rider.riderApprovedAt =
+      null;
 
+    rider.riderApprovedBy =
+      null;
+
+    if (req.body?.reason) {
+      rider.riderRejectionReason =
+        String(
+          req.body.reason
+        ).trim();
+    }
+
+    await rider.save();
+
+    return res.json({
+      success: true,
+
+      message:
+        "Rider rejected successfully.",
+
+      rider:
+        sanitizeUser(rider),
+    });
+  } catch (error) {
+    console.error(
+      "❌ Reject rider error:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message:
+        error.message ||
+        "Failed to reject rider.",
+    });
+  }
+};
+
+// ============================================================
+// 17. UPDATE RIDER STATUS
+// ============================================================
+
+const updateRiderStatus = async (
+  req,
+  res
+) => {
+  try {
+    const { id } = req.params;
+
+    const {
+      status,
+      riderStatus,
+      isActive,
+    } = req.body;
+
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Invalid rider ID.",
+      });
+    }
+
+    const rider =
+      await User.findOne({
+        _id: id,
+        role: "rider",
+      });
+
+    if (!rider) {
+      return res.status(404).json({
+        success: false,
+        message:
+          "Rider not found.",
+      });
+    }
+
+    if (
+      status !== undefined
+    ) {
+      rider.riderStatus =
+        String(status);
+    }
+
+    if (
+      riderStatus !== undefined
+    ) {
+      rider.riderStatus =
+        String(riderStatus);
+    }
+
+    if (
+      typeof isActive ===
+      "boolean"
+    ) {
       rider.isActive =
         isActive;
+    }
 
-      if (!isActive) {
-        rider.riderProfile.isAvailable =
-          false;
-      }
+    await rider.save();
 
-      await rider.save();
+    return res.json({
+      success: true,
 
-      const safeRider =
-        await User.findById(
-          rider._id
-        )
-          .select("-password")
-          .lean();
+      message:
+        "Rider status updated successfully.",
 
-      return res.status(200).json({
-        success: true,
+      rider:
+        sanitizeUser(rider),
+    });
+  } catch (error) {
+    console.error(
+      "❌ Update rider status error:",
+      error
+    );
 
-        message: isActive
-          ? "Rider activated successfully"
-          : "Rider deactivated successfully",
+    return res.status(500).json({
+      success: false,
+      message:
+        error.message ||
+        "Failed to update rider status.",
+    });
+  }
+};
 
-        rider: safeRider,
-      });
-    } catch (error) {
-      console.error(
-        "❌ Update rider status error:",
-        error
-      );
+// ============================================================
+// 18. UPDATE RIDER PROFILE
+// ============================================================
 
-      return res.status(500).json({
+const updateRiderProfile = async (
+  req,
+  res
+) => {
+  try {
+    const { id } = req.params;
+
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({
         success: false,
         message:
-          "Failed to update rider status",
+          "Invalid rider ID.",
       });
     }
-  };
 
-// ============================================================
-// UPDATE RIDER PROFILE
-// PATCH /api/admin/riders/:id/profile
-// ============================================================
-
-exports.updateRiderProfile =
-  async (req, res) => {
-    try {
-      const { id } = req.params;
-
-      const {
-        bikeType,
-        bikeNumber,
-        serviceArea,
-        identificationNumber,
-        rating,
-        completedDeliveries,
-      } = req.body;
-
-      if (!isValidObjectId(id)) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid rider ID",
-        });
-      }
-
-      const rider =
-        await User.findOne({
-          _id: id,
-          role: "rider",
-        });
-
-      if (!rider) {
-        return res.status(404).json({
-          success: false,
-          message: "Rider not found",
-        });
-      }
-
-      if (!rider.riderProfile) {
-        rider.riderProfile = {};
-      }
-
-      // BIKE TYPE
-      if (
-        bikeType !== undefined
-      ) {
-        rider.riderProfile.bikeType =
-          String(
-            bikeType
-          ).trim();
-      }
-
-      // BIKE NUMBER
-      if (
-        bikeNumber !== undefined
-      ) {
-        rider.riderProfile.bikeNumber =
-          String(
-            bikeNumber
-          ).trim();
-      }
-
-      // SERVICE AREA
-      if (
-        serviceArea !== undefined
-      ) {
-        rider.riderProfile.serviceArea =
-          String(
-            serviceArea
-          ).trim();
-      }
-
-      // IDENTIFICATION
-      if (
-        identificationNumber !==
-        undefined
-      ) {
-        rider.riderProfile.identificationNumber =
-          String(
-            identificationNumber
-          ).trim();
-      }
-
-      // RATING
-      if (
-        rating !== undefined
-      ) {
-        const numericRating =
-          Number(rating);
-
-        if (
-          !Number.isFinite(
-            numericRating
-          ) ||
-          numericRating < 0 ||
-          numericRating > 5
-        ) {
-          return res.status(400).json({
-            success: false,
-            message:
-              "Rating must be between 0 and 5",
-          });
-        }
-
-        rider.riderProfile.rating =
-          numericRating;
-      }
-
-      // COMPLETED DELIVERIES
-      if (
-        completedDeliveries !==
-        undefined
-      ) {
-        const deliveries =
-          Number(
-            completedDeliveries
-          );
-
-        if (
-          !Number.isInteger(
-            deliveries
-          ) ||
-          deliveries < 0
-        ) {
-          return res.status(400).json({
-            success: false,
-            message:
-              "Completed deliveries must be a non-negative integer",
-          });
-        }
-
-        rider.riderProfile.completedDeliveries =
-          deliveries;
-      }
-
-      await rider.save();
-
-      const safeRider =
-        await User.findById(
-          rider._id
-        )
-          .select("-password")
-          .lean();
-
-      return res.status(200).json({
-        success: true,
-        message:
-          "Rider profile updated successfully",
-        rider: safeRider,
+    const rider =
+      await User.findOne({
+        _id: id,
+        role: "rider",
       });
-    } catch (error) {
-      console.error(
-        "❌ Update rider profile error:",
-        error
-      );
 
-      if (
-        error.name ===
-        "ValidationError"
-      ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Invalid rider profile data",
-          error:
-            error.message,
-        });
-      }
-
-      return res.status(500).json({
+    if (!rider) {
+      return res.status(404).json({
         success: false,
         message:
-          "Failed to update rider profile",
+          "Rider not found.",
       });
     }
-  };
+
+    const allowedFields = [
+      "name",
+      "phone",
+      "email",
+      "location",
+      "avatar",
+      "profileImage",
+      "photo",
+      "photoURL",
+
+      "vehicleType",
+      "vehicleModel",
+      "vehicleNumber",
+
+      "riderStatus",
+      "isActive",
+    ];
+
+    allowedFields.forEach(
+      (field) => {
+        if (
+          req.body[field] !==
+          undefined
+        ) {
+          rider[field] =
+            req.body[field];
+        }
+      }
+    );
+
+    await rider.save();
+
+    return res.json({
+      success: true,
+
+      message:
+        "Rider profile updated successfully.",
+
+      rider:
+        sanitizeUser(rider),
+    });
+  } catch (error) {
+    console.error(
+      "❌ Update rider profile error:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message:
+        error.message ||
+        "Failed to update rider profile.",
+    });
+  }
+};
 
 // ============================================================
-// EXPORT
+// EXPORT CONTROLLERS
 // ============================================================
 
 module.exports = {
-  getDashboardStats:
-    exports.getDashboardStats,
+  // Dashboard
+  getDashboardStats,
 
-  getUsers:
-    exports.getUsers,
+  // Users
+  getUsers,
+  getUserById,
+  updateUserRole,
+  updateUserStatus,
 
-  getUserById:
-    exports.getUserById,
+  // Seller verification
+  verifySeller,
+  unverifySeller,
 
-  updateUserRole:
-    exports.updateUserRole,
+  // Users
+  deleteUser,
 
-  updateUserStatus:
-    exports.updateUserStatus,
+  // Products
+  getProducts,
+  deleteProduct,
 
-  verifySeller:
-    exports.verifySeller,
+  // Orders
+  getOrders,
+  updateOrderStatus,
 
-  unverifySeller:
-    exports.unverifySeller,
-
-  deleteUser:
-    exports.deleteUser,
-
-  getProducts:
-    exports.getProducts,
-
-  deleteProduct:
-    exports.deleteProduct,
-
-  getOrders:
-    exports.getOrders,
-
-  updateOrderStatus:
-    exports.updateOrderStatus,
-
-  getRiders:
-    exports.getRiders,
-
-  getRiderById:
-    exports.getRiderById,
-
-  approveRider:
-    exports.approveRider,
-
-  rejectRider:
-    exports.rejectRider,
-
-  updateRiderStatus:
-    exports.updateRiderStatus,
-
-  updateRiderProfile:
-    exports.updateRiderProfile,
+  // Riders
+  getRiders,
+  getRiderById,
+  approveRider,
+  rejectRider,
+  updateRiderStatus,
+  updateRiderProfile,
 };

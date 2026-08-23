@@ -54,7 +54,7 @@ const {
 // GLOBAL ADMIN PROTECTION
 // ============================================================
 //
-// EVERY route below requires:
+// Every route below requires:
 //
 // 1. Valid JWT
 // 2. Existing user
@@ -76,12 +76,8 @@ router.get(
   getDashboardStats
 );
 
-// Optional alias:
-//
 // GET /api/admin/stats
-//
-// Useful if your frontend currently calls /stats.
-
+// Compatibility alias for dashboards using /stats.
 router.get(
   "/stats",
   getDashboardStats
@@ -121,7 +117,7 @@ router.patch(
   updateUserRole
 );
 
-// Also allow PUT for frontend compatibility.
+// PUT compatibility
 router.put(
   "/users/:id/role",
   updateUserRole
@@ -137,7 +133,7 @@ router.patch(
   updateUserStatus
 );
 
-// Also allow PUT for frontend compatibility.
+// PUT compatibility
 router.put(
   "/users/:id/status",
   updateUserStatus
@@ -149,12 +145,12 @@ router.put(
 
 // ------------------------------------------------------------
 // VERIFY SELLER
+//
 // PATCH /api/admin/users/:id/verify-seller
+// PUT   /api/admin/users/:id/verify-seller
 // ------------------------------------------------------------
 //
-// This is the endpoint the Admin Dashboard should call when
-// the administrator clicks "Verify Seller".
-//
+// Used by the Admin Dashboard when an admin verifies a seller.
 // ------------------------------------------------------------
 
 router.patch(
@@ -162,7 +158,6 @@ router.patch(
   verifySeller
 );
 
-// Also allow PUT for frontend compatibility.
 router.put(
   "/users/:id/verify-seller",
   verifySeller
@@ -170,7 +165,14 @@ router.put(
 
 // ------------------------------------------------------------
 // UNVERIFY SELLER
-// PATCH /api/admin/users/:id/unverify-seller
+//
+// PATCH  /api/admin/users/:id/unverify-seller
+// PUT    /api/admin/users/:id/unverify-seller
+// DELETE /api/admin/users/:id/unverify-seller
+// ------------------------------------------------------------
+//
+// DELETE is included because some frontend implementations use
+// DELETE when removing a verification badge.
 // ------------------------------------------------------------
 
 router.patch(
@@ -178,17 +180,21 @@ router.patch(
   unverifySeller
 );
 
-// Also allow PUT for frontend compatibility.
 router.put(
   "/users/:id/unverify-seller",
   unverifySeller
 );
 
-// ------------------------------------------------------------
-// DELETE USER
-// DELETE /api/admin/users/:id
-// ------------------------------------------------------------
+router.delete(
+  "/users/:id/unverify-seller",
+  unverifySeller
+);
 
+// ============================================================
+// DELETE USER
+// ============================================================
+
+// DELETE /api/admin/users/:id
 router.delete(
   "/users/:id",
   deleteUser
@@ -234,7 +240,9 @@ router.get(
 
 // ------------------------------------------------------------
 // UPDATE ORDER STATUS
+//
 // PATCH /api/admin/orders/:id/status
+// PUT   /api/admin/orders/:id/status
 // ------------------------------------------------------------
 
 router.patch(
@@ -242,7 +250,6 @@ router.patch(
   updateOrderStatus
 );
 
-// Also allow PUT for frontend compatibility.
 router.put(
   "/orders/:id/status",
   updateOrderStatus
@@ -274,7 +281,9 @@ router.get(
 
 // ------------------------------------------------------------
 // APPROVE RIDER
+//
 // PATCH /api/admin/riders/:id/approve
+// PUT   /api/admin/riders/:id/approve
 // ------------------------------------------------------------
 
 router.patch(
@@ -282,7 +291,6 @@ router.patch(
   approveRider
 );
 
-// Also allow PUT.
 router.put(
   "/riders/:id/approve",
   approveRider
@@ -290,7 +298,9 @@ router.put(
 
 // ------------------------------------------------------------
 // REJECT RIDER
+//
 // PATCH /api/admin/riders/:id/reject
+// PUT   /api/admin/riders/:id/reject
 // ------------------------------------------------------------
 
 router.patch(
@@ -298,7 +308,6 @@ router.patch(
   rejectRider
 );
 
-// Also allow PUT.
 router.put(
   "/riders/:id/reject",
   rejectRider
@@ -306,7 +315,9 @@ router.put(
 
 // ------------------------------------------------------------
 // UPDATE RIDER ACCOUNT STATUS
+//
 // PATCH /api/admin/riders/:id/status
+// PUT   /api/admin/riders/:id/status
 // ------------------------------------------------------------
 
 router.patch(
@@ -314,7 +325,6 @@ router.patch(
   updateRiderStatus
 );
 
-// Also allow PUT.
 router.put(
   "/riders/:id/status",
   updateRiderStatus
@@ -322,7 +332,9 @@ router.put(
 
 // ------------------------------------------------------------
 // UPDATE RIDER PROFILE
+//
 // PATCH /api/admin/riders/:id/profile
+// PUT   /api/admin/riders/:id/profile
 // ------------------------------------------------------------
 
 router.patch(
@@ -330,7 +342,6 @@ router.patch(
   updateRiderProfile
 );
 
-// Also allow PUT.
 router.put(
   "/riders/:id/profile",
   updateRiderProfile

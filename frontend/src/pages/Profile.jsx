@@ -28,6 +28,10 @@ import {
 
 import { messages } from "../services/messages";
 
+// ============================================================
+// COMPONENT
+// ============================================================
+
 const Profile = () => {
   const { user, token } = useAuth();
   const navigate = useNavigate();
@@ -326,7 +330,6 @@ const Profile = () => {
         unreadMessages:
           unreadMsgs,
       });
-
     } catch (error) {
       console.error(
         "❌ Profile loading error:",
@@ -385,7 +388,7 @@ const Profile = () => {
 
       if (
         result?.success ||
-        result?.message?.includes(
+        result?.message?.toLowerCase()?.includes(
           "deleted"
         )
       ) {
@@ -684,17 +687,65 @@ const Profile = () => {
   // VERIFIED SELLER
   // ==========================================================
   //
-  // The backend User model uses:
+  // IMPORTANT:
   //
-  // isVerifiedSeller: true
+  // The current backend verification system uses:
   //
-  // Only sellers can receive this badge.
+  // sellerVerified
+  // sellerVerificationStatus
+  //
+  // The public seller controller also provides:
+  //
+  // verified
+  //
+  // We intentionally support all three so the badge works
+  // with the current backend response and older auth objects.
   //
   // ==========================================================
 
   const isVerifiedSeller =
     profileRole === "seller" &&
-    user.isVerifiedSeller === true;
+    (
+      user.sellerVerified === true ||
+      user.verified === true ||
+      user.isVerifiedSeller === true
+    ) &&
+    (
+      !user.sellerVerificationStatus ||
+      user.sellerVerificationStatus ===
+        "approved"
+    );
+
+  // ==========================================================
+  // DEBUG VERIFICATION
+  // ==========================================================
+
+  console.log(
+    "🔵 Profile verification:",
+    {
+      userId:
+        user._id ||
+        user.id ||
+        user.userId,
+
+      role:
+        user.role,
+
+      sellerVerified:
+        user.sellerVerified,
+
+      sellerVerificationStatus:
+        user.sellerVerificationStatus,
+
+      verified:
+        user.verified,
+
+      oldIsVerifiedSeller:
+        user.isVerifiedSeller,
+
+      isVerifiedSeller,
+    }
+  );
 
   // ==========================================================
   // RENDER
@@ -843,6 +894,7 @@ const Profile = () => {
                 }}
               >
                 <i className="fas fa-shield-alt"></i>
+
                 Admin
               </span>
             )}
