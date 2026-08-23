@@ -30,13 +30,19 @@ const PRODUCT_CATEGORIES = [
   "Other",
 ];
 
+const PRODUCT_STATUSES = [
+  "active",
+  "pending",
+  "inactive",
+  "sold",
+];
+
 // ============================================================
 // HELPERS
 // ============================================================
 
-const isValidObjectId = (id) => {
-  return mongoose.Types.ObjectId.isValid(id);
-};
+const isValidObjectId = (id) =>
+  mongoose.Types.ObjectId.isValid(id);
 
 // ------------------------------------------------------------
 // Clean string
@@ -55,21 +61,34 @@ const cleanString = (value) => {
 // ------------------------------------------------------------
 
 const toNumber = (value, defaultValue = null) => {
-  if (value === undefined || value === null || value === "") {
+  if (
+    value === undefined ||
+    value === null ||
+    value === ""
+  ) {
     return defaultValue;
   }
 
   const number = Number(value);
 
-  return Number.isFinite(number) ? number : defaultValue;
+  return Number.isFinite(number)
+    ? number
+    : defaultValue;
 };
 
 // ------------------------------------------------------------
 // Convert multipart/form-data booleans
 // ------------------------------------------------------------
 
-const toBoolean = (value, defaultValue = false) => {
-  if (value === undefined || value === null || value === "") {
+const toBoolean = (
+  value,
+  defaultValue = false
+) => {
+  if (
+    value === undefined ||
+    value === null ||
+    value === ""
+  ) {
     return defaultValue;
   }
 
@@ -77,173 +96,650 @@ const toBoolean = (value, defaultValue = false) => {
     return value;
   }
 
-  const normalized = String(value).trim().toLowerCase();
+  const normalized = String(value)
+    .trim()
+    .toLowerCase();
 
-  return (
-    normalized === "true" ||
-    normalized === "1" ||
-    normalized === "yes" ||
-    normalized === "on"
-  );
+  if (
+    ["true", "1", "yes", "on"].includes(
+      normalized
+    )
+  ) {
+    return true;
+  }
+
+  if (
+    ["false", "0", "no", "off"].includes(
+      normalized
+    )
+  ) {
+    return false;
+  }
+
+  return defaultValue;
 };
 
 // ============================================================
 // CATEGORY NORMALIZATION
 // ============================================================
+//
+// IMPORTANT:
+//
+// Frontend may send:
+//
+// cosmetics
+// Cosmetics
+// COSMETICS
+// cosmetic
+// beauty
+// beauty products
+// makeup
+//
+// They will all become:
+//
+// Cosmetics
+//
+// This prevents Mongoose enum errors and frontend/backend
+// category mismatches.
+// ============================================================
 
-const CATEGORY_MAP = new Map([
-  // Phones
-  ["phones", "Phones"],
-  ["phone", "Phones"],
+const CATEGORY_MAP = {
+  cars: "Cars",
+  car: "Cars",
+  vehicles: "Cars",
+  vehicle: "Cars",
 
-  // Laptops
-  ["laptops", "Laptops"],
-  ["laptop", "Laptops"],
+  phones: "Phones",
+  phone: "Phones",
+  mobile: "Phones",
+  mobiles: "Phones",
 
-  // Tablets
-  ["tablets", "Tablets"],
-  ["tablet", "Tablets"],
+  laptops: "Laptops",
+  laptop: "Laptops",
 
-  // Accessories
-  ["accessories", "Accessories"],
-  ["accessory", "Accessories"],
+  tablets: "Tablets",
+  tablet: "Tablets",
 
-  // Electronics
-  ["electronics", "Electronics"],
-  ["electronic", "Electronics"],
+  accessories: "Accessories",
+  accessory: "Accessories",
 
-  // Game Consoles
-  ["game consoles", "Game Consoles"],
-  ["game console", "Game Consoles"],
-  ["gameconsoles", "Game Consoles"],
-  ["gameconsole", "Game Consoles"],
-  ["gaming consoles", "Game Consoles"],
-  ["gaming console", "Game Consoles"],
+  "real estate": "Real Estate",
+  realestate: "Real Estate",
+  property: "Real Estate",
+  properties: "Real Estate",
 
-  // Smartwatches
-  ["smartwatches", "Smartwatches"],
-  ["smartwatch", "Smartwatches"],
-  ["smart watches", "Smartwatches"],
-  ["smart watch", "Smartwatches"],
-  ["smart-watches", "Smartwatches"],
+  jobs: "Jobs",
+  job: "Jobs",
 
-  // TVs
-  ["tvs", "TVs"],
-  ["tv", "TVs"],
-  ["televisions", "TVs"],
-  ["television", "TVs"],
+  electronics: "Electronics",
+  electronic: "Electronics",
 
-  // Cars
-  ["cars", "Cars"],
-  ["car", "Cars"],
-  ["vehicles", "Cars"],
-  ["vehicle", "Cars"],
+  fashion: "Fashion",
 
-  // Cosmetics
-  ["cosmetics", "Cosmetics"],
-  ["cosmetic", "Cosmetics"],
-  ["beauty", "Cosmetics"],
-  ["beauty products", "Cosmetics"],
-  ["beauty product", "Cosmetics"],
-  ["makeup", "Cosmetics"],
-  ["make-up", "Cosmetics"],
+  home: "Home",
 
-  // Real Estate
-  ["real estate", "Real Estate"],
-  ["realestate", "Real Estate"],
-  ["property", "Real Estate"],
-  ["properties", "Real Estate"],
+  tvs: "TVs",
+  tv: "TVs",
+  televisions: "TVs",
+  television: "TVs",
 
-  // Jobs
-  ["jobs", "Jobs"],
-  ["job", "Jobs"],
+  "game consoles": "Game Consoles",
+  "game console": "Game Consoles",
+  gameconsoles: "Game Consoles",
+  gameconsole: "Game Consoles",
+  "gaming consoles": "Game Consoles",
+  "gaming console": "Game Consoles",
 
-  // Fashion
-  ["fashion", "Fashion"],
+  smartwatches: "Smartwatches",
+  smartwatch: "Smartwatches",
+  "smart watches": "Smartwatches",
+  "smart watch": "Smartwatches",
+  "smart-watches": "Smartwatches",
 
-  // Home
-  ["home", "Home"],
+  cosmetics: "Cosmetics",
+  cosmetic: "Cosmetics",
+  beauty: "Cosmetics",
+  "beauty products": "Cosmetics",
+  "beauty product": "Cosmetics",
+  makeup: "Cosmetics",
+  "make-up": "Cosmetics",
 
-  // Other
-  ["other", "Other"],
-]);
+  other: "Other",
+};
 
 // ------------------------------------------------------------
 // Normalize category
 // ------------------------------------------------------------
 
-const normalizeCategory = (category) => {
-  const raw = cleanString(category);
+const normalizeCategory = (value) => {
+  const raw = cleanString(value);
 
   if (!raw) {
     return null;
   }
 
-  // Already canonical
-  if (PRODUCT_CATEGORIES.includes(raw)) {
-    return raw;
+  // Exact canonical value
+  const exact = PRODUCT_CATEGORIES.find(
+    (category) =>
+      category.toLowerCase() ===
+      raw.toLowerCase()
+  );
+
+  if (exact) {
+    return exact;
   }
 
-  const lower = raw.toLowerCase();
+  // Lowercase normalized value
+  const lower = raw
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
 
-  // Direct lookup
-  if (CATEGORY_MAP.has(lower)) {
-    return CATEGORY_MAP.get(lower);
+  if (CATEGORY_MAP[lower]) {
+    return CATEGORY_MAP[lower];
   }
 
-  // Remove spaces
-  const noSpaces = lower.replace(/\s+/g, "");
+  // Remove spaces, underscores and hyphens
+  const compact = lower.replace(
+    /[\s_-]+/g,
+    ""
+  );
 
-  if (CATEGORY_MAP.has(noSpaces)) {
-    return CATEGORY_MAP.get(noSpaces);
-  }
-
-  // Remove spaces and hyphens
-  const normalized = lower.replace(/[\s_-]+/g, "");
-
-  if (CATEGORY_MAP.has(normalized)) {
-    return CATEGORY_MAP.get(normalized);
+  if (CATEGORY_MAP[compact]) {
+    return CATEGORY_MAP[compact];
   }
 
   return null;
 };
 
 // ============================================================
-// CLOUDINARY UPLOAD
+// CLOUDINARY
 // ============================================================
 
-const uploadBufferToCloudinary = (buffer, options = {}) => {
+const uploadBufferToCloudinary = (
+  buffer,
+  options = {}
+) => {
   return new Promise((resolve, reject) => {
     if (!buffer) {
-      reject(new Error("No file buffer supplied."));
+      reject(
+        new Error(
+          "No file buffer supplied."
+        )
+      );
+
       return;
     }
 
-    const uploadStream = cloudinary.uploader.upload_stream(
-      {
-        resource_type: options.resource_type || "auto",
-        folder: options.folder || "buyukused/products",
-      },
-      (error, result) => {
-        if (error) {
-          reject(error);
-          return;
+    const uploadStream =
+      cloudinary.uploader.upload_stream(
+        {
+          resource_type:
+            options.resource_type || "auto",
+
+          folder:
+            options.folder ||
+            "buyukused/products",
+        },
+
+        (error, result) => {
+          if (error) {
+            reject(error);
+            return;
+          }
+
+          resolve(result);
         }
+      );
 
-        resolve(result);
-      }
-    );
-
-    streamifier.createReadStream(buffer).pipe(uploadStream);
+    streamifier
+      .createReadStream(buffer)
+      .pipe(uploadStream);
   });
+};
+
+// ============================================================
+// BUILD CATEGORY-SPECIFIC DATA
+// ============================================================
+
+const addCategorySpecificFields = (
+  productData,
+  body,
+  category
+) => {
+  // ==========================================================
+  // PHONES
+  // ==========================================================
+
+  if (category === "Phones") {
+    productData.storage =
+      cleanString(body.storage);
+
+    productData.batteryHealth =
+      toNumber(body.batteryHealth);
+
+    productData.faceId =
+      cleanString(body.faceId);
+
+    productData.simStatus =
+      cleanString(body.simStatus);
+
+    productData.connectivity =
+      cleanString(body.connectivity);
+
+    productData.year =
+      cleanString(body.year);
+  }
+
+  // ==========================================================
+  // LAPTOPS
+  // ==========================================================
+
+  if (category === "Laptops") {
+    productData.processor =
+      cleanString(body.processor);
+
+    productData.ram =
+      cleanString(body.ram);
+
+    productData.storage =
+      cleanString(body.storage);
+
+    productData.screenSize =
+      cleanString(body.screenSize);
+
+    productData.graphics =
+      cleanString(body.graphics);
+
+    productData.year =
+      cleanString(body.year);
+
+    productData.connectivity =
+      cleanString(body.connectivity);
+  }
+
+  // ==========================================================
+  // TABLETS
+  // ==========================================================
+
+  if (category === "Tablets") {
+    productData.storage =
+      cleanString(body.storage);
+
+    productData.year =
+      cleanString(body.year);
+
+    productData.connectivity =
+      cleanString(body.connectivity);
+
+    productData.screenSize =
+      cleanString(body.screenSize);
+  }
+
+  // ==========================================================
+  // ACCESSORIES
+  // ==========================================================
+
+  if (category === "Accessories") {
+    productData.accessoryType =
+      cleanString(body.accessoryType);
+
+    productData.compatibleWith =
+      cleanString(body.compatibleWith);
+
+    productData.compatibility =
+      cleanString(body.compatibility);
+
+    productData.material =
+      cleanString(body.material);
+
+    productData.cableType =
+      cleanString(body.cableType);
+
+    productData.connectorType =
+      cleanString(body.connectorType);
+
+    productData.powerOutput =
+      cleanString(body.powerOutput);
+
+    productData.capacity =
+      cleanString(body.capacity);
+
+    productData.batteryCapacity =
+      cleanString(body.batteryCapacity);
+
+    productData.wireless =
+      toBoolean(body.wireless);
+
+    productData.original =
+      toBoolean(body.original);
+
+    if (body.accessoryColor) {
+      productData.color =
+        cleanString(
+          body.accessoryColor
+        );
+    }
+  }
+
+  // ==========================================================
+  // GAME CONSOLES
+  // ==========================================================
+
+  if (category === "Game Consoles") {
+    productData.consoleType =
+      cleanString(body.consoleType);
+
+    productData.edition =
+      cleanString(body.edition);
+
+    productData.discDrive =
+      cleanString(body.discDrive);
+
+    productData.controllersIncluded =
+      cleanString(
+        body.controllersIncluded
+      );
+
+    productData.battery =
+      cleanString(body.battery);
+
+    productData.resolution =
+      cleanString(body.resolution);
+
+    productData.videoOutput =
+      cleanString(body.videoOutput);
+
+    productData.ram =
+      cleanString(body.ram);
+
+    productData.screenSize =
+      cleanString(body.screenSize);
+
+    productData.year =
+      cleanString(body.year);
+
+    productData.connectivity =
+      cleanString(body.connectivity);
+
+    productData.storage =
+      cleanString(body.storage);
+
+    productData.region =
+      cleanString(body.region);
+  }
+
+  // ==========================================================
+  // SMARTWATCHES
+  // ==========================================================
+
+  if (category === "Smartwatches") {
+    productData.watchSize =
+      cleanString(body.watchSize);
+
+    productData.storage =
+      cleanString(body.storage);
+
+    productData.connectivity =
+      cleanString(body.connectivity);
+
+    productData.year =
+      cleanString(body.year);
+
+    productData.batteryHealth =
+      toNumber(body.batteryHealth);
+  }
+
+  // ==========================================================
+  // TVs
+  // ==========================================================
+
+  if (category === "TVs") {
+    productData.tvType =
+      cleanString(body.tvType);
+
+    productData.displayTechnology =
+      cleanString(
+        body.displayTechnology
+      );
+
+    productData.refreshRate =
+      cleanString(body.refreshRate);
+
+    productData.operatingSystem =
+      cleanString(
+        body.operatingSystem
+      );
+
+    productData.hdr =
+      cleanString(body.hdr);
+
+    productData.hdmiPorts =
+      cleanString(body.hdmiPorts);
+
+    productData.usbPorts =
+      cleanString(body.usbPorts);
+
+    productData.smartTV =
+      toBoolean(body.smartTV);
+
+    productData.voiceControl =
+      toBoolean(body.voiceControl);
+
+    productData.wallMountable =
+      toBoolean(body.wallMountable);
+
+    productData.screenSize =
+      cleanString(body.screenSize);
+
+    productData.resolution =
+      cleanString(body.resolution);
+
+    productData.year =
+      cleanString(body.year);
+
+    productData.connectivity =
+      cleanString(body.connectivity);
+  }
+
+  // ==========================================================
+  // CARS
+  // ==========================================================
+
+  if (category === "Cars") {
+    productData.mileage =
+      toNumber(body.mileage);
+
+    productData.bodyType =
+      cleanString(body.bodyType);
+
+    productData.fuelType =
+      cleanString(body.fuelType);
+
+    productData.transmission =
+      cleanString(body.transmission);
+
+    productData.driveType =
+      cleanString(body.driveType);
+
+    productData.engineSize =
+      cleanString(body.engineSize);
+
+    productData.seatingCapacity =
+      toNumber(
+        body.seatingCapacity
+      );
+
+    productData.exteriorColor =
+      cleanString(
+        body.exteriorColor
+      );
+
+    productData.interiorColor =
+      cleanString(
+        body.interiorColor
+      );
+
+    productData.year =
+      cleanString(body.year);
+  }
+
+  // ==========================================================
+  // COSMETICS
+  // ==========================================================
+
+  if (category === "Cosmetics") {
+    productData.cosmeticType =
+      cleanString(
+        body.cosmeticType
+      );
+
+    productData.cosmeticSubcategory =
+      cleanString(
+        body.cosmeticSubcategory
+      );
+
+    productData.gender =
+      cleanString(body.gender);
+
+    productData.skinType =
+      cleanString(body.skinType);
+
+    productData.hairType =
+      cleanString(body.hairType);
+
+    productData.shade =
+      cleanString(body.shade);
+
+    productData.volume =
+      cleanString(body.volume);
+
+    productData.formulation =
+      cleanString(body.formulation);
+
+    productData.finish =
+      cleanString(body.finish);
+
+    productData.fragrance =
+      cleanString(body.fragrance);
+
+    productData.ingredients =
+      cleanString(body.ingredients);
+
+    productData.benefits =
+      cleanString(body.benefits);
+
+    productData.suitableFor =
+      cleanString(body.suitableFor);
+
+    productData.skinConcern =
+      cleanString(body.skinConcern);
+
+    productData.spf =
+      cleanString(body.spf);
+
+    productData.expirationDate =
+      cleanString(
+        body.expirationDate
+      );
+
+    productData.batchNumber =
+      cleanString(body.batchNumber);
+
+    productData.countryOfOrigin =
+      cleanString(
+        body.countryOfOrigin
+      );
+
+    productData.authenticity =
+      cleanString(
+        body.authenticity
+      );
+
+    productData.sealed =
+      toBoolean(body.sealed);
+
+    // If shade exists and general color
+    // wasn't provided, use shade as color.
+    if (
+      !productData.color &&
+      productData.shade
+    ) {
+      productData.color =
+        productData.shade;
+    }
+  }
+};
+
+// ============================================================
+// VALIDATE CATEGORY-SPECIFIC VALUES
+// ============================================================
+
+const validateProductData = (
+  productData
+) => {
+  if (
+    productData.batteryHealth !== null &&
+    productData.batteryHealth !== undefined
+  ) {
+    if (
+      productData.batteryHealth < 0 ||
+      productData.batteryHealth > 100
+    ) {
+      return "Battery health must be between 0 and 100.";
+    }
+  }
+
+  if (
+    productData.mileage !== null &&
+    productData.mileage !== undefined &&
+    productData.mileage < 0
+  ) {
+    return "Mileage cannot be negative.";
+  }
+
+  if (
+    productData.seatingCapacity !== null &&
+    productData.seatingCapacity !== undefined &&
+    productData.seatingCapacity < 0
+  ) {
+    return "Seating capacity cannot be negative.";
+  }
+
+  return null;
 };
 
 // ============================================================
 // CREATE PRODUCT
 // ============================================================
 
-const createProduct = async (req, res) => {
+const createProduct = async (
+  req,
+  res
+) => {
   try {
+    console.log(
+      "================================================"
+    );
+
+    console.log(
+      "📦 CREATE PRODUCT REQUEST"
+    );
+
+    console.log(
+      "📥 Raw category:",
+      req.body?.category
+    );
+
+    console.log(
+      "📥 Raw category type:",
+      typeof req.body?.category
+    );
+
+    console.log(
+      "================================================"
+    );
+
     // --------------------------------------------------------
     // Authentication
     // --------------------------------------------------------
@@ -251,29 +747,94 @@ const createProduct = async (req, res) => {
     if (!req.user) {
       return res.status(401).json({
         success: false,
-        message: "Authentication required.",
+        message:
+          "Authentication required.",
       });
     }
 
     const body = req.body || {};
 
     // --------------------------------------------------------
+    // Normalize category
+    // --------------------------------------------------------
+
+    const rawCategory =
+      cleanString(body.category);
+
+    const category =
+      normalizeCategory(
+        rawCategory
+      );
+
+    console.log(
+      "📂 Raw category:",
+      rawCategory
+    );
+
+    console.log(
+      "📂 Normalized category:",
+      category
+    );
+
+    // --------------------------------------------------------
+    // Validate category
+    // --------------------------------------------------------
+
+    if (!category) {
+      console.error(
+        "❌ INVALID PRODUCT CATEGORY:",
+        rawCategory
+      );
+
+      return res.status(400).json({
+        success: false,
+
+        message:
+          `Invalid product category: ${rawCategory}`,
+
+        receivedCategory:
+          rawCategory,
+
+        normalizedCategory:
+          null,
+
+        allowedCategories:
+          PRODUCT_CATEGORIES,
+      });
+    }
+
+    // --------------------------------------------------------
     // Basic information
     // --------------------------------------------------------
 
-    const title = cleanString(body.title);
-    const price = toNumber(body.price);
-    const category = normalizeCategory(body.category);
-    const location = cleanString(body.location) || "Ghana";
-    const description = cleanString(body.description);
+    const title =
+      cleanString(body.title);
+
+    const price =
+      toNumber(body.price);
+
+    const location =
+      cleanString(body.location) ||
+      "Ghana";
+
+    const description =
+      cleanString(body.description);
 
     const sellerName =
-      cleanString(body.sellerName) ||
-      cleanString(req.user.name);
+      cleanString(
+        body.sellerName
+      ) ||
+      cleanString(
+        req.user.name
+      );
 
     const sellerPhone =
-      cleanString(body.sellerPhone) ||
-      cleanString(req.user.phone);
+      cleanString(
+        body.sellerPhone
+      ) ||
+      cleanString(
+        req.user.phone
+      );
 
     // --------------------------------------------------------
     // Validate title
@@ -282,7 +843,8 @@ const createProduct = async (req, res) => {
     if (!title) {
       return res.status(400).json({
         success: false,
-        message: "Product title is required.",
+        message:
+          "Product title is required.",
       });
     }
 
@@ -293,32 +855,16 @@ const createProduct = async (req, res) => {
     if (price === null) {
       return res.status(400).json({
         success: false,
-        message: "A valid product price is required.",
+        message:
+          "A valid product price is required.",
       });
     }
 
     if (price < 0) {
       return res.status(400).json({
         success: false,
-        message: "Product price cannot be negative.",
-      });
-    }
-
-    // --------------------------------------------------------
-    // Validate category
-    // --------------------------------------------------------
-
-    if (!category) {
-      console.error(
-        "❌ Invalid category received:",
-        body.category
-      );
-
-      return res.status(400).json({
-        success: false,
         message:
-          `Invalid product category: ${body.category}. ` +
-          `Allowed categories: ${PRODUCT_CATEGORIES.join(", ")}`,
+          "Product price cannot be negative.",
       });
     }
 
@@ -329,12 +875,13 @@ const createProduct = async (req, res) => {
     if (!sellerPhone) {
       return res.status(400).json({
         success: false,
-        message: "Seller phone number is required.",
+        message:
+          "Seller phone number is required.",
       });
     }
 
     // ========================================================
-    // BASE PRODUCT DATA
+    // BASE PRODUCT
     // ========================================================
 
     const productData = {
@@ -344,27 +891,63 @@ const createProduct = async (req, res) => {
       location,
       description,
 
-      sellerId: req.user._id,
+      sellerId:
+        req.user._id,
 
       sellerName,
       sellerPhone,
 
-      brand: cleanString(body.brand),
-      model: cleanString(body.model),
-      color: cleanString(body.color),
-      condition: cleanString(body.condition) || "Good",
-      warranty: cleanString(body.warranty),
+      brand:
+        cleanString(
+          body.brand
+        ),
 
-      negotiation: toBoolean(body.negotiation),
-      swapAccepted: toBoolean(body.swapAccepted),
+      model:
+        cleanString(
+          body.model
+        ),
 
-      status: "active",
+      color:
+        cleanString(
+          body.color
+        ),
 
-      promo: toBoolean(body.promo),
-      verified: false,
+      condition:
+        cleanString(
+          body.condition
+        ) || "Good",
 
-      views: 0,
-      yearsOnPlatform: 0,
+      warranty:
+        cleanString(
+          body.warranty
+        ),
+
+      negotiation:
+        toBoolean(
+          body.negotiation
+        ),
+
+      swapAccepted:
+        toBoolean(
+          body.swapAccepted
+        ),
+
+      status:
+        "active",
+
+      promo:
+        toBoolean(
+          body.promo
+        ),
+
+      verified:
+        false,
+
+      views:
+        0,
+
+      yearsOnPlatform:
+        0,
     };
 
     // ========================================================
@@ -372,374 +955,77 @@ const createProduct = async (req, res) => {
     // ========================================================
 
     if (
-      body.oldPrice !== undefined &&
+      body.oldPrice !==
+        undefined &&
       body.oldPrice !== ""
     ) {
-      const oldPrice = toNumber(body.oldPrice);
+      const oldPrice =
+        toNumber(
+          body.oldPrice
+        );
 
-      if (oldPrice !== null && oldPrice >= 0) {
-        productData.oldPrice = oldPrice;
+      if (
+        oldPrice !== null &&
+        oldPrice >= 0
+      ) {
+        productData.oldPrice =
+          oldPrice;
       }
     }
 
     // ========================================================
-    // PHONE
+    // CATEGORY-SPECIFIC DATA
     // ========================================================
 
-    if (category === "Phones") {
-      productData.storage = cleanString(body.storage);
+    addCategorySpecificFields(
+      productData,
+      body,
+      category
+    );
 
-      productData.batteryHealth = toNumber(
-        body.batteryHealth
+    // ========================================================
+    // VALIDATE CATEGORY-SPECIFIC DATA
+    // ========================================================
+
+    const validationError =
+      validateProductData(
+        productData
       );
 
-      if (
-        productData.batteryHealth !== null &&
-        (productData.batteryHealth < 0 ||
-          productData.batteryHealth > 100)
-      ) {
-        return res.status(400).json({
-          success: false,
-          message: "Battery health must be between 0 and 100.",
-        });
-      }
-
-      productData.faceId = cleanString(body.faceId);
-      productData.simStatus = cleanString(body.simStatus);
-
-      productData.connectivity =
-        cleanString(body.connectivity);
-
-      productData.year = cleanString(body.year);
-    }
-
-    // ========================================================
-    // LAPTOPS
-    // ========================================================
-
-    if (category === "Laptops") {
-      productData.processor = cleanString(body.processor);
-      productData.ram = cleanString(body.ram);
-      productData.storage = cleanString(body.storage);
-      productData.screenSize = cleanString(body.screenSize);
-      productData.graphics = cleanString(body.graphics);
-      productData.year = cleanString(body.year);
-      productData.connectivity =
-        cleanString(body.connectivity);
-    }
-
-    // ========================================================
-    // TABLETS
-    // ========================================================
-
-    if (category === "Tablets") {
-      productData.storage = cleanString(body.storage);
-      productData.year = cleanString(body.year);
-      productData.connectivity =
-        cleanString(body.connectivity);
-      productData.screenSize =
-        cleanString(body.screenSize);
-    }
-
-    // ========================================================
-    // ACCESSORIES
-    // ========================================================
-
-    if (category === "Accessories") {
-      productData.accessoryType =
-        cleanString(body.accessoryType);
-
-      productData.compatibleWith =
-        cleanString(body.compatibleWith);
-
-      productData.compatibility =
-        cleanString(body.compatibility);
-
-      productData.material =
-        cleanString(body.material);
-
-      productData.cableType =
-        cleanString(body.cableType);
-
-      productData.connectorType =
-        cleanString(body.connectorType);
-
-      productData.powerOutput =
-        cleanString(body.powerOutput);
-
-      productData.capacity =
-        cleanString(body.capacity);
-
-      productData.batteryCapacity =
-        cleanString(body.batteryCapacity);
-
-      productData.wireless =
-        toBoolean(body.wireless);
-
-      productData.original =
-        toBoolean(body.original);
-
-      if (body.accessoryColor) {
-        productData.color =
-          cleanString(body.accessoryColor);
-      }
-    }
-
-    // ========================================================
-    // GAME CONSOLES
-    // ========================================================
-
-    if (category === "Game Consoles") {
-      productData.consoleType =
-        cleanString(body.consoleType);
-
-      productData.edition =
-        cleanString(body.edition);
-
-      productData.discDrive =
-        cleanString(body.discDrive);
-
-      productData.controllersIncluded =
-        cleanString(body.controllersIncluded);
-
-      productData.battery =
-        cleanString(body.battery);
-
-      productData.resolution =
-        cleanString(body.resolution);
-
-      productData.videoOutput =
-        cleanString(body.videoOutput);
-
-      productData.ram =
-        cleanString(body.ram);
-
-      productData.screenSize =
-        cleanString(body.screenSize);
-
-      productData.year =
-        cleanString(body.year);
-
-      productData.connectivity =
-        cleanString(body.connectivity);
-
-      productData.storage =
-        cleanString(body.storage);
-
-      productData.region =
-        cleanString(body.region);
-    }
-
-    // ========================================================
-    // SMARTWATCHES
-    // ========================================================
-
-    if (category === "Smartwatches") {
-      productData.watchSize =
-        cleanString(body.watchSize);
-
-      productData.storage =
-        cleanString(body.storage);
-
-      productData.connectivity =
-        cleanString(body.connectivity);
-
-      productData.year =
-        cleanString(body.year);
-
-      productData.batteryHealth =
-        toNumber(body.batteryHealth);
-
-      if (
-        productData.batteryHealth !== null &&
-        (productData.batteryHealth < 0 ||
-          productData.batteryHealth > 100)
-      ) {
-        return res.status(400).json({
-          success: false,
-          message: "Battery health must be between 0 and 100.",
-        });
-      }
-    }
-
-    // ========================================================
-    // TVs
-    // ========================================================
-
-    if (category === "TVs") {
-      productData.tvType =
-        cleanString(body.tvType);
-
-      productData.displayTechnology =
-        cleanString(body.displayTechnology);
-
-      productData.refreshRate =
-        cleanString(body.refreshRate);
-
-      productData.operatingSystem =
-        cleanString(body.operatingSystem);
-
-      productData.hdr =
-        cleanString(body.hdr);
-
-      productData.hdmiPorts =
-        cleanString(body.hdmiPorts);
-
-      productData.usbPorts =
-        cleanString(body.usbPorts);
-
-      productData.smartTV =
-        toBoolean(body.smartTV);
-
-      productData.voiceControl =
-        toBoolean(body.voiceControl);
-
-      productData.wallMountable =
-        toBoolean(body.wallMountable);
-
-      productData.screenSize =
-        cleanString(body.screenSize);
-
-      productData.resolution =
-        cleanString(body.resolution);
-
-      productData.year =
-        cleanString(body.year);
-
-      productData.connectivity =
-        cleanString(body.connectivity);
-    }
-
-    // ========================================================
-    // CARS
-    // ========================================================
-
-    if (category === "Cars") {
-      productData.mileage =
-        toNumber(body.mileage);
-
-      productData.bodyType =
-        cleanString(body.bodyType);
-
-      productData.fuelType =
-        cleanString(body.fuelType);
-
-      productData.transmission =
-        cleanString(body.transmission);
-
-      productData.driveType =
-        cleanString(body.driveType);
-
-      productData.engineSize =
-        cleanString(body.engineSize);
-
-      productData.seatingCapacity =
-        toNumber(body.seatingCapacity);
-
-      productData.exteriorColor =
-        cleanString(body.exteriorColor);
-
-      productData.interiorColor =
-        cleanString(body.interiorColor);
-
-      productData.year =
-        cleanString(body.year);
-    }
-
-    // ========================================================
-    // COSMETICS
-    // ========================================================
-
-    if (category === "Cosmetics") {
-      productData.cosmeticType =
-        cleanString(body.cosmeticType);
-
-      productData.cosmeticSubcategory =
-        cleanString(body.cosmeticSubcategory);
-
-      productData.gender =
-        cleanString(body.gender);
-
-      productData.skinType =
-        cleanString(body.skinType);
-
-      productData.hairType =
-        cleanString(body.hairType);
-
-      productData.shade =
-        cleanString(body.shade);
-
-      productData.volume =
-        cleanString(body.volume);
-
-      productData.formulation =
-        cleanString(body.formulation);
-
-      productData.finish =
-        cleanString(body.finish);
-
-      productData.fragrance =
-        cleanString(body.fragrance);
-
-      productData.ingredients =
-        cleanString(body.ingredients);
-
-      productData.benefits =
-        cleanString(body.benefits);
-
-      productData.suitableFor =
-        cleanString(body.suitableFor);
-
-      productData.skinConcern =
-        cleanString(body.skinConcern);
-
-      productData.spf =
-        cleanString(body.spf);
-
-      productData.expirationDate =
-        cleanString(body.expirationDate);
-
-      productData.batchNumber =
-        cleanString(body.batchNumber);
-
-      productData.countryOfOrigin =
-        cleanString(body.countryOfOrigin);
-
-      productData.authenticity =
-        cleanString(body.authenticity);
-
-      productData.sealed =
-        toBoolean(body.sealed);
-
-      // Use shade as color when no general color exists
-      if (
-        !productData.color &&
-        productData.shade
-      ) {
-        productData.color =
-          productData.shade;
-      }
+    if (validationError) {
+      return res.status(400).json({
+        success: false,
+        message:
+          validationError,
+      });
     }
 
     // ========================================================
     // FILES
     // ========================================================
 
-    const files = Array.isArray(req.files)
-      ? req.files
-      : [];
+    const files =
+      Array.isArray(req.files)
+        ? req.files
+        : [];
 
-    const imageFiles = files.filter(
-      (file) =>
-        file.mimetype &&
-        file.mimetype.startsWith("image/")
-    );
+    const imageFiles =
+      files.filter(
+        (file) =>
+          file.mimetype &&
+          file.mimetype.startsWith(
+            "image/"
+          )
+      );
 
-    const videoFiles = files.filter(
-      (file) =>
-        file.mimetype &&
-        file.mimetype.startsWith("video/")
-    );
+    const videoFiles =
+      files.filter(
+        (file) =>
+          file.mimetype &&
+          file.mimetype.startsWith(
+            "video/"
+          )
+      );
 
     // --------------------------------------------------------
     // Images
@@ -748,14 +1034,16 @@ const createProduct = async (req, res) => {
     if (imageFiles.length > 5) {
       return res.status(400).json({
         success: false,
-        message: "You can upload a maximum of 5 images.",
+        message:
+          "You can upload a maximum of 5 images.",
       });
     }
 
     if (imageFiles.length === 0) {
       return res.status(400).json({
         success: false,
-        message: "At least one product image is required.",
+        message:
+          "At least one product image is required.",
       });
     }
 
@@ -766,7 +1054,8 @@ const createProduct = async (req, res) => {
     if (videoFiles.length > 1) {
       return res.status(400).json({
         success: false,
-        message: "You can upload only one video.",
+        message:
+          "You can upload only one video.",
       });
     }
 
@@ -776,11 +1065,14 @@ const createProduct = async (req, res) => {
 
     const uploadedImages = [];
 
-    for (const file of imageFiles) {
+    for (
+      const file of imageFiles
+    ) {
       if (!file.buffer) {
         return res.status(400).json({
           success: false,
-          message: "Invalid image file.",
+          message:
+            "Invalid image file.",
         });
       }
 
@@ -788,13 +1080,18 @@ const createProduct = async (req, res) => {
         await uploadBufferToCloudinary(
           file.buffer,
           {
-            resource_type: "image",
+            resource_type:
+              "image",
+
             folder:
               "buyukused/products/images",
           }
         );
 
-      if (!result || !result.secure_url) {
+      if (
+        !result ||
+        !result.secure_url
+      ) {
         throw new Error(
           "Image upload failed."
         );
@@ -811,7 +1108,9 @@ const createProduct = async (req, res) => {
 
     const uploadedVideos = [];
 
-    for (const file of videoFiles) {
+    for (
+      const file of videoFiles
+    ) {
       if (
         file.size >
         50 * 1024 * 1024
@@ -826,7 +1125,8 @@ const createProduct = async (req, res) => {
       if (!file.buffer) {
         return res.status(400).json({
           success: false,
-          message: "Invalid video file.",
+          message:
+            "Invalid video file.",
         });
       }
 
@@ -834,13 +1134,18 @@ const createProduct = async (req, res) => {
         await uploadBufferToCloudinary(
           file.buffer,
           {
-            resource_type: "video",
+            resource_type:
+              "video",
+
             folder:
               "buyukused/products/videos",
           }
         );
 
-      if (!result || !result.secure_url) {
+      if (
+        !result ||
+        !result.secure_url
+      ) {
         throw new Error(
           "Video upload failed."
         );
@@ -852,7 +1157,7 @@ const createProduct = async (req, res) => {
     }
 
     // ========================================================
-    // MEDIA DATA
+    // MEDIA
     // ========================================================
 
     productData.images =
@@ -865,18 +1170,47 @@ const createProduct = async (req, res) => {
       uploadedImages[0] || "";
 
     // ========================================================
-    // CREATE PRODUCT
+    // CREATE
     // ========================================================
+
+    console.log(
+      "📦 FINAL PRODUCT CATEGORY:",
+      productData.category
+    );
+
+    console.log(
+      "📦 FINAL PRODUCT DATA:",
+      {
+        title:
+          productData.title,
+
+        category:
+          productData.category,
+
+        brand:
+          productData.brand,
+
+        cosmeticType:
+          productData.cosmeticType,
+      }
+    );
 
     const product =
       await Product.create(
         productData
       );
 
+    console.log(
+      "✅ PRODUCT CREATED:",
+      product._id
+    );
+
     return res.status(201).json({
       success: true,
+
       message:
         "Product posted successfully.",
+
       product,
     });
   } catch (error) {
@@ -885,7 +1219,10 @@ const createProduct = async (req, res) => {
       error
     );
 
+    // --------------------------------------------------------
     // Mongoose validation
+    // --------------------------------------------------------
+
     if (
       error.name ===
       "ValidationError"
@@ -894,7 +1231,8 @@ const createProduct = async (req, res) => {
         Object.values(
           error.errors
         ).map(
-          (item) => item.message
+          (item) =>
+            item.message
         );
 
       return res.status(400).json({
@@ -905,7 +1243,10 @@ const createProduct = async (req, res) => {
       });
     }
 
+    // --------------------------------------------------------
     // Duplicate
+    // --------------------------------------------------------
+
     if (
       error.code === 11000
     ) {
@@ -920,6 +1261,7 @@ const createProduct = async (req, res) => {
       success: false,
       message:
         "Failed to create product.",
+
       error:
         process.env.NODE_ENV ===
         "development"
@@ -949,34 +1291,32 @@ const getProducts = async (
       sort = "newest",
     } = req.query;
 
-    const pageNumber = Math.max(
-      Number(page) || 1,
-      1
-    );
-
-    const limitNumber = Math.min(
+    const pageNumber =
       Math.max(
-        Number(limit) || 20,
+        Number(page) || 1,
         1
-      ),
-      100
-    );
+      );
+
+    const limitNumber =
+      Math.min(
+        Math.max(
+          Number(limit) || 20,
+          1
+        ),
+        100
+      );
 
     const skip =
       (pageNumber - 1) *
       limitNumber;
 
-    // ========================================================
-    // FILTER
-    // ========================================================
-
     const filter = {
       status: "active",
     };
 
-    // --------------------------------------------------------
-    // Category
-    // --------------------------------------------------------
+    // ========================================================
+    // CATEGORY
+    // ========================================================
 
     if (category) {
       const normalizedCategory =
@@ -989,6 +1329,8 @@ const getProducts = async (
           success: false,
           message:
             `Invalid category: ${category}.`,
+          allowedCategories:
+            PRODUCT_CATEGORIES,
         });
       }
 
@@ -996,9 +1338,9 @@ const getProducts = async (
         normalizedCategory;
     }
 
-    // --------------------------------------------------------
-    // Location
-    // --------------------------------------------------------
+    // ========================================================
+    // LOCATION
+    // ========================================================
 
     if (location) {
       const cleanLocation =
@@ -1013,9 +1355,9 @@ const getProducts = async (
       }
     }
 
-    // --------------------------------------------------------
-    // Price
-    // --------------------------------------------------------
+    // ========================================================
+    // PRICE
+    // ========================================================
 
     if (
       minPrice !== undefined ||
@@ -1027,7 +1369,9 @@ const getProducts = async (
         minPrice !== undefined
       ) {
         const min =
-          toNumber(minPrice);
+          toNumber(
+            minPrice
+          );
 
         if (min !== null) {
           filter.price.$gte =
@@ -1039,7 +1383,9 @@ const getProducts = async (
         maxPrice !== undefined
       ) {
         const max =
-          toNumber(maxPrice);
+          toNumber(
+            maxPrice
+          );
 
         if (max !== null) {
           filter.price.$lte =
@@ -1056,16 +1402,17 @@ const getProducts = async (
       }
     }
 
-    // --------------------------------------------------------
-    // Search
-    // --------------------------------------------------------
+    // ========================================================
+    // SEARCH
+    // ========================================================
 
     const searchText =
       cleanString(search);
 
     if (searchText) {
       filter.$text = {
-        $search: searchText,
+        $search:
+          searchText,
       };
     }
 
@@ -1077,25 +1424,33 @@ const getProducts = async (
       createdAt: -1,
     };
 
-    if (sort === "oldest") {
+    if (
+      sort === "oldest"
+    ) {
       sortOption = {
         createdAt: 1,
       };
     }
 
-    if (sort === "price-low") {
+    if (
+      sort === "price-low"
+    ) {
       sortOption = {
         price: 1,
       };
     }
 
-    if (sort === "price-high") {
+    if (
+      sort === "price-high"
+    ) {
       sortOption = {
         price: -1,
       };
     }
 
-    if (sort === "popular") {
+    if (
+      sort === "popular"
+    ) {
       sortOption = {
         views: -1,
         createdAt: -1,
@@ -1132,6 +1487,7 @@ const getProducts = async (
 
     return res.status(200).json({
       success: true,
+
       products,
 
       pagination: {
@@ -1201,7 +1557,6 @@ const getProductById = async (
       });
     }
 
-    // Increment views
     await Product.updateOne(
       { _id: id },
       {
@@ -1211,7 +1566,6 @@ const getProductById = async (
       }
     );
 
-    // Return updated view count
     product.views += 1;
 
     return res.status(200).json({
@@ -1237,7 +1591,10 @@ const getProductById = async (
 // ============================================================
 
 const getProductsBySeller =
-  async (req, res) => {
+  async (
+    req,
+    res
+  ) => {
     try {
       const sellerId =
         req.params.sellerId;
@@ -1329,14 +1686,17 @@ const updateProduct = async (
       });
     }
 
-    // --------------------------------------------------------
-    // Ownership
-    // --------------------------------------------------------
+    // ========================================================
+    // OWNERSHIP
+    // ========================================================
 
     if (
-      !product.sellerId ||
-      String(product.sellerId) !==
-        String(req.user._id)
+      String(
+        product.sellerId
+      ) !==
+      String(
+        req.user._id
+      )
     ) {
       return res.status(403).json({
         success: false,
@@ -1365,7 +1725,9 @@ const updateProduct = async (
         return res.status(400).json({
           success: false,
           message:
-            `Invalid product category: ${body.category}.`,
+            `Invalid product category: ${body.category}`,
+          allowedCategories:
+            PRODUCT_CATEGORIES,
         });
       }
 
@@ -1438,7 +1800,6 @@ const updateProduct = async (
       "exteriorColor",
       "interiorColor",
 
-      // Cosmetics
       "cosmeticType",
       "cosmeticSubcategory",
       "gender",
@@ -1494,53 +1855,18 @@ const updateProduct = async (
           body[field] !==
           undefined
         ) {
-          const number =
+          const value =
             toNumber(
               body[field]
             );
 
-          if (number !== null) {
+          if (value !== null) {
             product[field] =
-              number;
+              value;
           }
         }
       }
     );
-
-    // --------------------------------------------------------
-    // Validate price
-    // --------------------------------------------------------
-
-    if (
-      product.price < 0
-    ) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Price cannot be negative.",
-      });
-    }
-
-    // --------------------------------------------------------
-    // Validate battery health
-    // --------------------------------------------------------
-
-    if (
-      product.batteryHealth !==
-        null &&
-      product.batteryHealth !==
-        undefined &&
-      (product.batteryHealth <
-        0 ||
-        product.batteryHealth >
-          100)
-    ) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Battery health must be between 0 and 100.",
-      });
-    }
 
     // ========================================================
     // BOOLEAN FIELDS
@@ -1573,6 +1899,39 @@ const updateProduct = async (
     );
 
     // ========================================================
+    // VALIDATION
+    // ========================================================
+
+    if (
+      product.price < 0
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Price cannot be negative.",
+      });
+    }
+
+    if (
+      product.batteryHealth !==
+        null &&
+      product.batteryHealth !==
+        undefined &&
+      (
+        product.batteryHealth <
+          0 ||
+        product.batteryHealth >
+          100
+      )
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Battery health must be between 0 and 100.",
+      });
+    }
+
+    // ========================================================
     // STATUS
     // ========================================================
 
@@ -1580,20 +1939,13 @@ const updateProduct = async (
       body.status !==
       undefined
     ) {
-      const allowedStatuses = [
-        "active",
-        "pending",
-        "inactive",
-        "sold",
-      ];
-
       const status =
         cleanString(
           body.status
         ).toLowerCase();
 
       if (
-        !allowedStatuses.includes(
+        !PRODUCT_STATUSES.includes(
           status
         )
       ) {
@@ -1609,7 +1961,7 @@ const updateProduct = async (
     }
 
     // ========================================================
-    // UPDATE SLUG WHEN TITLE CHANGES
+    // UPDATE SLUG
     // ========================================================
 
     if (
@@ -1663,7 +2015,8 @@ const updateProduct = async (
         Object.values(
           error.errors
         ).map(
-          (item) => item.message
+          (item) =>
+            item.message
         );
 
       return res.status(400).json({
@@ -1734,8 +2087,12 @@ const deleteProduct = async (
     }
 
     if (
-      String(product.sellerId) !==
-      String(req.user._id)
+      String(
+        product.sellerId
+      ) !==
+      String(
+        req.user._id
+      )
     ) {
       return res.status(403).json({
         success: false,
@@ -1744,7 +2101,6 @@ const deleteProduct = async (
       });
     }
 
-    // Soft delete
     product.status =
       "inactive";
 
@@ -1770,11 +2126,14 @@ const deleteProduct = async (
 };
 
 // ============================================================
-// MARK PRODUCT AS SOLD
+// MARK AS SOLD
 // ============================================================
 
 const markProductAsSold =
-  async (req, res) => {
+  async (
+    req,
+    res
+  ) => {
     try {
       if (!req.user) {
         return res.status(401).json({
@@ -1812,7 +2171,9 @@ const markProductAsSold =
         String(
           product.sellerId
         ) !==
-        String(req.user._id)
+        String(
+          req.user._id
+        )
       ) {
         return res.status(403).json({
           success: false,
@@ -1850,78 +2211,83 @@ const markProductAsSold =
 // RESTORE PRODUCT
 // ============================================================
 
-const restoreProduct = async (
-  req,
-  res
-) => {
-  try {
-    if (!req.user) {
-      return res.status(401).json({
+const restoreProduct =
+  async (
+    req,
+    res
+  ) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({
+          success: false,
+          message:
+            "Authentication required.",
+        });
+      }
+
+      const { id } =
+        req.params;
+
+      if (
+        !isValidObjectId(id)
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Invalid product ID.",
+        });
+      }
+
+      const product =
+        await Product.findById(id);
+
+      if (!product) {
+        return res.status(404).json({
+          success: false,
+          message:
+            "Product not found.",
+        });
+      }
+
+      if (
+        String(
+          product.sellerId
+        ) !==
+        String(
+          req.user._id
+        )
+      ) {
+        return res.status(403).json({
+          success: false,
+          message:
+            "You are not allowed to restore this product.",
+        });
+      }
+
+      product.status =
+        "active";
+
+      await product.save();
+
+      return res.status(200).json({
+        success: true,
+        message:
+          "Product restored successfully.",
+        product,
+      });
+    } catch (error) {
+      console.error(
+        "❌ RESTORE PRODUCT ERROR:",
+        error
+      );
+
+      return res.status(500).json({
         success: false,
         message:
-          "Authentication required.",
+          "Failed to restore product.",
       });
     }
-
-    const { id } =
-      req.params;
-
-    if (
-      !isValidObjectId(id)
-    ) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Invalid product ID.",
-      });
-    }
-
-    const product =
-      await Product.findById(id);
-
-    if (!product) {
-      return res.status(404).json({
-        success: false,
-        message:
-          "Product not found.",
-      });
-    }
-
-    if (
-      String(product.sellerId) !==
-      String(req.user._id)
-    ) {
-      return res.status(403).json({
-        success: false,
-        message:
-          "You are not allowed to restore this product.",
-      });
-    }
-
-    product.status =
-      "active";
-
-    await product.save();
-
-    return res.status(200).json({
-      success: true,
-      message:
-        "Product restored successfully.",
-      product,
-    });
-  } catch (error) {
-    console.error(
-      "❌ RESTORE PRODUCT ERROR:",
-      error
-    );
-
-    return res.status(500).json({
-      success: false,
-      message:
-        "Failed to restore product.",
-    });
-  }
-};
+  };
 
 // ============================================================
 // EXPORTS
