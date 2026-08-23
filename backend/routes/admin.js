@@ -42,7 +42,7 @@ const {
 } = require("../controllers/adminController");
 
 // ============================================================
-// ADMIN AUTHENTICATION
+// AUTHENTICATION
 // ============================================================
 
 const {
@@ -77,7 +77,6 @@ router.get(
 );
 
 // GET /api/admin/stats
-// Compatibility alias for dashboards using /stats.
 router.get(
   "/stats",
   getDashboardStats
@@ -110,6 +109,7 @@ router.get(
 // ------------------------------------------------------------
 // UPDATE USER ROLE
 // PATCH /api/admin/users/:id/role
+// PUT    /api/admin/users/:id/role
 // ------------------------------------------------------------
 
 router.patch(
@@ -117,15 +117,15 @@ router.patch(
   updateUserRole
 );
 
-// PUT compatibility
 router.put(
   "/users/:id/role",
   updateUserRole
 );
 
 // ------------------------------------------------------------
-// UPDATE USER ACCOUNT STATUS
+// UPDATE USER STATUS
 // PATCH /api/admin/users/:id/status
+// PUT    /api/admin/users/:id/status
 // ------------------------------------------------------------
 
 router.patch(
@@ -133,7 +133,6 @@ router.patch(
   updateUserStatus
 );
 
-// PUT compatibility
 router.put(
   "/users/:id/status",
   updateUserStatus
@@ -142,15 +141,28 @@ router.put(
 // ============================================================
 // SELLER VERIFICATION
 // ============================================================
+//
+// IMPORTANT:
+//
+// We support BOTH:
+//
+// /api/admin/users/:id/verify-seller
+// /api/admin/users/:id/unverify-seller
+//
+// AND the older/frontend endpoints:
+//
+// /api/admin/sellers/:id/verify
+// /api/admin/sellers/:id/unverify
+//
+// This prevents 404 errors when older frontend code is still
+// calling the /sellers/... endpoints.
+//
+// ============================================================
 
 // ------------------------------------------------------------
-// VERIFY SELLER
-//
+// VERIFY SELLER - PRIMARY
 // PATCH /api/admin/users/:id/verify-seller
 // PUT   /api/admin/users/:id/verify-seller
-// ------------------------------------------------------------
-//
-// Used by the Admin Dashboard when an admin verifies a seller.
 // ------------------------------------------------------------
 
 router.patch(
@@ -160,41 +172,73 @@ router.patch(
 
 router.put(
   "/users/:id/verify-seller",
+  verifySeller
+);
+
+// ------------------------------------------------------------
+// UNVERIFY SELLER - PRIMARY
+// PATCH /api/admin/users/:id/unverify-seller
+// PUT   /api/admin/users/:id/unverify-seller
+// ------------------------------------------------------------
+
+router.patch(
+  "/users/:id/unverify-seller",
+  unverifySeller
+);
+
+router.put(
+  "/users/:id/unverify-seller",
+  unverifySeller
+);
+
+// ============================================================
+// SELLER COMPATIBILITY ROUTES
+// ============================================================
+
+// ------------------------------------------------------------
+// VERIFY SELLER
+// PATCH /api/admin/sellers/:id/verify
+// PUT   /api/admin/sellers/:id/verify
+// ------------------------------------------------------------
+
+router.patch(
+  "/sellers/:id/verify",
+  verifySeller
+);
+
+router.put(
+  "/sellers/:id/verify",
   verifySeller
 );
 
 // ------------------------------------------------------------
 // UNVERIFY SELLER
-//
-// PATCH  /api/admin/users/:id/unverify-seller
-// PUT    /api/admin/users/:id/unverify-seller
-// DELETE /api/admin/users/:id/unverify-seller
+// PATCH /api/admin/sellers/:id/unverify
+// PUT   /api/admin/sellers/:id/unverify
 // ------------------------------------------------------------
 //
-// DELETE is included because some frontend implementations use
-// DELETE when removing a verification badge.
+// THIS FIXES:
+//
+// Failed to remove verification:
+// API endpoint not found
+//
 // ------------------------------------------------------------
 
 router.patch(
-  "/users/:id/unverify-seller",
+  "/sellers/:id/unverify",
   unverifySeller
 );
 
 router.put(
-  "/users/:id/unverify-seller",
+  "/sellers/:id/unverify",
   unverifySeller
 );
 
-router.delete(
-  "/users/:id/unverify-seller",
-  unverifySeller
-);
-
-// ============================================================
+// ------------------------------------------------------------
 // DELETE USER
-// ============================================================
-
 // DELETE /api/admin/users/:id
+// ------------------------------------------------------------
+
 router.delete(
   "/users/:id",
   deleteUser
@@ -240,7 +284,6 @@ router.get(
 
 // ------------------------------------------------------------
 // UPDATE ORDER STATUS
-//
 // PATCH /api/admin/orders/:id/status
 // PUT   /api/admin/orders/:id/status
 // ------------------------------------------------------------
@@ -281,7 +324,6 @@ router.get(
 
 // ------------------------------------------------------------
 // APPROVE RIDER
-//
 // PATCH /api/admin/riders/:id/approve
 // PUT   /api/admin/riders/:id/approve
 // ------------------------------------------------------------
@@ -298,7 +340,6 @@ router.put(
 
 // ------------------------------------------------------------
 // REJECT RIDER
-//
 // PATCH /api/admin/riders/:id/reject
 // PUT   /api/admin/riders/:id/reject
 // ------------------------------------------------------------
@@ -314,8 +355,7 @@ router.put(
 );
 
 // ------------------------------------------------------------
-// UPDATE RIDER ACCOUNT STATUS
-//
+// UPDATE RIDER STATUS
 // PATCH /api/admin/riders/:id/status
 // PUT   /api/admin/riders/:id/status
 // ------------------------------------------------------------
@@ -332,7 +372,6 @@ router.put(
 
 // ------------------------------------------------------------
 // UPDATE RIDER PROFILE
-//
 // PATCH /api/admin/riders/:id/profile
 // PUT   /api/admin/riders/:id/profile
 // ------------------------------------------------------------

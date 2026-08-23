@@ -17,10 +17,6 @@ const isValidObjectId = (id) => {
   return mongoose.Types.ObjectId.isValid(id);
 };
 
-// ------------------------------------------------------------
-// SANITIZE USER
-// ------------------------------------------------------------
-
 const sanitizeUser = (user) => {
   if (!user) return null;
 
@@ -35,10 +31,6 @@ const sanitizeUser = (user) => {
 
   return obj;
 };
-
-// ------------------------------------------------------------
-// PAGINATION
-// ------------------------------------------------------------
 
 const getPagination = (
   page = 1,
@@ -61,19 +53,11 @@ const getPagination = (
   return {
     page: pageNumber,
     limit: limitNumber,
-    skip:
-      (pageNumber - 1) *
-      limitNumber,
+    skip: (pageNumber - 1) * limitNumber,
   };
 };
 
-// ------------------------------------------------------------
-// SORT
-// ------------------------------------------------------------
-
-const parseSort = (
-  sort = "-createdAt"
-) => {
+const parseSort = (sort = "-createdAt") => {
   const sortObject = {};
 
   String(sort)
@@ -83,8 +67,7 @@ const parseSort = (
 
       if (!field) return;
 
-      const descending =
-        field.startsWith("-");
+      const descending = field.startsWith("-");
 
       const key = descending
         ? field.substring(1)
@@ -92,25 +75,19 @@ const parseSort = (
 
       if (!key) return;
 
-      sortObject[key] =
-        descending ? -1 : 1;
+      sortObject[key] = descending ? -1 : 1;
     });
 
   return Object.keys(sortObject).length
     ? sortObject
-    : {
-        createdAt: -1,
-      };
+    : { createdAt: -1 };
 };
 
 // ============================================================
 // 1. ADMIN DASHBOARD
 // ============================================================
 
-const getDashboardStats = async (
-  req,
-  res
-) => {
+async function getDashboardStats(req, res) {
   try {
     const [
       totalUsers,
@@ -148,20 +125,16 @@ const getDashboardStats = async (
       User.countDocuments({
         role: "seller",
         sellerVerified: true,
-        sellerVerificationStatus:
-          "approved",
+        sellerVerificationStatus: "approved",
       }),
 
       User.countDocuments({
         role: "seller",
-        sellerVerificationStatus:
-          "pending",
+        sellerVerificationStatus: "pending",
       }),
 
       User.countDocuments({
-        isActive: {
-          $ne: false,
-        },
+        isActive: { $ne: false },
       }),
 
       Product.countDocuments(),
@@ -181,112 +154,89 @@ const getDashboardStats = async (
       }),
     ]);
 
-    // ----------------------------------------------------------
-    // TOTAL SALES
-    // ----------------------------------------------------------
+    const salesResult = await Order.aggregate([
+      {
+        $match: {
+          status: {
+            $in: [
+              "paid",
+              "processing",
+              "shipped",
+              "delivered",
+              "completed",
+            ],
+          },
+        },
+      },
 
-    const salesResult =
-      await Order.aggregate([
-        {
-          $match: {
-            status: {
-              $in: [
-                "paid",
-                "processing",
-                "shipped",
-                "delivered",
-                "completed",
+      {
+        $unwind: {
+          path: "$items",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+
+      {
+        $group: {
+          _id: null,
+
+          totalSales: {
+            $sum: {
+              $multiply: [
+                {
+                  $convert: {
+                    input: "$items.price",
+                    to: "double",
+                    onError: 0,
+                    onNull: 0,
+                  },
+                },
+                {
+                  $convert: {
+                    input: "$items.quantity",
+                    to: "double",
+                    onError: 0,
+                    onNull: 0,
+                  },
+                },
               ],
             },
           },
         },
+      },
+    ]);
 
-        {
-          $unwind: {
-            path: "$items",
-            preserveNullAndEmptyArrays: true,
-          },
-        },
+    const totalSales = Number(
+      salesResult?.[0]?.totalSales || 0
+    );
 
-        {
-          $group: {
-            _id: null,
+    const recentUsers = await User.find()
+      .select(
+        "-password -__v -resetPasswordToken -resetPasswordExpires"
+      )
+      .sort({
+        createdAt: -1,
+      })
+      .limit(10)
+      .lean();
 
-            totalSales: {
-              $sum: {
-                $multiply: [
-                  {
-                    $convert: {
-                      input:
-                        "$items.price",
-                      to: "double",
-                      onError: 0,
-                      onNull: 0,
-                    },
-                  },
-                  {
-                    $convert: {
-                      input:
-                        "$items.quantity",
-                      to: "double",
-                      onError: 0,
-                      onNull: 0,
-                    },
-                  },
-                ],
-              },
-            },
-          },
-        },
-      ]);
+    const recentProducts = await Product.find()
+      .sort({
+        createdAt: -1,
+      })
+      .limit(10)
+      .lean();
 
-    const totalSales =
-      Number(
-        salesResult?.[0]?.totalSales || 0
-      );
-
-    // ----------------------------------------------------------
-    // RECENT USERS
-    // ----------------------------------------------------------
-
-    const recentUsers =
-      await User.find()
-        .select(
-          "-password -__v -resetPasswordToken -resetPasswordExpires"
-        )
-        .sort({
-          createdAt: -1,
-        })
-        .limit(10)
-        .lean();
-
-    // ----------------------------------------------------------
-    // RECENT PRODUCTS
-    // ----------------------------------------------------------
-
-    const recentProducts =
-      await Product.find()
-        .sort({
-          createdAt: -1,
-        })
-        .limit(10)
-        .lean();
-
-    // ----------------------------------------------------------
-    // RECENT ORDERS
-    // ----------------------------------------------------------
-
-    const recentOrders =
-      await Order.find()
-        .populate(
-          "user",
-          "name email phone"
-        )
-        .sort({
-          createdAt: -1,
-        })
-        .limit(10)
-        .lean();
+    const recentOrders = await Order.find()
+      .populate(
+        "user",
+        "name email phone"
+      )
+      .sort({
+        createdAt: -1,
+      })
+      .limit(10)
+      .lean();
 
     return res.json({
       success: true,
@@ -330,16 +280,13 @@ const getDashboardStats = async (
         "Failed to load admin dashboard.",
     });
   }
-};
+}
 
 // ============================================================
 // 2. GET ALL USERS
 // ============================================================
 
-const getUsers = async (
-  req,
-  res
-) => {
+async function getUsers(req, res) {
   try {
     const {
       page,
@@ -352,72 +299,39 @@ const getUsers = async (
     );
 
     const sort = parseSort(
-      req.query.sort ||
-        "-createdAt"
+      req.query.sort || "-createdAt"
     );
 
     const filter = {};
-
-    // ----------------------------------------------------------
-    // ROLE FILTER
-    // ----------------------------------------------------------
 
     if (req.query.role) {
       filter.role = req.query.role;
     }
 
-    // ----------------------------------------------------------
-    // STATUS FILTER
-    // ----------------------------------------------------------
-
-    if (
-      req.query.status !==
-      undefined
-    ) {
-      if (
-        req.query.status ===
-        "active"
-      ) {
+    if (req.query.status !== undefined) {
+      if (req.query.status === "active") {
         filter.isActive = true;
       }
 
-      if (
-        req.query.status ===
-        "inactive"
-      ) {
+      if (req.query.status === "inactive") {
         filter.isActive = false;
       }
     }
 
-    // ----------------------------------------------------------
-    // VERIFICATION FILTER
-    // ----------------------------------------------------------
-
-    if (
-      req.query.verified ===
-      "true"
-    ) {
+    if (req.query.verified === "true") {
       filter.sellerVerified = true;
     }
 
-    if (
-      req.query.verified ===
-      "false"
-    ) {
+    if (req.query.verified === "false") {
       filter.sellerVerified = {
         $ne: true,
       };
     }
 
-    // ----------------------------------------------------------
-    // SEARCH
-    // ----------------------------------------------------------
-
     if (req.query.search) {
-      const search =
-        String(
-          req.query.search
-        ).trim();
+      const search = String(
+        req.query.search
+      ).trim();
 
       if (search) {
         filter.$or = [
@@ -449,21 +363,19 @@ const getUsers = async (
       }
     }
 
-    const [
-      users,
-      total,
-    ] = await Promise.all([
-      User.find(filter)
-        .select(
-          "-password -__v -resetPasswordToken -resetPasswordExpires"
-        )
-        .sort(sort)
-        .skip(skip)
-        .limit(limit)
-        .lean(),
+    const [users, total] =
+      await Promise.all([
+        User.find(filter)
+          .select(
+            "-password -__v -resetPasswordToken -resetPasswordExpires"
+          )
+          .sort(sort)
+          .skip(skip)
+          .limit(limit)
+          .lean(),
 
-      User.countDocuments(filter),
-    ]);
+        User.countDocuments(filter),
+      ]);
 
     return res.json({
       success: true,
@@ -474,10 +386,9 @@ const getUsers = async (
         page,
         limit,
         total,
-        totalPages:
-          Math.ceil(
-            total / limit
-          ),
+        totalPages: Math.ceil(
+          total / limit
+        ),
       },
     });
   } catch (error) {
@@ -493,61 +404,48 @@ const getUsers = async (
         "Failed to fetch users.",
     });
   }
-};
+}
 
 // ============================================================
 // 3. GET SINGLE USER
 // ============================================================
 
-const getUserById = async (
-  req,
-  res
-) => {
+async function getUserById(req, res) {
   try {
     const { id } = req.params;
 
     if (!isValidObjectId(id)) {
       return res.status(400).json({
         success: false,
-        message:
-          "Invalid user ID.",
+        message: "Invalid user ID.",
       });
     }
 
-    const user =
-      await User.findById(id)
-        .select(
-          "-password -__v -resetPasswordToken -resetPasswordExpires"
-        )
-        .lean();
+    const user = await User.findById(id)
+      .select(
+        "-password -__v -resetPasswordToken -resetPasswordExpires"
+      )
+      .lean();
 
     if (!user) {
       return res.status(404).json({
         success: false,
-        message:
-          "User not found.",
+        message: "User not found.",
       });
     }
 
-    // ----------------------------------------------------------
-    // USER PRODUCTS
-    // ----------------------------------------------------------
-
-    const products =
-      await Product.find({
-        sellerId: id,
+    const products = await Product.find({
+      sellerId: id,
+    })
+      .sort({
+        createdAt: -1,
       })
-        .sort({
-          createdAt: -1,
-        })
-        .limit(50)
-        .lean();
+      .limit(50)
+      .lean();
 
     return res.json({
       success: true,
-
       user,
-
       products,
     });
   } catch (error) {
@@ -563,16 +461,13 @@ const getUserById = async (
         "Failed to fetch user.",
     });
   }
-};
+}
 
 // ============================================================
 // 4. UPDATE USER ROLE
 // ============================================================
 
-const updateUserRole = async (
-  req,
-  res
-) => {
+async function updateUserRole(req, res) {
   try {
     const { id } = req.params;
     const { role } = req.body;
@@ -580,8 +475,7 @@ const updateUserRole = async (
     if (!isValidObjectId(id)) {
       return res.status(400).json({
         success: false,
-        message:
-          "Invalid user ID.",
+        message: "Invalid user ID.",
       });
     }
 
@@ -592,28 +486,19 @@ const updateUserRole = async (
       "admin",
     ];
 
-    if (
-      !allowedRoles.includes(role)
-    ) {
+    if (!allowedRoles.includes(role)) {
       return res.status(400).json({
         success: false,
-        message:
-          "Invalid role.",
+        message: "Invalid role.",
       });
     }
 
-    // ----------------------------------------------------------
-    // PREVENT ADMIN FROM CHANGING THEIR OWN ROLE
-    // ----------------------------------------------------------
-
     const currentAdminId =
-      req.user?._id ||
-      req.user?.id;
+      req.user?._id || req.user?.id;
 
     if (
       currentAdminId &&
-      String(currentAdminId) ===
-        String(id)
+      String(currentAdminId) === String(id)
     ) {
       return res.status(400).json({
         success: false,
@@ -622,55 +507,36 @@ const updateUserRole = async (
       });
     }
 
-    const user =
-      await User.findById(id);
+    const user = await User.findById(id);
 
     if (!user) {
       return res.status(404).json({
         success: false,
-        message:
-          "User not found.",
+        message: "User not found.",
       });
     }
 
     user.role = role;
 
-    // ----------------------------------------------------------
-    // SELLER INITIALIZATION
-    // ----------------------------------------------------------
-
     if (role === "seller") {
       if (!user.sellerStatus) {
-        user.sellerStatus =
-          "active";
+        user.sellerStatus = "active";
       }
 
-      if (
-        !user.sellerVerificationStatus
-      ) {
+      if (!user.sellerVerificationStatus) {
         user.sellerVerificationStatus =
           "not_submitted";
       }
 
-      if (
-        user.sellerVerified !== true
-      ) {
-        user.sellerVerified =
-          false;
+      if (user.sellerVerified !== true) {
+        user.sellerVerified = false;
       }
     }
 
-    // ----------------------------------------------------------
-    // NON-SELLER RESET
-    // ----------------------------------------------------------
-
     if (role !== "seller") {
-      user.sellerVerified =
-        false;
-
+      user.sellerVerified = false;
       user.sellerVerificationStatus =
         "not_submitted";
-
       user.sellerVerifiedAt = null;
       user.sellerVerifiedBy = null;
     }
@@ -679,10 +545,8 @@ const updateUserRole = async (
 
     return res.json({
       success: true,
-
       message:
         "User role updated successfully.",
-
       user: sanitizeUser(user),
     });
   } catch (error) {
@@ -698,16 +562,13 @@ const updateUserRole = async (
         "Failed to update user role.",
     });
   }
-};
+}
 
 // ============================================================
-// 5. UPDATE USER ACCOUNT STATUS
+// 5. UPDATE USER STATUS
 // ============================================================
 
-const updateUserStatus = async (
-  req,
-  res
-) => {
+async function updateUserStatus(req, res) {
   try {
     const { id } = req.params;
 
@@ -719,19 +580,16 @@ const updateUserStatus = async (
     if (!isValidObjectId(id)) {
       return res.status(400).json({
         success: false,
-        message:
-          "Invalid user ID.",
+        message: "Invalid user ID.",
       });
     }
 
     const currentAdminId =
-      req.user?._id ||
-      req.user?.id;
+      req.user?._id || req.user?.id;
 
     if (
       currentAdminId &&
-      String(currentAdminId) ===
-        String(id)
+      String(currentAdminId) === String(id)
     ) {
       return res.status(400).json({
         success: false,
@@ -742,14 +600,9 @@ const updateUserStatus = async (
 
     let activeValue;
 
-    if (
-      typeof isActive ===
-      "boolean"
-    ) {
+    if (typeof isActive === "boolean") {
       activeValue = isActive;
-    } else if (
-      status !== undefined
-    ) {
+    } else if (status !== undefined) {
       activeValue =
         status === "active" ||
         status === "enabled";
@@ -766,24 +619,21 @@ const updateUserStatus = async (
         id,
         {
           $set: {
-            isActive:
-              activeValue,
+            isActive: activeValue,
           },
         },
         {
           new: true,
           runValidators: true,
         }
-      )
-        .select(
-          "-password -__v -resetPasswordToken -resetPasswordExpires"
-        );
+      ).select(
+        "-password -__v -resetPasswordToken -resetPasswordExpires"
+      );
 
     if (!user) {
       return res.status(404).json({
         success: false,
-        message:
-          "User not found.",
+        message: "User not found.",
       });
     }
 
@@ -809,30 +659,25 @@ const updateUserStatus = async (
         "Failed to update user status.",
     });
   }
-};
+}
 
 // ============================================================
 // 6. VERIFY SELLER
 // ============================================================
 
-const verifySeller = async (
-  req,
-  res
-) => {
+async function verifySeller(req, res) {
   try {
     const { id } = req.params;
 
     if (!isValidObjectId(id)) {
       return res.status(400).json({
         success: false,
-        message:
-          "Invalid seller ID.",
+        message: "Invalid seller ID.",
       });
     }
 
     const adminId =
-      req.user?._id ||
-      req.user?.id;
+      req.user?._id || req.user?.id;
 
     const seller =
       await User.findById(id);
@@ -840,18 +685,11 @@ const verifySeller = async (
     if (!seller) {
       return res.status(404).json({
         success: false,
-        message:
-          "Seller not found.",
+        message: "Seller not found.",
       });
     }
 
-    // ----------------------------------------------------------
-    // MUST BE SELLER
-    // ----------------------------------------------------------
-
-    if (
-      seller.role !== "seller"
-    ) {
+    if (seller.role !== "seller") {
       return res.status(400).json({
         success: false,
         message:
@@ -859,12 +697,7 @@ const verifySeller = async (
       });
     }
 
-    // ----------------------------------------------------------
-    // VERIFY
-    // ----------------------------------------------------------
-
-    seller.sellerVerified =
-      true;
+    seller.sellerVerified = true;
 
     seller.sellerVerificationStatus =
       "approved";
@@ -877,45 +710,14 @@ const verifySeller = async (
 
     seller.sellerVerificationNote =
       req.body?.note
-        ? String(
-            req.body.note
-          ).trim()
-        : seller.sellerVerificationNote ||
-          "";
+        ? String(req.body.note).trim()
+        : seller.sellerVerificationNote || "";
 
-    // Ensure seller remains active.
     if (!seller.sellerStatus) {
-      seller.sellerStatus =
-        "active";
+      seller.sellerStatus = "active";
     }
 
     await seller.save();
-
-    const cleanSeller =
-      sanitizeUser(seller);
-
-    console.log(
-      "✅ Seller verified:",
-      {
-        sellerId:
-          seller._id.toString(),
-
-        name:
-          seller.name,
-
-        sellerVerified:
-          seller.sellerVerified,
-
-        sellerVerificationStatus:
-          seller.sellerVerificationStatus,
-
-        sellerVerifiedAt:
-          seller.sellerVerifiedAt,
-
-        sellerVerifiedBy:
-          seller.sellerVerifiedBy,
-      }
-    );
 
     return res.json({
       success: true,
@@ -923,9 +725,8 @@ const verifySeller = async (
       message:
         "Seller verified successfully.",
 
-      seller: cleanSeller,
+      seller: sanitizeUser(seller),
 
-      // Convenient frontend fields.
       verified: true,
 
       sellerVerified: true,
@@ -946,24 +747,20 @@ const verifySeller = async (
         "Failed to verify seller.",
     });
   }
-};
+}
 
 // ============================================================
 // 7. UNVERIFY SELLER
 // ============================================================
 
-const unverifySeller = async (
-  req,
-  res
-) => {
+async function unverifySeller(req, res) {
   try {
     const { id } = req.params;
 
     if (!isValidObjectId(id)) {
       return res.status(400).json({
         success: false,
-        message:
-          "Invalid seller ID.",
+        message: "Invalid seller ID.",
       });
     }
 
@@ -973,14 +770,11 @@ const unverifySeller = async (
     if (!seller) {
       return res.status(404).json({
         success: false,
-        message:
-          "Seller not found.",
+        message: "Seller not found.",
       });
     }
 
-    if (
-      seller.role !== "seller"
-    ) {
+    if (seller.role !== "seller") {
       return res.status(400).json({
         success: false,
         message:
@@ -988,47 +782,20 @@ const unverifySeller = async (
       });
     }
 
-    // ----------------------------------------------------------
-    // REMOVE VERIFICATION
-    // ----------------------------------------------------------
-
-    seller.sellerVerified =
-      false;
+    seller.sellerVerified = false;
 
     seller.sellerVerificationStatus =
       "not_submitted";
 
-    seller.sellerVerifiedAt =
-      null;
-
-    seller.sellerVerifiedBy =
-      null;
+    seller.sellerVerifiedAt = null;
+    seller.sellerVerifiedBy = null;
 
     seller.sellerVerificationNote =
       req.body?.note
-        ? String(
-            req.body.note
-          ).trim()
+        ? String(req.body.note).trim()
         : "";
 
     await seller.save();
-
-    console.log(
-      "⚪ Seller verification removed:",
-      {
-        sellerId:
-          seller._id.toString(),
-
-        name:
-          seller.name,
-
-        sellerVerified:
-          seller.sellerVerified,
-
-        sellerVerificationStatus:
-          seller.sellerVerificationStatus,
-      }
-    );
 
     return res.json({
       success: true,
@@ -1036,8 +803,7 @@ const unverifySeller = async (
       message:
         "Seller verification removed successfully.",
 
-      seller:
-        sanitizeUser(seller),
+      seller: sanitizeUser(seller),
 
       verified: false,
 
@@ -1059,35 +825,29 @@ const unverifySeller = async (
         "Failed to remove seller verification.",
     });
   }
-};
+}
 
 // ============================================================
 // 8. DELETE USER
 // ============================================================
 
-const deleteUser = async (
-  req,
-  res
-) => {
+async function deleteUser(req, res) {
   try {
     const { id } = req.params;
 
     if (!isValidObjectId(id)) {
       return res.status(400).json({
         success: false,
-        message:
-          "Invalid user ID.",
+        message: "Invalid user ID.",
       });
     }
 
     const adminId =
-      req.user?._id ||
-      req.user?.id;
+      req.user?._id || req.user?.id;
 
     if (
       adminId &&
-      String(adminId) ===
-        String(id)
+      String(adminId) === String(id)
     ) {
       return res.status(400).json({
         success: false,
@@ -1102,20 +862,11 @@ const deleteUser = async (
     if (!user) {
       return res.status(404).json({
         success: false,
-        message:
-          "User not found.",
+        message: "User not found.",
       });
     }
 
-    // ----------------------------------------------------------
-    // DELETE USER
-    // ----------------------------------------------------------
-
     await User.findByIdAndDelete(id);
-
-    // ----------------------------------------------------------
-    // DELETE USER PRODUCTS
-    // ----------------------------------------------------------
 
     await Product.deleteMany({
       sellerId: id,
@@ -1142,16 +893,13 @@ const deleteUser = async (
         "Failed to delete user.",
     });
   }
-};
+}
 
 // ============================================================
-// 9. GET ALL PRODUCTS
+// 9. GET PRODUCTS
 // ============================================================
 
-const getProducts = async (
-  req,
-  res
-) => {
+async function getProducts(req, res) {
   try {
     const {
       page,
@@ -1164,15 +912,13 @@ const getProducts = async (
     );
 
     const sort = parseSort(
-      req.query.sort ||
-        "-createdAt"
+      req.query.sort || "-createdAt"
     );
 
     const filter = {};
 
     if (req.query.status) {
-      filter.status =
-        req.query.status;
+      filter.status = req.query.status;
     }
 
     if (req.query.category) {
@@ -1188,8 +934,7 @@ const getProducts = async (
       ) {
         return res.status(400).json({
           success: false,
-          message:
-            "Invalid seller ID.",
+          message: "Invalid seller ID.",
         });
       }
 
@@ -1198,10 +943,9 @@ const getProducts = async (
     }
 
     if (req.query.search) {
-      const search =
-        String(
-          req.query.search
-        ).trim();
+      const search = String(
+        req.query.search
+      ).trim();
 
       if (search) {
         filter.$or = [
@@ -1227,22 +971,20 @@ const getProducts = async (
       }
     }
 
-    const [
-      products,
-      total,
-    ] = await Promise.all([
-      Product.find(filter)
-        .populate(
-          "sellerId",
-          "name email phone shopName sellerVerified sellerVerificationStatus"
-        )
-        .sort(sort)
-        .skip(skip)
-        .limit(limit)
-        .lean(),
+    const [products, total] =
+      await Promise.all([
+        Product.find(filter)
+          .populate(
+            "sellerId",
+            "name email phone shopName sellerVerified sellerVerificationStatus"
+          )
+          .sort(sort)
+          .skip(skip)
+          .limit(limit)
+          .lean(),
 
-      Product.countDocuments(filter),
-    ]);
+        Product.countDocuments(filter),
+      ]);
 
     return res.json({
       success: true,
@@ -1253,10 +995,9 @@ const getProducts = async (
         page,
         limit,
         total,
-        totalPages:
-          Math.ceil(
-            total / limit
-          ),
+        totalPages: Math.ceil(
+          total / limit
+        ),
       },
     });
   } catch (error) {
@@ -1272,24 +1013,20 @@ const getProducts = async (
         "Failed to fetch products.",
     });
   }
-};
+}
 
 // ============================================================
 // 10. DELETE PRODUCT
 // ============================================================
 
-const deleteProduct = async (
-  req,
-  res
-) => {
+async function deleteProduct(req, res) {
   try {
     const { id } = req.params;
 
     if (!isValidObjectId(id)) {
       return res.status(400).json({
         success: false,
-        message:
-          "Invalid product ID.",
+        message: "Invalid product ID.",
       });
     }
 
@@ -1299,14 +1036,11 @@ const deleteProduct = async (
     if (!product) {
       return res.status(404).json({
         success: false,
-        message:
-          "Product not found.",
+        message: "Product not found.",
       });
     }
 
-    await Product.findByIdAndDelete(
-      id
-    );
+    await Product.findByIdAndDelete(id);
 
     return res.json({
       success: true,
@@ -1329,16 +1063,13 @@ const deleteProduct = async (
         "Failed to delete product.",
     });
   }
-};
+}
 
 // ============================================================
-// 11. GET ALL ORDERS
+// 11. GET ORDERS
 // ============================================================
 
-const getOrders = async (
-  req,
-  res
-) => {
+async function getOrders(req, res) {
   try {
     const {
       page,
@@ -1351,8 +1082,7 @@ const getOrders = async (
     );
 
     const sort = parseSort(
-      req.query.sort ||
-        "-createdAt"
+      req.query.sort || "-createdAt"
     );
 
     const filter = {};
@@ -1370,8 +1100,7 @@ const getOrders = async (
       ) {
         return res.status(400).json({
           success: false,
-          message:
-            "Invalid user ID.",
+          message: "Invalid user ID.",
         });
       }
 
@@ -1379,26 +1108,24 @@ const getOrders = async (
         req.query.userId;
     }
 
-    const [
-      orders,
-      total,
-    ] = await Promise.all([
-      Order.find(filter)
-        .populate(
-          "user",
-          "name email phone"
-        )
-        .populate(
-          "items.product",
-          "title price images"
-        )
-        .sort(sort)
-        .skip(skip)
-        .limit(limit)
-        .lean(),
+    const [orders, total] =
+      await Promise.all([
+        Order.find(filter)
+          .populate(
+            "user",
+            "name email phone"
+          )
+          .populate(
+            "items.product",
+            "title price images"
+          )
+          .sort(sort)
+          .skip(skip)
+          .limit(limit)
+          .lean(),
 
-      Order.countDocuments(filter),
-    ]);
+        Order.countDocuments(filter),
+      ]);
 
     return res.json({
       success: true,
@@ -1409,10 +1136,9 @@ const getOrders = async (
         page,
         limit,
         total,
-        totalPages:
-          Math.ceil(
-            total / limit
-          ),
+        totalPages: Math.ceil(
+          total / limit
+        ),
       },
     });
   } catch (error) {
@@ -1428,27 +1154,21 @@ const getOrders = async (
         "Failed to fetch orders.",
     });
   }
-};
+}
 
 // ============================================================
 // 12. UPDATE ORDER STATUS
 // ============================================================
 
-const updateOrderStatus = async (
-  req,
-  res
-) => {
+async function updateOrderStatus(req, res) {
   try {
     const { id } = req.params;
-    const {
-      status,
-    } = req.body;
+    const { status } = req.body;
 
     if (!isValidObjectId(id)) {
       return res.status(400).json({
         success: false,
-        message:
-          "Invalid order ID.",
+        message: "Invalid order ID.",
       });
     }
 
@@ -1475,9 +1195,7 @@ const updateOrderStatus = async (
     ];
 
     if (
-      !allowedStatuses.includes(
-        status
-      )
+      !allowedStatuses.includes(status)
     ) {
       return res.status(400).json({
         success: false,
@@ -1508,8 +1226,7 @@ const updateOrderStatus = async (
     if (!order) {
       return res.status(404).json({
         success: false,
-        message:
-          "Order not found.",
+        message: "Order not found.",
       });
     }
 
@@ -1534,21 +1251,13 @@ const updateOrderStatus = async (
         "Failed to update order status.",
     });
   }
-};
+}
 
 // ============================================================
 // 13. GET RIDERS
 // ============================================================
-//
-// This implementation uses the User collection with
-// role === "rider".
-// It does NOT require a separate Rider model.
-// ============================================================
 
-const getRiders = async (
-  req,
-  res
-) => {
+async function getRiders(req, res) {
   try {
     const {
       page,
@@ -1561,8 +1270,7 @@ const getRiders = async (
     );
 
     const sort = parseSort(
-      req.query.sort ||
-        "-createdAt"
+      req.query.sort || "-createdAt"
     );
 
     const filter = {
@@ -1574,28 +1282,20 @@ const getRiders = async (
         req.query.status;
     }
 
-    if (
-      req.query.approved ===
-      "true"
-    ) {
-      filter.riderApproved =
-        true;
+    if (req.query.approved === "true") {
+      filter.riderApproved = true;
     }
 
-    if (
-      req.query.approved ===
-      "false"
-    ) {
+    if (req.query.approved === "false") {
       filter.riderApproved = {
         $ne: true,
       };
     }
 
     if (req.query.search) {
-      const search =
-        String(
-          req.query.search
-        ).trim();
+      const search = String(
+        req.query.search
+      ).trim();
 
       if (search) {
         filter.$or = [
@@ -1621,21 +1321,19 @@ const getRiders = async (
       }
     }
 
-    const [
-      riders,
-      total,
-    ] = await Promise.all([
-      User.find(filter)
-        .select(
-          "-password -__v -resetPasswordToken -resetPasswordExpires"
-        )
-        .sort(sort)
-        .skip(skip)
-        .limit(limit)
-        .lean(),
+    const [riders, total] =
+      await Promise.all([
+        User.find(filter)
+          .select(
+            "-password -__v -resetPasswordToken -resetPasswordExpires"
+          )
+          .sort(sort)
+          .skip(skip)
+          .limit(limit)
+          .lean(),
 
-      User.countDocuments(filter),
-    ]);
+        User.countDocuments(filter),
+      ]);
 
     return res.json({
       success: true,
@@ -1646,10 +1344,9 @@ const getRiders = async (
         page,
         limit,
         total,
-        totalPages:
-          Math.ceil(
-            total / limit
-          ),
+        totalPages: Math.ceil(
+          total / limit
+        ),
       },
     });
   } catch (error) {
@@ -1665,24 +1362,20 @@ const getRiders = async (
         "Failed to fetch riders.",
     });
   }
-};
+}
 
 // ============================================================
 // 14. GET RIDER BY ID
 // ============================================================
 
-const getRiderById = async (
-  req,
-  res
-) => {
+async function getRiderById(req, res) {
   try {
     const { id } = req.params;
 
     if (!isValidObjectId(id)) {
       return res.status(400).json({
         success: false,
-        message:
-          "Invalid rider ID.",
+        message: "Invalid rider ID.",
       });
     }
 
@@ -1699,14 +1392,12 @@ const getRiderById = async (
     if (!rider) {
       return res.status(404).json({
         success: false,
-        message:
-          "Rider not found.",
+        message: "Rider not found.",
       });
     }
 
     return res.json({
       success: true,
-
       rider,
     });
   } catch (error) {
@@ -1722,24 +1413,20 @@ const getRiderById = async (
         "Failed to fetch rider.",
     });
   }
-};
+}
 
 // ============================================================
 // 15. APPROVE RIDER
 // ============================================================
 
-const approveRider = async (
-  req,
-  res
-) => {
+async function approveRider(req, res) {
   try {
     const { id } = req.params;
 
     if (!isValidObjectId(id)) {
       return res.status(400).json({
         success: false,
-        message:
-          "Invalid rider ID.",
+        message: "Invalid rider ID.",
       });
     }
 
@@ -1752,19 +1439,13 @@ const approveRider = async (
     if (!rider) {
       return res.status(404).json({
         success: false,
-        message:
-          "Rider not found.",
+        message: "Rider not found.",
       });
     }
 
-    rider.riderApproved =
-      true;
-
-    rider.riderStatus =
-      "approved";
-
-    rider.riderApprovedAt =
-      new Date();
+    rider.riderApproved = true;
+    rider.riderStatus = "approved";
+    rider.riderApprovedAt = new Date();
 
     rider.riderApprovedBy =
       req.user?._id ||
@@ -1779,8 +1460,7 @@ const approveRider = async (
       message:
         "Rider approved successfully.",
 
-      rider:
-        sanitizeUser(rider),
+      rider: sanitizeUser(rider),
     });
   } catch (error) {
     console.error(
@@ -1795,24 +1475,20 @@ const approveRider = async (
         "Failed to approve rider.",
     });
   }
-};
+}
 
 // ============================================================
 // 16. REJECT RIDER
 // ============================================================
 
-const rejectRider = async (
-  req,
-  res
-) => {
+async function rejectRider(req, res) {
   try {
     const { id } = req.params;
 
     if (!isValidObjectId(id)) {
       return res.status(400).json({
         success: false,
-        message:
-          "Invalid rider ID.",
+        message: "Invalid rider ID.",
       });
     }
 
@@ -1825,22 +1501,14 @@ const rejectRider = async (
     if (!rider) {
       return res.status(404).json({
         success: false,
-        message:
-          "Rider not found.",
+        message: "Rider not found.",
       });
     }
 
-    rider.riderApproved =
-      false;
-
-    rider.riderStatus =
-      "rejected";
-
-    rider.riderApprovedAt =
-      null;
-
-    rider.riderApprovedBy =
-      null;
+    rider.riderApproved = false;
+    rider.riderStatus = "rejected";
+    rider.riderApprovedAt = null;
+    rider.riderApprovedBy = null;
 
     if (req.body?.reason) {
       rider.riderRejectionReason =
@@ -1857,8 +1525,7 @@ const rejectRider = async (
       message:
         "Rider rejected successfully.",
 
-      rider:
-        sanitizeUser(rider),
+      rider: sanitizeUser(rider),
     });
   } catch (error) {
     console.error(
@@ -1873,16 +1540,13 @@ const rejectRider = async (
         "Failed to reject rider.",
     });
   }
-};
+}
 
 // ============================================================
 // 17. UPDATE RIDER STATUS
 // ============================================================
 
-const updateRiderStatus = async (
-  req,
-  res
-) => {
+async function updateRiderStatus(req, res) {
   try {
     const { id } = req.params;
 
@@ -1895,8 +1559,7 @@ const updateRiderStatus = async (
     if (!isValidObjectId(id)) {
       return res.status(400).json({
         success: false,
-        message:
-          "Invalid rider ID.",
+        message: "Invalid rider ID.",
       });
     }
 
@@ -1909,31 +1572,22 @@ const updateRiderStatus = async (
     if (!rider) {
       return res.status(404).json({
         success: false,
-        message:
-          "Rider not found.",
+        message: "Rider not found.",
       });
     }
 
-    if (
-      status !== undefined
-    ) {
+    if (status !== undefined) {
       rider.riderStatus =
         String(status);
     }
 
-    if (
-      riderStatus !== undefined
-    ) {
+    if (riderStatus !== undefined) {
       rider.riderStatus =
         String(riderStatus);
     }
 
-    if (
-      typeof isActive ===
-      "boolean"
-    ) {
-      rider.isActive =
-        isActive;
+    if (typeof isActive === "boolean") {
+      rider.isActive = isActive;
     }
 
     await rider.save();
@@ -1944,8 +1598,7 @@ const updateRiderStatus = async (
       message:
         "Rider status updated successfully.",
 
-      rider:
-        sanitizeUser(rider),
+      rider: sanitizeUser(rider),
     });
   } catch (error) {
     console.error(
@@ -1960,24 +1613,20 @@ const updateRiderStatus = async (
         "Failed to update rider status.",
     });
   }
-};
+}
 
 // ============================================================
 // 18. UPDATE RIDER PROFILE
 // ============================================================
 
-const updateRiderProfile = async (
-  req,
-  res
-) => {
+async function updateRiderProfile(req, res) {
   try {
     const { id } = req.params;
 
     if (!isValidObjectId(id)) {
       return res.status(400).json({
         success: false,
-        message:
-          "Invalid rider ID.",
+        message: "Invalid rider ID.",
       });
     }
 
@@ -1990,8 +1639,7 @@ const updateRiderProfile = async (
     if (!rider) {
       return res.status(404).json({
         success: false,
-        message:
-          "Rider not found.",
+        message: "Rider not found.",
       });
     }
 
@@ -2013,17 +1661,11 @@ const updateRiderProfile = async (
       "isActive",
     ];
 
-    allowedFields.forEach(
-      (field) => {
-        if (
-          req.body[field] !==
-          undefined
-        ) {
-          rider[field] =
-            req.body[field];
-        }
+    allowedFields.forEach((field) => {
+      if (req.body[field] !== undefined) {
+        rider[field] = req.body[field];
       }
-    );
+    });
 
     await rider.save();
 
@@ -2033,8 +1675,7 @@ const updateRiderProfile = async (
       message:
         "Rider profile updated successfully.",
 
-      rider:
-        sanitizeUser(rider),
+      rider: sanitizeUser(rider),
     });
   } catch (error) {
     console.error(
@@ -2049,38 +1690,31 @@ const updateRiderProfile = async (
         "Failed to update rider profile.",
     });
   }
-};
+}
 
 // ============================================================
-// EXPORT CONTROLLERS
+// EXPORTS
 // ============================================================
 
 module.exports = {
-  // Dashboard
   getDashboardStats,
 
-  // Users
   getUsers,
   getUserById,
   updateUserRole,
   updateUserStatus,
 
-  // Seller verification
   verifySeller,
   unverifySeller,
 
-  // Users
   deleteUser,
 
-  // Products
   getProducts,
   deleteProduct,
 
-  // Orders
   getOrders,
   updateOrderStatus,
 
-  // Riders
   getRiders,
   getRiderById,
   approveRider,
