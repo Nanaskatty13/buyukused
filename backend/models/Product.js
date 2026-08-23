@@ -119,7 +119,6 @@ const productSchema = new mongoose.Schema(
 
     sellerPhone: {
       type: String,
-      required: [true, "Seller phone number is required"],
       default: "",
       trim: true,
       maxlength: 30,
