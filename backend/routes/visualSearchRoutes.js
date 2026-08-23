@@ -4,27 +4,22 @@
 // ============================================================
 
 const express = require("express");
-
 const router = express.Router();
 
-const visualSearchController = require(
-  "../controllers/visualSearchController"
-);
+const productController = require("../controllers/productController");
 
-const upload = require(
-  "../middleware/upload"
-);
+const upload = require("../middleware/upload");
 
 // ============================================================
+// VISUAL SEARCH
+// ============================================================
+//
 // POST /api/visual-search
-// ============================================================
 //
 // Form-data:
-//
-// image      = product image
+// image = uploaded image
 //
 // Optional:
-//
 // category
 // location
 // minPrice
@@ -36,11 +31,7 @@ const upload = require(
 router.post(
   "/",
   upload.single("image"),
-  visualSearchController.visualSearch
+  productController.visualSearch
 );
-
-// ============================================================
-// EXPORT
-// ============================================================
 
 module.exports = router;

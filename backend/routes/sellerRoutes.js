@@ -1,6 +1,6 @@
 // ============================================================
 // backend/routes/sellerRoutes.js
-// BuyUKUsed - Seller Routes
+// BuyUKUsed Seller Routes
 // ============================================================
 
 const express = require("express");
@@ -15,77 +15,83 @@ const {
   registerSeller,
   getSellerProfile,
   updateSellerProfile,
+
   getSellerDashboard,
+  getSellerEarnings,
   getSellerAnalytics,
+
   getMyProducts,
+  createProductSeller,
+  updateProductSeller,
+  deleteProductSeller,
+
   getSellerOrders,
   getSellerOrderById,
   updateSellerOrderStatus,
-  getSellerEarnings,
+
   getPublicSellerProfile,
   getPublicSellerProducts,
-  verifySeller,
-  rejectSeller,
 } = require("../controllers/sellerController");
 
 // ============================================================
-// AUTH MIDDLEWARE
+// MIDDLEWARE
 // ============================================================
 
-const {
-  authenticate,
-  requireRoles,
-} = require("../middleware/authMiddleware");
+const { protect } = require("../middleware/auth");
 
 // ============================================================
-// ROLE MIDDLEWARE
+// OPTIONAL UPLOAD MIDDLEWARE
+// ============================================================
+//
+// Your seller product controller may already handle uploads
+// internally. If your project has a specific upload middleware,
+// you can add it here.
+//
+// Example:
+//
+// const upload = require("../middleware/upload");
+//
+// Do NOT add upload middleware unless your controller expects it.
 // ============================================================
 
-const requireSeller = requireRoles(
-  "seller",
-  "admin"
-);
-
-const requireAdmin = requireRoles(
-  "admin"
-);
-
 // ============================================================
-// REGISTER AS SELLER
+// SELLER REGISTRATION
 // ============================================================
 
-// POST /api/sellers/register
+/**
+ * POST /api/sellers/register
+ *
+ * Register the authenticated user as a seller.
+ */
 router.post(
   "/register",
-  authenticate,
+  protect,
   registerSeller
 );
 
 // ============================================================
-// PRIVATE SELLER PROFILE
+// OWN SELLER PROFILE
 // ============================================================
 
-// GET /api/sellers/profile
+/**
+ * GET /api/sellers/profile
+ *
+ * Get currently authenticated seller profile.
+ */
 router.get(
   "/profile",
-  authenticate,
-  requireSeller,
+  protect,
   getSellerProfile
 );
 
-// PUT /api/sellers/profile
+/**
+ * PUT /api/sellers/profile
+ *
+ * Update currently authenticated seller profile.
+ */
 router.put(
   "/profile",
-  authenticate,
-  requireSeller,
-  updateSellerProfile
-);
-
-// PATCH /api/sellers/profile
-router.patch(
-  "/profile",
-  authenticate,
-  requireSeller,
+  protect,
   updateSellerProfile
 );
 
@@ -93,148 +99,204 @@ router.patch(
 // SELLER DASHBOARD
 // ============================================================
 
-// GET /api/sellers/dashboard
+/**
+ * GET /api/sellers/dashboard
+ *
+ * Seller dashboard statistics.
+ *
+ * Optional:
+ * ?period=today
+ * ?period=week
+ * ?period=month
+ * ?period=year
+ * ?period=all
+ */
 router.get(
   "/dashboard",
-  authenticate,
-  requireSeller,
+  protect,
   getSellerDashboard
-);
-
-// ============================================================
-// SELLER ANALYTICS
-// ============================================================
-
-// GET /api/sellers/analytics
-router.get(
-  "/analytics",
-  authenticate,
-  requireSeller,
-  getSellerAnalytics
 );
 
 // ============================================================
 // SELLER EARNINGS
 // ============================================================
 
-// GET /api/sellers/earnings
+/**
+ * GET /api/sellers/earnings
+ *
+ * Seller earnings.
+ */
 router.get(
   "/earnings",
-  authenticate,
-  requireSeller,
+  protect,
   getSellerEarnings
 );
 
 // ============================================================
-// SELLER PRODUCTS
+// SELLER ANALYTICS
 // ============================================================
 
-// GET /api/sellers/products
+/**
+ * GET /api/sellers/analytics
+ *
+ * Seller analytics.
+ */
+router.get(
+  "/analytics",
+  protect,
+  getSellerAnalytics
+);
+
+// ============================================================
+// SELLER PRODUCT MANAGEMENT
+// ============================================================
+
+/**
+ * GET /api/sellers/products
+ *
+ * Get products belonging to the authenticated seller.
+ *
+ * Example:
+ *
+ * /api/sellers/products?page=1&limit=20
+ *
+ * Optional:
+ * ?status=active
+ * ?status=sold
+ * ?sort=-createdAt
+ */
 router.get(
   "/products",
-  authenticate,
-  requireSeller,
+  protect,
   getMyProducts
+);
+
+/**
+ * POST /api/sellers/products
+ *
+ * Create a new product.
+ *
+ * The controller is responsible for processing the
+ * product data and uploaded files.
+ */
+router.post(
+  "/products",
+  protect,
+  createProductSeller
+);
+
+/**
+ * PUT /api/sellers/products/:productId
+ *
+ * Update one of the authenticated seller's products.
+ */
+router.put(
+  "/products/:productId",
+  protect,
+  updateProductSeller
+);
+
+/**
+ * DELETE /api/sellers/products/:productId
+ *
+ * Delete one of the authenticated seller's products.
+ */
+router.delete(
+  "/products/:productId",
+  protect,
+  deleteProductSeller
 );
 
 // ============================================================
 // SELLER ORDERS
 // ============================================================
 
-// GET /api/sellers/orders
+/**
+ * GET /api/sellers/orders
+ *
+ * Get orders containing the authenticated seller's products.
+ */
 router.get(
   "/orders",
-  authenticate,
-  requireSeller,
+  protect,
   getSellerOrders
 );
 
-// ============================================================
-// SINGLE SELLER ORDER
-// ============================================================
-
-// GET /api/sellers/orders/:orderId
+/**
+ * GET /api/sellers/orders/:orderId
+ *
+ * Get one seller order.
+ */
 router.get(
   "/orders/:orderId",
-  authenticate,
-  requireSeller,
+  protect,
   getSellerOrderById
 );
 
-// ============================================================
-// UPDATE SELLER ORDER STATUS
-// ============================================================
-
-// PATCH /api/sellers/orders/:orderId/status
-router.patch(
+/**
+ * PUT /api/sellers/orders/:orderId/status
+ *
+ * Update seller order status.
+ */
+router.put(
   "/orders/:orderId/status",
-  authenticate,
-  requireSeller,
+  protect,
   updateSellerOrderStatus
-);
-
-// ============================================================
-// PUBLIC SELLER PRODUCTS
-// ============================================================
-//
-// IMPORTANT:
-// These routes must appear before:
-//
-// /:sellerId
-//
-// Otherwise "/:sellerId" could catch "products"
-// incorrectly.
-//
-// ============================================================
-
-// GET /api/sellers/:sellerId/products
-router.get(
-  "/:sellerId/products",
-  getPublicSellerProducts
 );
 
 // ============================================================
 // PUBLIC SELLER PROFILE
 // ============================================================
+//
+// IMPORTANT:
+//
+// These routes intentionally DO NOT use `protect`.
+//
+// This allows anyone to visit:
+//
+// /seller/:sellerId
+//
+// and see:
+//
+// - Seller name
+// - Shop name
+// - Profile image
+// - Location
+// - Member since
+// - Seller rating
+// - Product count
+//
+// without logging in.
+// ============================================================
 
-// GET /api/sellers/:sellerId
+/**
+ * GET /api/sellers/:sellerId
+ *
+ * Public seller profile.
+ */
 router.get(
   "/:sellerId",
   getPublicSellerProfile
 );
 
-// ============================================================
-// ADMIN SELLER VERIFICATION
-// ============================================================
-//
-// These routes are intentionally NOT inside the normal
-// public seller routes.
-//
-// They are mounted separately by server.js at:
-//
-// /api/admin/sellers
-//
-// Therefore:
-//
-// POST /api/admin/sellers/:sellerId/verify
-// POST /api/admin/sellers/:sellerId/reject
-//
-// ============================================================
-
-// POST /api/admin/sellers/:sellerId/verify
-router.post(
-  "/:sellerId/verify",
-  authenticate,
-  requireAdmin,
-  verifySeller
-);
-
-// POST /api/admin/sellers/:sellerId/reject
-router.post(
-  "/:sellerId/reject",
-  authenticate,
-  requireAdmin,
-  rejectSeller
+/**
+ * GET /api/sellers/:sellerId/products
+ *
+ * Public seller products.
+ *
+ * Example:
+ *
+ * /api/sellers/123/products?page=1&limit=20&sort=-createdAt
+ *
+ * Optional:
+ *
+ * ?status=active
+ * ?category=Phones
+ * ?search=iPhone
+ */
+router.get(
+  "/:sellerId/products",
+  getPublicSellerProducts
 );
 
 // ============================================================

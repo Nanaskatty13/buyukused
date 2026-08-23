@@ -21,7 +21,7 @@ import TVForm from "../components/TVForm";
 import CarForm from "../components/CarForm";
 
 // ============================================================
-// LOCATION DATA
+// LOCATION DATA (complete)
 // ============================================================
 
 const countries = ["Ghana"];
@@ -413,94 +413,6 @@ const ACCESSORY_COMPATIBILITY = [
   "Other",
 ];
 
-// ============================================================
-// COSMETICS OPTIONS
-// ============================================================
-
-const COSMETIC_TYPES = [
-  "Makeup",
-  "Skincare",
-  "Haircare",
-  "Fragrance",
-  "Body Care",
-  "Bath & Shower",
-  "Nail Care",
-  "Lip Care",
-  "Sun Care",
-  "Men's Grooming",
-  "Women's Grooming",
-  "Beauty Tools",
-  "Personal Care",
-  "Other",
-];
-
-const COSMETIC_SKIN_TYPES = [
-  "All Skin Types",
-  "Normal",
-  "Dry",
-  "Oily",
-  "Combination",
-  "Sensitive",
-  "Acne-Prone",
-  "Mature",
-];
-
-const COSMETIC_CONCERNS = [
-  "None",
-  "Acne",
-  "Dark Spots",
-  "Hyperpigmentation",
-  "Dryness",
-  "Oil Control",
-  "Aging",
-  "Fine Lines",
-  "Dullness",
-  "Uneven Skin Tone",
-  "Sun Damage",
-  "Hair Growth",
-  "Hair Damage",
-  "Other",
-];
-
-const COSMETIC_FINISHES = [
-  "Natural",
-  "Matte",
-  "Dewy",
-  "Glossy",
-  "Satin",
-  "Shimmer",
-  "Metallic",
-  "Cream",
-  "Other",
-];
-
-const COSMETIC_COVERAGE = [
-  "Sheer",
-  "Light",
-  "Medium",
-  "Full",
-  "Buildable",
-  "Not Applicable",
-];
-
-const COSMETIC_SIZES = [
-  "Travel Size",
-  "Mini",
-  "Small",
-  "Medium",
-  "Large",
-  "Full Size",
-  "Professional Size",
-];
-
-const COSMETIC_GENDERS = [
-  "Unisex",
-  "Women",
-  "Men",
-  "Children",
-  "Babies",
-];
-
 const CONDITIONS = [
   "Brand New",
   "Like New",
@@ -534,89 +446,62 @@ const PostAd = () => {
   const [selectedCity, setSelectedCity] = useState("");
 
   // ==========================================================
-  // MULTI-SELECT PHONE STATE
+  // MULTI-SELECT COLOR / STORAGE STATE
   // ==========================================================
 
   const [selectedColors, setSelectedColors] = useState([]);
   const [selectedStorage, setSelectedStorage] = useState([]);
 
   // ==========================================================
-  // FORM DATA
+  // FORM DATA – all categories including Cars
   // ==========================================================
 
   const [formData, setFormData] = useState({
-    // --------------------------------------------------------
-    // BASIC
-    // --------------------------------------------------------
-
+    // Basic
     title: "",
     price: "",
     category: "electronics",
     location: "Ghana",
     description: "",
 
-    // --------------------------------------------------------
-    // SELLER
-    // --------------------------------------------------------
-
+    // Seller
     sellerName: "",
     sellerPhone: "",
 
-    // --------------------------------------------------------
-    // GENERAL
-    // --------------------------------------------------------
-
+    // General
     brand: "",
     model: "",
     color: "",
     condition: "Good",
     warranty: "",
 
-    // --------------------------------------------------------
-    // SELLING
-    // --------------------------------------------------------
-
+    // Selling
     negotiation: false,
     swapAccepted: false,
 
-    // --------------------------------------------------------
-    // PHONE
-    // --------------------------------------------------------
-
+    // Phone
     storage: "",
     batteryHealth: "",
     faceId: "",
     simStatus: "",
 
-    // --------------------------------------------------------
-    // LAPTOP
-    // --------------------------------------------------------
-
+    // Laptop
     processor: "",
     ram: "",
     screenSize: "",
     graphics: "",
 
-    // --------------------------------------------------------
-    // TABLET
-    // --------------------------------------------------------
-
+    // Tablet
     year: "",
     connectivity: "",
 
-    // --------------------------------------------------------
-    // ACCESSORIES
-    // --------------------------------------------------------
-
+    // Accessories
     accessoryType: "",
     compatibility: "",
     accessoryColor: "",
     accessoryMaterial: "",
 
-    // --------------------------------------------------------
-    // GAME CONSOLE
-    // --------------------------------------------------------
-
+    // Game Console
     consoleType: "",
     edition: "",
     discDrive: "",
@@ -625,16 +510,10 @@ const PostAd = () => {
     resolution: "",
     videoOutput: "",
 
-    // --------------------------------------------------------
-    // SMARTWATCH
-    // --------------------------------------------------------
-
+    // Smartwatch
     watchSize: "",
 
-    // --------------------------------------------------------
     // TV
-    // --------------------------------------------------------
-
     tvType: "",
     displayTechnology: "",
     refreshRate: "",
@@ -646,10 +525,7 @@ const PostAd = () => {
     voiceControl: false,
     wallMountable: false,
 
-    // --------------------------------------------------------
-    // CAR
-    // --------------------------------------------------------
-
+    // Car
     mileage: "",
     bodyType: "",
     fuelType: "",
@@ -659,32 +535,6 @@ const PostAd = () => {
     seatingCapacity: "",
     exteriorColor: "",
     interiorColor: "",
-
-    // ========================================================
-    // COSMETICS
-    // ========================================================
-
-    cosmeticType: "",
-    cosmeticBrand: "",
-    productLine: "",
-    shade: "",
-    skinType: "",
-    skinConcern: "",
-    finish: "",
-    coverage: "",
-    cosmeticSize: "",
-    volume: "",
-    scent: "",
-    ingredients: "",
-    expirationDate: "",
-    batchNumber: "",
-    cosmeticGender: "Unisex",
-    suitableFor: "",
-    sealed: false,
-    authentic: true,
-    crueltyFree: false,
-    vegan: false,
-    parabenFree: false,
   });
 
   // ==========================================================
@@ -705,7 +555,7 @@ const PostAd = () => {
   const [authLoading, setAuthLoading] = useState(false);
 
   // ==========================================================
-  // CATEGORY MAP
+  // CATEGORY MAP – exact match with backend enum
   // ==========================================================
 
   const categoryMap = {
@@ -718,7 +568,6 @@ const PostAd = () => {
     smartwatches: "Smartwatches",
     tvs: "TVs",
     cars: "Cars",
-    cosmetics: "Cosmetics",
   };
 
   // ==========================================================
@@ -729,19 +578,12 @@ const PostAd = () => {
   const isLaptop = formData.category === "laptops";
   const isTablet = formData.category === "tablets";
   const isAccessory = formData.category === "accessories";
-
   const isGameConsole =
     formData.category === "gameConsoles";
-
   const isSmartwatch =
     formData.category === "smartwatches";
-
   const isTV = formData.category === "tvs";
-
   const isCar = formData.category === "cars";
-
-  const isCosmetics =
-    formData.category === "cosmetics";
 
   // ==========================================================
   // LOCATION EFFECT
@@ -769,7 +611,7 @@ const PostAd = () => {
   ]);
 
   // ==========================================================
-  // MEDIA CLEANUP
+  // CLEANUP MEDIA PREVIEWS
   // ==========================================================
 
   useEffect(() => {
@@ -787,12 +629,7 @@ const PostAd = () => {
   // ==========================================================
 
   const handleChange = (e) => {
-    const {
-      name,
-      value,
-      type,
-      checked,
-    } = e.target;
+    const { name, value, type, checked } = e.target;
 
     setFormData((prev) => ({
       ...prev,
@@ -808,10 +645,7 @@ const PostAd = () => {
   // ==========================================================
 
   const handleCheckboxChange = (e) => {
-    const {
-      name,
-      checked,
-    } = e.target;
+    const { name, checked } = e.target;
 
     setFormData((prev) => ({
       ...prev,
@@ -820,7 +654,7 @@ const PostAd = () => {
   };
 
   // ==========================================================
-  // PHONE COLOR MULTI SELECT
+  // MULTI-SELECT COLOR
   // ==========================================================
 
   const handleColorChange = (e) => {
@@ -835,10 +669,7 @@ const PostAd = () => {
         return prev;
       }
 
-      const updated = [
-        ...prev,
-        value,
-      ];
+      const updated = [...prev, value];
 
       setFormData((current) => ({
         ...current,
@@ -852,14 +683,13 @@ const PostAd = () => {
   };
 
   // ==========================================================
-  // REMOVE COLOR
+  // REMOVE SELECTED COLOR
   // ==========================================================
 
   const removeColor = (colorToRemove) => {
     setSelectedColors((prev) => {
       const updated = prev.filter(
-        (color) =>
-          color !== colorToRemove
+        (color) => color !== colorToRemove
       );
 
       setFormData((current) => ({
@@ -872,7 +702,7 @@ const PostAd = () => {
   };
 
   // ==========================================================
-  // STORAGE MULTI SELECT
+  // MULTI-SELECT STORAGE
   // ==========================================================
 
   const handleStorageChange = (e) => {
@@ -887,10 +717,7 @@ const PostAd = () => {
         return prev;
       }
 
-      const updated = [
-        ...prev,
-        value,
-      ];
+      const updated = [...prev, value];
 
       setFormData((current) => ({
         ...current,
@@ -904,7 +731,7 @@ const PostAd = () => {
   };
 
   // ==========================================================
-  // REMOVE STORAGE
+  // REMOVE SELECTED STORAGE
   // ==========================================================
 
   const removeStorage = (storageToRemove) => {
@@ -924,7 +751,7 @@ const PostAd = () => {
   };
 
   // ==========================================================
-  // CATEGORY CHANGE
+  // CATEGORY CHANGE – clear irrelevant fields
   // ==========================================================
 
   const handleCategoryChange = (e) => {
@@ -932,13 +759,9 @@ const PostAd = () => {
 
     setFormData((prev) => ({
       ...prev,
-
       category,
 
-      // ------------------------------------------------------
-      // PHONE
-      // ------------------------------------------------------
-
+      // Clear phone fields
       ...(category !== "phones"
         ? {
             simStatus: "",
@@ -947,10 +770,7 @@ const PostAd = () => {
           }
         : {}),
 
-      // ------------------------------------------------------
-      // LAPTOP
-      // ------------------------------------------------------
-
+      // Clear laptop fields
       ...(category !== "laptops"
         ? {
             processor: "",
@@ -960,10 +780,7 @@ const PostAd = () => {
           }
         : {}),
 
-      // ------------------------------------------------------
-      // TABLET
-      // ------------------------------------------------------
-
+      // Clear tablet fields
       ...(category !== "tablets"
         ? {
             year: "",
@@ -971,10 +788,7 @@ const PostAd = () => {
           }
         : {}),
 
-      // ------------------------------------------------------
-      // ACCESSORY
-      // ------------------------------------------------------
-
+      // Clear accessory fields
       ...(category !== "accessories"
         ? {
             accessoryType: "",
@@ -984,10 +798,7 @@ const PostAd = () => {
           }
         : {}),
 
-      // ------------------------------------------------------
-      // GAME CONSOLE
-      // ------------------------------------------------------
-
+      // Clear console fields
       ...(category !== "gameConsoles"
         ? {
             consoleType: "",
@@ -1000,20 +811,14 @@ const PostAd = () => {
           }
         : {}),
 
-      // ------------------------------------------------------
-      // SMARTWATCH
-      // ------------------------------------------------------
-
+      // Clear smartwatch fields
       ...(category !== "smartwatches"
         ? {
             watchSize: "",
           }
         : {}),
 
-      // ------------------------------------------------------
-      // TV
-      // ------------------------------------------------------
-
+      // Clear TV fields
       ...(category !== "tvs"
         ? {
             tvType: "",
@@ -1029,10 +834,7 @@ const PostAd = () => {
           }
         : {}),
 
-      // ------------------------------------------------------
-      // CAR
-      // ------------------------------------------------------
-
+      // Clear car fields
       ...(category !== "cars"
         ? {
             mileage: "",
@@ -1046,38 +848,9 @@ const PostAd = () => {
             interiorColor: "",
           }
         : {}),
-
-      // ======================================================
-      // COSMETICS
-      // ======================================================
-
-      ...(category !== "cosmetics"
-        ? {
-            cosmeticType: "",
-            cosmeticBrand: "",
-            productLine: "",
-            shade: "",
-            skinType: "",
-            skinConcern: "",
-            finish: "",
-            coverage: "",
-            cosmeticSize: "",
-            volume: "",
-            scent: "",
-            ingredients: "",
-            expirationDate: "",
-            batchNumber: "",
-            cosmeticGender: "Unisex",
-            suitableFor: "",
-            sealed: false,
-            authentic: true,
-            crueltyFree: false,
-            vegan: false,
-            parabenFree: false,
-          }
-        : {}),
     }));
 
+    // Clear multi-select fields when leaving phones
     if (category !== "phones") {
       setSelectedColors([]);
       setSelectedStorage([]);
@@ -1133,46 +906,36 @@ const PostAd = () => {
       setError(
         "Please select valid image files."
       );
-
       e.target.value = "";
       return;
     }
 
     const existingImages =
       mediaItems.filter(
-        (item) =>
-          item.type === "image"
+        (item) => item.type === "image"
       ).length;
 
-    const remaining =
-      5 - existingImages;
+    const remaining = 5 - existingImages;
 
     if (remaining <= 0) {
       setError(
         "You can upload a maximum of 5 images."
       );
-
       e.target.value = "";
       return;
     }
 
     const filesToAdd =
-      imageFiles.slice(
-        0,
-        remaining
-      );
+      imageFiles.slice(0, remaining);
 
-    const newItems =
-      filesToAdd.map(
-        (file) => ({
-          file,
-          preview:
-            URL.createObjectURL(
-              file
-            ),
-          type: "image",
-        })
-      );
+    const newItems = filesToAdd.map(
+      (file) => ({
+        file,
+        preview:
+          URL.createObjectURL(file),
+        type: "image",
+      })
+    );
 
     setMediaItems((prev) => [
       ...prev,
@@ -1180,14 +943,11 @@ const PostAd = () => {
     ]);
 
     if (
-      imageFiles.length >
-      remaining
+      imageFiles.length > remaining
     ) {
       setError(
         `Only ${remaining} more image${
-          remaining === 1
-            ? ""
-            : "s"
+          remaining === 1 ? "" : "s"
         } can be added.`
       );
     } else {
@@ -1202,37 +962,29 @@ const PostAd = () => {
   // ==========================================================
 
   const handleVideoChange = (e) => {
-    const file =
-      e.target.files?.[0];
+    const file = e.target.files?.[0];
 
     if (!file) {
       return;
     }
 
-    if (
-      !file.type.startsWith(
-        "video/"
-      )
-    ) {
+    if (!file.type.startsWith("video/")) {
       setError(
         "Please select a valid video file."
       );
-
       e.target.value = "";
       return;
     }
 
     const existingVideo =
       mediaItems.some(
-        (item) =>
-          item.type === "video"
+        (item) => item.type === "video"
       );
 
     if (existingVideo) {
       setError(
         "You can upload only one video."
       );
-
       e.target.value = "";
       return;
     }
@@ -1244,7 +996,6 @@ const PostAd = () => {
       setError(
         "Video must be smaller than 50MB."
       );
-
       e.target.value = "";
       return;
     }
@@ -1254,9 +1005,7 @@ const PostAd = () => {
       {
         file,
         preview:
-          URL.createObjectURL(
-            file
-          ),
+          URL.createObjectURL(file),
         type: "video",
       },
     ]);
@@ -1270,19 +1019,14 @@ const PostAd = () => {
   // ==========================================================
 
   const removeMedia = (index) => {
-    const item =
-      mediaItems[index];
+    const item = mediaItems[index];
 
     if (item?.preview) {
-      URL.revokeObjectURL(
-        item.preview
-      );
+      URL.revokeObjectURL(item.preview);
     }
 
     setMediaItems((prev) =>
-      prev.filter(
-        (_, i) => i !== index
-      )
+      prev.filter((_, i) => i !== index)
     );
   };
 
@@ -1293,9 +1037,7 @@ const PostAd = () => {
   const goToNextStep = () => {
     setError("");
 
-    if (
-      !formData.title.trim()
-    ) {
+    if (!formData.title.trim()) {
       setError(
         "Please enter an ad title."
       );
@@ -1313,9 +1055,7 @@ const PostAd = () => {
       return;
     }
 
-    if (
-      Number(formData.price) < 0
-    ) {
+    if (Number(formData.price) < 0) {
       setError(
         "Price cannot be negative."
       );
@@ -1331,10 +1071,6 @@ const PostAd = () => {
       return;
     }
 
-    // --------------------------------------------------------
-    // LAPTOP
-    // --------------------------------------------------------
-
     if (
       isLaptop &&
       !formData.brand
@@ -1344,10 +1080,6 @@ const PostAd = () => {
       );
       return;
     }
-
-    // --------------------------------------------------------
-    // TABLET
-    // --------------------------------------------------------
 
     if (
       isTablet &&
@@ -1359,33 +1091,21 @@ const PostAd = () => {
       return;
     }
 
-    // --------------------------------------------------------
-    // ACCESSORY
-    // --------------------------------------------------------
-
     if (isAccessory) {
-      if (
-        !formData.accessoryType
-      ) {
+      if (!formData.accessoryType) {
         setError(
           "Please select the accessory type."
         );
         return;
       }
 
-      if (
-        !formData.brand.trim()
-      ) {
+      if (!formData.brand.trim()) {
         setError(
           "Please enter the accessory brand."
         );
         return;
       }
     }
-
-    // --------------------------------------------------------
-    // GAME CONSOLE
-    // --------------------------------------------------------
 
     if (
       isGameConsole &&
@@ -1397,10 +1117,6 @@ const PostAd = () => {
       return;
     }
 
-    // --------------------------------------------------------
-    // SMARTWATCH
-    // --------------------------------------------------------
-
     if (
       isSmartwatch &&
       !formData.brand
@@ -1410,10 +1126,6 @@ const PostAd = () => {
       );
       return;
     }
-
-    // --------------------------------------------------------
-    // TV
-    // --------------------------------------------------------
 
     if (
       isTV &&
@@ -1425,10 +1137,6 @@ const PostAd = () => {
       return;
     }
 
-    // --------------------------------------------------------
-    // CAR
-    // --------------------------------------------------------
-
     if (
       isCar &&
       !formData.brand
@@ -1437,30 +1145,6 @@ const PostAd = () => {
         "Please select a car brand."
       );
       return;
-    }
-
-    // ========================================================
-    // COSMETICS
-    // ========================================================
-
-    if (isCosmetics) {
-      if (
-        !formData.cosmeticType
-      ) {
-        setError(
-          "Please select the cosmetic type."
-        );
-        return;
-      }
-
-      if (
-        !formData.brand.trim()
-      ) {
-        setError(
-          "Please enter the cosmetic brand."
-        );
-        return;
-      }
     }
 
     setStep(2);
@@ -1480,33 +1164,21 @@ const PostAd = () => {
   // ==========================================================
 
   const buildProductFormData = () => {
-    const form =
-      new FormData();
+    const form = new FormData();
 
     const mappedCategory =
-      categoryMap[
-        formData.category
-      ] ||
+      categoryMap[formData.category] ||
       formData.category;
 
-    // ✅ FIX: Send the category as-is (capitalised) to match backend enum
-    const finalCategory = mappedCategory; // <-- no toLowerCase()
-
-    // ========================================================
+    // --------------------------------------------------------
     // COMMON FIELDS
-    // ========================================================
+    // --------------------------------------------------------
 
     const baseFields = {
-      title:
-        formData.title.trim(),
-
-      price:
-        formData.price,
-
-      category: finalCategory,
-
-      location:
-        formData.location,
+      title: formData.title.trim(),
+      price: formData.price,
+      category: mappedCategory,
+      location: formData.location,
 
       description:
         formData.description.trim(),
@@ -1517,11 +1189,8 @@ const PostAd = () => {
       sellerPhone:
         formData.sellerPhone.trim(),
 
-      brand:
-        formData.brand.trim(),
-
-      model:
-        formData.model.trim(),
+      brand: formData.brand.trim(),
+      model: formData.model.trim(),
 
       color:
         formData.color.trim(),
@@ -1533,19 +1202,15 @@ const PostAd = () => {
         formData.warranty,
 
       negotiation:
-        String(
-          formData.negotiation
-        ),
+        String(formData.negotiation),
 
       swapAccepted:
-        String(
-          formData.swapAccepted
-        ),
+        String(formData.swapAccepted),
     };
 
-    // ========================================================
-    // PHONE
-    // ========================================================
+    // --------------------------------------------------------
+    // PHONE ONLY
+    // --------------------------------------------------------
 
     if (isPhone) {
       if (formData.storage) {
@@ -1554,8 +1219,7 @@ const PostAd = () => {
       }
 
       if (
-        formData.batteryHealth !==
-        ""
+        formData.batteryHealth !== ""
       ) {
         baseFields.batteryHealth =
           String(
@@ -1579,9 +1243,9 @@ const PostAd = () => {
       }
     }
 
-    // ========================================================
-    // LAPTOP
-    // ========================================================
+    // --------------------------------------------------------
+    // LAPTOP ONLY
+    // --------------------------------------------------------
 
     if (isLaptop) {
       baseFields.processor =
@@ -1590,6 +1254,10 @@ const PostAd = () => {
       baseFields.ram =
         formData.ram.trim();
 
+      /*
+       * Storage remains a string in formData.
+       * This keeps compatibility with LaptopForm.
+       */
       if (formData.storage) {
         baseFields.storage =
           formData.storage.trim();
@@ -1602,16 +1270,14 @@ const PostAd = () => {
         formData.graphics.trim();
     }
 
-    // ========================================================
-    // TABLET
-    // ========================================================
+    // --------------------------------------------------------
+    // TABLET ONLY
+    // --------------------------------------------------------
 
     if (isTablet) {
       if (formData.storage) {
         baseFields.storage =
-          String(
-            formData.storage
-          ).trim();
+          String(formData.storage).trim();
       }
 
       if (formData.year) {
@@ -1619,9 +1285,7 @@ const PostAd = () => {
           formData.year;
       }
 
-      if (
-        formData.connectivity
-      ) {
+      if (formData.connectivity) {
         baseFields.connectivity =
           formData.connectivity;
       }
@@ -1632,39 +1296,33 @@ const PostAd = () => {
       }
     }
 
-    // ========================================================
-    // ACCESSORY
-    // ========================================================
+    // --------------------------------------------------------
+    // ACCESSORY ONLY
+    // --------------------------------------------------------
 
     if (isAccessory) {
       baseFields.accessoryType =
         formData.accessoryType;
 
-      if (
-        formData.compatibility
-      ) {
+      if (formData.compatibility) {
         baseFields.compatibility =
           formData.compatibility;
       }
 
-      if (
-        formData.accessoryColor
-      ) {
+      if (formData.accessoryColor) {
         baseFields.color =
           formData.accessoryColor.trim();
       }
 
-      if (
-        formData.accessoryMaterial
-      ) {
+      if (formData.accessoryMaterial) {
         baseFields.material =
           formData.accessoryMaterial.trim();
       }
     }
 
-    // ========================================================
-    // GAME CONSOLE
-    // ========================================================
+    // --------------------------------------------------------
+    // GAME CONSOLE ONLY
+    // --------------------------------------------------------
 
     if (isGameConsole) {
       const consoleFields = [
@@ -1695,15 +1353,13 @@ const PostAd = () => {
 
       if (formData.storage) {
         baseFields.storage =
-          String(
-            formData.storage
-          ).trim();
+          String(formData.storage).trim();
       }
     }
 
-    // ========================================================
-    // SMARTWATCH
-    // ========================================================
+    // --------------------------------------------------------
+    // SMARTWATCH ONLY
+    // --------------------------------------------------------
 
     if (isSmartwatch) {
       if (formData.watchSize) {
@@ -1712,8 +1368,7 @@ const PostAd = () => {
       }
 
       if (
-        formData.batteryHealth !==
-        ""
+        formData.batteryHealth !== ""
       ) {
         baseFields.batteryHealth =
           String(
@@ -1721,18 +1376,14 @@ const PostAd = () => {
           );
       }
 
-      if (
-        formData.connectivity
-      ) {
+      if (formData.connectivity) {
         baseFields.connectivity =
           formData.connectivity;
       }
 
       if (formData.storage) {
         baseFields.storage =
-          String(
-            formData.storage
-          ).trim();
+          String(formData.storage).trim();
       }
 
       if (formData.year) {
@@ -1741,9 +1392,9 @@ const PostAd = () => {
       }
     }
 
-    // ========================================================
-    // TV
-    // ========================================================
+    // --------------------------------------------------------
+    // TV ONLY
+    // --------------------------------------------------------
 
     if (isTV) {
       const tvFields = [
@@ -1769,19 +1420,13 @@ const PostAd = () => {
       );
 
       baseFields.smartTV =
-        String(
-          formData.smartTV
-        );
+        String(formData.smartTV);
 
       baseFields.voiceControl =
-        String(
-          formData.voiceControl
-        );
+        String(formData.voiceControl);
 
       baseFields.wallMountable =
-        String(
-          formData.wallMountable
-        );
+        String(formData.wallMountable);
 
       if (formData.screenSize) {
         baseFields.screenSize =
@@ -1798,17 +1443,15 @@ const PostAd = () => {
           formData.year;
       }
 
-      if (
-        formData.connectivity
-      ) {
+      if (formData.connectivity) {
         baseFields.connectivity =
           formData.connectivity;
       }
     }
 
-    // ========================================================
-    // CAR
-    // ========================================================
+    // --------------------------------------------------------
+    // CAR ONLY
+    // --------------------------------------------------------
 
     if (isCar) {
       const carFields = [
@@ -1841,157 +1484,14 @@ const PostAd = () => {
       }
     }
 
-    // ========================================================
-    // COSMETICS
-    // ========================================================
-
-    if (isCosmetics) {
-      /*
-       * Keep the main brand field populated.
-       * This allows existing product cards,
-       * search and filters to continue using `brand`.
-       */
-
-      baseFields.brand =
-        formData.brand.trim();
-
-      /*
-       * Cosmetics-specific fields.
-       */
-
-      baseFields.cosmeticType =
-        formData.cosmeticType;
-
-      if (
-        formData.cosmeticBrand
-      ) {
-        baseFields.cosmeticBrand =
-          formData.cosmeticBrand.trim();
-      }
-
-      if (
-        formData.productLine
-      ) {
-        baseFields.productLine =
-          formData.productLine.trim();
-      }
-
-      if (formData.shade) {
-        baseFields.shade =
-          formData.shade.trim();
-      }
-
-      if (formData.skinType) {
-        baseFields.skinType =
-          formData.skinType;
-      }
-
-      if (
-        formData.skinConcern
-      ) {
-        baseFields.skinConcern =
-          formData.skinConcern;
-      }
-
-      if (formData.finish) {
-        baseFields.finish =
-          formData.finish;
-      }
-
-      if (formData.coverage) {
-        baseFields.coverage =
-          formData.coverage;
-      }
-
-      if (
-        formData.cosmeticSize
-      ) {
-        baseFields.cosmeticSize =
-          formData.cosmeticSize;
-      }
-
-      if (formData.volume) {
-        baseFields.volume =
-          formData.volume.trim();
-      }
-
-      if (formData.scent) {
-        baseFields.scent =
-          formData.scent.trim();
-      }
-
-      if (
-        formData.ingredients
-      ) {
-        baseFields.ingredients =
-          formData.ingredients.trim();
-      }
-
-      if (
-        formData.expirationDate
-      ) {
-        baseFields.expirationDate =
-          formData.expirationDate;
-      }
-
-      if (
-        formData.batchNumber
-      ) {
-        baseFields.batchNumber =
-          formData.batchNumber.trim();
-      }
-
-      if (
-        formData.cosmeticGender
-      ) {
-        baseFields.cosmeticGender =
-          formData.cosmeticGender;
-      }
-
-      if (
-        formData.suitableFor
-      ) {
-        baseFields.suitableFor =
-          formData.suitableFor.trim();
-      }
-
-      baseFields.sealed =
-        String(
-          formData.sealed
-        );
-
-      baseFields.authentic =
-        String(
-          formData.authentic
-        );
-
-      baseFields.crueltyFree =
-        String(
-          formData.crueltyFree
-        );
-
-      baseFields.vegan =
-        String(
-          formData.vegan
-        );
-
-      baseFields.parabenFree =
-        String(
-          formData.parabenFree
-        );
-    }
-
-    // ========================================================
+    // --------------------------------------------------------
     // APPEND TEXT FIELDS
-    // ========================================================
+    // --------------------------------------------------------
 
-    Object.entries(
-      baseFields
-    ).forEach(
+    Object.entries(baseFields).forEach(
       ([key, value]) => {
         if (
-          value !==
-            undefined &&
+          value !== undefined &&
           value !== null &&
           value !== ""
         ) {
@@ -2003,9 +1503,9 @@ const PostAd = () => {
       }
     );
 
-    // ========================================================
+    // --------------------------------------------------------
     // APPEND MEDIA
-    // ========================================================
+    // --------------------------------------------------------
 
     mediaItems.forEach(
       (item) => {
@@ -2030,7 +1530,7 @@ const PostAd = () => {
     setError("");
 
     // --------------------------------------------------------
-    // AUTH
+    // AUTHENTICATION
     // --------------------------------------------------------
 
     if (!user) {
@@ -2059,19 +1559,16 @@ const PostAd = () => {
       setError(
         "Please upload at least one image for your ad."
       );
-
       setStep(1);
       return;
     }
 
     // --------------------------------------------------------
-    // LAPTOP
+    // LAPTOP VALIDATION
     // --------------------------------------------------------
 
     if (isLaptop) {
-      if (
-        !formData.model.trim()
-      ) {
+      if (!formData.model.trim()) {
         setError(
           "Please select a laptop model."
         );
@@ -2090,14 +1587,11 @@ const PostAd = () => {
         requiredFields.filter(
           (field) =>
             !String(
-              formData[field] ||
-                ""
+              formData[field] || ""
             ).trim()
         );
 
-      if (
-        missing.length > 0
-      ) {
+      if (missing.length > 0) {
         setError(
           `Please fill in: ${missing.join(
             ", "
@@ -2108,13 +1602,11 @@ const PostAd = () => {
     }
 
     // --------------------------------------------------------
-    // TABLET
+    // TABLET VALIDATION
     // --------------------------------------------------------
 
     if (isTablet) {
-      if (
-        !formData.model.trim()
-      ) {
+      if (!formData.model.trim()) {
         setError(
           "Please select a tablet model."
         );
@@ -2123,22 +1615,18 @@ const PostAd = () => {
     }
 
     // --------------------------------------------------------
-    // ACCESSORY
+    // ACCESSORY VALIDATION
     // --------------------------------------------------------
 
     if (isAccessory) {
-      if (
-        !formData.accessoryType
-      ) {
+      if (!formData.accessoryType) {
         setError(
           "Please select an accessory type."
         );
         return;
       }
 
-      if (
-        !formData.brand.trim()
-      ) {
+      if (!formData.brand.trim()) {
         setError(
           "Please enter the accessory brand."
         );
@@ -2147,13 +1635,11 @@ const PostAd = () => {
     }
 
     // --------------------------------------------------------
-    // GAME CONSOLE
+    // GAME CONSOLE VALIDATION
     // --------------------------------------------------------
 
     if (isGameConsole) {
-      if (
-        !formData.model.trim()
-      ) {
+      if (!formData.model.trim()) {
         setError(
           "Please select a console model."
         );
@@ -2162,13 +1648,11 @@ const PostAd = () => {
     }
 
     // --------------------------------------------------------
-    // SMARTWATCH
+    // SMARTWATCH VALIDATION
     // --------------------------------------------------------
 
     if (isSmartwatch) {
-      if (
-        !formData.model.trim()
-      ) {
+      if (!formData.model.trim()) {
         setError(
           "Please select a smartwatch model."
         );
@@ -2177,13 +1661,11 @@ const PostAd = () => {
     }
 
     // --------------------------------------------------------
-    // TV
+    // TV VALIDATION
     // --------------------------------------------------------
 
     if (isTV) {
-      if (
-        !formData.model.trim()
-      ) {
+      if (!formData.model.trim()) {
         setError(
           "Please select a TV model."
         );
@@ -2192,48 +1674,13 @@ const PostAd = () => {
     }
 
     // --------------------------------------------------------
-    // CAR
+    // CAR VALIDATION
     // --------------------------------------------------------
 
     if (isCar) {
-      if (
-        !formData.model.trim()
-      ) {
+      if (!formData.model.trim()) {
         setError(
           "Please select a car model."
-        );
-        return;
-      }
-    }
-
-    // ========================================================
-    // COSMETICS VALIDATION
-    // ========================================================
-
-    if (isCosmetics) {
-      if (
-        !formData.cosmeticType
-      ) {
-        setError(
-          "Please select the cosmetic type."
-        );
-        return;
-      }
-
-      if (
-        !formData.brand.trim()
-      ) {
-        setError(
-          "Please enter the cosmetic brand."
-        );
-        return;
-      }
-
-      if (
-        !formData.model.trim()
-      ) {
-        setError(
-          "Please enter the product name or model."
         );
         return;
       }
@@ -2250,21 +1697,18 @@ const PostAd = () => {
         buildProductFormData();
 
       console.log(
-        "📤 Posting product:",
-        {
-          category:
-            form.get(
-              "category"
-            ),
-          title:
-            form.get("title"),
-          brand:
-            form.get("brand"),
-          cosmeticType:
-            form.get(
-              "cosmeticType"
-            ),
-        }
+        "📤 Posting product with category:",
+        form.get("category")
+      );
+
+      console.log(
+        "🎨 Selected colors:",
+        form.get("color")
+      );
+
+      console.log(
+        "💾 Selected storage:",
+        form.get("storage")
       );
 
       const data =
@@ -2279,11 +1723,10 @@ const PostAd = () => {
       );
 
       if (data?.product) {
+        // Clean previews
         mediaItems.forEach(
           (item) => {
-            if (
-              item.preview
-            ) {
+            if (item.preview) {
               URL.revokeObjectURL(
                 item.preview
               );
@@ -2291,10 +1734,7 @@ const PostAd = () => {
           }
         );
 
-        navigate(
-          "/products"
-        );
-
+        navigate("/products");
         return;
       }
 
@@ -2323,84 +1763,70 @@ const PostAd = () => {
   // AUTH SUBMIT
   // ==========================================================
 
-  const handleAuthSubmit =
-    async (e) => {
-      e.preventDefault();
+  const handleAuthSubmit = async (
+    e
+  ) => {
+    e.preventDefault();
 
-      setAuthError("");
-      setAuthLoading(true);
+    setAuthError("");
+    setAuthLoading(true);
 
-      try {
-        let result;
+    try {
+      let result;
 
-        if (
-          authMode ===
-          "login"
-        ) {
-          result =
-            await login(
-              authEmail,
-              authPassword
-            );
-        } else {
-          result =
-            await register({
-              name: authName,
-              email: authEmail,
-              password:
-                authPassword,
-              phone:
-                authPhone,
-            });
-        }
-
-        if (
-          result?.success
-        ) {
-          setShowAuthModal(
-            false
-          );
-
-          setAuthEmail("");
-          setAuthPassword("");
-          setAuthName("");
-          setAuthPhone("");
-          setAuthError("");
-        } else {
-          setAuthError(
-            result?.error ||
-              "Authentication failed."
-          );
-        }
-      } catch (err) {
-        setAuthError(
-          err?.message ||
-            "Something went wrong."
+      if (authMode === "login") {
+        result = await login(
+          authEmail,
+          authPassword
         );
-      } finally {
-        setAuthLoading(
-          false
+      } else {
+        result = await register({
+          name: authName,
+          email: authEmail,
+          password: authPassword,
+          phone: authPhone,
+        });
+      }
+
+      if (result?.success) {
+        setShowAuthModal(false);
+
+        setAuthEmail("");
+        setAuthPassword("");
+        setAuthName("");
+        setAuthPhone("");
+        setAuthError("");
+      } else {
+        setAuthError(
+          result?.error ||
+            "Authentication failed."
         );
       }
-    };
+    } catch (err) {
+      setAuthError(
+        err?.message ||
+          "Something went wrong."
+      );
+    } finally {
+      setAuthLoading(false);
+    }
+  };
 
   // ==========================================================
   // AUTH MODE
   // ==========================================================
 
-  const switchAuthMode =
-    (mode) => {
-      setAuthMode(mode);
-      setAuthError("");
-    };
+  const switchAuthMode = (
+    mode
+  ) => {
+    setAuthMode(mode);
+    setAuthError("");
+  };
 
-  const closeAuthModal =
-    () => {
-      setShowAuthModal(
-        false
-      );
-      setAuthError("");
-    };
+  const closeAuthModal = () => {
+    setShowAuthModal(false);
+    setAuthError("");
+  };
 
   // ==========================================================
   // RENDER
@@ -2408,9 +1834,7 @@ const PostAd = () => {
 
   return (
     <div className="post-ad-container">
-      <h2>
-        📢 Post Free Ad
-      </h2>
+      <h2>📢 Post Free Ad</h2>
 
       <p className="subtitle">
         {step === 1
@@ -2424,11 +1848,7 @@ const PostAd = () => {
         </div>
       )}
 
-      <form
-        onSubmit={
-          handleSubmit
-        }
-      >
+      <form onSubmit={handleSubmit}>
         {/* ==================================================
             STEP 1
         ================================================== */}
@@ -2444,9 +1864,7 @@ const PostAd = () => {
 
               <select
                 name="category"
-                value={
-                  formData.category
-                }
+                value={formData.category}
                 onChange={
                   handleCategoryChange
                 }
@@ -2485,56 +1903,12 @@ const PostAd = () => {
                 </option>
 
                 <option value="electronics">
-                  🔌 Electronics
-                </option>
-
-                <option value="cosmetics">
-                  💄 Cosmetics
+                  📺 Electronics
                 </option>
               </select>
             </div>
 
-            {/* ==================================================
-                COSMETIC TYPE
-            ================================================== */}
-
-            {isCosmetics && (
-              <div className="form-group">
-                <label>
-                  Cosmetic Type *
-                </label>
-
-                <select
-                  name="cosmeticType"
-                  value={
-                    formData.cosmeticType
-                  }
-                  onChange={
-                    handleChange
-                  }
-                  required
-                >
-                  <option value="">
-                    Select cosmetic type
-                  </option>
-
-                  {COSMETIC_TYPES.map(
-                    (type) => (
-                      <option
-                        key={type}
-                        value={type}
-                      >
-                        {type}
-                      </option>
-                    )
-                  )}
-                </select>
-              </div>
-            )}
-
-            {/* ==================================================
-                ACCESSORY TYPE
-            ================================================== */}
+            {/* ACCESSORY TYPE */}
 
             {isAccessory && (
               <div className="form-group">
@@ -2547,9 +1921,7 @@ const PostAd = () => {
                   value={
                     formData.accessoryType
                   }
-                  onChange={
-                    handleChange
-                  }
+                  onChange={handleChange}
                   required
                 >
                   <option value="">
@@ -2570,9 +1942,7 @@ const PostAd = () => {
               </div>
             )}
 
-            {/* ==================================================
-                LAPTOP BRAND
-            ================================================== */}
+            {/* LAPTOP BRAND */}
 
             {isLaptop && (
               <div className="form-group">
@@ -2582,12 +1952,8 @@ const PostAd = () => {
 
                 <select
                   name="brand"
-                  value={
-                    formData.brand
-                  }
-                  onChange={
-                    handleChange
-                  }
+                  value={formData.brand}
+                  onChange={handleChange}
                   required
                 >
                   <option value="">
@@ -2608,9 +1974,7 @@ const PostAd = () => {
               </div>
             )}
 
-            {/* ==================================================
-                TABLET BRAND
-            ================================================== */}
+            {/* TABLET BRAND */}
 
             {isTablet && (
               <div className="form-group">
@@ -2620,12 +1984,8 @@ const PostAd = () => {
 
                 <select
                   name="brand"
-                  value={
-                    formData.brand
-                  }
-                  onChange={
-                    handleChange
-                  }
+                  value={formData.brand}
+                  onChange={handleChange}
                   required
                 >
                   <option value="">
@@ -2646,9 +2006,7 @@ const PostAd = () => {
               </div>
             )}
 
-            {/* ==================================================
-                CONSOLE BRAND
-            ================================================== */}
+            {/* CONSOLE BRAND */}
 
             {isGameConsole && (
               <div className="form-group">
@@ -2658,12 +2016,8 @@ const PostAd = () => {
 
                 <select
                   name="brand"
-                  value={
-                    formData.brand
-                  }
-                  onChange={
-                    handleChange
-                  }
+                  value={formData.brand}
+                  onChange={handleChange}
                   required
                 >
                   <option value="">
@@ -2695,9 +2049,7 @@ const PostAd = () => {
               </div>
             )}
 
-            {/* ==================================================
-                SMARTWATCH BRAND
-            ================================================== */}
+            {/* SMARTWATCH BRAND */}
 
             {isSmartwatch && (
               <div className="form-group">
@@ -2707,12 +2059,8 @@ const PostAd = () => {
 
                 <select
                   name="brand"
-                  value={
-                    formData.brand
-                  }
-                  onChange={
-                    handleChange
-                  }
+                  value={formData.brand}
+                  onChange={handleChange}
                   required
                 >
                   <option value="">
@@ -2744,9 +2092,7 @@ const PostAd = () => {
               </div>
             )}
 
-            {/* ==================================================
-                TV BRAND
-            ================================================== */}
+            {/* TV BRAND */}
 
             {isTV && (
               <div className="form-group">
@@ -2756,12 +2102,8 @@ const PostAd = () => {
 
                 <select
                   name="brand"
-                  value={
-                    formData.brand
-                  }
-                  onChange={
-                    handleChange
-                  }
+                  value={formData.brand}
+                  onChange={handleChange}
                   required
                 >
                   <option value="">
@@ -2799,9 +2141,7 @@ const PostAd = () => {
               </div>
             )}
 
-            {/* ==================================================
-                CAR BRAND
-            ================================================== */}
+            {/* CAR BRAND */}
 
             {isCar && (
               <div className="form-group">
@@ -2811,12 +2151,8 @@ const PostAd = () => {
 
                 <select
                   name="brand"
-                  value={
-                    formData.brand
-                  }
-                  onChange={
-                    handleChange
-                  }
+                  value={formData.brand}
+                  onChange={handleChange}
                   required
                 >
                   <option value="">
@@ -2874,9 +2210,7 @@ const PostAd = () => {
               </div>
             )}
 
-            {/* ==================================================
-                ACCESSORY BRAND
-            ================================================== */}
+            {/* ACCESSORY BRAND */}
 
             {isAccessory && (
               <div className="form-group">
@@ -2887,46 +2221,15 @@ const PostAd = () => {
                 <input
                   type="text"
                   name="brand"
-                  value={
-                    formData.brand
-                  }
-                  onChange={
-                    handleChange
-                  }
+                  value={formData.brand}
+                  onChange={handleChange}
                   placeholder="e.g. Apple, Samsung, Anker"
                   required
                 />
               </div>
             )}
 
-            {/* ==================================================
-                COSMETIC BRAND
-            ================================================== */}
-
-            {isCosmetics && (
-              <div className="form-group">
-                <label>
-                  Brand *
-                </label>
-
-                <input
-                  type="text"
-                  name="brand"
-                  value={
-                    formData.brand
-                  }
-                  onChange={
-                    handleChange
-                  }
-                  placeholder="e.g. CeraVe, Maybelline, Nivea, MAC"
-                  required
-                />
-              </div>
-            )}
-
-            {/* ==================================================
-                TITLE
-            ================================================== */}
+            {/* TITLE */}
 
             <div className="form-group">
               <label>
@@ -2936,16 +2239,10 @@ const PostAd = () => {
               <input
                 type="text"
                 name="title"
-                value={
-                  formData.title
-                }
-                onChange={
-                  handleChange
-                }
+                value={formData.title}
+                onChange={handleChange}
                 placeholder={
-                  isCosmetics
-                    ? "e.g. CeraVe Hydrating Facial Cleanser 236ml"
-                    : isAccessory
+                  isAccessory
                     ? "e.g. Original Apple 20W Charger"
                     : isGameConsole
                     ? "e.g. PlayStation 5 Digital Edition"
@@ -2962,9 +2259,7 @@ const PostAd = () => {
               />
             </div>
 
-            {/* ==================================================
-                PRICE
-            ================================================== */}
+            {/* PRICE */}
 
             <div className="form-group">
               <label>
@@ -2974,12 +2269,8 @@ const PostAd = () => {
               <input
                 type="number"
                 name="price"
-                value={
-                  formData.price
-                }
-                onChange={
-                  handleChange
-                }
+                value={formData.price}
+                onChange={handleChange}
                 placeholder="0.00"
                 step="0.01"
                 min="0"
@@ -2987,9 +2278,7 @@ const PostAd = () => {
               />
             </div>
 
-            {/* ==================================================
-                LOCATION
-            ================================================== */}
+            {/* LOCATION */}
 
             <div className="form-group">
               <label>
@@ -2997,9 +2286,7 @@ const PostAd = () => {
               </label>
 
               <select
-                value={
-                  selectedCountry
-                }
+                value={selectedCountry}
                 onChange={
                   handleCountryChange
                 }
@@ -3017,9 +2304,7 @@ const PostAd = () => {
               </select>
 
               <select
-                value={
-                  selectedRegion
-                }
+                value={selectedRegion}
                 onChange={
                   handleRegionChange
                 }
@@ -3041,15 +2326,9 @@ const PostAd = () => {
               </select>
 
               <select
-                value={
-                  selectedCity
-                }
-                onChange={
-                  handleCityChange
-                }
-                disabled={
-                  !selectedRegion
-                }
+                value={selectedCity}
+                onChange={handleCityChange}
+                disabled={!selectedRegion}
               >
                 <option value="">
                   Select City
@@ -3073,16 +2352,12 @@ const PostAd = () => {
               <span className="hint">
                 Your ad will appear as:{" "}
                 <strong>
-                  {
-                    formData.location
-                  }
+                  {formData.location}
                 </strong>
               </span>
             </div>
 
-            {/* ==================================================
-                SELLER NAME
-            ================================================== */}
+            {/* SELLER NAME */}
 
             <div className="form-group">
               <label>
@@ -3095,16 +2370,12 @@ const PostAd = () => {
                 value={
                   formData.sellerName
                 }
-                onChange={
-                  handleChange
-                }
+                onChange={handleChange}
                 placeholder="Your name"
               />
             </div>
 
-            {/* ==================================================
-                PHONE
-            ================================================== */}
+            {/* PHONE */}
 
             <div className="form-group">
               <label>
@@ -3117,17 +2388,13 @@ const PostAd = () => {
                 value={
                   formData.sellerPhone
                 }
-                onChange={
-                  handleChange
-                }
+                onChange={handleChange}
                 placeholder="054 123 4567"
                 required
               />
             </div>
 
-            {/* ==================================================
-                DESCRIPTION
-            ================================================== */}
+            {/* DESCRIPTION */}
 
             <div className="form-group">
               <label>
@@ -3139,15 +2406,11 @@ const PostAd = () => {
                 value={
                   formData.description
                 }
-                onChange={
-                  handleChange
-                }
+                onChange={handleChange}
                 rows="5"
                 maxLength={5000}
                 placeholder={
-                  isCosmetics
-                    ? "Describe the product, authenticity, condition, size, benefits, expiry date, packaging, what's included, etc."
-                    : isAccessory
+                  isAccessory
                     ? "Describe the accessory, compatibility, condition, what's included, etc."
                     : isGameConsole
                     ? "Describe the console, condition, included games/accessories, etc."
@@ -3163,17 +2426,14 @@ const PostAd = () => {
 
               <span className="hint">
                 {
-                  formData
-                    .description
+                  formData.description
                     .length
                 }
                 /5000
               </span>
             </div>
 
-            {/* ==================================================
-                IMAGES
-            ================================================== */}
+            {/* IMAGES */}
 
             <div className="form-group">
               <label>
@@ -3195,9 +2455,7 @@ const PostAd = () => {
               </span>
             </div>
 
-            {/* ==================================================
-                VIDEO
-            ================================================== */}
+            {/* VIDEO */}
 
             <div className="form-group">
               <label>
@@ -3213,17 +2471,14 @@ const PostAd = () => {
               />
 
               <span className="hint">
-                Optional. MP4, MOV, AVI or
-                WEBM. Maximum 50MB.
+                Optional. MP4, MOV, AVI or WEBM.
+                Maximum 50MB.
               </span>
             </div>
 
-            {/* ==================================================
-                MEDIA PREVIEW
-            ================================================== */}
+            {/* MEDIA PREVIEW */}
 
-            {mediaItems.length >
-              0 && (
+            {mediaItems.length > 0 && (
               <div className="media-grid">
                 {mediaItems.map(
                   (
@@ -3262,8 +2517,7 @@ const PostAd = () => {
                             item.preview
                           }
                           alt={`Preview ${
-                            index +
-                            1
+                            index + 1
                           }`}
                         />
                       )}
@@ -3280,9 +2534,7 @@ const PostAd = () => {
               </div>
             )}
 
-            {/* ==================================================
-                NEXT
-            ================================================== */}
+            {/* NEXT */}
 
             <button
               type="button"
@@ -3302,15 +2554,11 @@ const PostAd = () => {
 
         {step === 2 && (
           <>
-            {/* ==================================================
-                LAPTOP
-            ================================================== */}
+            {/* LAPTOP */}
 
             {isLaptop && (
               <LaptopForm
-                formData={
-                  formData
-                }
+                formData={formData}
                 handleChange={
                   handleChange
                 }
@@ -3321,15 +2569,11 @@ const PostAd = () => {
               />
             )}
 
-            {/* ==================================================
-                TABLET
-            ================================================== */}
+            {/* TABLET */}
 
             {isTablet && (
               <TabletForm
-                formData={
-                  formData
-                }
+                formData={formData}
                 handleChange={
                   handleChange
                 }
@@ -3340,15 +2584,11 @@ const PostAd = () => {
               />
             )}
 
-            {/* ==================================================
-                GAME CONSOLE
-            ================================================== */}
+            {/* GAME CONSOLE */}
 
             {isGameConsole && (
               <GameConsoleForm
-                formData={
-                  formData
-                }
+                formData={formData}
                 handleChange={
                   handleChange
                 }
@@ -3359,15 +2599,11 @@ const PostAd = () => {
               />
             )}
 
-            {/* ==================================================
-                SMARTWATCH
-            ================================================== */}
+            {/* SMARTWATCH */}
 
             {isSmartwatch && (
               <AppleWatchForm
-                formData={
-                  formData
-                }
+                formData={formData}
                 handleChange={
                   handleChange
                 }
@@ -3378,15 +2614,11 @@ const PostAd = () => {
               />
             )}
 
-            {/* ==================================================
-                TV
-            ================================================== */}
+            {/* TV */}
 
             {isTV && (
               <TVForm
-                formData={
-                  formData
-                }
+                formData={formData}
                 handleChange={
                   handleChange
                 }
@@ -3397,15 +2629,11 @@ const PostAd = () => {
               />
             )}
 
-            {/* ==================================================
-                CAR
-            ================================================== */}
+            {/* CAR */}
 
             {isCar && (
               <CarForm
-                formData={
-                  formData
-                }
+                formData={formData}
                 handleChange={
                   handleChange
                 }
@@ -3416,9 +2644,7 @@ const PostAd = () => {
               />
             )}
 
-            {/* ==================================================
-                PHONE
-            ================================================== */}
+            {/* PHONE */}
 
             {isPhone && (
               <>
@@ -3439,32 +2665,40 @@ const PostAd = () => {
                       Select storage
                     </option>
 
-                    {[
-                      "16GB",
-                      "32GB",
-                      "64GB",
-                      "128GB",
-                      "256GB",
-                      "512GB",
-                      "1TB",
-                      "2TB",
-                    ].map(
-                      (storage) => (
-                        <option
-                          key={
-                            storage
-                          }
-                          value={
-                            storage
-                          }
-                        >
-                          {
-                            storage
-                          }
-                        </option>
-                      )
-                    )}
+                    <option value="16GB">
+                      16GB
+                    </option>
+
+                    <option value="32GB">
+                      32GB
+                    </option>
+
+                    <option value="64GB">
+                      64GB
+                    </option>
+
+                    <option value="128GB">
+                      128GB
+                    </option>
+
+                    <option value="256GB">
+                      256GB
+                    </option>
+
+                    <option value="512GB">
+                      512GB
+                    </option>
+
+                    <option value="1TB">
+                      1TB
+                    </option>
+
+                    <option value="2TB">
+                      2TB
+                    </option>
                   </select>
+
+                  {/* SELECTED STORAGE */}
 
                   {selectedStorage.length >
                     0 && (
@@ -3574,20 +2808,16 @@ const PostAd = () => {
                     {phoneColors.map(
                       (color) => (
                         <option
-                          key={
-                            color
-                          }
-                          value={
-                            color
-                          }
+                          key={color}
+                          value={color}
                         >
-                          {
-                            color
-                          }
+                          {color}
                         </option>
                       )
                     )}
                   </select>
+
+                  {/* SELECTED COLORS */}
 
                   {selectedColors.length >
                     0 && (
@@ -3777,9 +3007,7 @@ const PostAd = () => {
               </>
             )}
 
-            {/* ==================================================
-                ACCESSORIES
-            ================================================== */}
+            {/* ACCESSORIES */}
 
             {isAccessory && (
               <>
@@ -3822,6 +3050,8 @@ const PostAd = () => {
                   </p>
                 </div>
 
+                {/* ACCESSORY TYPE */}
+
                 <div className="form-group">
                   <label>
                     Accessory Type *
@@ -3844,21 +3074,17 @@ const PostAd = () => {
                     {ACCESSORY_TYPES.map(
                       (item) => (
                         <option
-                          key={
-                            item
-                          }
-                          value={
-                            item
-                          }
+                          key={item}
+                          value={item}
                         >
-                          {
-                            item
-                          }
+                          {item}
                         </option>
                       )
                     )}
                   </select>
                 </div>
+
+                {/* COMPATIBILITY */}
 
                 <div className="form-group">
                   <label>
@@ -3879,25 +3105,19 @@ const PostAd = () => {
                     </option>
 
                     {ACCESSORY_COMPATIBILITY.map(
-                      (
-                        item
-                      ) => (
+                      (item) => (
                         <option
-                          key={
-                            item
-                          }
-                          value={
-                            item
-                          }
+                          key={item}
+                          value={item}
                         >
-                          {
-                            item
-                          }
+                          {item}
                         </option>
                       )
                     )}
                   </select>
                 </div>
+
+                {/* COMPATIBLE MODEL */}
 
                 <div className="form-group">
                   <label>
@@ -3917,6 +3137,8 @@ const PostAd = () => {
                   />
                 </div>
 
+                {/* ACCESSORY COLOR */}
+
                 <div className="form-group">
                   <label>
                     Color
@@ -3934,6 +3156,8 @@ const PostAd = () => {
                     placeholder="e.g. Black"
                   />
                 </div>
+
+                {/* MATERIAL */}
 
                 <div className="form-group">
                   <label>
@@ -3955,612 +3179,7 @@ const PostAd = () => {
               </>
             )}
 
-            {/* ==================================================
-                COSMETICS
-            ================================================== */}
-
-            {isCosmetics && (
-              <>
-                <div
-                  style={{
-                    background:
-                      "#fff7ed",
-                    border:
-                      "1px solid #fed7aa",
-                    borderRadius:
-                      "12px",
-                    padding:
-                      "18px",
-                    marginBottom:
-                      "20px",
-                  }}
-                >
-                  <h3
-                    style={{
-                      margin:
-                        "0 0 6px",
-                      fontSize:
-                        "20px",
-                    }}
-                  >
-                    💄 Cosmetic Details
-                  </h3>
-
-                  <p
-                    style={{
-                      margin: 0,
-                      color:
-                        "#9a3412",
-                      fontSize:
-                        "13px",
-                      lineHeight:
-                        "1.5",
-                    }}
-                  >
-                    Provide accurate product information
-                    so buyers can easily understand the
-                    cosmetic or beauty product.
-                  </p>
-                </div>
-
-                {/* PRODUCT NAME / MODEL */}
-
-                <div className="form-group">
-                  <label>
-                    Product Name *
-                  </label>
-
-                  <input
-                    type="text"
-                    name="model"
-                    value={
-                      formData.model
-                    }
-                    onChange={
-                      handleChange
-                    }
-                    placeholder="e.g. Hydrating Facial Cleanser"
-                    required
-                  />
-                </div>
-
-                {/* COSMETIC BRAND */}
-
-                <div className="form-group">
-                  <label>
-                    Brand
-                  </label>
-
-                  <input
-                    type="text"
-                    name="cosmeticBrand"
-                    value={
-                      formData.cosmeticBrand
-                    }
-                    onChange={
-                      handleChange
-                    }
-                    placeholder="e.g. CeraVe"
-                  />
-                </div>
-
-                {/* PRODUCT LINE */}
-
-                <div className="form-group">
-                  <label>
-                    Product Line / Collection
-                  </label>
-
-                  <input
-                    type="text"
-                    name="productLine"
-                    value={
-                      formData.productLine
-                    }
-                    onChange={
-                      handleChange
-                    }
-                    placeholder="e.g. Hydrating Range"
-                  />
-                </div>
-
-                {/* SHADE */}
-
-                <div className="form-group">
-                  <label>
-                    Shade / Color
-                  </label>
-
-                  <input
-                    type="text"
-                    name="shade"
-                    value={
-                      formData.shade
-                    }
-                    onChange={
-                      handleChange
-                    }
-                    placeholder="e.g. 220 Natural Beige"
-                  />
-                </div>
-
-                {/* SKIN TYPE */}
-
-                <div className="form-group">
-                  <label>
-                    Skin Type
-                  </label>
-
-                  <select
-                    name="skinType"
-                    value={
-                      formData.skinType
-                    }
-                    onChange={
-                      handleChange
-                    }
-                  >
-                    <option value="">
-                      Select skin type
-                    </option>
-
-                    {COSMETIC_SKIN_TYPES.map(
-                      (type) => (
-                        <option
-                          key={
-                            type
-                          }
-                          value={
-                            type
-                          }
-                        >
-                          {
-                            type
-                          }
-                        </option>
-                      )
-                    )}
-                  </select>
-                </div>
-
-                {/* SKIN CONCERN */}
-
-                <div className="form-group">
-                  <label>
-                    Skin / Beauty Concern
-                  </label>
-
-                  <select
-                    name="skinConcern"
-                    value={
-                      formData.skinConcern
-                    }
-                    onChange={
-                      handleChange
-                    }
-                  >
-                    <option value="">
-                      Select concern
-                    </option>
-
-                    {COSMETIC_CONCERNS.map(
-                      (
-                        concern
-                      ) => (
-                        <option
-                          key={
-                            concern
-                          }
-                          value={
-                            concern
-                          }
-                        >
-                          {
-                            concern
-                          }
-                        </option>
-                      )
-                    )}
-                  </select>
-                </div>
-
-                {/* FINISH */}
-
-                <div className="form-group">
-                  <label>
-                    Finish
-                  </label>
-
-                  <select
-                    name="finish"
-                    value={
-                      formData.finish
-                    }
-                    onChange={
-                      handleChange
-                    }
-                  >
-                    <option value="">
-                      Select finish
-                    </option>
-
-                    {COSMETIC_FINISHES.map(
-                      (finish) => (
-                        <option
-                          key={
-                            finish
-                          }
-                          value={
-                            finish
-                          }
-                        >
-                          {
-                            finish
-                          }
-                        </option>
-                      )
-                    )}
-                  </select>
-                </div>
-
-                {/* COVERAGE */}
-
-                <div className="form-group">
-                  <label>
-                    Coverage
-                  </label>
-
-                  <select
-                    name="coverage"
-                    value={
-                      formData.coverage
-                    }
-                    onChange={
-                      handleChange
-                    }
-                  >
-                    <option value="">
-                      Select coverage
-                    </option>
-
-                    {COSMETIC_COVERAGE.map(
-                      (coverage) => (
-                        <option
-                          key={
-                            coverage
-                          }
-                          value={
-                            coverage
-                          }
-                        >
-                          {
-                            coverage
-                          }
-                        </option>
-                      )
-                    )}
-                  </select>
-                </div>
-
-                {/* SIZE */}
-
-                <div className="form-group">
-                  <label>
-                    Product Size
-                  </label>
-
-                  <select
-                    name="cosmeticSize"
-                    value={
-                      formData.cosmeticSize
-                    }
-                    onChange={
-                      handleChange
-                    }
-                  >
-                    <option value="">
-                      Select size
-                    </option>
-
-                    {COSMETIC_SIZES.map(
-                      (size) => (
-                        <option
-                          key={
-                            size
-                          }
-                          value={
-                            size
-                          }
-                        >
-                          {
-                            size
-                          }
-                        </option>
-                      )
-                    )}
-                  </select>
-                </div>
-
-                {/* VOLUME */}
-
-                <div className="form-group">
-                  <label>
-                    Volume / Weight
-                  </label>
-
-                  <input
-                    type="text"
-                    name="volume"
-                    value={
-                      formData.volume
-                    }
-                    onChange={
-                      handleChange
-                    }
-                    placeholder="e.g. 236ml, 50g, 100ml"
-                  />
-                </div>
-
-                {/* SCENT */}
-
-                <div className="form-group">
-                  <label>
-                    Scent / Fragrance
-                  </label>
-
-                  <input
-                    type="text"
-                    name="scent"
-                    value={
-                      formData.scent
-                    }
-                    onChange={
-                      handleChange
-                    }
-                    placeholder="e.g. Vanilla, Rose, Unscented"
-                  />
-                </div>
-
-                {/* GENDER */}
-
-                <div className="form-group">
-                  <label>
-                    Suitable For
-                  </label>
-
-                  <select
-                    name="cosmeticGender"
-                    value={
-                      formData.cosmeticGender
-                    }
-                    onChange={
-                      handleChange
-                    }
-                  >
-                    {COSMETIC_GENDERS.map(
-                      (gender) => (
-                        <option
-                          key={
-                            gender
-                          }
-                          value={
-                            gender
-                          }
-                        >
-                          {
-                            gender
-                          }
-                        </option>
-                      )
-                    )}
-                  </select>
-                </div>
-
-                {/* SUITABLE FOR */}
-
-                <div className="form-group">
-                  <label>
-                    Suitable For / Usage
-                  </label>
-
-                  <input
-                    type="text"
-                    name="suitableFor"
-                    value={
-                      formData.suitableFor
-                    }
-                    onChange={
-                      handleChange
-                    }
-                    placeholder="e.g. Face, Body, Hair, Lips"
-                  />
-                </div>
-
-                {/* INGREDIENTS */}
-
-                <div className="form-group">
-                  <label>
-                    Ingredients
-                  </label>
-
-                  <textarea
-                    name="ingredients"
-                    value={
-                      formData.ingredients
-                    }
-                    onChange={
-                      handleChange
-                    }
-                    rows="4"
-                    placeholder="List the main ingredients if available."
-                  />
-                </div>
-
-                {/* EXPIRATION */}
-
-                <div className="form-group">
-                  <label>
-                    Expiration Date
-                  </label>
-
-                  <input
-                    type="date"
-                    name="expirationDate"
-                    value={
-                      formData.expirationDate
-                    }
-                    onChange={
-                      handleChange
-                    }
-                  />
-                </div>
-
-                {/* BATCH NUMBER */}
-
-                <div className="form-group">
-                  <label>
-                    Batch / Lot Number
-                  </label>
-
-                  <input
-                    type="text"
-                    name="batchNumber"
-                    value={
-                      formData.batchNumber
-                    }
-                    onChange={
-                      handleChange
-                    }
-                    placeholder="Enter batch or lot number if available"
-                  />
-                </div>
-
-                {/* SEALED */}
-
-                <div className="form-group">
-                  <label>
-                    Packaging
-                  </label>
-
-                  <div className="checkbox-group">
-                    <input
-                      type="checkbox"
-                      name="sealed"
-                      checked={
-                        formData.sealed
-                      }
-                      onChange={
-                        handleCheckboxChange
-                      }
-                    />
-
-                    <span>
-                      Product is sealed / unopened
-                    </span>
-                  </div>
-                </div>
-
-                {/* AUTHENTIC */}
-
-                <div className="form-group">
-                  <label>
-                    Authenticity
-                  </label>
-
-                  <div className="checkbox-group">
-                    <input
-                      type="checkbox"
-                      name="authentic"
-                      checked={
-                        formData.authentic
-                      }
-                      onChange={
-                        handleCheckboxChange
-                      }
-                    />
-
-                    <span>
-                      I confirm this product is authentic
-                    </span>
-                  </div>
-                </div>
-
-                {/* CRUELTY FREE */}
-
-                <div className="form-group">
-                  <label>
-                    Product Attributes
-                  </label>
-
-                  <div
-                    className="checkbox-group"
-                    style={{
-                      marginBottom:
-                        "8px",
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      name="crueltyFree"
-                      checked={
-                        formData.crueltyFree
-                      }
-                      onChange={
-                        handleCheckboxChange
-                      }
-                    />
-
-                    <span>
-                      Cruelty-free
-                    </span>
-                  </div>
-
-                  <div
-                    className="checkbox-group"
-                    style={{
-                      marginBottom:
-                        "8px",
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      name="vegan"
-                      checked={
-                        formData.vegan
-                      }
-                      onChange={
-                        handleCheckboxChange
-                      }
-                    />
-
-                    <span>
-                      Vegan
-                    </span>
-                  </div>
-
-                  <div className="checkbox-group">
-                    <input
-                      type="checkbox"
-                      name="parabenFree"
-                      checked={
-                        formData.parabenFree
-                      }
-                      onChange={
-                        handleCheckboxChange
-                      }
-                    />
-
-                    <span>
-                      Paraben-free
-                    </span>
-                  </div>
-                </div>
-              </>
-            )}
-
-            {/* ==================================================
-                GENERIC ELECTRONICS
-            ================================================== */}
+            {/* GENERIC ELECTRONICS */}
 
             {!isPhone &&
               !isLaptop &&
@@ -4569,8 +3188,7 @@ const PostAd = () => {
               !isGameConsole &&
               !isSmartwatch &&
               !isTV &&
-              !isCar &&
-              !isCosmetics && (
+              !isCar && (
                 <>
                   <div className="form-group">
                     <label>
@@ -4628,9 +3246,7 @@ const PostAd = () => {
                 </>
               )}
 
-            {/* ==================================================
-                CONDITION
-            ================================================== */}
+            {/* CONDITION */}
 
             <div className="form-group">
               <label>
@@ -4667,9 +3283,7 @@ const PostAd = () => {
               </select>
             </div>
 
-            {/* ==================================================
-                WARRANTY
-            ================================================== */}
+            {/* WARRANTY */}
 
             <div className="form-group">
               <label>
@@ -4719,9 +3333,7 @@ const PostAd = () => {
               </select>
             </div>
 
-            {/* ==================================================
-                NEGOTIATION
-            ================================================== */}
+            {/* NEGOTIATION */}
 
             <div className="form-group">
               <label>
@@ -4746,9 +3358,7 @@ const PostAd = () => {
               </div>
             </div>
 
-            {/* ==================================================
-                SWAP
-            ================================================== */}
+            {/* SWAP */}
 
             <div className="form-group">
               <label>
@@ -4773,9 +3383,7 @@ const PostAd = () => {
               </div>
             </div>
 
-            {/* ==================================================
-                BUTTONS
-            ================================================== */}
+            {/* BUTTONS */}
 
             <div className="step-buttons">
               <button
@@ -4838,15 +3446,13 @@ const PostAd = () => {
             </button>
 
             <h2>
-              {authMode ===
-              "login"
+              {authMode === "login"
                 ? "Welcome Back 👋"
                 : "Join KN Classifieds 🚀"}
             </h2>
 
             <p className="auth-subtitle">
-              {authMode ===
-              "login"
+              {authMode === "login"
                 ? "Login to publish your ad"
                 : "Create an account to publish your ad"}
             </p>

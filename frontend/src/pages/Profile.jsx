@@ -1,7 +1,4 @@
-// ============================================================
 // frontend/src/pages/Profile.jsx
-// BuyUKUsed - User Profile
-// ============================================================
 
 import React, {
   useState,
@@ -28,17 +25,13 @@ import {
 
 import { messages } from "../services/messages";
 
-// ============================================================
-// COMPONENT
-// ============================================================
-
 const Profile = () => {
   const { user, token } = useAuth();
   const navigate = useNavigate();
 
-  // ==========================================================
+  // ================================================================
   // DATA STATE
-  // ==========================================================
+  // ================================================================
 
   const [products, setProducts] = useState([]);
   const [notifications, setNotifications] = useState([]);
@@ -57,9 +50,9 @@ const Profile = () => {
     unreadMessages: 0,
   });
 
-  // ==========================================================
+  // ================================================================
   // EDIT PROFILE MODAL
-  // ==========================================================
+  // ================================================================
 
   const [showEditModal, setShowEditModal] =
     useState(false);
@@ -81,9 +74,9 @@ const Profile = () => {
   const [removePhoto, setRemovePhoto] =
     useState(false);
 
-  // ==========================================================
+  // ================================================================
   // KEEP EDIT FIELDS IN SYNC WITH USER
-  // ==========================================================
+  // ================================================================
 
   useEffect(() => {
     if (!user) return;
@@ -105,9 +98,9 @@ const Profile = () => {
     setRemovePhoto(false);
   }, [user]);
 
-  // ==========================================================
-  // LOAD PROFILE DATA
-  // ==========================================================
+  // ================================================================
+  // FAST PROFILE DATA LOADER
+  // ================================================================
 
   const loadUserData = useCallback(async () => {
     if (!user || !token) {
@@ -136,17 +129,33 @@ const Profile = () => {
         userId
       );
 
+      // ============================================================
+      // LOAD EVERYTHING IN PARALLEL
+      // ============================================================
+
       const results =
         await Promise.allSettled([
+          // ----------------------------------------------------------
+          // PRODUCTS
+          // ----------------------------------------------------------
+
           getProducts({
             sellerId: userId,
             limit: 100,
           }),
 
+          // ----------------------------------------------------------
+          // NOTIFICATIONS
+          // ----------------------------------------------------------
+
           getUserNotifications(
             userId,
             token
           ),
+
+          // ----------------------------------------------------------
+          // MESSAGES
+          // ----------------------------------------------------------
 
           messages.getForUser(
             userId,
@@ -154,9 +163,9 @@ const Profile = () => {
           ),
         ]);
 
-      // ========================================================
+      // ============================================================
       // PRODUCTS
-      // ========================================================
+      // ============================================================
 
       let userProducts = [];
 
@@ -172,11 +181,20 @@ const Profile = () => {
             ? productResponse
             : productResponse?.products ||
               [];
+
+        console.log(
+          "✅ Products loaded:",
+          userProducts.length
+        );
       } else {
         console.error(
           "❌ Products request failed:",
           results[0]?.reason
         );
+
+        // ----------------------------------------------------------
+        // FALLBACK PRODUCT REQUEST
+        // ----------------------------------------------------------
 
         try {
           const response =
@@ -196,8 +214,15 @@ const Profile = () => {
 
             userProducts =
               data?.products || [];
+
+            console.log(
+              "✅ Fallback products loaded:",
+              userProducts.length
+            );
           }
-        } catch (fallbackError) {
+        } catch (
+          fallbackError
+        ) {
           console.error(
             "❌ Fallback product fetch failed:",
             fallbackError
@@ -205,9 +230,9 @@ const Profile = () => {
         }
       }
 
-      // ========================================================
+      // ============================================================
       // NOTIFICATIONS
-      // ========================================================
+      // ============================================================
 
       let userNotifs = [];
 
@@ -226,6 +251,11 @@ const Profile = () => {
             : notifResponse?.notifications ||
               notifResponse?.data ||
               [];
+
+        console.log(
+          "✅ Notifications loaded:",
+          userNotifs.length
+        );
       } else {
         console.error(
           "❌ Notifications request failed:",
@@ -233,9 +263,9 @@ const Profile = () => {
         );
       }
 
-      // ========================================================
+      // ============================================================
       // MESSAGES
-      // ========================================================
+      // ============================================================
 
       let userMessages = [];
 
@@ -252,6 +282,11 @@ const Profile = () => {
             : msgResponse?.messages ||
               msgResponse?.data ||
               [];
+
+        console.log(
+          "✅ Messages loaded:",
+          userMessages.length
+        );
       } else {
         console.error(
           "❌ Messages request failed:",
@@ -259,17 +294,17 @@ const Profile = () => {
         );
       }
 
-      // ========================================================
+      // ============================================================
       // UPDATE STATE
-      // ========================================================
+      // ============================================================
 
       setProducts(userProducts);
       setNotifications(userNotifs);
       setMessagesList(userMessages);
 
-      // ========================================================
+      // ============================================================
       // UNREAD MESSAGES
-      // ========================================================
+      // ============================================================
 
       const unreadMsgs =
         userMessages.filter(
@@ -288,9 +323,9 @@ const Profile = () => {
           }
         ).length;
 
-      // ========================================================
+      // ============================================================
       // TOTAL VIEWS
-      // ========================================================
+      // ============================================================
 
       const totalViews =
         userProducts.reduce(
@@ -302,9 +337,9 @@ const Profile = () => {
           0
         );
 
-      // ========================================================
+      // ============================================================
       // UNREAD NOTIFICATIONS
-      // ========================================================
+      // ============================================================
 
       const unreadNotifications =
         userNotifs.filter(
@@ -312,9 +347,9 @@ const Profile = () => {
             !notification.read
         ).length;
 
-      // ========================================================
+      // ============================================================
       // UPDATE STATS
-      // ========================================================
+      // ============================================================
 
       setStats({
         totalAds:
@@ -330,6 +365,10 @@ const Profile = () => {
         unreadMessages:
           unreadMsgs,
       });
+
+      console.log(
+        "✅ Profile data loaded successfully"
+      );
     } catch (error) {
       console.error(
         "❌ Profile loading error:",
@@ -340,9 +379,9 @@ const Profile = () => {
     }
   }, [user, token]);
 
-  // ==========================================================
-  // LOAD DATA
-  // ==========================================================
+  // ================================================================
+  // LOAD DATA WHEN USER IS AVAILABLE
+  // ================================================================
 
   useEffect(() => {
     if (!user || !token) return;
@@ -354,9 +393,9 @@ const Profile = () => {
     loadUserData,
   ]);
 
-  // ==========================================================
+  // ================================================================
   // DELETE PRODUCT
-  // ==========================================================
+  // ================================================================
 
   const handleDeleteProduct = async (
     productId
@@ -388,7 +427,7 @@ const Profile = () => {
 
       if (
         result?.success ||
-        result?.message?.toLowerCase()?.includes(
+        result?.message?.includes(
           "deleted"
         )
       ) {
@@ -433,9 +472,9 @@ const Profile = () => {
     }
   };
 
-  // ==========================================================
-  // EDIT PHOTO
-  // ==========================================================
+  // ================================================================
+  // EDIT PROFILE PHOTO
+  // ================================================================
 
   const handleEditPhotoChange = (
     event
@@ -445,6 +484,7 @@ const Profile = () => {
 
     if (!file) return;
 
+    // Revoke previous blob preview
     if (
       editPhotoPreview &&
       editPhotoPreview.startsWith(
@@ -465,9 +505,9 @@ const Profile = () => {
     setRemovePhoto(false);
   };
 
-  // ==========================================================
-  // REMOVE PHOTO
-  // ==========================================================
+  // ================================================================
+  // REMOVE PROFILE PHOTO
+  // ================================================================
 
   const handleRemovePhoto = () => {
     if (
@@ -486,9 +526,9 @@ const Profile = () => {
     setRemovePhoto(true);
   };
 
-  // ==========================================================
+  // ================================================================
   // UPDATE PROFILE
-  // ==========================================================
+  // ================================================================
 
   const handleUpdateProfile = async (
     event
@@ -603,25 +643,27 @@ const Profile = () => {
     }
   };
 
-  // ==========================================================
-  // NAVIGATION
-  // ==========================================================
+  // ================================================================
+  // NAVIGATION HELPER
+  // ================================================================
 
   const navigateTo = (path) => {
     navigate(path);
   };
 
-  // ==========================================================
-  // REQUEST RIDE
-  // ==========================================================
+  // ================================================================
+  // REQUEST A RIDE
+  //
+  // Available to BOTH buyers and sellers.
+  // ================================================================
 
   const handleRequestRide = () => {
     navigate("/book-rider");
   };
 
-  // ==========================================================
+  // ================================================================
   // NOT LOGGED IN
-  // ==========================================================
+  // ================================================================
 
   if (!user) {
     return (
@@ -632,7 +674,9 @@ const Profile = () => {
           textAlign: "center",
         }}
       >
-        <h2>Please Login</h2>
+        <h2>
+          Please Login
+        </h2>
 
         <p
           style={{
@@ -659,9 +703,9 @@ const Profile = () => {
     );
   }
 
-  // ==========================================================
-  // PROFILE VALUES
-  // ==========================================================
+  // ================================================================
+  // PROFILE DISPLAY VALUES
+  // ================================================================
 
   const profileName =
     user.name || "User";
@@ -683,73 +727,9 @@ const Profile = () => {
   const profileRole =
     user.role || "buyer";
 
-  // ==========================================================
-  // VERIFIED SELLER
-  // ==========================================================
-  //
-  // IMPORTANT:
-  //
-  // The current backend verification system uses:
-  //
-  // sellerVerified
-  // sellerVerificationStatus
-  //
-  // The public seller controller also provides:
-  //
-  // verified
-  //
-  // We intentionally support all three so the badge works
-  // with the current backend response and older auth objects.
-  //
-  // ==========================================================
-
-  const isVerifiedSeller =
-    profileRole === "seller" &&
-    (
-      user.sellerVerified === true ||
-      user.verified === true ||
-      user.isVerifiedSeller === true
-    ) &&
-    (
-      !user.sellerVerificationStatus ||
-      user.sellerVerificationStatus ===
-        "approved"
-    );
-
-  // ==========================================================
-  // DEBUG VERIFICATION
-  // ==========================================================
-
-  console.log(
-    "🔵 Profile verification:",
-    {
-      userId:
-        user._id ||
-        user.id ||
-        user.userId,
-
-      role:
-        user.role,
-
-      sellerVerified:
-        user.sellerVerified,
-
-      sellerVerificationStatus:
-        user.sellerVerificationStatus,
-
-      verified:
-        user.verified,
-
-      oldIsVerifiedSeller:
-        user.isVerifiedSeller,
-
-      isVerifiedSeller,
-    }
-  );
-
-  // ==========================================================
+  // ================================================================
   // RENDER
-  // ==========================================================
+  // ================================================================
 
   return (
     <div
@@ -759,9 +739,9 @@ const Profile = () => {
           "30px 20px",
       }}
     >
-      {/* ========================================================
+      {/* ==========================================================
           PROFILE HEADER
-      ======================================================== */}
+      ========================================================== */}
 
       <div
         className="profile-header"
@@ -782,9 +762,9 @@ const Profile = () => {
           position: "relative",
         }}
       >
-        {/* ======================================================
-            AVATAR
-        ====================================================== */}
+        {/* ========================================================
+            PROFILE AVATAR
+        ======================================================== */}
 
         <div
           className="profile-avatar"
@@ -838,9 +818,9 @@ const Profile = () => {
           )}
         </div>
 
-        {/* ======================================================
+        {/* ========================================================
             PROFILE INFORMATION
-        ====================================================== */}
+        ======================================================== */}
 
         <div
           style={{
@@ -867,9 +847,7 @@ const Profile = () => {
           >
             {profileName}
 
-            {/* ==================================================
-                ADMIN BADGE
-            ================================================== */}
+            {/* ADMIN */}
 
             {profileRole ===
               "admin" && (
@@ -882,107 +860,17 @@ const Profile = () => {
                   fontSize:
                     "12px",
                   padding:
-                    "4px 12px",
+                    "2px 12px",
                   borderRadius:
-                    "999px",
-                  fontWeight: 700,
-                  display:
-                    "inline-flex",
-                  alignItems:
-                    "center",
-                  gap: "5px",
+                    "var(--radius-full)",
+                  fontWeight: 600,
                 }}
               >
-                <i className="fas fa-shield-alt"></i>
-
                 Admin
               </span>
             )}
 
-            {/* ==================================================
-                VERIFIED SELLER BADGE
-            ================================================== */}
-
-            {isVerifiedSeller && (
-              <span
-                title="Verified Seller"
-                aria-label="Verified Seller"
-                style={{
-                  display:
-                    "inline-flex",
-
-                  alignItems:
-                    "center",
-
-                  gap: "5px",
-
-                  background:
-                    "#2563eb",
-
-                  color:
-                    "#ffffff",
-
-                  fontSize:
-                    "12px",
-
-                  padding:
-                    "4px 11px",
-
-                  borderRadius:
-                    "999px",
-
-                  fontWeight: 700,
-
-                  whiteSpace:
-                    "nowrap",
-
-                  boxShadow:
-                    "0 2px 6px rgba(37,99,235,0.25)",
-                }}
-              >
-                <span
-                  style={{
-                    width:
-                      "16px",
-
-                    height:
-                      "16px",
-
-                    borderRadius:
-                      "50%",
-
-                    background:
-                      "#ffffff",
-
-                    color:
-                      "#2563eb",
-
-                    display:
-                      "inline-flex",
-
-                    alignItems:
-                      "center",
-
-                    justifyContent:
-                      "center",
-
-                    fontSize:
-                      "10px",
-
-                    fontWeight:
-                      900,
-                  }}
-                >
-                  ✓
-                </span>
-
-                Verified
-              </span>
-            )}
-
-            {/* ==================================================
-                ROLE BADGE
-            ================================================== */}
+            {/* BUYER / SELLER / RIDER */}
 
             {profileRole &&
               profileRole !==
@@ -996,11 +884,10 @@ const Profile = () => {
                     fontSize:
                       "12px",
                     padding:
-                      "4px 12px",
+                      "2px 12px",
                     borderRadius:
-                      "999px",
-                    fontWeight:
-                      600,
+                      "var(--radius-full)",
+                    fontWeight: 500,
                   }}
                 >
                   {profileRole
@@ -1043,9 +930,9 @@ const Profile = () => {
           </p>
         </div>
 
-        {/* ======================================================
-            LOADING
-        ====================================================== */}
+        {/* ========================================================
+            BACKGROUND LOADING INDICATOR
+        ======================================================== */}
 
         {loading && (
           <div
@@ -1086,9 +973,9 @@ const Profile = () => {
           </div>
         )}
 
-        {/* ======================================================
+        {/* ========================================================
             PROFILE ACTIONS
-        ====================================================== */}
+        ======================================================== */}
 
         <div
           style={{
@@ -1101,6 +988,11 @@ const Profile = () => {
               "center",
           }}
         >
+          {/* ======================================================
+              REQUEST A RIDE
+              BOTH BUYERS AND SELLERS CAN USE THIS
+          ====================================================== */}
+
           <button
             type="button"
             onClick={
@@ -1118,7 +1010,7 @@ const Profile = () => {
               border: "none",
 
               borderRadius:
-                "999px",
+                "var(--radius-full)",
 
               fontWeight: 700,
 
@@ -1138,12 +1030,43 @@ const Profile = () => {
 
               fontSize:
                 "14px",
+
+              transition:
+                "transform 0.15s ease, opacity 0.15s ease",
+            }}
+            onMouseEnter={(
+              e
+            ) => {
+              e.currentTarget.style.opacity =
+                "0.9";
+            }}
+            onMouseLeave={(
+              e
+            ) => {
+              e.currentTarget.style.opacity =
+                "1";
+            }}
+            onMouseDown={(
+              e
+            ) => {
+              e.currentTarget.style.transform =
+                "scale(0.97)";
+            }}
+            onMouseUp={(
+              e
+            ) => {
+              e.currentTarget.style.transform =
+                "scale(1)";
             }}
           >
             <i className="fas fa-motorcycle"></i>
 
             Request a Ride
           </button>
+
+          {/* ======================================================
+              POST AD
+          ====================================================== */}
 
           <Link
             to="/post-ad"
@@ -1156,7 +1079,7 @@ const Profile = () => {
               color: "white",
               border: "none",
               borderRadius:
-                "999px",
+                "var(--radius-full)",
               fontWeight: 600,
               textDecoration:
                 "none",
@@ -1171,6 +1094,10 @@ const Profile = () => {
 
             Post Ad
           </Link>
+
+          {/* ======================================================
+              EDIT PROFILE
+          ====================================================== */}
 
           <button
             className="btn-outline"
@@ -1191,7 +1118,7 @@ const Profile = () => {
               border:
                 "1.5px solid var(--gray-300)",
               borderRadius:
-                "999px",
+                "var(--radius-full)",
               background:
                 "transparent",
               fontWeight: 600,
@@ -1205,100 +1132,12 @@ const Profile = () => {
         </div>
       </div>
 
-      {/* ========================================================
-          VERIFIED SELLER INFORMATION
-      ======================================================== */}
-
-      {isVerifiedSeller && (
-        <div
-          style={{
-            marginBottom:
-              "24px",
-
-            padding:
-              "14px 18px",
-
-            borderRadius:
-              "12px",
-
-            border:
-              "1px solid #bfdbfe",
-
-            background:
-              "#eff6ff",
-
-            display:
-              "flex",
-
-            alignItems:
-              "center",
-
-            gap:
-              "12px",
-
-            color:
-              "#1e3a8a",
-          }}
-        >
-          <span
-            style={{
-              width:
-                "28px",
-
-              height:
-                "28px",
-
-              borderRadius:
-                "50%",
-
-              background:
-                "#2563eb",
-
-              color:
-                "#ffffff",
-
-              display:
-                "flex",
-
-              alignItems:
-                "center",
-
-              justifyContent:
-                "center",
-
-              fontWeight:
-                900,
-            }}
-          >
-            ✓
-          </span>
-
-          <div>
-            <strong>
-              Verified Seller
-            </strong>
-
-            <div
-              style={{
-                fontSize:
-                  "13px",
-
-                marginTop:
-                  "2px",
-
-                color:
-                  "#475569",
-              }}
-            >
-              This seller has been verified by BuyUKUsed.
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ========================================================
-          QUICK RIDE REQUEST
-      ======================================================== */}
+      {/* ==========================================================
+          QUICK RIDE REQUEST CARD
+          
+          This gives users another obvious place to request
+          a rider without needing to use Post Ad.
+      ========================================================== */}
 
       <div
         style={{
@@ -1320,6 +1159,8 @@ const Profile = () => {
           gap: "18px",
           flexWrap:
             "wrap",
+          boxShadow:
+            "0 4px 18px rgba(0,0,0,0.08)",
         }}
       >
         <div
@@ -1352,6 +1193,7 @@ const Profile = () => {
                 "center",
               fontSize:
                 "21px",
+              flexShrink: 0,
             }}
           >
             <i className="fas fa-motorcycle"></i>
@@ -1422,9 +1264,9 @@ const Profile = () => {
         </button>
       </div>
 
-      {/* ========================================================
-          STATS
-      ======================================================== */}
+      {/* ==========================================================
+          STATS CARDS
+      ========================================================== */}
 
       <div
         style={{
@@ -1434,7 +1276,9 @@ const Profile = () => {
           gap: "16px",
         }}
       >
-        {/* TOTAL ADS */}
+        {/* ========================================================
+            TOTAL ADS
+        ======================================================== */}
 
         <div
           onClick={() =>
@@ -1455,7 +1299,33 @@ const Profile = () => {
               "center",
             cursor:
               "pointer",
+            transition:
+              "background 0.2s, transform 0.1s",
           }}
+          onMouseEnter={(
+            e
+          ) =>
+            (e.currentTarget.style.background =
+              "var(--gray-50)")
+          }
+          onMouseLeave={(
+            e
+          ) =>
+            (e.currentTarget.style.background =
+              "white")
+          }
+          onMouseDown={(
+            e
+          ) =>
+            (e.currentTarget.style.transform =
+              "scale(0.98)")
+          }
+          onMouseUp={(
+            e
+          ) =>
+            (e.currentTarget.style.transform =
+              "scale(1)")
+          }
         >
           <div
             style={{
@@ -1482,7 +1352,9 @@ const Profile = () => {
           </div>
         </div>
 
-        {/* TOTAL VIEWS */}
+        {/* ========================================================
+            TOTAL VIEWS
+        ======================================================== */}
 
         <div
           onClick={() =>
@@ -1503,7 +1375,33 @@ const Profile = () => {
               "center",
             cursor:
               "pointer",
+            transition:
+              "background 0.2s, transform 0.1s",
           }}
+          onMouseEnter={(
+            e
+          ) =>
+            (e.currentTarget.style.background =
+              "var(--gray-50)")
+          }
+          onMouseLeave={(
+            e
+          ) =>
+            (e.currentTarget.style.background =
+              "white")
+          }
+          onMouseDown={(
+            e
+          ) =>
+            (e.currentTarget.style.transform =
+              "scale(0.98)")
+          }
+          onMouseUp={(
+            e
+          ) =>
+            (e.currentTarget.style.transform =
+              "scale(1)")
+          }
         >
           <div
             style={{
@@ -1530,7 +1428,9 @@ const Profile = () => {
           </div>
         </div>
 
-        {/* NOTIFICATIONS */}
+        {/* ========================================================
+            NOTIFICATIONS
+        ======================================================== */}
 
         <div
           onClick={() =>
@@ -1551,7 +1451,33 @@ const Profile = () => {
               "center",
             cursor:
               "pointer",
+            transition:
+              "background 0.2s, transform 0.1s",
           }}
+          onMouseEnter={(
+            e
+          ) =>
+            (e.currentTarget.style.background =
+              "var(--gray-50)")
+          }
+          onMouseLeave={(
+            e
+          ) =>
+            (e.currentTarget.style.background =
+              "white")
+          }
+          onMouseDown={(
+            e
+          ) =>
+            (e.currentTarget.style.transform =
+              "scale(0.98)")
+          }
+          onMouseUp={(
+            e
+          ) =>
+            (e.currentTarget.style.transform =
+              "scale(1)")
+          }
         >
           <div
             style={{
@@ -1592,7 +1518,7 @@ const Profile = () => {
                 padding:
                   "1px 10px",
                 borderRadius:
-                  "999px",
+                  "var(--radius-full)",
                 display:
                   "inline-block",
                 marginTop:
@@ -1607,7 +1533,9 @@ const Profile = () => {
           )}
         </div>
 
-        {/* MESSAGES */}
+        {/* ========================================================
+            MESSAGES
+        ======================================================== */}
 
         <div
           onClick={() =>
@@ -1628,7 +1556,33 @@ const Profile = () => {
               "center",
             cursor:
               "pointer",
+            transition:
+              "background 0.2s, transform 0.1s",
           }}
+          onMouseEnter={(
+            e
+          ) =>
+            (e.currentTarget.style.background =
+              "var(--gray-50)")
+          }
+          onMouseLeave={(
+            e
+          ) =>
+            (e.currentTarget.style.background =
+              "white")
+          }
+          onMouseDown={(
+            e
+          ) =>
+            (e.currentTarget.style.transform =
+              "scale(0.98)")
+          }
+          onMouseUp={(
+            e
+          ) =>
+            (e.currentTarget.style.transform =
+              "scale(1)")
+          }
         >
           <div
             style={{
@@ -1669,7 +1623,7 @@ const Profile = () => {
                 padding:
                   "1px 10px",
                 borderRadius:
-                  "999px",
+                  "var(--radius-full)",
                 display:
                   "inline-block",
                 marginTop:
@@ -1685,9 +1639,9 @@ const Profile = () => {
         </div>
       </div>
 
-      {/* ========================================================
-          LOADING
-      ======================================================== */}
+      {/* ==========================================================
+          PROFILE DATA STATUS
+      ========================================================== */}
 
       {loading && (
         <div
@@ -1708,14 +1662,37 @@ const Profile = () => {
               "center",
           }}
         >
+          <span
+            style={{
+              display:
+                "inline-block",
+              width:
+                "12px",
+              height:
+                "12px",
+              borderRadius:
+                "50%",
+              border:
+                "2px solid var(--gray-300)",
+              borderTopColor:
+                "var(--primary)",
+              animation:
+                "profileSpin 0.8s linear infinite",
+              marginRight:
+                "8px",
+              verticalAlign:
+                "middle",
+            }}
+          />
+
           Loading your latest
           profile activity...
         </div>
       )}
 
-      {/* ========================================================
+      {/* ==========================================================
           EDIT PROFILE MODAL
-      ======================================================== */}
+      ========================================================== */}
 
       {showEditModal && (
         <div
@@ -1732,6 +1709,8 @@ const Profile = () => {
               e.stopPropagation()
             }
           >
+            {/* CLOSE */}
+
             <button
               type="button"
               className="close-btn"
@@ -1748,6 +1727,8 @@ const Profile = () => {
               Edit Profile
             </h2>
 
+            {/* ERROR */}
+
             {editError && (
               <div className="error-banner">
                 {editError}
@@ -1759,7 +1740,9 @@ const Profile = () => {
                 handleUpdateProfile
               }
             >
-              {/* PROFILE PHOTO */}
+              {/* ==================================================
+                  PROFILE PHOTO
+              ================================================== */}
 
               <div className="form-group">
                 <label>
@@ -1813,9 +1796,18 @@ const Profile = () => {
                     Remove Photo
                   </button>
                 </div>
+
+                {removePhoto && (
+                  <small className="remove-photo-hint">
+                    Photo will be removed
+                    when you save.
+                  </small>
+                )}
               </div>
 
-              {/* NAME */}
+              {/* ==================================================
+                  NAME
+              ================================================== */}
 
               <div className="form-group">
                 <label>
@@ -1839,7 +1831,9 @@ const Profile = () => {
                 />
               </div>
 
-              {/* EMAIL */}
+              {/* ==================================================
+                  EMAIL
+              ================================================== */}
 
               <div className="form-group">
                 <label>
@@ -1863,7 +1857,9 @@ const Profile = () => {
                 />
               </div>
 
-              {/* PHONE */}
+              {/* ==================================================
+                  PHONE
+              ================================================== */}
 
               <div className="form-group">
                 <label>
@@ -1886,7 +1882,9 @@ const Profile = () => {
                 />
               </div>
 
-              {/* ACCOUNT TYPE */}
+              {/* ==================================================
+                  ACCOUNT TYPE
+              ================================================== */}
 
               <div className="form-group">
                 <label>
@@ -1918,7 +1916,26 @@ const Profile = () => {
                     Rider
                   </option>
                 </select>
+
+                <small
+                  style={{
+                    display:
+                      "block",
+                    marginTop:
+                      "4px",
+                    color:
+                      "var(--gray-500)",
+                  }}
+                >
+                  Your role determines
+                  what features you can
+                  access.
+                </small>
               </div>
+
+              {/* ==================================================
+                  SAVE
+              ================================================== */}
 
               <button
                 type="submit"
@@ -1936,9 +1953,9 @@ const Profile = () => {
         </div>
       )}
 
-      {/* ========================================================
-          ANIMATION
-      ======================================================== */}
+      {/* ==========================================================
+          PROFILE SPINNER ANIMATION
+      ========================================================== */}
 
       <style>
         {`

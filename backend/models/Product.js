@@ -1,7 +1,6 @@
 // ============================================================
 // backend/models/Product.js
 // BuyUKUsed Product Model
-// Production Version
 // ============================================================
 
 const mongoose = require("mongoose");
@@ -24,7 +23,6 @@ const PRODUCT_CATEGORIES = [
   "TVs",
   "Game Consoles",
   "Smartwatches",
-  "Cosmetics",
   "Other",
 ];
 
@@ -42,35 +40,6 @@ const PRODUCT_CONDITIONS = [
   "Good",
   "Fair",
   "Poor",
-];
-
-const FACE_ID_STATUSES = [
-  "Working",
-  "Not Working",
-  "Not Available",
-  "",
-];
-
-const SIM_STATUSES = [
-  "eSIM Unlocked",
-  "SIM Unlocked",
-  "Locked",
-  "Bypass",
-  "Not Available",
-  "",
-];
-
-const COSMETIC_TYPES = [
-  "",
-  "Makeup",
-  "Skincare",
-  "Haircare",
-  "Fragrance",
-  "Body Care",
-  "Nail Care",
-  "Men's Grooming",
-  "Beauty Tools",
-  "Other",
 ];
 
 // ============================================================
@@ -106,6 +75,7 @@ const productSchema = new mongoose.Schema(
       type: String,
       enum: PRODUCT_CATEGORIES,
       default: "Other",
+      index: true,
       trim: true,
     },
 
@@ -113,6 +83,7 @@ const productSchema = new mongoose.Schema(
       type: String,
       default: "Ghana",
       trim: true,
+      index: true,
     },
 
     description: {
@@ -149,7 +120,6 @@ const productSchema = new mongoose.Schema(
     // MEDIA
     // ========================================================
 
-    // Legacy/single-image compatibility field.
     image: {
       type: String,
       default: "",
@@ -167,6 +137,38 @@ const productSchema = new mongoose.Schema(
     },
 
     // ========================================================
+    // VISUAL SEARCH
+    // ========================================================
+    //
+    // CLIP image embedding.
+    //
+    // Xenova/clip-vit-base-patch32 produces 512 dimensions.
+    //
+    // This field is NOT returned to the frontend in normal
+    // product responses because it is unnecessary there.
+    //
+    // ========================================================
+
+    imageEmbedding: {
+      type: [Number],
+      default: undefined,
+      select: false,
+    },
+
+    imageEmbeddingModel: {
+      type: String,
+      default: "",
+      trim: true,
+      select: false,
+    },
+
+    imageEmbeddingUpdatedAt: {
+      type: Date,
+      default: null,
+      select: false,
+    },
+
+    // ========================================================
     // GENERAL PRODUCT DETAILS
     // ========================================================
 
@@ -174,12 +176,14 @@ const productSchema = new mongoose.Schema(
       type: String,
       default: "",
       trim: true,
+      index: true,
     },
 
     model: {
       type: String,
       default: "",
       trim: true,
+      index: true,
     },
 
     color: {
@@ -202,7 +206,7 @@ const productSchema = new mongoose.Schema(
     },
 
     // ========================================================
-    // COMPUTER / LAPTOP / TABLET
+    // COMPUTER / TABLET
     // ========================================================
 
     storage: {
@@ -510,64 +514,27 @@ const productSchema = new mongoose.Schema(
 
     faceId: {
       type: String,
-      enum: FACE_ID_STATUSES,
+      enum: [
+        "Working",
+        "Not Working",
+        "Not Available",
+        "",
+      ],
       default: "",
-      trim: true,
     },
 
     simStatus: {
       type: String,
-      enum: SIM_STATUSES,
+      enum: [
+        "eSIM Unlocked",
+        "SIM Unlocked",
+        "Locked",
+        "Bypass",
+        "Not Available",
+        "",
+      ],
       default: "",
       trim: true,
-    },
-
-    // ========================================================
-    // COSMETICS
-    // ========================================================
-
-    cosmeticType: {
-      type: String,
-      enum: COSMETIC_TYPES,
-      default: "",
-      trim: true,
-    },
-
-    skinType: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    shade: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    volume: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    expiryDate: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    gender: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    ingredients: {
-      type: String,
-      default: "",
-      trim: true,
-      maxlength: 3000,
     },
 
     // ========================================================
@@ -602,11 +569,11 @@ const productSchema = new mongoose.Schema(
       type: String,
       enum: PRODUCT_STATUSES,
       default: "active",
-      trim: true,
+      index: true,
     },
 
     // ========================================================
-    // PROMOTION / VERIFICATION
+    // PROMOTION
     // ========================================================
 
     promo: {
@@ -634,6 +601,7 @@ const productSchema = new mongoose.Schema(
       unique: true,
       sparse: true,
       trim: true,
+      index: true,
     },
   },
   {
@@ -660,7 +628,7 @@ productSchema.pre("save", function (next) {
 });
 
 // ============================================================
-// TEXT SEARCH INDEX
+// TEXT INDEX
 // ============================================================
 
 productSchema.index({
@@ -671,33 +639,17 @@ productSchema.index({
   accessoryType: "text",
   compatibleWith: "text",
   compatibility: "text",
-  cosmeticType: "text",
-  ingredients: "text",
 });
 
 // ============================================================
-// MAIN PRODUCT FILTER INDEX
+// OTHER INDEXES
 // ============================================================
 
 productSchema.index({
   category: 1,
   location: 1,
   status: 1,
-  createdAt: -1,
 });
-
-// ============================================================
-// SELLER PRODUCTS INDEX
-// ============================================================
-
-productSchema.index({
-  sellerId: 1,
-  createdAt: -1,
-});
-
-// ============================================================
-// PRODUCT SORTING INDEXES
-// ============================================================
 
 productSchema.index({
   createdAt: -1,
@@ -707,28 +659,9 @@ productSchema.index({
   price: 1,
 });
 
-// ============================================================
-// FILTER INDEXES
-// ============================================================
-
 productSchema.index({
-  status: 1,
-});
-
-productSchema.index({
-  category: 1,
-});
-
-productSchema.index({
-  location: 1,
-});
-
-productSchema.index({
-  brand: 1,
-});
-
-productSchema.index({
-  model: 1,
+  sellerId: 1,
+  createdAt: -1,
 });
 
 productSchema.index({
@@ -745,6 +678,14 @@ productSchema.index({
 
 productSchema.index({
   compatibleWith: 1,
+});
+
+productSchema.index({
+  brand: 1,
+});
+
+productSchema.index({
+  model: 1,
 });
 
 productSchema.index({
@@ -809,10 +750,6 @@ productSchema.index({
 
 productSchema.index({
   bodyType: 1,
-});
-
-productSchema.index({
-  cosmeticType: 1,
 });
 
 // ============================================================

@@ -1,414 +1,239 @@
-// ============================================================
-// sellerService.js
-// BuyUKUsed Seller API Service
-// ============================================================
+// frontend/src/services/sellerService.js
+import { API_URL } from "./api";
+import { getToken } from "../utils/storage";
 
-// ------------------------------------------------------------
-// API BASE URL
-// ------------------------------------------------------------
-//
-// VITE_API_URL should normally be:
-//
-// https://buyukused.onrender.com
-//
-// NOT:
-//
-// https://buyukused.onrender.com/api
-//
-// We add /api/sellers below.
-// ------------------------------------------------------------
-
-const API_BASE_URL = (
-  import.meta.env.VITE_API_URL ||
-  "https://buyukused.onrender.com"
-).replace(/\/+$/, "");
-
-// ============================================================
-// HELPERS
-// ============================================================
-
-const getToken = () => {
-  return (
-    localStorage.getItem("token") ||
-    localStorage.getItem("authToken") ||
-    localStorage.getItem("accessToken") ||
-    ""
-  );
+// ─── Helper: build query string ──────────────────────────────
+const buildQuery = (params = {}) => {
+  const searchParams = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value === undefined || value === null || value === "") return;
+    searchParams.set(key, String(value));
+  });
+  const query = searchParams.toString();
+  return query ? `?${query}` : "";
 };
 
-// ============================================================
-// RESPONSE HANDLER
-// ============================================================
-
+// ─── Helper: handle response ──────────────────────────────────
 const handleResponse = async (response) => {
-  let data = null;
-
-  try {
-    data = await response.json();
-  } catch {
-    data = null;
-  }
-
   if (!response.ok) {
-    const error = new Error(
-      data?.message ||
-        `HTTP ${response.status}`
-    );
-
+    let errorMessage = `HTTP ${response.status}`;
+    try {
+      const data = await response.json();
+      errorMessage = data.message || data.error || errorMessage;
+    } catch {
+      // ignore
+    }
+    const error = new Error(errorMessage);
     error.status = response.status;
-    error.data = data;
-
     throw error;
   }
-
-  return data;
+  return response.json();
 };
 
-// ============================================================
-// REQUEST HELPERS
-// ============================================================
-
-const publicRequest = async (
-  endpoint,
-  options = {}
-) => {
-  const url =
-    `${API_BASE_URL}${endpoint}`;
-
-  console.log(
-    `🌐 Seller API → ${options.method || "GET"} ${url}`
-  );
-
-  const response = await fetch(url, {
-    ...options,
-
-    headers: {
-      Accept: "application/json",
-
-      ...(options.body
-        ? {
-            "Content-Type":
-              "application/json",
-          }
-        : {}),
-
-      ...(options.headers || {}),
-    },
-  });
-
-  return handleResponse(response);
-};
-
-const authenticatedRequest = async (
-  endpoint,
-  options = {}
-) => {
+// ─── Helper: JSON request with token ──────────────────────────
+const request = async (url, options = {}) => {
   const token = getToken();
+  const headers = {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(options.headers || {}),
+  };
 
-  const url =
-    `${API_BASE_URL}${endpoint}`;
-
-  console.log(
-    `🔐 Seller API → ${options.method || "GET"} ${url}`
-  );
-
-  const response = await fetch(url, {
+  const response = await fetch(`${API_URL}${url}`, {
     ...options,
-
-    headers: {
-      Accept: "application/json",
-
-      ...(options.body
-        ? {
-            "Content-Type":
-              "application/json",
-          }
-        : {}),
-
-      ...(token
-        ? {
-            Authorization:
-              `Bearer ${token}`,
-          }
-        : {}),
-
-      ...(options.headers || {}),
-    },
+    headers,
   });
 
   return handleResponse(response);
 };
 
-// ============================================================
-// 1. REGISTER SELLER
-// ============================================================
+// ─── Helper: FormData request with token ──────────────────────
+const requestWithFiles = async (url, formData, options = {}) => {
+  const token = getToken();
+  const headers = {
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(options.headers || {}),
+  };
 
-export const registerSeller = async (
-  sellerData
-) => {
-  return authenticatedRequest(
-    "/api/sellers/register",
-    {
-      method: "POST",
-      body: JSON.stringify(
-        sellerData
-      ),
-    }
-  );
+  const response = await fetch(`${API_URL}${url}`, {
+    method: options.method || "POST",
+    headers,
+    body: formData,
+  });
+
+  return handleResponse(response);
 };
 
-// ============================================================
-// 2. GET MY SELLER PROFILE
-// ============================================================
+// ================================================================
+// SELLER SERVICE FUNCTIONS
+// ================================================================
 
-export const getSellerProfile =
-  async () => {
-    return authenticatedRequest(
-      "/api/sellers/profile"
-    );
-  };
+/**
+ * Register as a seller (become a seller)
+ */
+export const registerSeller = async (data) => {
+  return request("/sellers/register", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+};
 
-// ============================================================
-// 3. UPDATE MY SELLER PROFILE
-// ============================================================
+/**
+ * Get own seller profile
+ */
+export const getSellerProfile = async () => {
+  return request("/sellers/profile");
+};
 
-export const updateSellerProfile =
-  async (sellerData) => {
-    return authenticatedRequest(
-      "/api/sellers/profile",
-      {
-        method: "PUT",
-        body: JSON.stringify(
-          sellerData
-        ),
-      }
-    );
-  };
+/**
+ * Update own seller profile
+ */
+export const updateSellerProfile = async (data) => {
+  return request("/sellers/profile", {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+};
 
-// ============================================================
-// 4. SELLER DASHBOARD
-// ============================================================
+// ================================================================
+// DASHBOARD & ANALYTICS
+// ================================================================
 
-export const getSellerDashboard =
-  async (period = "all") => {
-    const params =
-      new URLSearchParams();
+/**
+ * Get seller dashboard stats (with optional period filter)
+ */
+export const getSellerDashboard = async (period = "all") => {
+  return request(`/sellers/dashboard?period=${period}`);
+};
 
-    if (period) {
-      params.set(
-        "period",
-        period
-      );
-    }
+/**
+ * Get seller earnings (with optional period filter)
+ */
+export const getSellerEarnings = async (period = "all") => {
+  return request(`/sellers/earnings?period=${period}`);
+};
 
-    const query =
-      params.toString();
+/**
+ * Get product analytics (views, clicks, etc.)
+ */
+export const getSellerAnalytics = async (period = "today") => {
+  return request(`/sellers/analytics?period=${period}`);
+};
 
-    return authenticatedRequest(
-      `/api/sellers/dashboard${
-        query ? `?${query}` : ""
-      }`
-    );
-  };
+// ================================================================
+// PRODUCT MANAGEMENT
+// ================================================================
 
-// ============================================================
-// 5. SELLER EARNINGS
-// ============================================================
+/**
+ * Get seller's own products (with pagination, sorting, filtering)
+ */
+export const getMyProducts = async (params = {}) => {
+  const { page = 1, limit = 20, sort = "-createdAt", status } = params;
+  let query = `page=${page}&limit=${limit}&sort=${encodeURIComponent(sort)}`;
+  if (status) query += `&status=${status}`;
+  return request(`/sellers/products?${query}`);
+};
 
-export const getSellerEarnings =
-  async (period = "all") => {
-    const params =
-      new URLSearchParams();
+/**
+ * Create a new product (seller version)
+ * Accepts FormData for files (images)
+ */
+export const createProductSeller = async (formData) => {
+  return requestWithFiles("/sellers/products", formData, { method: "POST" });
+};
 
-    if (period) {
-      params.set(
-        "period",
-        period
-      );
-    }
+/**
+ * Update an existing product (seller version)
+ * Accepts FormData for files (images)
+ */
+export const updateProductSeller = async (productId, formData) => {
+  return requestWithFiles(`/sellers/products/${productId}`, formData, {
+    method: "PUT",
+  });
+};
 
-    const query =
-      params.toString();
+/**
+ * Delete a product
+ */
+export const deleteProductSeller = async (productId) => {
+  return request(`/sellers/products/${productId}`, {
+    method: "DELETE",
+  });
+};
 
-    return authenticatedRequest(
-      `/api/sellers/earnings${
-        query ? `?${query}` : ""
-      }`
-    );
-  };
+// ================================================================
+// ORDER MANAGEMENT
+// ================================================================
 
-// ============================================================
-// 6. MY PRODUCTS
-// ============================================================
+/**
+ * Get orders containing seller's items (with pagination & status filter)
+ */
+export const getSellerOrders = async (params = {}) => {
+  const { page = 1, limit = 20, status } = params;
+  let query = `page=${page}&limit=${limit}`;
+  if (status) query += `&status=${status}`;
+  return request(`/sellers/orders?${query}`);
+};
 
-export const getMyProducts =
-  async ({
-    page = 1,
-    limit = 20,
-    sort = "-createdAt",
-    status,
-  } = {}) => {
-    const params =
-      new URLSearchParams();
+/**
+ * Get a specific order by ID (must contain seller's items)
+ */
+export const getSellerOrderById = async (orderId) => {
+  return request(`/sellers/orders/${orderId}`);
+};
 
-    params.set(
-      "page",
-      String(page)
-    );
+/**
+ * Update order status (processing, shipped, delivered, cancelled)
+ */
+export const updateSellerOrderStatus = async (orderId, status) => {
+  return request(`/sellers/orders/${orderId}/status`, {
+    method: "PUT",
+    body: JSON.stringify({ status }),
+  });
+};
 
-    params.set(
-      "limit",
-      String(limit)
-    );
+// ================================================================
+// PUBLIC SELLER ROUTES (No authentication required)
+// ================================================================
 
-    if (sort) {
-      params.set(
-        "sort",
-        sort
-      );
-    }
+/**
+ * Get public seller profile (for SellerPage)
+ */
+export const getPublicSellerProfile = async (sellerId) => {
+  return request(`/sellers/${sellerId}`);
+};
 
-    if (status) {
-      params.set(
-        "status",
-        status
-      );
-    }
+/**
+ * Get public products for a seller (with pagination)
+ */
+export const getPublicSellerProducts = async (sellerId, params = {}) => {
+  const { page = 1, limit = 20, sort = "-createdAt" } = params;
+  const query = `page=${page}&limit=${limit}&sort=${encodeURIComponent(sort)}`;
+  return request(`/sellers/${sellerId}/products?${query}`);
+};
 
-    return authenticatedRequest(
-      `/api/sellers/products?${params.toString()}`
-    );
-  };
-
-// ============================================================
-// 7. SELLER ORDERS
-// ============================================================
-
-export const getSellerOrders =
-  async ({
-    page = 1,
-    limit = 20,
-    sort = "-createdAt",
-    status,
-  } = {}) => {
-    const params =
-      new URLSearchParams();
-
-    params.set(
-      "page",
-      String(page)
-    );
-
-    params.set(
-      "limit",
-      String(limit)
-    );
-
-    if (sort) {
-      params.set(
-        "sort",
-        sort
-      );
-    }
-
-    if (status) {
-      params.set(
-        "status",
-        status
-      );
-    }
-
-    return authenticatedRequest(
-      `/api/sellers/orders?${params.toString()}`
-    );
-  };
-
-// ============================================================
-// 8. PUBLIC SELLER PROFILE
-// ============================================================
-//
-// THIS FIXES YOUR CURRENT 404.
-//
-// Correct:
-// /api/sellers/:sellerId
-//
-// Wrong:
-// /sellers/:sellerId
-// ============================================================
-
-export const getPublicSellerProfile =
-  async (sellerId) => {
-    if (!sellerId) {
-      throw new Error(
-        "Seller ID is required"
-      );
-    }
-
-    return publicRequest(
-      `/api/sellers/${encodeURIComponent(
-        sellerId
-      )}`
-    );
-  };
-
-// ============================================================
-// 9. PUBLIC SELLER PRODUCTS
-// ============================================================
-
-export const getPublicSellerProducts =
-  async (
-    sellerId,
-    {
-      page = 1,
-      limit = 20,
-      sort = "-createdAt",
-    } = {}
-  ) => {
-    if (!sellerId) {
-      throw new Error(
-        "Seller ID is required"
-      );
-    }
-
-    const params =
-      new URLSearchParams();
-
-    params.set(
-      "page",
-      String(page)
-    );
-
-    params.set(
-      "limit",
-      String(limit)
-    );
-
-    if (sort) {
-      params.set(
-        "sort",
-        sort
-      );
-    }
-
-    return publicRequest(
-      `/api/sellers/${encodeURIComponent(
-        sellerId
-      )}/products?${params.toString()}`
-    );
-  };
-
-// ============================================================
+// ================================================================
 // DEFAULT EXPORT
-// ============================================================
+// ================================================================
 
 const sellerService = {
   registerSeller,
   getSellerProfile,
   updateSellerProfile,
+
   getSellerDashboard,
   getSellerEarnings,
+  getSellerAnalytics,
+
   getMyProducts,
+  createProductSeller,
+  updateProductSeller,
+  deleteProductSeller,
+
   getSellerOrders,
+  getSellerOrderById,
+  updateSellerOrderStatus,
+
   getPublicSellerProfile,
   getPublicSellerProducts,
 };

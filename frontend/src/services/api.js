@@ -1,6 +1,5 @@
 // ================================================================
 // frontend/src/services/api.js
-// BuyUKUsed - Complete API Service
 // ================================================================
 
 import {
@@ -16,7 +15,10 @@ const RAW_API_URL =
   import.meta.env.VITE_API_URL ||
   "http://localhost:5000";
 
-export const API_URL = String(RAW_API_URL).replace(/\/+$/, "");
+export const API_URL = String(RAW_API_URL).replace(
+  /\/+$/,
+  ""
+);
 
 console.log("🔗 API_URL:", API_URL);
 
@@ -24,9 +26,7 @@ console.log("🔗 API_URL:", API_URL);
 // REQUEST CONFIG
 // ================================================================
 
-// Increased timeout to 180 seconds (3 minutes) to handle cold starts,
-// Cloudinary uploads, and slow free-tier responses.
-const REQUEST_TIMEOUT = 180000; // 180 seconds
+const REQUEST_TIMEOUT = 30000;
 const MAX_RETRIES = 2;
 
 // ================================================================
@@ -44,7 +44,7 @@ const getHeaders = (token = getToken()) => ({
 });
 
 // IMPORTANT:
-// Do NOT manually set Content-Type for FormData.
+// Never manually set Content-Type for FormData.
 const getFileHeaders = (token = getToken()) => ({
   ...(token
     ? {
@@ -134,6 +134,7 @@ const request = async (
     const response = await fetch(url, {
       credentials: "include",
       ...options,
+
       signal:
         options.signal ||
         controller.signal,
@@ -281,14 +282,15 @@ export const getImageUrl = (path) => {
     return "/placeholder.png";
   }
 
-  // ============================================================
+  // ==============================================================
   // EXTERNAL URL
-  // ============================================================
+  // ==============================================================
 
   if (
     cleanPath.startsWith("http://") ||
     cleanPath.startsWith("https://")
   ) {
+    // Cloudinary optimization
     if (
       cleanPath.includes("res.cloudinary.com") &&
       cleanPath.includes("/image/upload/")
@@ -302,25 +304,25 @@ export const getImageUrl = (path) => {
     return cleanPath;
   }
 
-  // ============================================================
+  // ==============================================================
   // BASE64
-  // ============================================================
+  // ==============================================================
 
   if (cleanPath.startsWith("data:")) {
     return cleanPath;
   }
 
-  // ============================================================
+  // ==============================================================
   // BLOB
-  // ============================================================
+  // ==============================================================
 
   if (cleanPath.startsWith("blob:")) {
     return cleanPath;
   }
 
-  // ============================================================
+  // ==============================================================
   // BACKEND RELATIVE PATH
-  // ============================================================
+  // ==============================================================
 
   return `${API_URL}${
     cleanPath.startsWith("/")
@@ -339,6 +341,7 @@ export const health = {
       `${API_URL}/health`,
       {
         method: "GET",
+
         headers: {
           Accept: "application/json",
         },
@@ -356,6 +359,11 @@ export const auth = {
     email,
     password
   ) => {
+    console.log(
+      "🔐 Login request:",
+      `${API_URL}/auth/login`
+    );
+
     return request(
       `${API_URL}/auth/login`,
       {
@@ -408,6 +416,28 @@ export const auth = {
         .toLowerCase(),
     };
 
+    console.log(
+      "📝 Registration:",
+      {
+        name:
+          registrationData.name,
+
+        email:
+          registrationData.email,
+
+        phone:
+          registrationData.phone,
+
+        role:
+          registrationData.role,
+
+        passwordProvided:
+          Boolean(
+            registrationData.password
+          ),
+      }
+    );
+
     return request(
       `${API_URL}/auth/register`,
       {
@@ -438,10 +468,16 @@ export const auth = {
       throw error;
     }
 
+    console.log(
+      "🔎 Checking:",
+      `${API_URL}/auth/me`
+    );
+
     return request(
       `${API_URL}/auth/me`,
       {
         method: "GET",
+
         headers:
           getHeaders(token),
       }
@@ -457,18 +493,15 @@ export const auth = {
       };
     }
 
-    try {
-      return await request(
-        `${API_URL}/auth/logout`,
-        {
-          method: "POST",
-          headers:
-            getHeaders(token),
-        }
-      );
-    } finally {
-      clearAuthData();
-    }
+    return request(
+      `${API_URL}/auth/logout`,
+      {
+        method: "POST",
+
+        headers:
+          getHeaders(token),
+      }
+    );
   },
 };
 
@@ -539,16 +572,10 @@ export const products = {
     );
   },
 
-  // ─── FIXED: using formData.set to capitalise category ───
   createWithFiles: async (
     formData,
     token = getToken()
   ) => {
-    // Workaround: capitalise category if it's "cosmetics"
-    const category = formData.get('category');
-    if (category && category.toLowerCase() === 'cosmetics') {
-      formData.set('category', 'Cosmetics');
-    }
     return request(
       `${API_URL}/api/products`,
       {
@@ -650,12 +677,6 @@ export const products = {
       );
     }
 
-    if (!status) {
-      throw new Error(
-        "Product status is required"
-      );
-    }
-
     return request(
       `${API_URL}/api/products/${encodeURIComponent(
         productId
@@ -690,6 +711,7 @@ export const users = {
       `${API_URL}/api/users${query}`,
       {
         method: "GET",
+
         headers:
           getHeaders(token),
       }
@@ -712,6 +734,7 @@ export const users = {
       )}`,
       {
         method: "GET",
+
         headers:
           getHeaders(token),
       }
@@ -885,29 +908,6 @@ export const notifications = {
       `${API_URL}/api/notifications/${encodeURIComponent(
         id
       )}/read`,
-      {
-        method: "PUT",
-
-        headers:
-          getHeaders(token),
-      }
-    );
-  },
-
-  markAllRead: async (
-    userId,
-    token = getToken()
-  ) => {
-    if (!userId) {
-      throw new Error(
-        "User ID is required"
-      );
-    }
-
-    return request(
-      `${API_URL}/api/notifications/${encodeURIComponent(
-        userId
-      )}/read-all`,
       {
         method: "PUT",
 
@@ -1266,10 +1266,6 @@ export const favorites = {
 // ================================================================
 
 export const admin = {
-  // ============================================================
-  // DASHBOARD
-  // ============================================================
-
   getDashboardStats: async (
     token = getToken()
   ) => {
@@ -1283,10 +1279,6 @@ export const admin = {
       }
     );
   },
-
-  // ============================================================
-  // USERS
-  // ============================================================
 
   getUsers: async (
     params = {},
@@ -1340,12 +1332,6 @@ export const admin = {
       );
     }
 
-    if (!role) {
-      throw new Error(
-        "Role is required"
-      );
-    }
-
     return request(
       `${API_URL}/api/admin/users/${encodeURIComponent(
         id
@@ -1358,38 +1344,6 @@ export const admin = {
 
         body: JSON.stringify({
           role,
-        }),
-      }
-    );
-  },
-
-  // ============================================================
-  // USER STATUS
-  // ============================================================
-
-  updateUserStatus: async (
-    id,
-    isActive,
-    token = getToken()
-  ) => {
-    if (!id) {
-      throw new Error(
-        "User ID is required"
-      );
-    }
-
-    return request(
-      `${API_URL}/api/admin/users/${encodeURIComponent(
-        id
-      )}/status`,
-      {
-        method: "PUT",
-
-        headers:
-          getHeaders(token),
-
-        body: JSON.stringify({
-          isActive: Boolean(isActive),
         }),
       }
     );
@@ -1417,10 +1371,6 @@ export const admin = {
       }
     );
   },
-
-  // ============================================================
-  // PRODUCTS
-  // ============================================================
 
   getProducts: async (
     params = {},
@@ -1462,10 +1412,6 @@ export const admin = {
       }
     );
   },
-
-  // ============================================================
-  // ORDERS
-  // ============================================================
 
   getOrders: async (
     params = {},
@@ -1513,60 +1459,6 @@ export const admin = {
     );
   },
 
-  // ============================================================
-  // SELLER VERIFICATION
-  // ============================================================
-
-  verifySeller: async (
-    id,
-    token = getToken()
-  ) => {
-    if (!id) {
-      throw new Error(
-        "Seller ID is required"
-      );
-    }
-
-    return request(
-      `${API_URL}/api/admin/sellers/${encodeURIComponent(
-        id
-      )}/verify`,
-      {
-        method: "PUT",
-
-        headers:
-          getHeaders(token),
-      }
-    );
-  },
-
-  unverifySeller: async (
-    id,
-    token = getToken()
-  ) => {
-    if (!id) {
-      throw new Error(
-        "Seller ID is required"
-      );
-    }
-
-    return request(
-      `${API_URL}/api/admin/sellers/${encodeURIComponent(
-        id
-      )}/unverify`,
-      {
-        method: "PUT",
-
-        headers:
-          getHeaders(token),
-      }
-    );
-  },
-
-  // ============================================================
-  // RIDERS
-  // ============================================================
-
   getRiders: async (
     params = {},
     token = getToken()
@@ -1612,12 +1504,6 @@ export const admin = {
     id,
     token = getToken()
   ) => {
-    if (!id) {
-      throw new Error(
-        "Rider ID is required"
-      );
-    }
-
     return request(
       `${API_URL}/api/admin/riders/${encodeURIComponent(
         id
@@ -1635,12 +1521,6 @@ export const admin = {
     id,
     token = getToken()
   ) => {
-    if (!id) {
-      throw new Error(
-        "Rider ID is required"
-      );
-    }
-
     return request(
       `${API_URL}/api/admin/riders/${encodeURIComponent(
         id
@@ -1659,12 +1539,6 @@ export const admin = {
     isApproved,
     token = getToken()
   ) => {
-    if (!id) {
-      throw new Error(
-        "Rider ID is required"
-      );
-    }
-
     return request(
       `${API_URL}/api/admin/riders/${encodeURIComponent(
         id
@@ -1687,12 +1561,6 @@ export const admin = {
     id,
     token = getToken()
   ) => {
-    if (!id) {
-      throw new Error(
-        "Rider ID is required"
-      );
-    }
-
     return request(
       `${API_URL}/api/admin/riders/${encodeURIComponent(
         id
@@ -1705,10 +1573,6 @@ export const admin = {
       }
     );
   },
-
-  // ============================================================
-  // DELIVERIES
-  // ============================================================
 
   getDeliveries: async (
     params = {},
@@ -2122,9 +1986,6 @@ export const createNotification =
 export const markNotificationRead =
   notifications.markRead;
 
-export const markAllNotificationsAsRead =
-  notifications.markAllRead;
-
 export const deleteNotification =
   notifications.delete;
 
@@ -2198,9 +2059,6 @@ export const getAdminUserById =
 export const updateAdminUserRole =
   admin.updateUserRole;
 
-export const updateAdminUserStatus =
-  admin.updateUserStatus;
-
 export const deleteAdminUser =
   admin.deleteUser;
 
@@ -2209,12 +2067,6 @@ export const getAdminProducts =
 
 export const deleteAdminProduct =
   admin.deleteProduct;
-
-export const verifyAdminSeller =
-  admin.verifySeller;
-
-export const unverifyAdminSeller =
-  admin.unverifySeller;
 
 export const getAdminOrders =
   admin.getOrders;
@@ -2364,8 +2216,6 @@ const api = {
 
   markNotificationRead,
 
-  markAllNotificationsAsRead,
-
   deleteNotification,
 
   getOrders,
@@ -2404,17 +2254,11 @@ const api = {
 
   updateAdminUserRole,
 
-  updateAdminUserStatus,
-
   deleteAdminUser,
 
   getAdminProducts,
 
   deleteAdminProduct,
-
-  verifyAdminSeller,
-
-  unverifyAdminSeller,
 
   getAdminOrders,
 

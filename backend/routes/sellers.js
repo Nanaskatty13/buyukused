@@ -1,11 +1,9 @@
-// ============================================================
 // backend/routes/sellers.js
-// BuyUKUsed Seller Routes
-// ============================================================
 
 const express = require("express");
 
-const router = express.Router();
+const router =
+  express.Router();
 
 const {
   body,
@@ -22,26 +20,16 @@ const {
   registerSeller,
   getSellerProfile,
   updateSellerProfile,
-
   getSellerDashboard,
-  getSellerAnalytics,
-  getSellerEarnings,
-
   getMyProducts,
-
   getSellerOrders,
-  getSellerOrderById,
-  updateSellerOrderStatus,
-
+  getSellerEarnings,
   getPublicSellerProfile,
   getPublicSellerProducts,
-
-  verifySeller,
-  rejectSeller,
 } = require("../controllers/sellerController");
 
 // ============================================================
-// AUTH
+// AUTH MIDDLEWARE
 // ============================================================
 
 const {
@@ -53,39 +41,26 @@ const {
 // VALIDATION HELPER
 // ============================================================
 
-const validate = (req, res, next) => {
-  const errors = validationResult(req);
+const validate = (
+  req,
+  res,
+  next
+) => {
+  const errors =
+    validationResult(req);
 
   if (!errors.isEmpty()) {
     return res.status(400).json({
       success: false,
-      message: "Validation failed",
-      errors: errors.array().map((err) => ({
-        field: err.path,
-        message: err.msg,
-      })),
-    });
-  }
-
-  next();
-};
-
-// ============================================================
-// ADMIN MIDDLEWARE
-// ============================================================
-
-const isAdmin = (req, res, next) => {
-  if (!req.user) {
-    return res.status(401).json({
-      success: false,
-      message: "Authentication required.",
-    });
-  }
-
-  if (req.user.role !== "admin") {
-    return res.status(403).json({
-      success: false,
-      message: "Admin access required.",
+      message:
+        "Validation failed",
+      errors:
+        errors.array().map(
+          (err) => ({
+            field: err.path,
+            message: err.msg,
+          })
+        ),
     });
   }
 
@@ -98,9 +73,7 @@ const isAdmin = (req, res, next) => {
 
 router.post(
   "/register",
-
   verifyToken,
-
   [
     body("termsAccepted")
       .isBoolean()
@@ -108,7 +81,8 @@ router.post(
         "Terms must be accepted"
       )
       .custom(
-        (value) => value === true
+        (value) =>
+          value === true
       )
       .withMessage(
         "You must accept the terms and conditions"
@@ -150,29 +124,6 @@ router.post(
         "Description must be less than 500 characters"
       ),
 
-    body("phone")
-      .optional()
-      .isString()
-      .trim()
-      .isLength({
-        max: 30,
-      })
-      .withMessage(
-        "Invalid phone number"
-      ),
-
-    body("location")
-      .optional()
-      .isString()
-      .trim()
-      .isLength({
-        min: 2,
-        max: 100,
-      })
-      .withMessage(
-        "Location must be between 2 and 100 characters"
-      ),
-
     body("taxId")
       .optional()
       .isString()
@@ -185,9 +136,7 @@ router.post(
         "Tax ID must be between 5 and 50 characters"
       ),
   ],
-
   validate,
-
   registerSeller
 );
 
@@ -204,11 +153,8 @@ router.get(
 
 router.put(
   "/profile",
-
   verifyToken,
-
   isSeller,
-
   [
     body("shopName")
       .optional()
@@ -250,9 +196,9 @@ router.put(
       .optional()
       .isString()
       .trim()
-      .isLength({
-        max: 30,
-      })
+      .matches(
+        /^[0-9+\-\s()]{8,20}$/
+      )
       .withMessage(
         "Please provide a valid phone number"
       ),
@@ -275,7 +221,10 @@ router.put(
       .trim()
       .isLength({
         max: 2000,
-      }),
+      })
+      .withMessage(
+        "Invalid avatar"
+      ),
 
     body("profileImage")
       .optional()
@@ -283,7 +232,10 @@ router.put(
       .trim()
       .isLength({
         max: 2000,
-      }),
+      })
+      .withMessage(
+        "Invalid profile image"
+      ),
 
     body("photo")
       .optional()
@@ -291,19 +243,12 @@ router.put(
       .trim()
       .isLength({
         max: 2000,
-      }),
-
-    body("photoURL")
-      .optional()
-      .isString()
-      .trim()
-      .isLength({
-        max: 2000,
-      }),
+      })
+      .withMessage(
+        "Invalid photo"
+      ),
   ],
-
   validate,
-
   updateSellerProfile
 );
 
@@ -313,11 +258,8 @@ router.put(
 
 router.get(
   "/dashboard",
-
   verifyToken,
-
   isSeller,
-
   [
     query("period")
       .optional()
@@ -334,56 +276,18 @@ router.get(
         "Invalid period"
       ),
   ],
-
   validate,
-
   getSellerDashboard
 );
 
 // ============================================================
-// 4. ANALYTICS
-// ============================================================
-
-router.get(
-  "/analytics",
-
-  verifyToken,
-
-  isSeller,
-
-  [
-    query("period")
-      .optional()
-      .isString()
-      .trim()
-      .isIn([
-        "today",
-        "week",
-        "month",
-        "year",
-        "all",
-      ])
-      .withMessage(
-        "Invalid period"
-      ),
-  ],
-
-  validate,
-
-  getSellerAnalytics
-);
-
-// ============================================================
-// 5. EARNINGS
+// 4. EARNINGS
 // ============================================================
 
 router.get(
   "/earnings",
-
   verifyToken,
-
   isSeller,
-
   [
     query("period")
       .optional()
@@ -399,23 +303,18 @@ router.get(
         "Invalid period"
       ),
   ],
-
   validate,
-
   getSellerEarnings
 );
 
 // ============================================================
-// 6. SELLER PRODUCTS
+// 5. SELLER PRODUCTS
 // ============================================================
 
 router.get(
   "/products",
-
   verifyToken,
-
   isSeller,
-
   [
     query("page")
       .optional()
@@ -463,23 +362,18 @@ router.get(
         "Invalid status"
       ),
   ],
-
   validate,
-
   getMyProducts
 );
 
 // ============================================================
-// 7. SELLER ORDERS
+// 6. SELLER ORDERS
 // ============================================================
 
 router.get(
   "/orders",
-
   verifyToken,
-
   isSeller,
-
   [
     query("page")
       .optional()
@@ -516,163 +410,19 @@ router.get(
       .withMessage(
         "Invalid order status"
       ),
-
-    query("sort")
-      .optional()
-      .isString()
-      .trim()
-      .matches(
-        /^-?[a-zA-Z0-9]+$/
-      )
-      .withMessage(
-        "Invalid sort field"
-      ),
   ],
-
   validate,
-
   getSellerOrders
 );
 
 // ============================================================
-// 8. SINGLE SELLER ORDER
-// ============================================================
-
-router.get(
-  "/orders/:orderId",
-
-  verifyToken,
-
-  isSeller,
-
-  [
-    param("orderId")
-      .isMongoId()
-      .withMessage(
-        "Invalid order ID"
-      ),
-  ],
-
-  validate,
-
-  getSellerOrderById
-);
-
-// ============================================================
-// 9. UPDATE SELLER ORDER STATUS
-// ============================================================
-
-router.put(
-  "/orders/:orderId/status",
-
-  verifyToken,
-
-  isSeller,
-
-  [
-    param("orderId")
-      .isMongoId()
-      .withMessage(
-        "Invalid order ID"
-      ),
-
-    body("status")
-      .isString()
-      .trim()
-      .isIn([
-        "pending",
-        "processing",
-        "shipped",
-        "delivered",
-        "cancelled",
-      ])
-      .withMessage(
-        "Invalid order status"
-      ),
-  ],
-
-  validate,
-
-  updateSellerOrderStatus
-);
-
-// ============================================================
-// 10. ADMIN VERIFY SELLER
-// ============================================================
-//
-// POST /api/admin/sellers/:sellerId/verify
-// ============================================================
-
-router.post(
-  "/:sellerId/verify",
-
-  verifyToken,
-
-  isAdmin,
-
-  [
-    param("sellerId")
-      .isMongoId()
-      .withMessage(
-        "Invalid seller ID"
-      ),
-  ],
-
-  validate,
-
-  verifySeller
-);
-
-// ============================================================
-// 11. ADMIN REJECT SELLER
-// ============================================================
-//
-// POST /api/admin/sellers/:sellerId/reject
-// ============================================================
-
-router.post(
-  "/:sellerId/reject",
-
-  verifyToken,
-
-  isAdmin,
-
-  [
-    param("sellerId")
-      .isMongoId()
-      .withMessage(
-        "Invalid seller ID"
-      ),
-
-    body("reason")
-      .optional()
-      .isString()
-      .trim()
-      .isLength({
-        max: 500,
-      })
-      .withMessage(
-        "Rejection reason must be 500 characters or less"
-      ),
-  ],
-
-  validate,
-
-  rejectSeller
-);
-
-// ============================================================
+// 7. PUBLIC SELLER PRODUCTS
 // IMPORTANT:
-// PUBLIC ROUTES MUST COME AFTER SPECIFIC ROUTES
-// ============================================================
-
-// ============================================================
-// 12. PUBLIC SELLER PRODUCTS
+// This MUST appear before /:sellerId
 // ============================================================
 
 router.get(
   "/:sellerId/products",
-
   [
     param("sellerId")
       .isMongoId()
@@ -712,19 +462,16 @@ router.get(
         "Invalid sort field"
       ),
   ],
-
   validate,
-
   getPublicSellerProducts
 );
 
 // ============================================================
-// 13. PUBLIC SELLER PROFILE
+// 8. PUBLIC SELLER PROFILE
 // ============================================================
 
 router.get(
   "/:sellerId",
-
   [
     param("sellerId")
       .isMongoId()
@@ -732,9 +479,7 @@ router.get(
         "Invalid seller ID"
       ),
   ],
-
   validate,
-
   getPublicSellerProfile
 );
 

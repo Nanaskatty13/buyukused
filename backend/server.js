@@ -105,9 +105,6 @@ const allowedOrigins = [
   "http://localhost:5173",
   "http://127.0.0.1:5173",
 
-  "http://localhost:3000",
-  "http://127.0.0.1:3000",
-
   "https://buyukused.vercel.app",
 
   "https://buyukused-ggapyipm3-nanaskatty13s-projects.vercel.app",
@@ -130,22 +127,22 @@ console.log(
 // CORS HELPER
 // ============================================================
 
-const isAllowedOrigin = (origin) => {
-  // Allow requests without Origin.
-  // Useful for server-to-server requests,
-  // health checks and some development tools.
+const isAllowedOrigin = (
+  origin
+) => {
   if (!origin) {
     return true;
   }
 
-  // Exact origins.
   if (
-    allowedOrigins.includes(origin)
+    allowedOrigins.includes(
+      origin
+    )
   ) {
     return true;
   }
 
-  // BuyUKUsed Vercel preview deployments.
+  // BuyUKUsed Vercel previews
   if (
     /^https:\/\/buyukused-[a-zA-Z0-9-]+-nanaskatty13s-projects\.vercel\.app$/.test(
       origin
@@ -154,7 +151,7 @@ const isAllowedOrigin = (origin) => {
     return true;
   }
 
-  // Any standard Vercel deployment.
+  // Any standard Vercel deployment
   if (
     /^https:\/\/[a-zA-Z0-9-]+\.vercel\.app$/.test(
       origin
@@ -348,20 +345,20 @@ const skipIfAdmin = (
       );
 
     if (
-      decoded.role ===
-      "admin"
+      decoded.role === "admin"
     ) {
-      req.skipRateLimit =
-        true;
+      req.skipRateLimit = true;
     }
   } catch (error) {
-    // Ignore invalid tokens.
+    // Ignore invalid token.
   }
 
   next();
 };
 
-app.use(skipIfAdmin);
+app.use(
+  skipIfAdmin
+);
 
 const limiter =
   rateLimit({
@@ -392,7 +389,6 @@ const limiter =
     },
 
     standardHeaders: true,
-
     legacyHeaders: false,
 
     message: {
@@ -413,7 +409,7 @@ app.use(
 );
 
 // ============================================================
-// DELIVERY REQUEST LOGGER
+// REQUEST LOGGER FOR DELIVERY API
 // ============================================================
 
 app.use(
@@ -451,10 +447,8 @@ app.get(
   (req, res) => {
     res.status(200).json({
       success: true,
-
       message:
         "BuyUKUsed API is running",
-
       environment:
         process.env.NODE_ENV ||
         "development",
@@ -470,9 +464,7 @@ const healthResponse =
   (req, res) => {
     res.status(200).json({
       success: true,
-
       status: "ok",
-
       timestamp:
         new Date().toISOString(),
     });
@@ -493,83 +485,44 @@ app.get(
 // ============================================================
 
 const passwordRoutes =
-  require(
-    "./routes/passwordRoutes"
-  );
+  require("./routes/passwordRoutes");
 
 const authRoutes =
-  require(
-    "./routes/auth"
-  );
+  require("./routes/auth");
 
 const productRoutes =
-  require(
-    "./routes/products"
-  );
+  require("./routes/products");
 
 const notificationRoutes =
-  require(
-    "./routes/notifications"
-  );
+  require("./routes/notifications");
 
 const userRoutes =
-  require(
-    "./routes/users"
-  );
+  require("./routes/users");
 
 const messageRoutes =
-  require(
-    "./routes/messages"
-  );
+  require("./routes/messages");
 
 const adminRoutes =
-  require(
-    "./routes/admin"
-  );
+  require("./routes/admin");
 
 const deliveryRoutes =
-  require(
-    "./routes/deliveryRoutes"
-  );
+  require("./routes/deliveryRoutes");
 
 const uploadRoutes =
-  require(
-    "./routes/upload"
-  );
+  require("./routes/upload");
 
 const sellerRoutes =
-  require(
-    "./routes/sellerRoutes"
-  );
+  require("./routes/sellers");
 
 const categoryRoutes =
-  require(
-    "./routes/categories"
-  );
+  require("./routes/categories");
+
+// ============================================================
+// NEW: VISUAL SEARCH ROUTE
+// ============================================================
 
 const visualSearchRoutes =
-  require(
-    "./routes/visualSearchRoutes"
-  );
-
-// Seller admin controller handlers.
-const {
-  verifySeller,
-  rejectSeller,
-} = require(
-  "./controllers/sellerController"
-);
-
-// Auth middleware.
-const {
-  authenticate,
-  requireRoles,
-} = require(
-  "./middleware/authMiddleware"
-);
-
-const requireAdmin =
-  requireRoles("admin");
+  require("./routes/visualSearchRoutes");
 
 console.log(
   "✅ Routes loaded successfully"
@@ -596,54 +549,10 @@ app.use(
 // ============================================================
 // SELLERS
 // ============================================================
-//
-// Normal seller API:
-//
-// /api/sellers/...
-//
-// ============================================================
 
 app.use(
-  "/api/sellers",
+  "/sellers",
   sellerRoutes
-);
-
-console.log(
-  "🛒 Seller API mounted at /api/sellers"
-);
-
-// ============================================================
-// ADMIN SELLER VERIFICATION
-// ============================================================
-//
-// Admin-only endpoints:
-//
-// POST /api/admin/sellers/:sellerId/verify
-// POST /api/admin/sellers/:sellerId/reject
-//
-// IMPORTANT:
-// We do NOT mount the entire seller router here.
-// This prevents public seller routes from becoming
-// available through /api/admin/sellers.
-//
-// ============================================================
-
-app.post(
-  "/api/admin/sellers/:sellerId/verify",
-  authenticate,
-  requireAdmin,
-  verifySeller
-);
-
-app.post(
-  "/api/admin/sellers/:sellerId/reject",
-  authenticate,
-  requireAdmin,
-  rejectSeller
-);
-
-console.log(
-  "👑 Admin Seller API mounted at /api/admin/sellers"
 );
 
 // ============================================================
@@ -656,7 +565,7 @@ app.use(
 );
 
 // ============================================================
-// VISUAL SEARCH
+// VISUAL IMAGE SEARCH
 // ============================================================
 
 app.use(
@@ -665,7 +574,7 @@ app.use(
 );
 
 console.log(
-  "🖼️ Visual Search API mounted at /api/visual-search"
+  "🖼️ Visual image search API mounted at /api/visual-search"
 );
 
 // ============================================================
@@ -702,10 +611,6 @@ app.use(
 app.use(
   "/api/admin",
   adminRoutes
-);
-
-console.log(
-  "🔐 Admin API mounted at /api/admin"
 );
 
 // ============================================================
@@ -763,19 +668,17 @@ app.use(
       ) ||
       req.path.startsWith(
         "/auth"
+      ) ||
+      req.path.startsWith(
+        "/sellers"
       )
     ) {
-      return res
-        .status(404)
-        .json({
-          success: false,
-
-          message:
-            "API endpoint not found",
-
-          path:
-            req.originalUrl,
-        });
+      return res.status(404).json({
+        success: false,
+        message:
+          "API endpoint not found",
+        path: req.originalUrl,
+      });
     }
 
     return res
@@ -800,28 +703,16 @@ app.use(
       err
     );
 
-    // --------------------------------------------------------
-    // CORS
-    // --------------------------------------------------------
-
     if (
       err &&
       err.message ===
         "CORS not allowed for this origin"
     ) {
-      return res
-        .status(403)
-        .json({
-          success: false,
-
-          message:
-            err.message,
-        });
+      return res.status(403).json({
+        success: false,
+        message: err.message,
+      });
     }
-
-    // --------------------------------------------------------
-    // MULTER
-    // --------------------------------------------------------
 
     if (
       err &&
@@ -832,30 +723,20 @@ app.use(
         err.code ===
         "LIMIT_FILE_SIZE"
       ) {
-        return res
-          .status(413)
-          .json({
-            success: false,
-
-            message:
-              "File too large. Maximum size is 5MB.",
-          });
+        return res.status(413).json({
+          success: false,
+          message:
+            "File too large. Maximum size is 5MB.",
+        });
       }
 
-      return res
-        .status(400)
-        .json({
-          success: false,
-
-          message:
-            err.message ||
-            "File upload error.",
-        });
+      return res.status(400).json({
+        success: false,
+        message:
+          err.message ||
+          "File upload error.",
+      });
     }
-
-    // --------------------------------------------------------
-    // DUPLICATE KEY
-    // --------------------------------------------------------
 
     if (
       err &&
@@ -864,22 +745,14 @@ app.use(
       const field =
         Object.keys(
           err.keyPattern || {}
-        )[0] ||
-        "field";
+        )[0] || "field";
 
-      return res
-        .status(409)
-        .json({
-          success: false,
-
-          message:
-            `${field} already exists`,
-        });
+      return res.status(409).json({
+        success: false,
+        message:
+          `${field} already exists`,
+      });
     }
-
-    // --------------------------------------------------------
-    // MONGOOSE VALIDATION
-    // --------------------------------------------------------
 
     if (
       err &&
@@ -894,41 +767,13 @@ app.use(
             error.message
         );
 
-      return res
-        .status(400)
-        .json({
-          success: false,
-
-          message:
-            "Validation error",
-
-          errors:
-            messages,
-        });
+      return res.status(400).json({
+        success: false,
+        message:
+          "Validation error",
+        errors: messages,
+      });
     }
-
-    // --------------------------------------------------------
-    // INVALID OBJECT ID
-    // --------------------------------------------------------
-
-    if (
-      err &&
-      err.name ===
-        "CastError"
-    ) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-
-          message:
-            "Invalid ID.",
-        });
-    }
-
-    // --------------------------------------------------------
-    // DEFAULT ERROR
-    // --------------------------------------------------------
 
     return res
       .status(
@@ -936,7 +781,6 @@ app.use(
       )
       .json({
         success: false,
-
         message:
           err?.message ||
           "Internal Server Error",
@@ -991,9 +835,7 @@ const createDefaultAdmin =
   async () => {
     try {
       const User =
-        require(
-          "./models/User"
-        );
+        require("./models/User");
 
       const adminEmail =
         process.env.ADMIN_EMAIL;
@@ -1026,17 +868,12 @@ const createDefaultAdmin =
       if (!user) {
         user = new User({
           name: "Admin",
-
           email:
             normalizedEmail,
-
           password:
             adminPassword,
-
           phone: "",
-
           role: "admin",
-
           isActive: true,
         });
 
@@ -1125,10 +962,6 @@ const start =
             );
 
             console.log(
-              "👑 Admin Seller API: /api/admin/sellers"
-            );
-
-            console.log(
               "🚴 Delivery API: /api/deliveries"
             );
 
@@ -1137,7 +970,7 @@ const start =
             );
 
             console.log(
-              "🛒 Seller API: /api/sellers"
+              "🛒 Seller API: /sellers"
             );
 
             console.log(
@@ -1162,9 +995,9 @@ const start =
           }
         );
 
-      // ------------------------------------------------------
+      // --------------------------------------------------------
       // TIMEOUTS
-      // ------------------------------------------------------
+      // --------------------------------------------------------
 
       server.timeout =
         120000;
