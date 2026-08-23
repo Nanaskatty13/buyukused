@@ -12,6 +12,16 @@ const Messages = () => {
   const [uploading, setUploading] = useState(false);
   const pollInterval = useRef(null);
 
+  // ─── Voice recording states ─────────────────────────────────────
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const [audioBlob, setAudioBlob] = useState(null);
+  const [audioURL, setAudioURL] = useState(null);
+  const [showAudioPreview, setShowAudioPreview] = useState(false);
+  const mediaRecorderRef = useRef(null);
+  const streamRef = useRef(null);
+  const timerRef = useRef(null);
+
   // ─── Fetch messages ──────────────────────────────────────────────
   useEffect(() => {
     const fetchMessages = async () => {
@@ -110,6 +120,8 @@ const Messages = () => {
   const closeConversation = () => {
     setSelectedConversation(null);
     if (pollInterval.current) clearInterval(pollInterval.current);
+    // Clean up voice state
+    cancelAudio();
   };
 
   // ─── Send reply ──────────────────────────────────────────────────
@@ -199,6 +211,124 @@ const Messages = () => {
     } finally {
       setUploading(false);
     }
+  };
+
+  // ─── Voice recording helpers ────────────────────────────────────
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      const chunks = [];
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunks.push(e.data);
+      };
+
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(chunks, { type: 'audio/webm' });
+        const url = URL.createObjectURL(blob);
+        setAudioBlob(blob);
+        setAudioURL(url);
+        setShowAudioPreview(true);
+        setIsRecording(false);
+        setRecordingTime(0);
+        if (timerRef.current) clearInterval(timerRef.current);
+        // Stop all tracks
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach(track => track.stop());
+          streamRef.current = null;
+        }
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+      setRecordingTime(0);
+      timerRef.current = setInterval(() => {
+        setRecordingTime(prev => prev + 1);
+      }, 1000);
+    } catch (error) {
+      console.error('Error accessing microphone:', error);
+      alert('Could not access microphone. Please check permissions.');
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+    }
+  };
+
+  const cancelAudio = () => {
+    if (audioURL) {
+      URL.revokeObjectURL(audioURL);
+    }
+    setAudioBlob(null);
+    setAudioURL(null);
+    setShowAudioPreview(false);
+    setIsRecording(false);
+    setRecordingTime(0);
+    if (timerRef.current) clearInterval(timerRef.current);
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+  };
+
+  const handleSendAudio = async () => {
+    if (!audioBlob || !selectedConversation || !token) return;
+    setUploading(true);
+    try {
+      // Upload the audio blob
+      const formData = new FormData();
+      formData.append('file', audioBlob, 'voice-message.webm');
+      const uploadRes = await fetch(`${import.meta.env.VITE_API_URL}/api/upload`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: formData,
+      });
+      if (!uploadRes.ok) throw new Error('Upload failed');
+      const uploadData = await uploadRes.json();
+      const fileUrl = uploadData.url || uploadData.secure_url;
+      if (!fileUrl) throw new Error('No URL returned');
+
+      const messageText = `🎤 Voice message: ${fileUrl}`;
+
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/messages`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          receiver: selectedConversation.userId,
+          message: messageText,
+          productId: null,
+        }),
+      });
+      if (!res.ok) throw new Error('Failed to send voice message');
+      const data = await res.json();
+      const newMessage = data.message || data.data || data;
+      if (!newMessage?._id) throw new Error('Invalid response');
+      setMessagesList(prev => [newMessage, ...prev]);
+      setSelectedConversation(prev => ({
+        ...prev,
+        messages: [newMessage, ...prev.messages],
+      }));
+      // Reset audio state
+      cancelAudio();
+    } catch (err) {
+      alert(err.message || 'Failed to send voice message.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
   // ─── Get conversations ──────────────────────────────────────────
@@ -292,7 +422,8 @@ const Messages = () => {
           </div>
           <div style={{ borderTop: '1px solid var(--gray-200)', padding: '12px' }}>
             <form onSubmit={handleSendReply} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <div style={{ display: 'flex', gap: '8px' }}>
+              {/* ─── Text input + Voice button ─── */}
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                 <input
                   type="text"
                   value={replyMessage}
@@ -300,6 +431,35 @@ const Messages = () => {
                   placeholder="Type a reply..."
                   style={{ flex: 1, padding: '8px 14px', border: '1.5px solid var(--gray-200)', borderRadius: 'var(--radius-md)', fontSize: '14px' }}
                 />
+                {/* Voice button – shown only if not showing audio preview */}
+                {!showAudioPreview && (
+                  <button
+                    type="button"
+                    onClick={isRecording ? stopRecording : startRecording}
+                    disabled={uploading}
+                    style={{
+                      padding: '8px 12px',
+                      background: isRecording ? '#e74c3c' : '#0055a5',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: 'var(--radius-full)',
+                      cursor: (uploading) ? 'not-allowed' : 'pointer',
+                      opacity: uploading ? 0.7 : 1,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      minWidth: '40px',
+                    }}
+                  >
+                    {isRecording ? (
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <i className="fas fa-stop-circle"></i> {formatTime(recordingTime)}
+                      </span>
+                    ) : (
+                      <i className="fas fa-microphone"></i>
+                    )}
+                  </button>
+                )}
                 <button
                   type="submit"
                   disabled={sendingReply || uploading}
@@ -317,6 +477,47 @@ const Messages = () => {
                   {sendingReply ? 'Sending...' : 'Reply'}
                 </button>
               </div>
+
+              {/* ─── Audio preview after recording ─── */}
+              {showAudioPreview && audioURL && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '8px', background: '#f8fafc', borderRadius: 'var(--radius-sm)' }}>
+                  <audio controls src={audioURL} style={{ flex: 1, height: '40px' }} />
+                  <button
+                    type="button"
+                    onClick={handleSendAudio}
+                    disabled={uploading}
+                    style={{
+                      padding: '4px 12px',
+                      background: '#2ecc71',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: 'var(--radius-full)',
+                      cursor: uploading ? 'not-allowed' : 'pointer',
+                      opacity: uploading ? 0.7 : 1,
+                    }}
+                  >
+                    {uploading ? 'Sending...' : 'Send'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={cancelAudio}
+                    disabled={uploading}
+                    style={{
+                      padding: '4px 12px',
+                      background: '#e74c3c',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: 'var(--radius-full)',
+                      cursor: uploading ? 'not-allowed' : 'pointer',
+                      opacity: uploading ? 0.7 : 1,
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
+
+              {/* ─── File attachment buttons ─── */}
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 <label style={{ cursor: 'pointer', background: '#f1f5f9', padding: '6px 12px', borderRadius: 'var(--radius-sm)', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '4px' }}>
                   <i className="fas fa-image"></i> Image

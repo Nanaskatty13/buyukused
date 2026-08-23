@@ -9,97 +9,169 @@ const streamifier = require("streamifier");
 
 const Product = require("../models/Product");
 const cloudinary = require("../config/cloudinary");
-
-// ✅ FIX: Import the verifyToken function directly
 const { verifyToken } = require("../middleware/auth");
 
 // ============================================================
-// MULTER
+// MULTER CONFIGURATION
 // ============================================================
 
-// Store uploaded files temporarily in memory.
-// PostAd.jsx sends files using:
-// form.append("files", item.file)
-const upload = multer({
-  storage: multer.memoryStorage(),
+const storage = multer.memoryStorage();
 
-  limits: {
-    files: 6, // Maximum 5 images + 1 video
-    fileSize: 50 * 1024 * 1024, // 50MB
-  },
+const fileFilter = (req, file, cb) => {
+  const allowedTypes = [
+    // Images
+    "image/jpeg",
+    "image/jpg",
+    "image/png",
+    "image/gif",
+    "image/webp",
+    // Videos
+    "video/mp4",
+    "video/quicktime",
+    "video/x-msvideo",
+    "video/webm",
+    // Audio
+    "audio/webm",
+    "audio/mpeg",
+    "audio/wav",
+    "audio/ogg",
+    // Documents / other
+    "application/pdf",
+    "text/plain",
+    "text/vcard",
+    "application/vcard",
+    "application/vnd.vcard",
+  ];
 
-  fileFilter: (req, file, cb) => {
-    const allowedImages = [
-      "image/jpeg",
-      "image/jpg",
-      "image/png",
-      "image/gif",
-      "image/webp",
-    ];
-
-    const allowedVideos = [
-      "video/mp4",
-      "video/quicktime",
-      "video/x-msvideo",
-      "video/webm",
-    ];
-
-    if (
-      allowedImages.includes(file.mimetype) ||
-      allowedVideos.includes(file.mimetype)
-    ) {
-      return cb(null, true);
-    }
-
-    return cb(
+  if (allowedTypes.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(
       new Error(
-        "Invalid file type. Only JPG, PNG, GIF, WEBP, MP4, MOV, AVI and WEBM files are allowed."
+        `File type not allowed: ${file.mimetype}. Allowed: images, videos, audio, vcards.`
       )
     );
+  }
+};
+
+const upload = multer({
+  storage,
+  limits: {
+    fileSize: 50 * 1024 * 1024, // 50MB max per file
+    files: 1, // Only one file per upload request
   },
+  fileFilter,
 });
 
 // ============================================================
 // CLOUDINARY UPLOAD HELPER
 // ============================================================
 
-const uploadToCloudinary = (buffer, resourceType = "auto") => {
+const uploadToCloudinary = (buffer, options = {}) => {
   return new Promise((resolve, reject) => {
     const uploadStream = cloudinary.uploader.upload_stream(
       {
-        folder: "buyukused/products",
-        resource_type: resourceType,
+        folder: options.folder || "buyukused/uploads",
+        resource_type: options.resourceType || "auto",
+        ...(options.publicId ? { public_id: options.publicId } : {}),
       },
       (error, result) => {
-        if (error) {
-          return reject(error);
-        }
-
+        if (error) return reject(error);
         resolve(result);
       }
     );
-
     streamifier.createReadStream(buffer).pipe(uploadStream);
   });
 };
 
 // ============================================================
-// POST PRODUCT
+// GENERIC FILE UPLOAD (for messages, profile pictures, etc.)
+// ============================================================
+
+router.post(
+  "/",
+  verifyToken,
+  upload.single("file"),
+  async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({
+          success: false,
+          message: "Authentication required.",
+        });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({
+          success: false,
+          message: "No file uploaded.",
+        });
+      }
+
+      const file = req.file;
+      const isVideo = file.mimetype.startsWith("video/");
+      const isAudio = file.mimetype.startsWith("audio/");
+      const isImage = file.mimetype.startsWith("image/");
+
+      let resourceType = "auto";
+      let folder = "buyukused/uploads";
+
+      if (isImage) {
+        resourceType = "image";
+        folder = "buyukused/images";
+      } else if (isVideo) {
+        resourceType = "video";
+        folder = "buyukused/videos";
+      } else if (isAudio) {
+        resourceType = "video"; // Cloudinary treats audio as video resource
+        folder = "buyukused/audio";
+      } else {
+        folder = "buyukused/files";
+      }
+
+      const result = await uploadToCloudinary(file.buffer, {
+        folder,
+        resourceType,
+      });
+
+      if (!result || !result.secure_url) {
+        throw new Error("Cloudinary upload failed");
+      }
+
+      return res.status(200).json({
+        success: true,
+        url: result.secure_url,
+        secure_url: result.secure_url,
+        public_id: result.public_id,
+        resource_type: result.resource_type,
+        format: result.format,
+        width: result.width,
+        height: result.height,
+        bytes: result.bytes,
+      });
+    } catch (error) {
+      console.error("❌ Upload error:", error);
+      return res.status(500).json({
+        success: false,
+        message: error.message || "Upload failed.",
+      });
+    }
+  }
+);
+
+// ============================================================
+// PRODUCT UPLOAD (multiple files – used by PostAd)
 // ============================================================
 
 router.post(
   "/product",
-  verifyToken, // ✅ Now verifyToken is a function
+  verifyToken,
   upload.array("files", 6),
   async (req, res) => {
     try {
       console.log("==========================================");
       console.log("📦 CREATE PRODUCT REQUEST");
       console.log("==========================================");
-
-      // --------------------------------------------------------
-      // CHECK AUTHENTICATION
-      // --------------------------------------------------------
 
       if (!req.user) {
         return res.status(401).json({
@@ -108,12 +180,7 @@ router.post(
         });
       }
 
-      // --------------------------------------------------------
-      // CHECK FILES
-      // --------------------------------------------------------
-
       const files = req.files || [];
-
       if (files.length === 0) {
         return res.status(400).json({
           success: false,
@@ -121,10 +188,7 @@ router.post(
         });
       }
 
-      // --------------------------------------------------------
-      // READ FORM DATA
-      // --------------------------------------------------------
-
+      // ─── Read form data ─────────────────────────────────────
       const {
         title,
         price,
@@ -132,10 +196,8 @@ router.post(
         category,
         location,
         description,
-
         sellerName,
         sellerPhone,
-
         brand,
         model,
         processor,
@@ -143,44 +205,31 @@ router.post(
         graphics,
         year,
         connectivity,
-
         warranty,
         condition,
         storage,
         ram,
         color,
-
         batteryHealth,
         faceId,
         simStatus,
-
         negotiation,
         swapAccepted,
       } = req.body;
 
-      // --------------------------------------------------------
-      // BASIC VALIDATION
-      // --------------------------------------------------------
-
+      // ─── Basic validation ──────────────────────────────────
       if (!title || !String(title).trim()) {
         return res.status(400).json({
           success: false,
           message: "Product title is required.",
         });
       }
-
-      if (
-        price === undefined ||
-        price === null ||
-        price === "" ||
-        Number.isNaN(Number(price))
-      ) {
+      if (price === undefined || price === null || price === "" || isNaN(Number(price))) {
         return res.status(400).json({
           success: false,
           message: "A valid product price is required.",
         });
       }
-
       if (Number(price) < 0) {
         return res.status(400).json({
           success: false,
@@ -188,47 +237,31 @@ router.post(
         });
       }
 
-      // --------------------------------------------------------
-      // CATEGORY NORMALIZATION
-      // --------------------------------------------------------
-
+      // ─── Category normalization ────────────────────────────
       const categoryMap = {
         phones: "Phones",
         phone: "Phones",
-
         laptops: "Laptops",
         laptop: "Laptops",
-
         tablets: "Tablets",
         tablet: "Tablets",
-
         accessories: "Accessories",
         accessory: "Accessories",
-
         electronics: "Electronics",
         electronic: "Electronics",
-
         cars: "Cars",
         car: "Cars",
-
         "real estate": "Real Estate",
         realestate: "Real Estate",
-
         jobs: "Jobs",
         job: "Jobs",
-
         fashion: "Fashion",
-
         home: "Home",
-
         other: "Other",
       };
 
       const rawCategory = String(category || "Other").trim();
-
-      const normalizedCategory =
-        categoryMap[rawCategory.toLowerCase()] || rawCategory;
-
+      const normalizedCategory = categoryMap[rawCategory.toLowerCase()] || rawCategory;
       const allowedCategories = [
         "Cars",
         "Phones",
@@ -240,71 +273,44 @@ router.post(
         "Electronics",
         "Fashion",
         "Home",
+        "Cosmetics",
         "Other",
       ];
-
+      // Add cosmetics to the allowed list
       const finalCategory = allowedCategories.includes(normalizedCategory)
         ? normalizedCategory
         : "Other";
 
-      // --------------------------------------------------------
-      // CONVERT BOOLEAN VALUES
-      // --------------------------------------------------------
-
+      // ─── Boolean helpers ──────────────────────────────────
       const toBoolean = (value) => {
-        if (typeof value === "boolean") {
-          return value;
-        }
-
-        if (value === undefined || value === null || value === "") {
-          return false;
-        }
-
+        if (typeof value === "boolean") return value;
+        if (value === undefined || value === null || value === "") return false;
         return String(value).toLowerCase() === "true";
       };
 
-      // --------------------------------------------------------
-      // CONVERT OPTIONAL NUMBER
-      // --------------------------------------------------------
-
       const optionalNumber = (value) => {
-        if (
-          value === undefined ||
-          value === null ||
-          value === "" ||
-          Number.isNaN(Number(value))
-        ) {
+        if (value === undefined || value === null || value === "" || isNaN(Number(value))) {
           return null;
         }
-
         return Number(value);
       };
 
-      // --------------------------------------------------------
-      // UPLOAD FILES TO CLOUDINARY
-      // --------------------------------------------------------
-
+      // ─── Upload files to Cloudinary ────────────────────────
       const images = [];
       const videos = [];
 
       console.log(`📤 Uploading ${files.length} file(s)...`);
-
       for (const file of files) {
         const isVideo = file.mimetype.startsWith("video/");
+        console.log(`⬆️ Uploading ${file.originalname} (${file.mimetype})`);
 
-        console.log(
-          `⬆️ Uploading ${file.originalname} (${file.mimetype})`
-        );
-
-        const result = await uploadToCloudinary(
-          file.buffer,
-          isVideo ? "video" : "image"
-        );
+        const result = await uploadToCloudinary(file.buffer, {
+          folder: "buyukused/products",
+          resourceType: isVideo ? "video" : "image",
+        });
 
         if (!result || !result.secure_url) {
-          throw new Error(
-            `Cloudinary upload failed for ${file.originalname}`
-          );
+          throw new Error(`Cloudinary upload failed for ${file.originalname}`);
         }
 
         if (isVideo) {
@@ -312,13 +318,8 @@ router.post(
         } else {
           images.push(result.secure_url);
         }
-
         console.log(`✅ Uploaded: ${result.secure_url}`);
       }
-
-      // --------------------------------------------------------
-      // IMAGE VALIDATION
-      // --------------------------------------------------------
 
       if (images.length === 0) {
         return res.status(400).json({
@@ -326,14 +327,12 @@ router.post(
           message: "At least one product image is required.",
         });
       }
-
       if (images.length > 5) {
         return res.status(400).json({
           success: false,
           message: "You can upload a maximum of 5 images.",
         });
       }
-
       if (videos.length > 1) {
         return res.status(400).json({
           success: false,
@@ -341,115 +340,41 @@ router.post(
         });
       }
 
-      // --------------------------------------------------------
-      // SELLER INFORMATION
-      // --------------------------------------------------------
+      // ─── Seller info ──────────────────────────────────────
+      const authenticatedSellerName = sellerName?.trim() || req.user.name || "";
+      const authenticatedSellerPhone = sellerPhone?.trim() || req.user.phone || "";
 
-      const authenticatedSellerName =
-        sellerName?.trim() ||
-        req.user.name ||
-        "";
-
-      const authenticatedSellerPhone =
-        sellerPhone?.trim() ||
-        req.user.phone ||
-        "";
-
-      // --------------------------------------------------------
-      // CREATE PRODUCT
-      // --------------------------------------------------------
-
+      // ─── Product data ──────────────────────────────────────
       const productData = {
         title: String(title).trim(),
-
         price: Number(price),
-
-        oldPrice:
-          oldPrice !== undefined &&
-          oldPrice !== null &&
-          oldPrice !== ""
-            ? Number(oldPrice)
-            : null,
-
+        oldPrice: oldPrice !== undefined && oldPrice !== null && oldPrice !== "" ? Number(oldPrice) : null,
         category: finalCategory,
-
-        location:
-          location && String(location).trim()
-            ? String(location).trim()
-            : "Ghana",
-
-        description:
-          description && String(description).trim()
-            ? String(description).trim()
-            : "",
-
-        // Seller
+        location: location && String(location).trim() ? String(location).trim() : "Ghana",
+        description: description && String(description).trim() ? String(description).trim() : "",
         sellerId: req.user._id || req.user.id,
-
         sellerName: authenticatedSellerName,
-
         sellerPhone: authenticatedSellerPhone,
-
-        // Media
         image: images[0] || "",
-
         images,
-
         videos,
-
-        // General product information
         brand: brand ? String(brand).trim() : "",
-
         model: model ? String(model).trim() : "",
-
         processor: processor ? String(processor).trim() : "",
-
-        screenSize: screenSize
-          ? String(screenSize).trim()
-          : "",
-
-        graphics: graphics
-          ? String(graphics).trim()
-          : "",
-
+        screenSize: screenSize ? String(screenSize).trim() : "",
+        graphics: graphics ? String(graphics).trim() : "",
         year: year ? String(year).trim() : "",
-
-        connectivity: connectivity
-          ? String(connectivity).trim()
-          : "",
-
-        warranty: warranty
-          ? String(warranty).trim()
-          : "",
-
+        connectivity: connectivity ? String(connectivity).trim() : "",
+        warranty: warranty ? String(warranty).trim() : "",
         condition: condition || "Good",
-
-        storage: storage
-          ? String(storage).trim()
-          : "",
-
+        storage: storage ? String(storage).trim() : "",
         ram: ram ? String(ram).trim() : "",
-
         color: color ? String(color).trim() : "",
-
-        // Phone-specific fields
         batteryHealth: optionalNumber(batteryHealth),
-
         faceId: faceId || "",
-
-        // IMPORTANT:
-        // SIM status is saved exactly as submitted.
-        // Accessories do NOT automatically receive SIM status.
-        simStatus:
-          finalCategory === "Phones"
-            ? simStatus || ""
-            : "",
-
-        // Marketplace options
+        simStatus: finalCategory === "Phones" ? (simStatus || "") : "",
         negotiation: toBoolean(negotiation),
-
         swapAccepted: toBoolean(swapAccepted),
-
         status: "active",
       };
 
@@ -463,10 +388,6 @@ router.post(
         simStatus: productData.simStatus,
       });
 
-      // --------------------------------------------------------
-      // SAVE TO MONGODB
-      // --------------------------------------------------------
-
       const product = await Product.create(productData);
 
       console.log("==========================================");
@@ -475,22 +396,14 @@ router.post(
       console.log("CATEGORY:", product.category);
       console.log("==========================================");
 
-      // --------------------------------------------------------
-      // RESPONSE
-      // --------------------------------------------------------
-
       return res.status(201).json({
         success: true,
         message: "Product posted successfully.",
         product,
       });
     } catch (error) {
-      console.error("==========================================");
-      console.error("❌ CREATE PRODUCT ERROR");
-      console.error(error);
-      console.error("==========================================");
-
-      // Multer errors
+      console.error("❌ CREATE PRODUCT ERROR:", error);
+      // ─── Multer errors ────────────────────────────────────
       if (error instanceof multer.MulterError) {
         if (error.code === "LIMIT_FILE_SIZE") {
           return res.status(400).json({
@@ -498,65 +411,42 @@ router.post(
             message: "A file is too large. Maximum size is 50MB.",
           });
         }
-
         if (error.code === "LIMIT_FILE_COUNT") {
           return res.status(400).json({
             success: false,
-            message:
-              "Too many files. Maximum is 5 images and 1 video.",
+            message: "Too many files. Maximum is 5 images and 1 video.",
           });
         }
-
         return res.status(400).json({
           success: false,
           message: error.message,
         });
       }
-
-      // File filter errors
-      if (
-        error.message &&
-        error.message.includes("Invalid file type")
-      ) {
+      if (error.message && error.message.includes("Invalid file type")) {
         return res.status(400).json({
           success: false,
           message: error.message,
         });
       }
-
-      // Mongoose validation error
       if (error.name === "ValidationError") {
-        const messages = Object.values(error.errors)
-          .map((err) => err.message)
-          .join(", ");
-
+        const messages = Object.values(error.errors).map((err) => err.message).join(", ");
         return res.status(400).json({
           success: false,
           message: messages || "Product validation failed.",
         });
       }
-
-      // Duplicate slug
       if (error.code === 11000) {
         return res.status(409).json({
           success: false,
-          message:
-            "A product with this information already exists. Please try again.",
+          message: "A product with this information already exists. Please try again.",
         });
       }
-
       return res.status(500).json({
         success: false,
-        message:
-          error.message ||
-          "Failed to create product. Please try again.",
+        message: error.message || "Failed to create product. Please try again.",
       });
     }
   }
 );
-
-// ============================================================
-// EXPORT
-// ============================================================
 
 module.exports = router;

@@ -205,11 +205,19 @@ export const getPublicSellerProfile = async (sellerId) => {
 
 /**
  * Get public products for a seller (with pagination)
+ * 
+ * ✅ FIXED: Now uses the existing /api/products endpoint with sellerId query
+ * instead of the non-existent /sellers/:sellerId/products
  */
 export const getPublicSellerProducts = async (sellerId, params = {}) => {
   const { page = 1, limit = 20, sort = "-createdAt" } = params;
-  const query = `page=${page}&limit=${limit}&sort=${encodeURIComponent(sort)}`;
-  return request(`/sellers/${sellerId}/products?${query}`);
+  const query = buildQuery({
+    sellerId,
+    page,
+    limit,
+    sort,
+  });
+  return request(`/api/products${query}`);
 };
 
 // ================================================================
