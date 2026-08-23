@@ -537,10 +537,16 @@ export const products = {
     );
   },
 
+  // ─── FIXED: using formData.set to capitalise category ───
   createWithFiles: async (
     formData,
     token = getToken()
   ) => {
+    // Workaround: capitalise category if it's "cosmetics"
+    const category = formData.get('category');
+    if (category && category.toLowerCase() === 'cosmetics') {
+      formData.set('category', 'Cosmetics');
+    }
     return request(
       `${API_URL}/api/products`,
       {
