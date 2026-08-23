@@ -90,55 +90,65 @@ const normalizeCategory = (category) => {
   const raw = String(category).trim();
   const lower = raw.toLowerCase();
 
-  // 1. Exact match against valid categories (case-insensitive)
+  // 1. Direct aliases (most common first)
+  const directAliases = {
+    "cosmetics": "Cosmetics",
+    "cosmetic": "Cosmetics",
+    "beauty": "Cosmetics",
+    "makeup": "Cosmetics",
+    "cars": "Cars",
+    "car": "Cars",
+    "phones": "Phones",
+    "phone": "Phones",
+    "smartphones": "Phones",
+    "laptops": "Laptops",
+    "laptop": "Laptops",
+    "tablets": "Tablets",
+    "tablet": "Tablets",
+    "accessories": "Accessories",
+    "accessory": "Accessories",
+    "real estate": "Real Estate",
+    "realestate": "Real Estate",
+    "jobs": "Jobs",
+    "job": "Jobs",
+    "electronics": "Electronics",
+    "electronic": "Electronics",
+    "fashion": "Fashion",
+    "home": "Home",
+    "tvs": "TVs",
+    "tv": "TVs",
+    "televisions": "TVs",
+    "game consoles": "Game Consoles",
+    "game console": "Game Consoles",
+    "console": "Game Consoles",
+    "smartwatches": "Smartwatches",
+    "smartwatch": "Smartwatches",
+    "smart watches": "Smartwatches",
+    "other": "Other",
+  };
+
+  // Check direct alias first (case-insensitive)
+  if (directAliases[lower]) return directAliases[lower];
+
+  // 2. Check against VALID_CATEGORIES (case-insensitive)
   for (const valid of VALID_CATEGORIES) {
     if (valid.toLowerCase() === lower) return valid;
   }
 
-  // 2. Normalize by replacing underscores/hyphens with spaces, collapse spaces
+  // 3. Normalize by replacing underscores/hyphens with spaces, collapse spaces
   const normalized = lower.replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
 
-  // 3. Alias map
-  const aliasMap = {
-    cars: "Cars",
-    car: "Cars",
-    phones: "Phones",
-    phone: "Phones",
-    smartphones: "Phones",
-    laptop: "Laptops",
-    laptops: "Laptops",
-    tablets: "Tablets",
-    tablet: "Tablets",
-    accessories: "Accessories",
-    accessory: "Accessories",
-    "real estate": "Real Estate",
-    realestate: "Real Estate",
-    jobs: "Jobs",
-    job: "Jobs",
-    electronics: "Electronics",
-    electronic: "Electronics",
-    fashion: "Fashion",
-    home: "Home",
-    tvs: "TVs",
-    tv: "TVs",
-    televisions: "TVs",
-    "game consoles": "Game Consoles",
-    console: "Game Consoles",
-    smartwatches: "Smartwatches",
-    smartwatch: "Smartwatches",
-    "smart watches": "Smartwatches",
-    cosmetics: "Cosmetics",
-    cosmetic: "Cosmetics",
-    beauty: "Cosmetics",
-    makeup: "Cosmetics",
-    other: "Other",
-  };
+  // 4. Check alias map with normalized value
+  if (directAliases[normalized]) return directAliases[normalized];
 
-  if (aliasMap[normalized]) return aliasMap[normalized];
-
-  // 4. Final fallback: check if raw is in the valid list (case-insensitive) again
+  // 5. Final fallback: check if raw is in VALID_CATEGORIES (case-insensitive) again
   for (const valid of VALID_CATEGORIES) {
     if (valid.toLowerCase() === lower) return valid;
+  }
+
+  // 6. One more check for "cosmetics" specifically (just in case)
+  if (lower === "cosmetics" || lower === "cosmetic" || lower === "beauty" || lower === "makeup") {
+    return "Cosmetics";
   }
 
   return null; // will cause a 400 error
