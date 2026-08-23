@@ -23,6 +23,7 @@ const PRODUCT_CATEGORIES = [
   "TVs",
   "Game Consoles",
   "Smartwatches",
+  "Cosmetics",
   "Other",
 ];
 
@@ -75,8 +76,8 @@ const productSchema = new mongoose.Schema(
       type: String,
       enum: PRODUCT_CATEGORIES,
       default: "Other",
-      index: true,
       trim: true,
+      index: true,
     },
 
     location: {
@@ -139,15 +140,6 @@ const productSchema = new mongoose.Schema(
     // ========================================================
     // VISUAL SEARCH
     // ========================================================
-    //
-    // CLIP image embedding.
-    //
-    // Xenova/clip-vit-base-patch32 produces 512 dimensions.
-    //
-    // This field is NOT returned to the frontend in normal
-    // product responses because it is unnecessary there.
-    //
-    // ========================================================
 
     imageEmbedding: {
       type: [Number],
@@ -176,14 +168,12 @@ const productSchema = new mongoose.Schema(
       type: String,
       default: "",
       trim: true,
-      index: true,
     },
 
     model: {
       type: String,
       default: "",
       trim: true,
-      index: true,
     },
 
     color: {
@@ -538,6 +528,59 @@ const productSchema = new mongoose.Schema(
     },
 
     // ========================================================
+    // COSMETICS
+    // ========================================================
+
+    cosmeticType: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    cosmeticBrand: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    cosmeticShade: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    skinType: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    volume: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    ingredients: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 2000,
+    },
+
+    expiryDate: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    gender: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    // ========================================================
     // SELLING OPTIONS
     // ========================================================
 
@@ -639,10 +682,15 @@ productSchema.index({
   accessoryType: "text",
   compatibleWith: "text",
   compatibility: "text",
+  cosmeticType: "text",
+  cosmeticBrand: "text",
+  cosmeticShade: "text",
+  skinType: "text",
+  ingredients: "text",
 });
 
 // ============================================================
-// OTHER INDEXES
+// COMPOUND INDEXES
 // ============================================================
 
 productSchema.index({
@@ -652,6 +700,15 @@ productSchema.index({
 });
 
 productSchema.index({
+  sellerId: 1,
+  createdAt: -1,
+});
+
+// ============================================================
+// SORTING INDEXES
+// ============================================================
+
+productSchema.index({
   createdAt: -1,
 });
 
@@ -659,10 +716,9 @@ productSchema.index({
   price: 1,
 });
 
-productSchema.index({
-  sellerId: 1,
-  createdAt: -1,
-});
+// ============================================================
+// PHONE INDEXES
+// ============================================================
 
 productSchema.index({
   simStatus: 1,
@@ -671,6 +727,10 @@ productSchema.index({
 productSchema.index({
   batteryHealth: 1,
 });
+
+// ============================================================
+// ACCESSORY INDEXES
+// ============================================================
 
 productSchema.index({
   accessoryType: 1,
@@ -681,6 +741,18 @@ productSchema.index({
 });
 
 productSchema.index({
+  wireless: 1,
+});
+
+productSchema.index({
+  original: 1,
+});
+
+// ============================================================
+// GENERAL PRODUCT INDEXES
+// ============================================================
+
+productSchema.index({
   brand: 1,
 });
 
@@ -688,13 +760,9 @@ productSchema.index({
   model: 1,
 });
 
-productSchema.index({
-  wireless: 1,
-});
-
-productSchema.index({
-  original: 1,
-});
+// ============================================================
+// GAME CONSOLE INDEXES
+// ============================================================
 
 productSchema.index({
   videoOutput: 1,
@@ -708,9 +776,17 @@ productSchema.index({
   resolution: 1,
 });
 
+// ============================================================
+// SMARTWATCH INDEX
+// ============================================================
+
 productSchema.index({
   watchSize: 1,
 });
+
+// ============================================================
+// TV INDEXES
+// ============================================================
 
 productSchema.index({
   tvType: 1,
@@ -736,6 +812,10 @@ productSchema.index({
   smartTV: 1,
 });
 
+// ============================================================
+// CAR INDEXES
+// ============================================================
+
 productSchema.index({
   mileage: 1,
 });
@@ -750,6 +830,22 @@ productSchema.index({
 
 productSchema.index({
   bodyType: 1,
+});
+
+// ============================================================
+// COSMETICS INDEXES
+// ============================================================
+
+productSchema.index({
+  cosmeticType: 1,
+});
+
+productSchema.index({
+  cosmeticBrand: 1,
+});
+
+productSchema.index({
+  skinType: 1,
 });
 
 // ============================================================
