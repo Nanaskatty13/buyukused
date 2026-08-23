@@ -1489,8 +1489,8 @@ const PostAd = () => {
       ] ||
       formData.category;
 
-    // ✅ FIX: Convert category to lowercase for backend compatibility
-    const finalCategory = mappedCategory.toLowerCase();
+    // ✅ FIX: Send the category as-is (capitalised) to match backend enum
+    const finalCategory = mappedCategory; // <-- no toLowerCase()
 
     // ========================================================
     // COMMON FIELDS
@@ -1503,7 +1503,7 @@ const PostAd = () => {
       price:
         formData.price,
 
-      category: finalCategory,  // <-- using lowercase version
+      category: finalCategory,
 
       location:
         formData.location,

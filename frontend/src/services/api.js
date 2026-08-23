@@ -24,7 +24,9 @@ console.log("🔗 API_URL:", API_URL);
 // REQUEST CONFIG
 // ================================================================
 
-const REQUEST_TIMEOUT = 30000;
+// Increased timeout to 120 seconds (2 minutes) to handle cold starts
+// and Cloudinary uploads on Render's free tier.
+const REQUEST_TIMEOUT = 120000; // 120 seconds
 const MAX_RETRIES = 2;
 
 // ================================================================
