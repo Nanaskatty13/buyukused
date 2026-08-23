@@ -1489,6 +1489,9 @@ const PostAd = () => {
       ] ||
       formData.category;
 
+    // ✅ FIX: Convert category to lowercase for backend compatibility
+    const finalCategory = mappedCategory.toLowerCase();
+
     // ========================================================
     // COMMON FIELDS
     // ========================================================
@@ -1500,8 +1503,7 @@ const PostAd = () => {
       price:
         formData.price,
 
-      category:
-        mappedCategory,
+      category: finalCategory,  // <-- using lowercase version
 
       location:
         formData.location,

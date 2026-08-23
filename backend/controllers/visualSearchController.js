@@ -6,112 +6,237 @@
 const Product = require("../models/Product");
 
 // ============================================================
+// HELPERS
+// ============================================================
+
+const cleanString = (value) => {
+  if (value === undefined || value === null) {
+    return "";
+  }
+
+  return String(value).trim();
+};
+
+const toNumber = (value, defaultValue = null) => {
+  if (
+    value === undefined ||
+    value === null ||
+    value === ""
+  ) {
+    return defaultValue;
+  }
+
+  const number = Number(value);
+
+  return Number.isFinite(number)
+    ? number
+    : defaultValue;
+};
+
+// ============================================================
+// VISUAL SEARCH
+// ============================================================
+//
 // POST /api/visual-search
-// Visual product search using an uploaded image
+//
+// Form-data:
+// image = uploaded image
+//
+// Optional:
+// category
+// location
+// minPrice
+// maxPrice
+// limit
+//
 // ============================================================
 
 const visualSearch = async (req, res) => {
   try {
-    // ----------------------------------------------------------
-    // Make sure an image was uploaded
-    // ----------------------------------------------------------
+    // ========================================================
+    // IMAGE REQUIRED
+    // ========================================================
+
     if (!req.file) {
       return res.status(400).json({
         success: false,
-        message: "Please upload an image.",
+        message: "An image is required for visual search.",
       });
     }
 
-    // ----------------------------------------------------------
-    // Optional search filters
-    // ----------------------------------------------------------
-    const {
-      category,
-      location,
-      minPrice,
-      maxPrice,
-      limit = 20,
-    } = req.body;
+    // ========================================================
+    // REQUEST OPTIONS
+    // ========================================================
 
-    // ----------------------------------------------------------
-    // Build MongoDB query
-    // ----------------------------------------------------------
-    const query = {
-      isActive: { $ne: false },
+    const category = cleanString(req.body?.category);
+    const location = cleanString(req.body?.location);
+
+    const minPrice = toNumber(
+      req.body?.minPrice
+    );
+
+    const maxPrice = toNumber(
+      req.body?.maxPrice
+    );
+
+    const limit = Math.min(
+      Math.max(
+        Number(req.body?.limit) || 20,
+        1
+      ),
+      50
+    );
+
+    // ========================================================
+    // BASE FILTER
+    // ========================================================
+
+    const filter = {
+      isActive: true,
+      isSold: false,
     };
 
-    // Category filter
-    if (category && category.trim()) {
-      query.category = category.trim();
+    // ========================================================
+    // CATEGORY
+    // ========================================================
+
+    if (category) {
+      const allowedCategories = [
+        "Phones",
+        "Laptops",
+        "Tablets",
+        "Accessories",
+        "Electronics",
+        "Game Consoles",
+        "Smartwatches",
+        "TVs",
+        "Cars",
+        "Cosmetics",
+      ];
+
+      const matchedCategory =
+        allowedCategories.find(
+          (item) =>
+            item.toLowerCase() ===
+            category.toLowerCase()
+        );
+
+      if (!matchedCategory) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid category.",
+        });
+      }
+
+      filter.category = matchedCategory;
     }
 
-    // Location filter
-    if (location && location.trim()) {
-      query.location = {
-        $regex: location.trim(),
+    // ========================================================
+    // LOCATION
+    // ========================================================
+
+    if (location) {
+      filter.location = {
+        $regex: location,
         $options: "i",
       };
     }
 
-    // Minimum price
-    if (minPrice !== undefined && minPrice !== "") {
-      const parsedMinPrice = Number(minPrice);
+    // ========================================================
+    // PRICE RANGE
+    // ========================================================
 
-      if (!Number.isNaN(parsedMinPrice)) {
-        query.price = {
-          ...(query.price || {}),
-          $gte: parsedMinPrice,
-        };
+    if (
+      minPrice !== null ||
+      maxPrice !== null
+    ) {
+      filter.price = {};
+
+      if (minPrice !== null) {
+        if (minPrice < 0) {
+          return res.status(400).json({
+            success: false,
+            message: "Minimum price cannot be negative.",
+          });
+        }
+
+        filter.price.$gte = minPrice;
+      }
+
+      if (maxPrice !== null) {
+        if (maxPrice < 0) {
+          return res.status(400).json({
+            success: false,
+            message: "Maximum price cannot be negative.",
+          });
+        }
+
+        filter.price.$lte = maxPrice;
+      }
+
+      if (
+        minPrice !== null &&
+        maxPrice !== null &&
+        minPrice > maxPrice
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Minimum price cannot be greater than maximum price.",
+        });
       }
     }
 
-    // Maximum price
-    if (maxPrice !== undefined && maxPrice !== "") {
-      const parsedMaxPrice = Number(maxPrice);
-
-      if (!Number.isNaN(parsedMaxPrice)) {
-        query.price = {
-          ...(query.price || {}),
-          $lte: parsedMaxPrice,
-        };
-      }
-    }
-
-    // ----------------------------------------------------------
-    // Limit protection
-    // ----------------------------------------------------------
-    const parsedLimit = Math.min(
-      Math.max(Number(limit) || 20, 1),
-      100
-    );
-
-    // ----------------------------------------------------------
-    // IMPORTANT
+    // ========================================================
+    // VISUAL SEARCH PLACEHOLDER
+    // ========================================================
     //
-    // At this stage we return products based on the optional
-    // filters. The uploaded image is accepted and can later be
-    // connected to an AI/image-similarity service.
+    // For now, the uploaded image is accepted successfully
+    // and the database is searched using the supplied filters.
     //
-    // This prevents the route from crashing while keeping the
-    // visual-search API ready for AI matching.
-    // ----------------------------------------------------------
+    // Later this can be connected to:
+    //
+    // - Cloudinary image analysis
+    // - OpenAI vision
+    // - CLIP
+    // - Google Vision
+    // - another image embedding service
+    //
+    // ========================================================
 
-    const products = await Product.find(query)
-      .sort({ createdAt: -1 })
-      .limit(parsedLimit)
+    const products = await Product.find(filter)
+      .populate(
+        "sellerId",
+        "name email phone"
+      )
+      .sort({
+        createdAt: -1,
+      })
+      .limit(limit)
       .lean();
 
-    // ----------------------------------------------------------
-    // Return results
-    // ----------------------------------------------------------
+    // ========================================================
+    // RESPONSE
+    // ========================================================
+
     return res.status(200).json({
       success: true,
-      message: "Visual search completed.",
-      count: products.length,
+      message: "Visual search completed successfully.",
+      search: {
+        category: category || null,
+        location: location || null,
+        minPrice,
+        maxPrice,
+        limit,
+      },
       products,
+      count: products.length,
     });
   } catch (error) {
-    console.error("❌ Visual search error:", error);
+    console.error(
+      "❌ VISUAL SEARCH ERROR:",
+      error
+    );
 
     return res.status(500).json({
       success: false,
@@ -125,7 +250,7 @@ const visualSearch = async (req, res) => {
 };
 
 // ============================================================
-// EXPORTS
+// EXPORT
 // ============================================================
 
 module.exports = {
