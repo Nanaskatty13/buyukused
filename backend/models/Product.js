@@ -43,51 +43,21 @@ const PRODUCT_CONDITIONS = [
   "Poor",
 ];
 
-// ============================================================
-// CATEGORY ALIASES
-//
-// Accept lowercase / uppercase / mixed-case values from frontend
-// and always store the official category name in MongoDB.
-// ============================================================
+const FACE_ID_VALUES = [
+  "Working",
+  "Not Working",
+  "Not Available",
+  "",
+];
 
-const CATEGORY_ALIASES = {
-  cars: "Cars",
-  phones: "Phones",
-  laptops: "Laptops",
-  tablets: "Tablets",
-  accessories: "Accessories",
-  "real estate": "Real Estate",
-  jobs: "Jobs",
-  electronics: "Electronics",
-  fashion: "Fashion",
-  home: "Home",
-  tvs: "TVs",
-  "game consoles": "Game Consoles",
-  smartwatches: "Smartwatches",
-  cosmetics: "Cosmetics",
-  other: "Other",
-};
-
-// ============================================================
-// NORMALIZE CATEGORY
-// ============================================================
-
-const normalizeCategory = (value) => {
-  // Empty category
-  if (
-    value === undefined ||
-    value === null ||
-    String(value).trim() === ""
-  ) {
-    return "Other";
-  }
-
-  const normalized = String(value)
-    .trim()
-    .toLowerCase();
-
-  return CATEGORY_ALIASES[normalized] || value;
-};
+const SIM_STATUS_VALUES = [
+  "eSIM Unlocked",
+  "SIM Unlocked",
+  "Locked",
+  "Bypass",
+  "Not Available",
+  "",
+];
 
 // ============================================================
 // PRODUCT SCHEMA
@@ -120,21 +90,10 @@ const productSchema = new mongoose.Schema(
 
     category: {
       type: String,
-
-      // IMPORTANT:
-      // Convert "cosmetics" -> "Cosmetics"
-      // before enum validation happens.
-      set: normalizeCategory,
-
-      enum: {
-        values: PRODUCT_CATEGORIES,
-        message:
-          "Invalid product category: {VALUE}",
-      },
-
+      enum: PRODUCT_CATEGORIES,
       default: "Other",
-      index: true,
       trim: true,
+      index: true,
     },
 
     location: {
@@ -202,14 +161,12 @@ const productSchema = new mongoose.Schema(
       type: String,
       default: "",
       trim: true,
-      index: true,
     },
 
     model: {
       type: String,
       default: "",
       trim: true,
-      index: true,
     },
 
     color: {
@@ -232,7 +189,7 @@ const productSchema = new mongoose.Schema(
     },
 
     // ========================================================
-    // COMPUTER / TABLET
+    // COMPUTER / LAPTOP / TABLET
     // ========================================================
 
     storage: {
@@ -540,25 +497,13 @@ const productSchema = new mongoose.Schema(
 
     faceId: {
       type: String,
-      enum: [
-        "Working",
-        "Not Working",
-        "Not Available",
-        "",
-      ],
+      enum: FACE_ID_VALUES,
       default: "",
     },
 
     simStatus: {
       type: String,
-      enum: [
-        "eSIM Unlocked",
-        "SIM Unlocked",
-        "Locked",
-        "Bypass",
-        "Not Available",
-        "",
-      ],
+      enum: SIM_STATUS_VALUES,
       default: "",
       trim: true,
     },
@@ -571,7 +516,6 @@ const productSchema = new mongoose.Schema(
       type: String,
       default: "",
       trim: true,
-      index: true,
     },
 
     skinType: {
@@ -702,7 +646,7 @@ productSchema.pre("save", function (next) {
 });
 
 // ============================================================
-// TEXT INDEX
+// TEXT SEARCH INDEX
 // ============================================================
 
 productSchema.index({
@@ -718,7 +662,7 @@ productSchema.index({
 });
 
 // ============================================================
-// OTHER INDEXES
+// COMPOUND INDEXES
 // ============================================================
 
 productSchema.index({
@@ -728,16 +672,20 @@ productSchema.index({
 });
 
 productSchema.index({
+  sellerId: 1,
+  createdAt: -1,
+});
+
+// ============================================================
+// SORTING / FILTERING INDEXES
+// ============================================================
+
+productSchema.index({
   createdAt: -1,
 });
 
 productSchema.index({
   price: 1,
-});
-
-productSchema.index({
-  sellerId: 1,
-  createdAt: -1,
 });
 
 productSchema.index({
@@ -841,3 +789,11 @@ const Product =
   mongoose.model("Product", productSchema);
 
 module.exports = Product;
+
+// ============================================================
+// EXPORT CONSTANTS
+// ============================================================
+
+module.exports.PRODUCT_CATEGORIES = PRODUCT_CATEGORIES;
+module.exports.PRODUCT_STATUSES = PRODUCT_STATUSES;
+module.exports.PRODUCT_CONDITIONS = PRODUCT_CONDITIONS;
