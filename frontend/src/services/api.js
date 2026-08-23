@@ -1,137 +1,102 @@
-// ============================================================
+// ================================================================
 // frontend/src/services/api.js
-// BuyUKUsed - API Service
-// ============================================================
+// BuyUKUsed API Service
+// ================================================================
 
-const API_URL = (
+import {
+  getToken,
+  clearAuthData,
+} from "../utils/storage";
+
+// ================================================================
+// API CONFIG
+// ================================================================
+
+const RAW_API_URL =
   import.meta.env.VITE_API_URL ||
-  "https://buyukused.onrender.com"
-).replace(/\/+$/, "");
+  "http://localhost:5000";
+
+export const API_URL = String(RAW_API_URL).replace(
+  /\/+$/,
+  ""
+);
 
 console.log("🔗 API_URL:", API_URL);
 
-// ============================================================
-// HELPERS
-// ============================================================
+// ================================================================
+// REQUEST CONFIG
+// ================================================================
 
-const getStoredToken = () => {
-  try {
-    return (
-      localStorage.getItem("token") ||
-      localStorage.getItem("authToken") ||
-      localStorage.getItem("accessToken") ||
-      ""
-    );
-  } catch (error) {
-    console.warn("⚠️ Unable to access localStorage:", error);
-    return "";
-  }
-};
+const REQUEST_TIMEOUT = 30000;
+const MAX_RETRIES = 2;
 
-// ============================================================
-// MONGODB OBJECTID VALIDATION
-// ============================================================
+// ================================================================
+// HEADERS
+// ================================================================
 
-const isValidObjectId = (value) => {
-  return (
-    typeof value === "string" &&
-    /^[a-fA-F0-9]{24}$/.test(value)
-  );
-};
+const getHeaders = (token = getToken()) => ({
+  "Content-Type": "application/json",
 
-// ============================================================
-// GET USER ID FROM JWT
-//
-// This is only a fallback.
-// The actual user object from AuthContext is preferred.
-// ============================================================
+  ...(token
+    ? {
+        Authorization: `Bearer ${token}`,
+      }
+    : {}),
+});
 
-const getUserIdFromToken = () => {
-  const token = getStoredToken();
+// IMPORTANT:
+// Do NOT manually set Content-Type for FormData.
+const getFileHeaders = (token = getToken()) => ({
+  ...(token
+    ? {
+        Authorization: `Bearer ${token}`,
+      }
+    : {}),
+});
 
-  if (!token) {
-    return null;
-  }
-
-  try {
-    const parts = token.split(".");
-
-    if (parts.length !== 3) {
-      return null;
-    }
-
-    const payload = JSON.parse(
-      decodeURIComponent(
-        atob(parts[1].replace(/-/g, "+").replace(/_/g, "/"))
-          .split("")
-          .map(
-            (char) =>
-              "%" +
-              ("00" + char.charCodeAt(0).toString(16)).slice(-2)
-          )
-          .join("")
-      )
-    );
-
-    const id =
-      payload?.id ||
-      payload?._id ||
-      payload?.userId ||
-      null;
-
-    return isValidObjectId(id) ? id : null;
-  } catch (error) {
-    console.warn(
-      "⚠️ Could not decode user ID from token:",
-      error
-    );
-
-    return null;
-  }
-};
-
-// ============================================================
-// HANDLE RESPONSE
-// ============================================================
+// ================================================================
+// RESPONSE HANDLER
+// ================================================================
 
 const handleResponse = async (response) => {
-  let data = null;
+  let data = {};
 
-  try {
+  if (response.status !== 204) {
     const contentType =
       response.headers.get("content-type") || "";
 
-    if (contentType.includes("application/json")) {
-      data = await response.json();
-    } else {
-      const text = await response.text();
+    try {
+      if (contentType.includes("application/json")) {
+        data = await response.json();
+      } else {
+        const text = await response.text();
 
-      data = text
-        ? { message: text }
-        : null;
+        if (text) {
+          data = {
+            message: text,
+          };
+        }
+      }
+    } catch (parseError) {
+      console.warn(
+        "⚠️ Could not parse API response:",
+        parseError
+      );
+
+      data = {};
     }
-  } catch {
-    data = null;
   }
 
   if (!response.ok) {
-    const message =
+    const error = new Error(
       data?.message ||
-      data?.error ||
-      (response.status === 400
-        ? "Bad request"
-        : response.status === 401
-        ? "Unauthorized. Please log in again."
-        : response.status === 403
-        ? "You do not have permission to perform this action."
-        : response.status === 404
-        ? "API endpoint not found"
-        : `Request failed with status ${response.status}`);
-
-    const error = new Error(message);
+        data?.error ||
+        `HTTP ${response.status}`
+    );
 
     error.status = response.status;
     error.data = data;
+    error.url = response.url;
 
     throw error;
   }
@@ -139,48 +104,115 @@ const handleResponse = async (response) => {
   return data;
 };
 
-// ============================================================
-// GENERIC REQUEST
-// ============================================================
+// ================================================================
+// SLEEP
+// ================================================================
 
-export const request = async (
-  endpoint,
-  options = {}
+const sleep = (ms) =>
+  new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+
+// ================================================================
+// REQUEST HELPER
+// ================================================================
+
+const request = async (
+  url,
+  options = {},
+  retries = MAX_RETRIES
 ) => {
-  const token = getStoredToken();
-
-  const cleanEndpoint = endpoint.startsWith("/")
-    ? endpoint
-    : `/${endpoint}`;
-
-  const url = `${API_URL}${cleanEndpoint}`;
-
-  const headers = {
-    ...(options.body instanceof FormData
-      ? {}
-      : {
-          "Content-Type": "application/json",
-        }),
-
-    ...(options.headers || {}),
-  };
-
-  // ==========================================================
-  // AUTHORIZATION
-  // ==========================================================
-
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
-  }
+  let controller;
+  let timeoutId;
 
   try {
+    controller = new AbortController();
+
+    timeoutId = setTimeout(() => {
+      controller.abort();
+    }, REQUEST_TIMEOUT);
+
     const response = await fetch(url, {
+      credentials: "include",
       ...options,
-      headers,
+
+      signal:
+        options.signal ||
+        controller.signal,
     });
+
+    clearTimeout(timeoutId);
 
     return await handleResponse(response);
   } catch (error) {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+
+    const isAbortError =
+      error?.name === "AbortError";
+
+    const isNetworkError =
+      error?.name === "TypeError" ||
+      error?.message === "Failed to fetch";
+
+    // ============================================================
+    // TIMEOUT
+    // ============================================================
+
+    if (isAbortError) {
+      if (retries > 0) {
+        console.warn(
+          `⏳ API timeout. Retrying... ${retries} attempt(s) left`,
+          url
+        );
+
+        await sleep(1500);
+
+        return request(
+          url,
+          options,
+          retries - 1
+        );
+      }
+
+      const timeoutError = new Error(
+        "The server took too long to respond."
+      );
+
+      timeoutError.code = "REQUEST_TIMEOUT";
+      timeoutError.url = url;
+
+      console.error(
+        "❌ API timeout:",
+        url
+      );
+
+      throw timeoutError;
+    }
+
+    // ============================================================
+    // NETWORK ERROR
+    // ============================================================
+
+    if (
+      isNetworkError &&
+      retries > 0
+    ) {
+      console.warn(
+        `🔄 Network error. Retrying... ${retries} attempt(s) left`,
+        url
+      );
+
+      await sleep(1000);
+
+      return request(
+        url,
+        options,
+        retries - 1
+      );
+    }
+
     console.error(
       "❌ API request failed:",
       url,
@@ -191,586 +223,1969 @@ export const request = async (
   }
 };
 
-// ============================================================
-// GET
-// ============================================================
+// ================================================================
+// QUERY BUILDER
+// ================================================================
 
-export const get = async (
-  endpoint,
-  options = {}
-) => {
-  return request(endpoint, {
-    ...options,
-    method: "GET",
-  });
+const buildQuery = (params = {}) => {
+  const searchParams = new URLSearchParams();
+
+  Object.entries(params).forEach(
+    ([key, value]) => {
+      if (
+        value === undefined ||
+        value === null ||
+        value === ""
+      ) {
+        return;
+      }
+
+      if (
+        (key === "category" ||
+          key === "location") &&
+        value === "all"
+      ) {
+        return;
+      }
+
+      searchParams.set(
+        key,
+        String(value)
+      );
+    }
+  );
+
+  const query = searchParams.toString();
+
+  return query ? `?${query}` : "";
 };
 
-// ============================================================
-// POST
-// ============================================================
+// ================================================================
+// IMAGE URL
+// ================================================================
 
-export const post = async (
-  endpoint,
-  body,
-  options = {}
-) => {
-  return request(endpoint, {
-    ...options,
-    method: "POST",
-    body:
-      body instanceof FormData
-        ? body
-        : JSON.stringify(body ?? {}),
-  });
-};
-
-// ============================================================
-// PATCH
-// ============================================================
-
-export const patch = async (
-  endpoint,
-  body,
-  options = {}
-) => {
-  return request(endpoint, {
-    ...options,
-    method: "PATCH",
-    ...(body !== undefined
-      ? {
-          body:
-            body instanceof FormData
-              ? body
-              : JSON.stringify(body ?? {}),
-        }
-      : {}),
-  });
-};
-
-// ============================================================
-// PUT
-// ============================================================
-
-export const put = async (
-  endpoint,
-  body,
-  options = {}
-) => {
-  return request(endpoint, {
-    ...options,
-    method: "PUT",
-    ...(body !== undefined
-      ? {
-          body:
-            body instanceof FormData
-              ? body
-              : JSON.stringify(body ?? {}),
-        }
-      : {}),
-  });
-};
-
-// ============================================================
-// DELETE
-// ============================================================
-
-export const del = async (
-  endpoint,
-  options = {}
-) => {
-  return request(endpoint, {
-    ...options,
-    method: "DELETE",
-  });
-};
-
-// ============================================================
-// IMAGE URL HELPER
-// ============================================================
-
-export const getImageUrl = (image) => {
-  if (!image) {
+export const getImageUrl = (path) => {
+  if (!path) {
     return "/placeholder.png";
   }
 
-  if (typeof image !== "string") {
+  if (typeof path !== "string") {
     return "/placeholder.png";
   }
 
-  const trimmed = image.trim();
+  const cleanPath = path.trim();
 
-  if (!trimmed) {
+  if (!cleanPath) {
     return "/placeholder.png";
   }
 
-  // Already a complete URL
+  // External URL
   if (
-    trimmed.startsWith("http://") ||
-    trimmed.startsWith("https://") ||
-    trimmed.startsWith("blob:") ||
-    trimmed.startsWith("data:")
+    cleanPath.startsWith("http://") ||
+    cleanPath.startsWith("https://")
   ) {
-    return trimmed;
+    // Cloudinary optimization
+    if (
+      cleanPath.includes("res.cloudinary.com") &&
+      cleanPath.includes("/image/upload/")
+    ) {
+      return cleanPath.replace(
+        "/image/upload/",
+        "/image/upload/f_auto,q_auto,w_600/"
+      );
+    }
+
+    return cleanPath;
   }
 
-  // Local/public path
-  if (trimmed.startsWith("/")) {
-    return trimmed;
+  // Base64
+  if (cleanPath.startsWith("data:")) {
+    return cleanPath;
   }
 
-  return `/${trimmed}`;
+  // Blob
+  if (cleanPath.startsWith("blob:")) {
+    return cleanPath;
+  }
+
+  // Backend relative path
+  return `${API_URL}${
+    cleanPath.startsWith("/")
+      ? cleanPath
+      : `/${cleanPath}`
+  }`;
 };
 
-// ============================================================
+// ================================================================
+// HEALTH
+// ================================================================
+
+export const health = {
+  check: async () =>
+    request(
+      `${API_URL}/health`,
+      {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+        },
+      }
+    ),
+};
+
+// ================================================================
 // AUTH
-// ============================================================
+// ================================================================
 
-export const loginUser = async (credentials) => {
-  return post(
-    "/api/auth/login",
-    credentials
-  );
-};
+export const auth = {
+  login: async (
+    email,
+    password
+  ) => {
+    return request(
+      `${API_URL}/auth/login`,
+      {
+        method: "POST",
 
-export const registerUser = async (userData) => {
-  return post(
-    "/api/auth/register",
-    userData
-  );
-};
+        headers: {
+          "Content-Type":
+            "application/json",
+        },
 
-export const getCurrentUser = async () => {
-  return get("/api/auth/me");
-};
+        body: JSON.stringify({
+          email: String(email || "")
+            .trim()
+            .toLowerCase(),
 
-// ============================================================
-// ADMIN - USERS
-// ============================================================
-
-export const getAdminUsers = async (
-  params = {}
-) => {
-  const query = new URLSearchParams();
-
-  Object.entries(params).forEach(
-    ([key, value]) => {
-      if (
-        value !== undefined &&
-        value !== null &&
-        value !== ""
-      ) {
-        query.append(
-          key,
-          String(value)
-        );
+          password: String(
+            password || ""
+          ),
+        }),
       }
+    );
+  },
+
+  register: async (
+    userData = {}
+  ) => {
+    const registrationData = {
+      name: String(
+        userData.name || ""
+      ).trim(),
+
+      email: String(
+        userData.email || ""
+      )
+        .trim()
+        .toLowerCase(),
+
+      password: String(
+        userData.password || ""
+      ),
+
+      phone: String(
+        userData.phone || ""
+      ).trim(),
+
+      role: String(
+        userData.role || "buyer"
+      )
+        .trim()
+        .toLowerCase(),
+    };
+
+    return request(
+      `${API_URL}/auth/register`,
+      {
+        method: "POST",
+
+        headers: {
+          "Content-Type":
+            "application/json",
+        },
+
+        body: JSON.stringify(
+          registrationData
+        ),
+      }
+    );
+  },
+
+  getMe: async (
+    token = getToken()
+  ) => {
+    if (!token) {
+      const error = new Error(
+        "Authentication token is missing."
+      );
+
+      error.status = 401;
+
+      throw error;
     }
-  );
 
-  const queryString = query.toString();
+    return request(
+      `${API_URL}/auth/me`,
+      {
+        method: "GET",
+        headers: getHeaders(token),
+      }
+    );
+  },
 
-  return get(
-    `/api/admin/users${
-      queryString
-        ? `?${queryString}`
-        : ""
-    }`
-  );
+  logout: async (
+    token = getToken()
+  ) => {
+    if (!token) {
+      return {
+        success: true,
+      };
+    }
+
+    return request(
+      `${API_URL}/auth/logout`,
+      {
+        method: "POST",
+        headers: getHeaders(token),
+      }
+    );
+  },
 };
 
-export const getAdminUserById = async (
-  userId
-) => {
-  if (!isValidObjectId(userId)) {
-    throw new Error("Valid User ID is required");
-  }
+// ================================================================
+// PRODUCTS
+// ================================================================
 
-  return get(
-    `/api/admin/users/${userId}`
-  );
+export const products = {
+  getAll: async (
+    params = {}
+  ) => {
+    const query =
+      buildQuery(params);
+
+    return request(
+      `${API_URL}/api/products${query}`,
+      {
+        method: "GET",
+
+        headers: {
+          Accept:
+            "application/json",
+        },
+      }
+    );
+  },
+
+  getById: async (
+    id
+  ) => {
+    if (!id) {
+      throw new Error(
+        "Product ID is required"
+      );
+    }
+
+    return request(
+      `${API_URL}/api/products/${encodeURIComponent(
+        id
+      )}`,
+      {
+        method: "GET",
+
+        headers: {
+          Accept:
+            "application/json",
+        },
+      }
+    );
+  },
+
+  create: async (
+    productData,
+    token = getToken()
+  ) => {
+    return request(
+      `${API_URL}/api/products`,
+      {
+        method: "POST",
+
+        headers:
+          getHeaders(token),
+
+        body: JSON.stringify(
+          productData
+        ),
+      }
+    );
+  },
+
+  createWithFiles: async (
+    formData,
+    token = getToken()
+  ) => {
+    return request(
+      `${API_URL}/api/products`,
+      {
+        method: "POST",
+
+        headers:
+          getFileHeaders(token),
+
+        body: formData,
+      }
+    );
+  },
+
+  update: async (
+    id,
+    productData,
+    token = getToken()
+  ) => {
+    if (!id) {
+      throw new Error(
+        "Product ID is required"
+      );
+    }
+
+    return request(
+      `${API_URL}/api/products/${encodeURIComponent(
+        id
+      )}`,
+      {
+        method: "PUT",
+
+        headers:
+          getHeaders(token),
+
+        body: JSON.stringify(
+          productData
+        ),
+      }
+    );
+  },
+
+  updateWithFiles: async (
+    id,
+    formData,
+    token = getToken()
+  ) => {
+    if (!id) {
+      throw new Error(
+        "Product ID is required"
+      );
+    }
+
+    return request(
+      `${API_URL}/api/products/${encodeURIComponent(
+        id
+      )}`,
+      {
+        method: "PUT",
+
+        headers:
+          getFileHeaders(token),
+
+        body: formData,
+      }
+    );
+  },
+
+  delete: async (
+    id,
+    token = getToken()
+  ) => {
+    if (!id) {
+      throw new Error(
+        "Product ID is required"
+      );
+    }
+
+    return request(
+      `${API_URL}/api/products/${encodeURIComponent(
+        id
+      )}`,
+      {
+        method: "DELETE",
+        headers:
+          getHeaders(token),
+      }
+    );
+  },
+
+  // ============================================================
+  // UPDATE PRODUCT STATUS
+  // ============================================================
+
+  updateStatus: async (
+    productId,
+    status,
+    token = getToken()
+  ) => {
+    if (!productId) {
+      throw new Error(
+        "Product ID is required"
+      );
+    }
+
+    if (!status) {
+      throw new Error(
+        "Product status is required"
+      );
+    }
+
+    return request(
+      `${API_URL}/api/products/${encodeURIComponent(
+        productId
+      )}/status`,
+      {
+        method: "PATCH",
+
+        headers:
+          getHeaders(token),
+
+        body: JSON.stringify({
+          status,
+        }),
+      }
+    );
+  },
 };
 
-export const updateAdminUserRole = async (
-  userId,
-  role
-) => {
-  if (!isValidObjectId(userId)) {
-    throw new Error("Valid User ID is required");
-  }
+// ================================================================
+// USERS
+// ================================================================
 
-  if (!role) {
-    throw new Error("User role is required");
-  }
+export const users = {
+  getAll: async (
+    params = {},
+    token = getToken()
+  ) => {
+    const query =
+      buildQuery(params);
 
-  return patch(
-    `/api/admin/users/${userId}/role`,
-    { role }
-  );
+    return request(
+      `${API_URL}/api/users${query}`,
+      {
+        method: "GET",
+        headers:
+          getHeaders(token),
+      }
+    );
+  },
+
+  getById: async (
+    id,
+    token = getToken()
+  ) => {
+    if (!id) {
+      throw new Error(
+        "User ID is required"
+      );
+    }
+
+    return request(
+      `${API_URL}/api/users/${encodeURIComponent(
+        id
+      )}`,
+      {
+        method: "GET",
+        headers:
+          getHeaders(token),
+      }
+    );
+  },
+
+  update: async (
+    id,
+    userData,
+    token = getToken()
+  ) => {
+    if (!id) {
+      throw new Error(
+        "User ID is required"
+      );
+    }
+
+    return request(
+      `${API_URL}/api/users/${encodeURIComponent(
+        id
+      )}`,
+      {
+        method: "PUT",
+
+        headers:
+          getHeaders(token),
+
+        body: JSON.stringify(
+          userData
+        ),
+      }
+    );
+  },
+
+  updateWithFiles: async (
+    id,
+    formData,
+    token = getToken()
+  ) => {
+    if (!id) {
+      throw new Error(
+        "User ID is required"
+      );
+    }
+
+    return request(
+      `${API_URL}/api/users/${encodeURIComponent(
+        id
+      )}`,
+      {
+        method: "PUT",
+
+        headers:
+          getFileHeaders(token),
+
+        body: formData,
+      }
+    );
+  },
+
+  delete: async (
+    id,
+    token = getToken()
+  ) => {
+    if (!id) {
+      throw new Error(
+        "User ID is required"
+      );
+    }
+
+    return request(
+      `${API_URL}/api/users/${encodeURIComponent(
+        id
+      )}`,
+      {
+        method: "DELETE",
+        headers:
+          getHeaders(token),
+      }
+    );
+  },
+
+  getStats: async (
+    token = getToken()
+  ) => {
+    return request(
+      `${API_URL}/api/users/stats`,
+      {
+        method: "GET",
+        headers:
+          getHeaders(token),
+      }
+    );
+  },
 };
 
-export const updateAdminUserStatus = async (
-  userId,
-  isActive
-) => {
-  if (!isValidObjectId(userId)) {
-    throw new Error("Valid User ID is required");
-  }
+// ================================================================
+// NOTIFICATIONS
+// ================================================================
 
-  return patch(
-    `/api/admin/users/${userId}/status`,
-    { isActive: Boolean(isActive) }
-  );
+export const notifications = {
+  getForUser: async (
+    userId,
+    token = getToken()
+  ) => {
+    if (!userId) {
+      throw new Error(
+        "User ID is required"
+      );
+    }
+
+    return request(
+      `${API_URL}/api/notifications/${encodeURIComponent(
+        userId
+      )}`,
+      {
+        method: "GET",
+        headers:
+          getHeaders(token),
+      }
+    );
+  },
+
+  getForAdmin: async (
+    token = getToken()
+  ) => {
+    return request(
+      `${API_URL}/api/notifications/admin`,
+      {
+        method: "GET",
+        headers:
+          getHeaders(token),
+      }
+    );
+  },
+
+  create: async (
+    data,
+    token = getToken()
+  ) => {
+    return request(
+      `${API_URL}/api/notifications`,
+      {
+        method: "POST",
+
+        headers:
+          getHeaders(token),
+
+        body: JSON.stringify(data),
+      }
+    );
+  },
+
+  markRead: async (
+    id,
+    token = getToken()
+  ) => {
+    if (!id) {
+      throw new Error(
+        "Notification ID is required"
+      );
+    }
+
+    return request(
+      `${API_URL}/api/notifications/${encodeURIComponent(
+        id
+      )}/read`,
+      {
+        method: "PUT",
+        headers:
+          getHeaders(token),
+      }
+    );
+  },
+
+  delete: async (
+    id,
+    token = getToken()
+  ) => {
+    if (!id) {
+      throw new Error(
+        "Notification ID is required"
+      );
+    }
+
+    return request(
+      `${API_URL}/api/notifications/${encodeURIComponent(
+        id
+      )}`,
+      {
+        method: "DELETE",
+        headers:
+          getHeaders(token),
+      }
+    );
+  },
 };
 
-// ============================================================
-// ADMIN - SELLER VERIFICATION
-// ============================================================
+// ================================================================
+// ORDERS
+// ================================================================
 
-export const verifyAdminSeller = async (
+export const orders = {
+  getAll: async (
+    params = {},
+    token = getToken()
+  ) => {
+    const query =
+      buildQuery(params);
+
+    return request(
+      `${API_URL}/api/orders${query}`,
+      {
+        method: "GET",
+        headers:
+          getHeaders(token),
+      }
+    );
+  },
+
+  getById: async (
+    id,
+    token = getToken()
+  ) => {
+    if (!id) {
+      throw new Error(
+        "Order ID is required"
+      );
+    }
+
+    return request(
+      `${API_URL}/api/orders/${encodeURIComponent(
+        id
+      )}`,
+      {
+        method: "GET",
+        headers:
+          getHeaders(token),
+      }
+    );
+  },
+
+  create: async (
+    orderData,
+    token = getToken()
+  ) => {
+    return request(
+      `${API_URL}/api/orders`,
+      {
+        method: "POST",
+
+        headers:
+          getHeaders(token),
+
+        body: JSON.stringify(
+          orderData
+        ),
+      }
+    );
+  },
+
+  update: async (
+    id,
+    updates,
+    token = getToken()
+  ) => {
+    if (!id) {
+      throw new Error(
+        "Order ID is required"
+      );
+    }
+
+    return request(
+      `${API_URL}/api/orders/${encodeURIComponent(
+        id
+      )}`,
+      {
+        method: "PUT",
+
+        headers:
+          getHeaders(token),
+
+        body: JSON.stringify(
+          updates
+        ),
+      }
+    );
+  },
+
+  delete: async (
+    id,
+    token = getToken()
+  ) => {
+    if (!id) {
+      throw new Error(
+        "Order ID is required"
+      );
+    }
+
+    return request(
+      `${API_URL}/api/orders/${encodeURIComponent(
+        id
+      )}`,
+      {
+        method: "DELETE",
+        headers:
+          getHeaders(token),
+      }
+    );
+  },
+};
+
+// ================================================================
+// MESSAGES
+// ================================================================
+
+export const messages = {
+  getForUser: async (
+    userId,
+    token = getToken()
+  ) => {
+    if (!userId) {
+      throw new Error(
+        "User ID is required"
+      );
+    }
+
+    return request(
+      `${API_URL}/api/messages/${encodeURIComponent(
+        userId
+      )}`,
+      {
+        method: "GET",
+        headers:
+          getHeaders(token),
+      }
+    );
+  },
+
+  getConversations: async (
+    token = getToken()
+  ) => {
+    return request(
+      `${API_URL}/api/messages/conversations`,
+      {
+        method: "GET",
+        headers:
+          getHeaders(token),
+      }
+    );
+  },
+
+  getConversation: async (
+    otherUserId,
+    token = getToken()
+  ) => {
+    if (!otherUserId) {
+      throw new Error(
+        "Other user ID is required"
+      );
+    }
+
+    return request(
+      `${API_URL}/api/messages/conversation/${encodeURIComponent(
+        otherUserId
+      )}`,
+      {
+        method: "GET",
+        headers:
+          getHeaders(token),
+      }
+    );
+  },
+
+  send: async (
+    receiver,
+    message,
+    productId,
+    token = getToken()
+  ) => {
+    return request(
+      `${API_URL}/api/messages`,
+      {
+        method: "POST",
+
+        headers:
+          getHeaders(token),
+
+        body: JSON.stringify({
+          receiver,
+          message,
+          productId,
+        }),
+      }
+    );
+  },
+
+  markRead: async (
+    messageId,
+    token = getToken()
+  ) => {
+    if (!messageId) {
+      throw new Error(
+        "Message ID is required"
+      );
+    }
+
+    return request(
+      `${API_URL}/api/messages/${encodeURIComponent(
+        messageId
+      )}/read`,
+      {
+        method: "PUT",
+        headers:
+          getHeaders(token),
+      }
+    );
+  },
+
+  delete: async (
+    messageId,
+    token = getToken()
+  ) => {
+    if (!messageId) {
+      throw new Error(
+        "Message ID is required"
+      );
+    }
+
+    return request(
+      `${API_URL}/api/messages/${encodeURIComponent(
+        messageId
+      )}`,
+      {
+        method: "DELETE",
+        headers:
+          getHeaders(token),
+      }
+    );
+  },
+};
+
+// ================================================================
+// FAVORITES
+// ================================================================
+
+export const favorites = {
+  getAll: async (
+    token = getToken()
+  ) => {
+    return request(
+      `${API_URL}/api/favorites`,
+      {
+        method: "GET",
+        headers:
+          getHeaders(token),
+      }
+    );
+  },
+
+  add: async (
+    productId,
+    token = getToken()
+  ) => {
+    if (!productId) {
+      throw new Error(
+        "Product ID is required"
+      );
+    }
+
+    return request(
+      `${API_URL}/api/favorites`,
+      {
+        method: "POST",
+
+        headers:
+          getHeaders(token),
+
+        body: JSON.stringify({
+          productId,
+        }),
+      }
+    );
+  },
+
+  remove: async (
+    productId,
+    token = getToken()
+  ) => {
+    if (!productId) {
+      throw new Error(
+        "Product ID is required"
+      );
+    }
+
+    return request(
+      `${API_URL}/api/favorites/${encodeURIComponent(
+        productId
+      )}`,
+      {
+        method: "DELETE",
+        headers:
+          getHeaders(token),
+      }
+    );
+  },
+};
+
+// ================================================================
+// ADMIN
+// ================================================================
+
+export const admin = {
+  getDashboardStats: async (
+    token = getToken()
+  ) => {
+    return request(
+      `${API_URL}/api/admin/dashboard`,
+      {
+        method: "GET",
+        headers:
+          getHeaders(token),
+      }
+    );
+  },
+
+  getUsers: async (
+    params = {},
+    token = getToken()
+  ) => {
+    const query =
+      buildQuery(params);
+
+    return request(
+      `${API_URL}/api/admin/users${query}`,
+      {
+        method: "GET",
+        headers:
+          getHeaders(token),
+      }
+    );
+  },
+
+  getUserById: async (
+    id,
+    token = getToken()
+  ) => {
+    if (!id) {
+      throw new Error(
+        "User ID is required"
+      );
+    }
+
+    return request(
+      `${API_URL}/api/admin/users/${encodeURIComponent(
+        id
+      )}`,
+      {
+        method: "GET",
+        headers:
+          getHeaders(token),
+      }
+    );
+  },
+
+  updateUserRole: async (
+    id,
+    role,
+    token = getToken()
+  ) => {
+    if (!id) {
+      throw new Error(
+        "User ID is required"
+      );
+    }
+
+    return request(
+      `${API_URL}/api/admin/users/${encodeURIComponent(
+        id
+      )}/role`,
+      {
+        method: "PUT",
+
+        headers:
+          getHeaders(token),
+
+        body: JSON.stringify({
+          role,
+        }),
+      }
+    );
+  },
+
+  deleteUser: async (
+    id,
+    token = getToken()
+  ) => {
+    if (!id) {
+      throw new Error(
+        "User ID is required"
+      );
+    }
+
+    return request(
+      `${API_URL}/api/admin/users/${encodeURIComponent(
+        id
+      )}`,
+      {
+        method: "DELETE",
+        headers:
+          getHeaders(token),
+      }
+    );
+  },
+
+  getProducts: async (
+    params = {},
+    token = getToken()
+  ) => {
+    const query =
+      buildQuery(params);
+
+    return request(
+      `${API_URL}/api/admin/products${query}`,
+      {
+        method: "GET",
+        headers:
+          getHeaders(token),
+      }
+    );
+  },
+
+  deleteProduct: async (
+    id,
+    token = getToken()
+  ) => {
+    if (!id) {
+      throw new Error(
+        "Product ID is required"
+      );
+    }
+
+    return request(
+      `${API_URL}/api/admin/products/${encodeURIComponent(
+        id
+      )}`,
+      {
+        method: "DELETE",
+        headers:
+          getHeaders(token),
+      }
+    );
+  },
+
+  getOrders: async (
+    params = {},
+    token = getToken()
+  ) => {
+    const query =
+      buildQuery(params);
+
+    return request(
+      `${API_URL}/api/admin/orders${query}`,
+      {
+        method: "GET",
+        headers:
+          getHeaders(token),
+      }
+    );
+  },
+
+  updateOrderStatus: async (
+    id,
+    status,
+    token = getToken()
+  ) => {
+    if (!id) {
+      throw new Error(
+        "Order ID is required"
+      );
+    }
+
+    return request(
+      `${API_URL}/api/admin/orders/${encodeURIComponent(
+        id
+      )}/status`,
+      {
+        method: "PUT",
+
+        headers:
+          getHeaders(token),
+
+        body: JSON.stringify({
+          status,
+        }),
+      }
+    );
+  },
+
+  getRiders: async (
+    params = {},
+    token = getToken()
+  ) => {
+    const query =
+      buildQuery(params);
+
+    return request(
+      `${API_URL}/api/admin/riders${query}`,
+      {
+        method: "GET",
+        headers:
+          getHeaders(token),
+      }
+    );
+  },
+
+  getRiderById: async (
+    id,
+    token = getToken()
+  ) => {
+    if (!id) {
+      throw new Error(
+        "Rider ID is required"
+      );
+    }
+
+    return request(
+      `${API_URL}/api/admin/riders/${encodeURIComponent(
+        id
+      )}`,
+      {
+        method: "GET",
+        headers:
+          getHeaders(token),
+      }
+    );
+  },
+
+  approveRider: async (
+    id,
+    token = getToken()
+  ) => {
+    if (!id) {
+      throw new Error(
+        "Rider ID is required"
+      );
+    }
+
+    return request(
+      `${API_URL}/api/admin/riders/${encodeURIComponent(
+        id
+      )}/approve`,
+      {
+        method: "PUT",
+        headers:
+          getHeaders(token),
+      }
+    );
+  },
+
+  rejectRider: async (
+    id,
+    token = getToken()
+  ) => {
+    if (!id) {
+      throw new Error(
+        "Rider ID is required"
+      );
+    }
+
+    return request(
+      `${API_URL}/api/admin/riders/${encodeURIComponent(
+        id
+      )}/reject`,
+      {
+        method: "PUT",
+        headers:
+          getHeaders(token),
+      }
+    );
+  },
+
+  updateRiderApproval: async (
+    id,
+    isApproved,
+    token = getToken()
+  ) => {
+    if (!id) {
+      throw new Error(
+        "Rider ID is required"
+      );
+    }
+
+    return request(
+      `${API_URL}/api/admin/riders/${encodeURIComponent(
+        id
+      )}/approval`,
+      {
+        method: "PUT",
+
+        headers:
+          getHeaders(token),
+
+        body: JSON.stringify({
+          isApproved:
+            Boolean(isApproved),
+        }),
+      }
+    );
+  },
+
+  deleteRider: async (
+    id,
+    token = getToken()
+  ) => {
+    if (!id) {
+      throw new Error(
+        "Rider ID is required"
+      );
+    }
+
+    return request(
+      `${API_URL}/api/admin/riders/${encodeURIComponent(
+        id
+      )}`,
+      {
+        method: "DELETE",
+        headers:
+          getHeaders(token),
+      }
+    );
+  },
+
+  getDeliveries: async (
+    params = {},
+    token = getToken()
+  ) => {
+    const query =
+      buildQuery(params);
+
+    return request(
+      `${API_URL}/api/admin/deliveries${query}`,
+      {
+        method: "GET",
+        headers:
+          getHeaders(token),
+      }
+    );
+  },
+
+  getDeliveryById: async (
+    id,
+    token = getToken()
+  ) => {
+    if (!id) {
+      throw new Error(
+        "Delivery ID is required"
+      );
+    }
+
+    return request(
+      `${API_URL}/api/admin/deliveries/${encodeURIComponent(
+        id
+      )}`,
+      {
+        method: "GET",
+        headers:
+          getHeaders(token),
+      }
+    );
+  },
+
+  updateDeliveryStatus: async (
+    id,
+    status,
+    token = getToken()
+  ) => {
+    if (!id) {
+      throw new Error(
+        "Delivery ID is required"
+      );
+    }
+
+    return request(
+      `${API_URL}/api/admin/deliveries/${encodeURIComponent(
+        id
+      )}/status`,
+      {
+        method: "PUT",
+
+        headers:
+          getHeaders(token),
+
+        body: JSON.stringify({
+          status,
+        }),
+      }
+    );
+  },
+};
+
+// ================================================================
+// DELIVERY
+// ================================================================
+
+export const deliveries = {
+  create: async (
+    deliveryData,
+    token = getToken()
+  ) => {
+    return request(
+      `${API_URL}/api/deliveries`,
+      {
+        method: "POST",
+
+        headers:
+          getHeaders(token),
+
+        body: JSON.stringify(
+          deliveryData
+        ),
+      }
+    );
+  },
+
+  getCustomerDeliveries: async (
+    token = getToken()
+  ) => {
+    return request(
+      `${API_URL}/api/deliveries/customer`,
+      {
+        method: "GET",
+        headers:
+          getHeaders(token),
+      }
+    );
+  },
+
+  getAvailable: async (
+    token = getToken()
+  ) => {
+    return request(
+      `${API_URL}/api/deliveries/available`,
+      {
+        method: "GET",
+        headers:
+          getHeaders(token),
+      }
+    );
+  },
+
+  getMy: async (
+    token = getToken()
+  ) => {
+    return request(
+      `${API_URL}/api/deliveries/my`,
+      {
+        method: "GET",
+        headers:
+          getHeaders(token),
+      }
+    );
+  },
+
+  getRiderDeliveries: async (
+    token = getToken()
+  ) => {
+    return request(
+      `${API_URL}/api/deliveries/rider`,
+      {
+        method: "GET",
+        headers:
+          getHeaders(token),
+      }
+    );
+  },
+
+  updateAvailability: async (
+    isAvailable,
+    token = getToken()
+  ) => {
+    return request(
+      `${API_URL}/api/deliveries/rider/availability`,
+      {
+        method: "PATCH",
+
+        headers:
+          getHeaders(token),
+
+        body: JSON.stringify({
+          isAvailable:
+            Boolean(isAvailable),
+        }),
+      }
+    );
+  },
+
+  toggleAvailability: async (
+    isAvailable,
+    token = getToken()
+  ) => {
+    return request(
+      `${API_URL}/api/deliveries/rider/availability`,
+      {
+        method: "PATCH",
+
+        headers:
+          getHeaders(token),
+
+        body: JSON.stringify({
+          isAvailable:
+            Boolean(isAvailable),
+        }),
+      }
+    );
+  },
+
+  accept: async (
+    id,
+    token = getToken()
+  ) => {
+    if (!id) {
+      throw new Error(
+        "Delivery ID is required"
+      );
+    }
+
+    return request(
+      `${API_URL}/api/deliveries/${encodeURIComponent(
+        id
+      )}/accept`,
+      {
+        method: "PATCH",
+        headers:
+          getHeaders(token),
+      }
+    );
+  },
+
+  updateStatus: async (
+    id,
+    status,
+    token = getToken()
+  ) => {
+    if (!id) {
+      throw new Error(
+        "Delivery ID is required"
+      );
+    }
+
+    return request(
+      `${API_URL}/api/deliveries/${encodeURIComponent(
+        id
+      )}/status`,
+      {
+        method: "PATCH",
+
+        headers:
+          getHeaders(token),
+
+        body: JSON.stringify({
+          status,
+        }),
+      }
+    );
+  },
+
+  updateLocation: async (
+    id,
+    location,
+    token = getToken()
+  ) => {
+    if (!id) {
+      throw new Error(
+        "Delivery ID is required"
+      );
+    }
+
+    return request(
+      `${API_URL}/api/deliveries/${encodeURIComponent(
+        id
+      )}/location`,
+      {
+        method: "PATCH",
+
+        headers:
+          getHeaders(token),
+
+        body: JSON.stringify(
+          location
+        ),
+      }
+    );
+  },
+
+  getById: async (
+    id,
+    token = getToken()
+  ) => {
+    if (!id) {
+      throw new Error(
+        "Delivery ID is required"
+      );
+    }
+
+    return request(
+      `${API_URL}/api/deliveries/${encodeURIComponent(
+        id
+      )}`,
+      {
+        method: "GET",
+        headers:
+          getHeaders(token),
+      }
+    );
+  },
+
+  cancel: async (
+    id,
+    token = getToken()
+  ) => {
+    if (!id) {
+      throw new Error(
+        "Delivery ID is required"
+      );
+    }
+
+    return request(
+      `${API_URL}/api/deliveries/${encodeURIComponent(
+        id
+      )}/cancel`,
+      {
+        method: "PATCH",
+        headers:
+          getHeaders(token),
+      }
+    );
+  },
+};
+
+// ================================================================
+// NAMED AUTH EXPORTS
+// ================================================================
+
+export const login = auth.login;
+export const register = auth.register;
+export const getMe = auth.getMe;
+export const logout = auth.logout;
+
+// ================================================================
+// PRODUCT EXPORTS
+// ================================================================
+
+export const getProducts =
+  products.getAll;
+
+export const getProduct =
+  products.getById;
+
+export const createProduct =
+  products.create;
+
+export const createProductWithFiles =
+  products.createWithFiles;
+
+export const updateProduct =
+  products.update;
+
+export const updateProductWithFiles =
+  products.updateWithFiles;
+
+export const deleteProduct =
+  products.delete;
+
+// IMPORTANT:
+// This is a real named export.
+// ProductCard.jsx can import it directly.
+export const updateProductStatus =
+  products.updateStatus;
+
+// ================================================================
+// SELLER PRODUCTS
+// ================================================================
+
+export const getSellerProducts = async (
   sellerId
 ) => {
-  if (!isValidObjectId(sellerId)) {
+  if (!sellerId) {
     throw new Error(
-      "Valid Seller ID is required"
+      "Seller ID is required"
     );
   }
 
-  return patch(
-    `/api/admin/users/${sellerId}/verify-seller`
-  );
+  return products.getAll({
+    sellerId,
+  });
 };
 
-export const unverifyAdminSeller = async (
-  sellerId
-) => {
-  if (!isValidObjectId(sellerId)) {
-    throw new Error(
-      "Valid Seller ID is required"
-    );
-  }
+// ================================================================
+// USER EXPORTS
+// ================================================================
 
-  return patch(
-    `/api/admin/users/${sellerId}/unverify-seller`
-  );
-};
+export const getUsers =
+  users.getAll;
 
-// ============================================================
-// ADMIN - DELETE USER
-// ============================================================
+export const getUser =
+  users.getById;
 
-export const deleteAdminUser = async (
-  userId
-) => {
-  if (!isValidObjectId(userId)) {
-    throw new Error("Valid User ID is required");
-  }
+export const updateUser =
+  users.update;
 
-  return del(
-    `/api/admin/users/${userId}`
-  );
-};
+export const updateUserWithFiles =
+  users.updateWithFiles;
 
-// ============================================================
-// ADMIN - PRODUCTS
-// ============================================================
+export const deleteUser =
+  users.delete;
 
-export const getAdminProducts = async () => {
-  return get(
-    "/api/admin/products"
-  );
-};
+export const getUserStats =
+  users.getStats;
 
-export const deleteAdminProduct = async (
-  productId
-) => {
-  if (!isValidObjectId(productId)) {
-    throw new Error(
-      "Valid Product ID is required"
-    );
-  }
+// ================================================================
+// NOTIFICATION EXPORTS
+// ================================================================
 
-  return del(
-    `/api/admin/products/${productId}`
-  );
-};
+export const getNotifications =
+  notifications.getForUser;
 
-// ============================================================
-// ADMIN - ORDERS
-// ============================================================
+export const getAdminNotifications =
+  notifications.getForAdmin;
 
-export const getAdminOrders = async () => {
-  return get(
-    "/api/admin/orders"
-  );
-};
+export const getUserNotifications =
+  notifications.getForUser;
 
-export const updateAdminOrderStatus = async (
-  orderId,
-  status
-) => {
-  if (!isValidObjectId(orderId)) {
-    throw new Error(
-      "Valid Order ID is required"
-    );
-  }
+export const createNotification =
+  notifications.create;
 
-  if (!status) {
-    throw new Error(
-      "Order status is required"
-    );
-  }
+export const markNotificationRead =
+  notifications.markRead;
 
-  return patch(
-    `/api/admin/orders/${orderId}/status`,
-    { status }
-  );
-};
+export const deleteNotification =
+  notifications.delete;
 
-// ============================================================
-// ADMIN - RIDERS
-// ============================================================
+// ================================================================
+// ORDER EXPORTS
+// ================================================================
 
-export const getAdminRiders = async (
-  params = {}
-) => {
-  const query = new URLSearchParams();
+export const getOrders =
+  orders.getAll;
 
-  Object.entries(params).forEach(
-    ([key, value]) => {
-      if (
-        value !== undefined &&
-        value !== null &&
-        value !== ""
-      ) {
-        query.append(
-          key,
-          String(value)
-        );
-      }
-    }
-  );
+export const getOrder =
+  orders.getById;
 
-  const queryString = query.toString();
+export const createOrder =
+  orders.create;
 
-  return get(
-    `/api/admin/riders${
-      queryString
-        ? `?${queryString}`
-        : ""
-    }`
-  );
-};
+export const updateOrder =
+  orders.update;
 
-export const getAdminRiderById = async (
-  riderId
-) => {
-  if (!isValidObjectId(riderId)) {
-    throw new Error(
-      "Valid Rider ID is required"
-    );
-  }
+export const deleteOrder =
+  orders.delete;
 
-  return get(
-    `/api/admin/riders/${riderId}`
-  );
-};
+// ================================================================
+// MESSAGE EXPORTS
+// ================================================================
 
-export const approveAdminRider = async (
-  riderId
-) => {
-  if (!isValidObjectId(riderId)) {
-    throw new Error(
-      "Valid Rider ID is required"
-    );
-  }
+export const getMessages =
+  messages.getForUser;
 
-  return patch(
-    `/api/admin/riders/${riderId}/approve`
-  );
-};
+export const getConversations =
+  messages.getConversations;
 
-export const rejectAdminRider = async (
-  riderId
-) => {
-  if (!isValidObjectId(riderId)) {
-    throw new Error(
-      "Valid Rider ID is required"
-    );
-  }
+export const getConversation =
+  messages.getConversation;
 
-  return patch(
-    `/api/admin/riders/${riderId}/reject`
-  );
-};
+export const sendMessage =
+  messages.send;
 
-export const updateAdminRiderStatus = async (
-  riderId,
-  isActive
-) => {
-  if (!isValidObjectId(riderId)) {
-    throw new Error(
-      "Valid Rider ID is required"
-    );
-  }
+export const markMessageRead =
+  messages.markRead;
 
-  return patch(
-    `/api/admin/riders/${riderId}/status`,
-    {
-      isActive: Boolean(isActive),
-    }
-  );
-};
+export const deleteMessage =
+  messages.delete;
 
-export const updateAdminRiderProfile = async (
-  riderId,
-  profile
-) => {
-  if (!isValidObjectId(riderId)) {
-    throw new Error(
-      "Valid Rider ID is required"
-    );
-  }
+// ================================================================
+// FAVORITES
+// ================================================================
 
-  return patch(
-    `/api/admin/riders/${riderId}/profile`,
-    profile
-  );
-};
+export const getFavorites =
+  favorites.getAll;
 
-// ============================================================
-// ADMIN DASHBOARD
-// ============================================================
+export const addFavorite =
+  favorites.add;
+
+export const removeFavorite =
+  favorites.remove;
+
+// ================================================================
+// ADMIN EXPORTS
+// ================================================================
 
 export const getAdminDashboardStats =
-  async () => {
-    return get(
-      "/api/admin/stats"
-    );
-  };
+  admin.getDashboardStats;
 
-// ============================================================
-// NOTIFICATIONS
-//
-// IMPORTANT:
-// This endpoint expects MongoDB USER ID.
-// It must NEVER receive the JWT.
-// ============================================================
+export const getAdminUsers =
+  admin.getUsers;
 
-export const getNotifications = async (
-  userId
-) => {
-  if (!isValidObjectId(userId)) {
-    throw new Error(
-      "Valid User ID is required to fetch notifications"
-    );
-  }
+export const getAdminUserById =
+  admin.getUserById;
 
-  return get(
-    `/api/notifications/${userId}`
-  );
-};
+export const updateAdminUserRole =
+  admin.updateUserRole;
 
-export const markNotificationAsRead =
-  async (notificationId) => {
-    if (!isValidObjectId(notificationId)) {
-      throw new Error(
-        "Valid Notification ID is required"
-      );
-    }
+export const deleteAdminUser =
+  admin.deleteUser;
 
-    return patch(
-      `/api/notifications/${notificationId}/read`
-    );
-  };
+export const getAdminProducts =
+  admin.getProducts;
 
-export const markAllNotificationsAsRead =
-  async (userId) => {
-    if (!isValidObjectId(userId)) {
-      throw new Error(
-        "Valid User ID is required"
-      );
-    }
+export const deleteAdminProduct =
+  admin.deleteProduct;
 
-    return patch(
-      `/api/notifications/user/${userId}/read-all`
-    );
-  };
+export const getAdminOrders =
+  admin.getOrders;
 
-// ============================================================
-// PASSWORD
-// ============================================================
+export const updateAdminOrderStatus =
+  admin.updateOrderStatus;
 
-export const forgotPassword = async (
-  email
-) => {
-  return post(
-    "/api/password/forgot",
-    { email }
-  );
-};
+export const getRiders =
+  admin.getRiders;
 
-export const resetPassword = async (
-  token,
-  password
-) => {
-  return post(
-    "/api/password/reset",
-    {
-      token,
-      password,
-    }
-  );
-};
+export const getRiderById =
+  admin.getRiderById;
 
-// ============================================================
-// EXPORT DEFAULT
-// ============================================================
+export const approveRider =
+  admin.approveRider;
 
-export default {
+export const rejectRider =
+  admin.rejectRider;
+
+export const updateRiderApproval =
+  admin.updateRiderApproval;
+
+export const deleteRider =
+  admin.deleteRider;
+
+export const getAdminDeliveries =
+  admin.getDeliveries;
+
+export const getAdminDeliveryById =
+  admin.getDeliveryById;
+
+export const updateAdminDeliveryStatus =
+  admin.updateDeliveryStatus;
+
+// ================================================================
+// DELIVERY EXPORTS
+// ================================================================
+
+export const createDelivery =
+  deliveries.create;
+
+export const getCustomerDeliveries =
+  deliveries.getCustomerDeliveries;
+
+export const getAvailableDeliveries =
+  deliveries.getAvailable;
+
+export const getMyDeliveries =
+  deliveries.getMy;
+
+export const getRiderDeliveries =
+  deliveries.getRiderDeliveries;
+
+export const updateRiderAvailability =
+  deliveries.updateAvailability;
+
+export const toggleRiderAvailability =
+  deliveries.toggleAvailability;
+
+export const acceptDelivery =
+  deliveries.accept;
+
+export const updateDeliveryStatus =
+  deliveries.updateStatus;
+
+export const updateDeliveryLocation =
+  deliveries.updateLocation;
+
+export const getDelivery =
+  deliveries.getById;
+
+export const cancelDelivery =
+  deliveries.cancel;
+
+// ================================================================
+// DEFAULT API OBJECT
+// ================================================================
+
+const api = {
   API_URL,
 
-  request,
-  get,
-  post,
-  patch,
-  put,
-  del,
+  health,
+  auth,
+  products,
+  users,
+  notifications,
+  orders,
+  messages,
+  favorites,
+  admin,
+  deliveries,
 
-  getImageUrl,
+  login,
+  register,
+  getMe,
+  logout,
 
-  loginUser,
-  registerUser,
-  getCurrentUser,
+  getProducts,
+  getProduct,
+  createProduct,
+  createProductWithFiles,
+  updateProduct,
+  updateProductWithFiles,
+  deleteProduct,
+  updateProductStatus,
 
+  getSellerProducts,
+
+  getUsers,
+  getUser,
+  updateUser,
+  updateUserWithFiles,
+  deleteUser,
+  getUserStats,
+
+  getNotifications,
+  getAdminNotifications,
+  getUserNotifications,
+  createNotification,
+  markNotificationRead,
+  deleteNotification,
+
+  getOrders,
+  getOrder,
+  createOrder,
+  updateOrder,
+  deleteOrder,
+
+  getMessages,
+  getConversations,
+  getConversation,
+  sendMessage,
+  markMessageRead,
+  deleteMessage,
+
+  getFavorites,
+  addFavorite,
+  removeFavorite,
+
+  getAdminDashboardStats,
   getAdminUsers,
   getAdminUserById,
   updateAdminUserRole,
-  updateAdminUserStatus,
-
-  verifyAdminSeller,
-  unverifyAdminSeller,
-
   deleteAdminUser,
-
   getAdminProducts,
   deleteAdminProduct,
-
   getAdminOrders,
   updateAdminOrderStatus,
 
-  getAdminRiders,
-  getAdminRiderById,
-  approveAdminRider,
-  rejectAdminRider,
-  updateAdminRiderStatus,
-  updateAdminRiderProfile,
+  getRiders,
+  getRiderById,
+  approveRider,
+  rejectRider,
+  updateRiderApproval,
+  deleteRider,
 
-  getAdminDashboardStats,
+  getAdminDeliveries,
+  getAdminDeliveryById,
+  updateAdminDeliveryStatus,
 
-  getNotifications,
-  markNotificationAsRead,
-  markAllNotificationsAsRead,
+  createDelivery,
+  getCustomerDeliveries,
+  getAvailableDeliveries,
+  getMyDeliveries,
+  getRiderDeliveries,
+  updateRiderAvailability,
+  toggleRiderAvailability,
+  acceptDelivery,
+  updateDeliveryStatus,
+  updateDeliveryLocation,
+  getDelivery,
+  cancelDelivery,
 
-  forgotPassword,
-  resetPassword,
+  getImageUrl,
+
+  getToken,
+  clearAuthData,
 };
+
+export default api;
