@@ -1,12 +1,14 @@
+
 // ============================================================
 // backend/routes/visualSearchRoutes.js
 // BuyUKUsed Visual Search Routes
 // ============================================================
 
 const express = require("express");
+
 const router = express.Router();
 
-const productController = require("../controllers/productController");
+const visualSearchController = require("../controllers/visualSearchController");
 
 const upload = require("../middleware/upload");
 
@@ -17,9 +19,11 @@ const upload = require("../middleware/upload");
 // POST /api/visual-search
 //
 // Form-data:
+//
 // image = uploaded image
 //
 // Optional:
+//
 // category
 // location
 // minPrice
@@ -31,7 +35,11 @@ const upload = require("../middleware/upload");
 router.post(
   "/",
   upload.single("image"),
-  productController.visualSearch
+  visualSearchController.visualSearch
 );
+
+// ============================================================
+// EXPORT ROUTER
+// ============================================================
 
 module.exports = router;

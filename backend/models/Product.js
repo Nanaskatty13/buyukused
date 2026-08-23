@@ -1,46 +1,8 @@
 // ============================================================
 // backend/models/Product.js
-// BuyUKUsed Product Model
 // ============================================================
 
 const mongoose = require("mongoose");
-
-// ============================================================
-// CONSTANTS
-// ============================================================
-
-const PRODUCT_CATEGORIES = [
-  "Cars",
-  "Phones",
-  "Laptops",
-  "Tablets",
-  "Accessories",
-  "Real Estate",
-  "Jobs",
-  "Electronics",
-  "Fashion",
-  "Home",
-  "TVs",
-  "Game Consoles",
-  "Smartwatches",
-  "Other",
-];
-
-const PRODUCT_STATUSES = [
-  "active",
-  "pending",
-  "inactive",
-  "sold",
-];
-
-const PRODUCT_CONDITIONS = [
-  "Brand New",
-  "Like New",
-  "Excellent",
-  "Good",
-  "Fair",
-  "Poor",
-];
 
 // ============================================================
 // PRODUCT SCHEMA
@@ -48,54 +10,73 @@ const PRODUCT_CONDITIONS = [
 
 const productSchema = new mongoose.Schema(
   {
-    // ========================================================
-    // BASIC INFORMATION
-    // ========================================================
+    // ==========================================================
+    // BASIC PRODUCT INFORMATION
+    // ==========================================================
 
     title: {
       type: String,
-      required: true,
+      required: [true, "Product title is required"],
       trim: true,
       maxlength: 200,
     },
 
     price: {
       type: Number,
-      required: true,
-      min: 0,
+      required: [true, "Product price is required"],
+      min: [0, "Price cannot be negative"],
     },
 
     oldPrice: {
       type: Number,
+      min: [0, "Old price cannot be negative"],
       default: null,
-      min: 0,
     },
 
     category: {
       type: String,
-      enum: PRODUCT_CATEGORIES,
-      default: "Other",
+      required: [true, "Product category is required"],
+      enum: {
+        values: [
+          "Phones",
+          "Laptops",
+          "Tablets",
+          "Accessories",
+          "Electronics",
+          "Game Consoles",
+          "Smartwatches",
+          "TVs",
+          "Cars",
+
+          // ====================================================
+          // COSMETICS
+          // ====================================================
+
+          "Cosmetics",
+        ],
+        message: "Invalid product category",
+      },
       index: true,
-      trim: true,
     },
 
     location: {
       type: String,
-      default: "Ghana",
+      required: [true, "Product location is required"],
       trim: true,
+      default: "Ghana",
       index: true,
     },
 
     description: {
       type: String,
-      default: "",
       trim: true,
       maxlength: 5000,
+      default: "",
     },
 
-    // ========================================================
+    // ==========================================================
     // SELLER
-    // ========================================================
+    // ==========================================================
 
     sellerId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -106,258 +87,312 @@ const productSchema = new mongoose.Schema(
 
     sellerName: {
       type: String,
-      default: "",
       trim: true,
+      default: "",
+      maxlength: 150,
     },
 
     sellerPhone: {
       type: String,
-      default: "",
       trim: true,
+      required: [true, "Seller phone number is required"],
+      maxlength: 30,
     },
 
-    // ========================================================
-    // MEDIA
-    // ========================================================
-
-    image: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    images: {
-      type: [String],
-      default: [],
-    },
-
-    videos: {
-      type: [String],
-      default: [],
-    },
-
-    // ========================================================
-    // VISUAL SEARCH
-    // ========================================================
-    //
-    // Stores the visual embedding generated for the product's
-    // primary image.
-    //
-    // The embedding is hidden from normal product queries.
-    // Visual-search code can explicitly request it with:
-    //
-    // .select("+imageEmbedding +imageEmbeddingModel")
-    //
-    // ========================================================
-
-    imageEmbedding: {
-      type: [Number],
-      default: undefined,
-      select: false,
-    },
-
-    imageEmbeddingModel: {
-      type: String,
-      default: "",
-      trim: true,
-      select: false,
-    },
-
-    imageEmbeddingUpdatedAt: {
-      type: Date,
-      default: null,
-      select: false,
-    },
-
-    // ========================================================
-    // GENERAL PRODUCT DETAILS
-    // ========================================================
+    // ==========================================================
+    // GENERAL PRODUCT INFORMATION
+    // ==========================================================
 
     brand: {
       type: String,
-      default: "",
       trim: true,
-      index: true,
+      default: "",
+      maxlength: 150,
     },
 
     model: {
       type: String,
-      default: "",
       trim: true,
-      index: true,
+      default: "",
+      maxlength: 200,
     },
 
     color: {
       type: String,
-      default: "",
       trim: true,
+      default: "",
+      maxlength: 500,
     },
 
     condition: {
       type: String,
-      enum: PRODUCT_CONDITIONS,
-      default: "Good",
       trim: true,
+      enum: [
+        "Brand New",
+        "Like New",
+        "Excellent",
+        "Good",
+        "Fair",
+        "Poor",
+      ],
+      default: "Good",
     },
 
     warranty: {
       type: String,
-      default: "",
       trim: true,
+      default: "",
+      maxlength: 100,
     },
 
-    // ========================================================
-    // COMPUTER / TABLET
-    // ========================================================
+    // ==========================================================
+    // SELLING OPTIONS
+    // ==========================================================
+
+    negotiation: {
+      type: Boolean,
+      default: false,
+    },
+
+    swapAccepted: {
+      type: Boolean,
+      default: false,
+    },
+
+    // ==========================================================
+    // PHONE FIELDS
+    // ==========================================================
 
     storage: {
       type: String,
-      default: "",
       trim: true,
+      default: "",
+      maxlength: 200,
+    },
+
+    batteryHealth: {
+      type: Number,
+      min: 0,
+      max: 100,
+      default: null,
+    },
+
+    faceId: {
+      type: String,
+      trim: true,
+      default: "",
+      enum: [
+        "",
+        "Working",
+        "Not Working",
+        "Not Available",
+      ],
+    },
+
+    simStatus: {
+      type: String,
+      trim: true,
+      default: "",
+      enum: [
+        "",
+        "SIM Unlocked",
+        "eSIM Unlocked",
+        "Locked",
+        "Bypass",
+        "Not Available",
+      ],
+    },
+
+    // ==========================================================
+    // LAPTOP FIELDS
+    // ==========================================================
+
+    processor: {
+      type: String,
+      trim: true,
+      default: "",
+      maxlength: 200,
     },
 
     ram: {
       type: String,
-      default: "",
       trim: true,
-    },
-
-    processor: {
-      type: String,
       default: "",
-      trim: true,
-    },
-
-    graphics: {
-      type: String,
-      default: "",
-      trim: true,
+      maxlength: 100,
     },
 
     screenSize: {
       type: String,
-      default: "",
       trim: true,
+      default: "",
+      maxlength: 100,
     },
+
+    graphics: {
+      type: String,
+      trim: true,
+      default: "",
+      maxlength: 200,
+    },
+
+    // ==========================================================
+    // TABLET / GENERAL ELECTRONICS
+    // ==========================================================
 
     year: {
       type: String,
-      default: "",
       trim: true,
+      default: "",
+      maxlength: 20,
     },
 
     connectivity: {
       type: String,
-      default: "",
       trim: true,
+      default: "",
+      maxlength: 150,
     },
 
-    // ========================================================
-    // GAME CONSOLE
-    // ========================================================
+    // ==========================================================
+    // ACCESSORIES
+    // ==========================================================
 
-    videoOutput: {
+    accessoryType: {
       type: String,
-      default: "",
       trim: true,
+      default: "",
+      maxlength: 150,
     },
 
-    region: {
+    compatibility: {
       type: String,
-      default: "",
       trim: true,
+      default: "",
+      maxlength: 300,
     },
+
+    material: {
+      type: String,
+      trim: true,
+      default: "",
+      maxlength: 200,
+    },
+
+    // ==========================================================
+    // GAME CONSOLES
+    // ==========================================================
 
     consoleType: {
       type: String,
-      default: "",
       trim: true,
+      default: "",
+      maxlength: 100,
     },
 
     edition: {
       type: String,
-      default: "",
       trim: true,
+      default: "",
+      maxlength: 150,
     },
 
     discDrive: {
       type: String,
-      default: "",
       trim: true,
+      default: "",
+      maxlength: 100,
     },
 
     controllersIncluded: {
       type: String,
-      default: "",
       trim: true,
+      default: "",
+      maxlength: 100,
     },
 
     battery: {
       type: String,
-      default: "",
       trim: true,
+      default: "",
+      maxlength: 150,
     },
 
     resolution: {
       type: String,
-      default: "",
       trim: true,
+      default: "",
+      maxlength: 100,
     },
 
-    // ========================================================
+    videoOutput: {
+      type: String,
+      trim: true,
+      default: "",
+      maxlength: 150,
+    },
+
+    // ==========================================================
     // SMARTWATCH
-    // ========================================================
+    // ==========================================================
 
     watchSize: {
       type: String,
-      default: "",
       trim: true,
+      default: "",
+      maxlength: 100,
     },
 
-    // ========================================================
+    // ==========================================================
     // TV
-    // ========================================================
+    // ==========================================================
 
     tvType: {
       type: String,
-      default: "",
       trim: true,
+      default: "",
+      maxlength: 100,
     },
 
     displayTechnology: {
       type: String,
-      default: "",
       trim: true,
+      default: "",
+      maxlength: 150,
     },
 
     refreshRate: {
       type: String,
-      default: "",
       trim: true,
+      default: "",
+      maxlength: 100,
     },
 
     operatingSystem: {
       type: String,
-      default: "",
       trim: true,
+      default: "",
+      maxlength: 150,
     },
 
     hdr: {
       type: String,
-      default: "",
       trim: true,
+      default: "",
+      maxlength: 100,
     },
 
     hdmiPorts: {
       type: String,
-      default: "",
       trim: true,
+      default: "",
+      maxlength: 50,
     },
 
     usbPorts: {
       type: String,
-      default: "",
       trim: true,
+      default: "",
+      maxlength: 50,
     },
 
     smartTV: {
@@ -375,261 +410,269 @@ const productSchema = new mongoose.Schema(
       default: false,
     },
 
-    // ========================================================
+    // ==========================================================
     // CAR
-    // ========================================================
+    // ==========================================================
 
     mileage: {
-      type: Number,
-      default: null,
-      min: 0,
+      type: String,
+      trim: true,
+      default: "",
+      maxlength: 100,
     },
 
     bodyType: {
       type: String,
-      default: "",
       trim: true,
+      default: "",
+      maxlength: 100,
     },
 
     fuelType: {
       type: String,
-      default: "",
       trim: true,
+      default: "",
+      maxlength: 100,
     },
 
     transmission: {
       type: String,
-      default: "",
       trim: true,
+      default: "",
+      maxlength: 100,
     },
 
     driveType: {
       type: String,
-      default: "",
       trim: true,
+      default: "",
+      maxlength: 100,
     },
 
     engineSize: {
       type: String,
-      default: "",
       trim: true,
+      default: "",
+      maxlength: 100,
     },
 
     seatingCapacity: {
-      type: Number,
-      default: null,
-      min: 0,
+      type: String,
+      trim: true,
+      default: "",
+      maxlength: 50,
     },
 
     exteriorColor: {
       type: String,
-      default: "",
       trim: true,
+      default: "",
+      maxlength: 100,
     },
 
     interiorColor: {
       type: String,
-      default: "",
       trim: true,
+      default: "",
+      maxlength: 100,
     },
 
-    // ========================================================
-    // ACCESSORIES
-    // ========================================================
+    // ==========================================================
+    // COSMETICS
+    // ==========================================================
 
-    accessoryType: {
+    cosmeticType: {
       type: String,
-      default: "",
       trim: true,
+      default: "",
+      maxlength: 150,
     },
 
-    compatibleWith: {
+    cosmeticSubcategory: {
       type: String,
-      default: "",
       trim: true,
+      default: "",
+      maxlength: 150,
     },
 
-    compatibility: {
+    gender: {
       type: String,
-      default: "",
       trim: true,
-      maxlength: 1000,
+      default: "",
+      maxlength: 100,
     },
 
-    material: {
+    skinType: {
       type: String,
-      default: "",
       trim: true,
+      default: "",
+      maxlength: 200,
     },
 
-    cableType: {
+    hairType: {
       type: String,
-      default: "",
       trim: true,
+      default: "",
+      maxlength: 200,
     },
 
-    connectorType: {
+    shade: {
       type: String,
-      default: "",
       trim: true,
+      default: "",
+      maxlength: 150,
     },
 
-    powerOutput: {
+    volume: {
       type: String,
-      default: "",
       trim: true,
+      default: "",
+      maxlength: 100,
     },
 
-    capacity: {
+    formulation: {
       type: String,
-      default: "",
       trim: true,
+      default: "",
+      maxlength: 150,
     },
 
-    batteryCapacity: {
+    finish: {
       type: String,
-      default: "",
       trim: true,
+      default: "",
+      maxlength: 150,
     },
 
-    wireless: {
+    fragrance: {
+      type: String,
+      trim: true,
+      default: "",
+      maxlength: 150,
+    },
+
+    ingredients: {
+      type: String,
+      trim: true,
+      default: "",
+      maxlength: 2000,
+    },
+
+    benefits: {
+      type: String,
+      trim: true,
+      default: "",
+      maxlength: 2000,
+    },
+
+    suitableFor: {
+      type: String,
+      trim: true,
+      default: "",
+      maxlength: 500,
+    },
+
+    skinConcern: {
+      type: String,
+      trim: true,
+      default: "",
+      maxlength: 500,
+    },
+
+    spf: {
+      type: String,
+      trim: true,
+      default: "",
+      maxlength: 50,
+    },
+
+    expirationDate: {
+      type: String,
+      trim: true,
+      default: "",
+      maxlength: 50,
+    },
+
+    batchNumber: {
+      type: String,
+      trim: true,
+      default: "",
+      maxlength: 100,
+    },
+
+    countryOfOrigin: {
+      type: String,
+      trim: true,
+      default: "",
+      maxlength: 100,
+    },
+
+    authenticity: {
+      type: String,
+      trim: true,
+      default: "",
+      maxlength: 100,
+    },
+
+    sealed: {
       type: Boolean,
       default: false,
     },
 
-    original: {
-      type: Boolean,
-      default: false,
-    },
+    // ==========================================================
+    // MEDIA
+    // ==========================================================
 
-    // ========================================================
-    // PHONE
-    // ========================================================
-
-    batteryHealth: {
-      type: Number,
-      min: 0,
-      max: 100,
-      default: null,
-    },
-
-    faceId: {
+    // Legacy single-image field.
+    // Kept for backwards compatibility.
+    image: {
       type: String,
-      enum: [
-        "Working",
-        "Not Working",
-        "Not Available",
-        "",
-      ],
-      default: "",
-    },
-
-    simStatus: {
-      type: String,
-      enum: [
-        "eSIM Unlocked",
-        "SIM Unlocked",
-        "Locked",
-        "Bypass",
-        "Not Available",
-        "",
-      ],
-      default: "",
       trim: true,
+      default: "",
     },
 
-    // ========================================================
-    // SELLING OPTIONS
-    // ========================================================
+    // Multiple product images.
+    images: {
+      type: [String],
+      default: [],
+    },
 
-    negotiation: {
+    // Product videos.
+    videos: {
+      type: [String],
+      default: [],
+    },
+
+    // ==========================================================
+    // PRODUCT STATUS
+    // ==========================================================
+
+    isActive: {
+      type: Boolean,
+      default: true,
+      index: true,
+    },
+
+    isSold: {
       type: Boolean,
       default: false,
+      index: true,
     },
-
-    swapAccepted: {
-      type: Boolean,
-      default: false,
-    },
-
-    // ========================================================
-    // STATISTICS
-    // ========================================================
 
     views: {
       type: Number,
       default: 0,
       min: 0,
     },
-
-    // ========================================================
-    // STATUS
-    // ========================================================
-
-    status: {
-      type: String,
-      enum: PRODUCT_STATUSES,
-      default: "active",
-      index: true,
-    },
-
-    // ========================================================
-    // PROMOTION
-    // ========================================================
-
-    promo: {
-      type: Boolean,
-      default: false,
-    },
-
-    verified: {
-      type: Boolean,
-      default: false,
-    },
-
-    yearsOnPlatform: {
-      type: Number,
-      default: 0,
-      min: 0,
-    },
-
-    // ========================================================
-    // SEO
-    // ========================================================
-
-    slug: {
-      type: String,
-      unique: true,
-      sparse: true,
-      trim: true,
-      index: true,
-    },
   },
   {
     timestamps: true,
-    versionKey: false,
+    strict: true,
   }
 );
 
 // ============================================================
-// AUTO SLUG
-// ============================================================
-
-productSchema.pre("save", function (next) {
-  if (!this.slug && this.title) {
-    const baseSlug = this.title
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "");
-
-    this.slug = `${baseSlug || "product"}-${Date.now()}`;
-  }
-
-  next();
-});
-
-// ============================================================
-// TEXT INDEX
+// INDEXES
 // ============================================================
 
 productSchema.index({
@@ -637,27 +680,12 @@ productSchema.index({
   description: "text",
   brand: "text",
   model: "text",
-  accessoryType: "text",
-  compatibleWith: "text",
-  compatibility: "text",
 });
-
-// ============================================================
-// COMPOUND INDEXES
-// ============================================================
 
 productSchema.index({
   category: 1,
-  location: 1,
-  status: 1,
-});
-
-productSchema.index({
+  isActive: 1,
   createdAt: -1,
-});
-
-productSchema.index({
-  price: 1,
 });
 
 productSchema.index({
@@ -665,114 +693,30 @@ productSchema.index({
   createdAt: -1,
 });
 
-// ============================================================
-// FILTER INDEXES
-// ============================================================
-
 productSchema.index({
-  simStatus: 1,
-});
-
-productSchema.index({
-  batteryHealth: 1,
-});
-
-productSchema.index({
-  accessoryType: 1,
-});
-
-productSchema.index({
-  compatibleWith: 1,
-});
-
-productSchema.index({
-  wireless: 1,
-});
-
-productSchema.index({
-  original: 1,
-});
-
-productSchema.index({
-  videoOutput: 1,
-});
-
-productSchema.index({
-  region: 1,
-});
-
-productSchema.index({
-  resolution: 1,
-});
-
-productSchema.index({
-  watchSize: 1,
-});
-
-productSchema.index({
-  tvType: 1,
-});
-
-productSchema.index({
-  displayTechnology: 1,
-});
-
-productSchema.index({
-  refreshRate: 1,
-});
-
-productSchema.index({
-  operatingSystem: 1,
-});
-
-productSchema.index({
-  hdr: 1,
-});
-
-productSchema.index({
-  smartTV: 1,
-});
-
-productSchema.index({
-  mileage: 1,
-});
-
-productSchema.index({
-  fuelType: 1,
-});
-
-productSchema.index({
-  transmission: 1,
-});
-
-productSchema.index({
-  bodyType: 1,
+  location: 1,
+  category: 1,
 });
 
 // ============================================================
-// IMPORTANT
+// CLEAN JSON OUTPUT
 // ============================================================
-//
-// DO NOT add:
-//
-// productSchema.index({ brand: 1 });
-// productSchema.index({ model: 1 });
-//
-// because brand and model already use:
-//
-// index: true
-//
-// in their schema definitions.
-//
-// This prevents the Mongoose duplicate-index warnings.
-// ============================================================
+
+productSchema.set("toJSON", {
+  transform: (doc, ret) => {
+    ret.id = ret._id;
+    delete ret._id;
+    delete ret.__v;
+
+    return ret;
+  },
+});
 
 // ============================================================
 // MODEL
 // ============================================================
 
-const Product =
-  mongoose.models.Product ||
-  mongoose.model("Product", productSchema);
-
-module.exports = Product;
+module.exports = mongoose.model(
+  "Product",
+  productSchema
+);
