@@ -351,7 +351,7 @@ const Navbar = () => {
             }}
           >
             <i className="fas fa-plus-circle" style={{ fontSize: '14px' }}></i>
-            <span className="navbar-post-ad-text">Post Ad</span>
+            <span className="navbar-post-ad-text">Start Selling</span>
           </Link>
 
           {/* Right side */}

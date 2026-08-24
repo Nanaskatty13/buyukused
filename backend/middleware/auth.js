@@ -1,4 +1,5 @@
 // backend/middleware/auth.js
+
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 
@@ -9,67 +10,132 @@ const User = require("../models/User");
 const verifyToken = async (req, res, next) => {
   try {
     if (!process.env.JWT_SECRET) {
-      console.error("❌ JWT_SECRET is not configured");
+      console.error(
+        "❌ JWT_SECRET is not configured"
+      );
+
       return res.status(500).json({
         success: false,
-        message: "Server authentication is not configured",
+        message:
+          "Server authentication is not configured",
       });
     }
 
-    const authHeader = req.headers.authorization || "";
+    const authHeader =
+      req.headers.authorization || "";
+
     if (!authHeader.startsWith("Bearer ")) {
       return res.status(401).json({
         success: false,
-        message: "No authentication token provided",
+        message:
+          "No authentication token provided",
       });
     }
 
-    const token = authHeader.substring(7).trim();
+    const token =
+      authHeader.substring(7).trim();
+
     if (!token) {
       return res.status(401).json({
         success: false,
-        message: "Authentication token missing",
+        message:
+          "Authentication token missing",
       });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const userId = decoded.id || decoded._id || decoded.userId;
+    const decoded = jwt.verify(
+      token,
+      process.env.JWT_SECRET
+    );
+
+    const userId =
+      decoded.id ||
+      decoded._id ||
+      decoded.userId;
+
     if (!userId) {
       return res.status(401).json({
         success: false,
-        message: "Invalid token payload",
+        message:
+          "Invalid token payload",
       });
     }
 
-    const user = await User.findById(userId).select("-password");
+    if (!mongooseSafeObjectId(userId)) {
+      return res.status(401).json({
+        success: false,
+        message:
+          "Invalid user ID in token",
+      });
+    }
+
+    const user =
+      await User.findById(userId)
+        .select("-password");
+
     if (!user) {
       return res.status(401).json({
         success: false,
-        message: "User not found",
+        message:
+          "User not found",
       });
     }
 
     if (user.isActive === false) {
       return res.status(403).json({
         success: false,
-        message: "Account is deactivated",
+        message:
+          "Account is deactivated",
       });
     }
 
     req.user = user;
     req.userId = user._id.toString();
     req.auth = decoded;
+
     next();
   } catch (error) {
-    console.error("❌ Auth middleware error:", error.message);
-    if (error.name === "TokenExpiredError") {
-      return res.status(401).json({ success: false, message: "Token expired" });
+    console.error(
+      "❌ Auth middleware error:",
+      error.message
+    );
+
+    if (
+      error.name ===
+      "TokenExpiredError"
+    ) {
+      return res.status(401).json({
+        success: false,
+        message: "Token expired",
+      });
     }
-    if (error.name === "JsonWebTokenError") {
-      return res.status(401).json({ success: false, message: "Invalid token" });
+
+    if (
+      error.name ===
+      "JsonWebTokenError"
+    ) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid token",
+      });
     }
-    return res.status(401).json({ success: false, message: "Authentication failed" });
+
+    return res.status(401).json({
+      success: false,
+      message:
+        "Authentication failed",
+    });
   }
+};
+
+// ============================================================
+// SAFE OBJECT ID CHECK
+// ============================================================
+
+const mongooseSafeObjectId = (id) => {
+  return /^[a-fA-F0-9]{24}$/.test(
+    String(id)
+  );
 };
 
 // ============================================================
@@ -77,8 +143,18 @@ const verifyToken = async (req, res, next) => {
 // ============================================================
 
 const isAdmin = (req, res, next) => {
-  if (req.user && req.user.role === "admin") return next();
-  return res.status(403).json({ success: false, message: "Access denied. Admin only." });
+  if (
+    req.user &&
+    req.user.role === "admin"
+  ) {
+    return next();
+  }
+
+  return res.status(403).json({
+    success: false,
+    message:
+      "Access denied. Admin only.",
+  });
 };
 
 // ============================================================
@@ -86,8 +162,21 @@ const isAdmin = (req, res, next) => {
 // ============================================================
 
 const isSeller = (req, res, next) => {
-  if (req.user && (req.user.role === "seller" || req.user.role === "admin")) return next();
-  return res.status(403).json({ success: false, message: "Access denied. Seller only." });
+  if (
+    req.user &&
+    (
+      req.user.role === "seller" ||
+      req.user.role === "admin"
+    )
+  ) {
+    return next();
+  }
+
+  return res.status(403).json({
+    success: false,
+    message:
+      "Access denied. Seller only.",
+  });
 };
 
 // ============================================================
@@ -95,8 +184,18 @@ const isSeller = (req, res, next) => {
 // ============================================================
 
 const isRider = (req, res, next) => {
-  if (req.user && req.user.role === "rider") return next();
-  return res.status(403).json({ success: false, message: "Access denied. Rider only." });
+  if (
+    req.user &&
+    req.user.role === "rider"
+  ) {
+    return next();
+  }
+
+  return res.status(403).json({
+    success: false,
+    message:
+      "Access denied. Rider only.",
+  });
 };
 
 // ============================================================
@@ -104,12 +203,25 @@ const isRider = (req, res, next) => {
 // ============================================================
 
 const isCustomer = (req, res, next) => {
-  if (req.user && (req.user.role === "buyer" || req.user.role === "seller")) return next();
-  return res.status(403).json({ success: false, message: "Access denied. Customer only." });
+  if (
+    req.user &&
+    (
+      req.user.role === "buyer" ||
+      req.user.role === "seller"
+    )
+  ) {
+    return next();
+  }
+
+  return res.status(403).json({
+    success: false,
+    message:
+      "Access denied. Customer only.",
+  });
 };
 
 // ============================================================
-// BACKWARD-COMPATIBILITY ALIASES
+// ALIASES
 // ============================================================
 
 const protect = verifyToken;
@@ -119,14 +231,25 @@ const seller = isSeller;
 // EXPORTS
 // ============================================================
 
-// Default export: the main authentication middleware (so require('auth') returns a function)
 module.exports = verifyToken;
 
-// Also export named properties for flexibility
-module.exports.verifyToken = verifyToken;
-module.exports.protect = protect;
-module.exports.isAdmin = isAdmin;
-module.exports.isSeller = isSeller;
-module.exports.isRider = isRider;
-module.exports.isCustomer = isCustomer;
-module.exports.seller = seller;
+module.exports.verifyToken =
+  verifyToken;
+
+module.exports.protect =
+  protect;
+
+module.exports.isAdmin =
+  isAdmin;
+
+module.exports.isSeller =
+  isSeller;
+
+module.exports.isRider =
+  isRider;
+
+module.exports.isCustomer =
+  isCustomer;
+
+module.exports.seller =
+  seller;

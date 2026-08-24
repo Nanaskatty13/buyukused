@@ -12,20 +12,12 @@ import {
   AiFillEyeInvisible,
 } from "react-icons/ai";
 
-// ============================================================
-// API CONFIG
-// ============================================================
-
 const API_URL = (
   import.meta.env.VITE_API_URL ||
   "https://buyukused.onrender.com"
 ).replace(/\/+$/, "");
 
 console.log("🔗 Login API_URL:", API_URL);
-
-// ============================================================
-// LOGIN PAGE
-// ============================================================
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -40,12 +32,7 @@ const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Return user to the page they originally wanted.
   const from = location.state?.from || "/";
-
-  // ==========================================================
-  // LOGIN
-  // ==========================================================
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -88,29 +75,17 @@ const Login = () => {
     }
   };
 
-  // ==========================================================
-  // GOOGLE LOGIN
-  // ==========================================================
-
   const handleGoogleLogin = () => {
     setError("");
 
     window.location.href = `${API_URL}/auth/google`;
   };
 
-  // ==========================================================
-  // FACEBOOK LOGIN
-  // ==========================================================
-
   const handleFacebookLogin = () => {
     setError("");
 
     window.location.href = `${API_URL}/auth/facebook`;
   };
-
-  // ==========================================================
-  // RENDER
-  // ==========================================================
 
   return (
     <div
@@ -119,7 +94,7 @@ const Login = () => {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        padding: "20px",
+        padding: "16px",
         backgroundImage:
           "linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.55)), url('https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=1600&q=80')",
         backgroundSize: "cover",
@@ -139,21 +114,18 @@ const Login = () => {
         <div
           className="card"
           style={{
-            padding: "32px",
+            padding: "22px 28px",
             backgroundColor: "#ffffff",
             boxShadow: "0 8px 32px rgba(0,0,0,0.2)",
           }}
         >
-          {/* ==================================================
-              HEADER
-          ================================================== */}
-
           <h2
             style={{
-              fontSize: "24px",
+              fontSize: "23px",
               fontWeight: 800,
               textAlign: "center",
-              marginBottom: "8px",
+              marginTop: "0",
+              marginBottom: "5px",
             }}
           >
             Welcome Back 👋
@@ -163,7 +135,9 @@ const Login = () => {
             style={{
               textAlign: "center",
               color: "var(--gray-500)",
-              marginBottom: "24px",
+              marginTop: "0",
+              marginBottom: "16px",
+              fontSize: "14px",
             }}
           >
             {from !== "/"
@@ -171,37 +145,27 @@ const Login = () => {
               : "Login to your account"}
           </p>
 
-          {/* ==================================================
-              ERROR
-          ================================================== */}
-
           {error && (
             <div
               role="alert"
               style={{
                 background: "#fee2e2",
                 color: "#dc2626",
-                padding: "10px 14px",
+                padding: "8px 12px",
                 borderRadius: "8px",
-                marginBottom: "16px",
-                fontSize: "14px",
+                marginBottom: "12px",
+                fontSize: "13px",
               }}
             >
               {error}
             </div>
           )}
 
-          {/* ==================================================
-              SOCIAL LOGIN
-          ================================================== */}
-
           <div
             style={{
-              marginBottom: "24px",
+              marginBottom: "16px",
             }}
           >
-            {/* GOOGLE */}
-
             <button
               type="button"
               onClick={handleGoogleLogin}
@@ -211,8 +175,8 @@ const Login = () => {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                gap: "12px",
-                padding: "14px",
+                gap: "10px",
+                padding: "10px 14px",
                 border: "1px solid #ddd",
                 borderRadius: "50px",
                 background: "#fff",
@@ -220,17 +184,14 @@ const Login = () => {
                   ? "not-allowed"
                   : "pointer",
                 fontWeight: 600,
-                fontSize: "15px",
-                marginBottom: "12px",
+                fontSize: "14px",
+                marginBottom: "8px",
                 opacity: loading ? 0.7 : 1,
               }}
             >
-              <FcGoogle size={22} />
-
+              <FcGoogle size={20} />
               Continue with Google
             </button>
-
-            {/* FACEBOOK */}
 
             <button
               type="button"
@@ -241,8 +202,8 @@ const Login = () => {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                gap: "12px",
-                padding: "14px",
+                gap: "10px",
+                padding: "10px 14px",
                 border: "none",
                 borderRadius: "50px",
                 background: "#1877F2",
@@ -251,25 +212,20 @@ const Login = () => {
                   ? "not-allowed"
                   : "pointer",
                 fontWeight: 600,
-                fontSize: "15px",
+                fontSize: "14px",
                 opacity: loading ? 0.7 : 1,
               }}
             >
-              <FaFacebookF size={20} />
-
+              <FaFacebookF size={18} />
               Continue with Facebook
             </button>
           </div>
-
-          {/* ==================================================
-              DIVIDER
-          ================================================== */}
 
           <div
             style={{
               display: "flex",
               alignItems: "center",
-              margin: "20px 0",
+              margin: "14px 0",
             }}
           >
             <hr
@@ -282,9 +238,9 @@ const Login = () => {
 
             <span
               style={{
-                margin: "0 12px",
+                margin: "0 10px",
                 color: "#777",
-                fontSize: "14px",
+                fontSize: "12px",
               }}
             >
               OR
@@ -299,17 +255,11 @@ const Login = () => {
             />
           </div>
 
-          {/* ==================================================
-              LOGIN FORM
-          ================================================== */}
-
           <form onSubmit={handleSubmit}>
-            {/* EMAIL */}
-
             <div
               className="form-group"
               style={{
-                marginBottom: "16px",
+                marginBottom: "12px",
               }}
             >
               <label
@@ -317,8 +267,8 @@ const Login = () => {
                 style={{
                   display: "block",
                   fontWeight: 600,
-                  fontSize: "13px",
-                  marginBottom: "6px",
+                  fontSize: "12px",
+                  marginBottom: "5px",
                 }}
               >
                 Email
@@ -338,22 +288,20 @@ const Login = () => {
                 style={{
                   width: "100%",
                   boxSizing: "border-box",
-                  padding: "12px 16px",
+                  padding: "10px 14px",
                   border: "1.5px solid var(--gray-200)",
                   borderRadius: "var(--radius-md)",
-                  fontSize: "14px",
+                  fontSize: "13px",
                   fontFamily: "inherit",
                   background: "white",
                 }}
               />
             </div>
 
-            {/* PASSWORD */}
-
             <div
               className="form-group"
               style={{
-                marginBottom: "10px",
+                marginBottom: "7px",
               }}
             >
               <label
@@ -361,8 +309,8 @@ const Login = () => {
                 style={{
                   display: "block",
                   fontWeight: 600,
-                  fontSize: "13px",
-                  marginBottom: "6px",
+                  fontSize: "12px",
+                  marginBottom: "5px",
                 }}
               >
                 Password
@@ -392,10 +340,10 @@ const Login = () => {
                   style={{
                     width: "100%",
                     boxSizing: "border-box",
-                    padding: "12px 44px 12px 16px",
+                    padding: "10px 42px 10px 14px",
                     border: "1.5px solid var(--gray-200)",
                     borderRadius: "var(--radius-md)",
-                    fontSize: "14px",
+                    fontSize: "13px",
                     fontFamily: "inherit",
                     background: "white",
                   }}
@@ -415,15 +363,15 @@ const Login = () => {
                   }
                   style={{
                     position: "absolute",
-                    right: "10px",
+                    right: "8px",
                     top: "50%",
                     transform: "translateY(-50%)",
                     background: "transparent",
                     border: "none",
                     cursor: "pointer",
                     color: "#64748b",
-                    fontSize: "20px",
-                    padding: "5px",
+                    fontSize: "18px",
+                    padding: "4px",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
@@ -438,18 +386,14 @@ const Login = () => {
               </div>
             </div>
 
-            {/* ==================================================
-                FORGOT PASSWORD
-            ================================================== */}
-
             <div
               style={{
                 width: "100%",
                 display: "flex",
                 justifyContent: "flex-end",
                 alignItems: "center",
-                marginTop: "8px",
-                marginBottom: "20px",
+                marginTop: "5px",
+                marginBottom: "14px",
               }}
             >
               <Link
@@ -458,7 +402,7 @@ const Login = () => {
                 style={{
                   display: "inline-block",
                   color: "var(--primary)",
-                  fontSize: "14px",
+                  fontSize: "13px",
                   fontWeight: 700,
                   textDecoration: "none",
                   cursor: "pointer",
@@ -472,23 +416,19 @@ const Login = () => {
               </Link>
             </div>
 
-            {/* ==================================================
-                LOGIN BUTTON
-            ================================================== */}
-
             <button
               type="submit"
               disabled={loading}
               className="btn-primary"
               style={{
                 width: "100%",
-                padding: "14px",
+                padding: "11px",
                 border: "none",
                 borderRadius: "50px",
                 background: "var(--primary)",
                 color: "white",
                 fontWeight: 700,
-                fontSize: "16px",
+                fontSize: "15px",
                 cursor: loading
                   ? "not-allowed"
                   : "pointer",
@@ -501,16 +441,12 @@ const Login = () => {
             </button>
           </form>
 
-          {/* ==================================================
-              REGISTER
-          ================================================== */}
-
           <div
             className="auth-footer"
             style={{
               textAlign: "center",
-              marginTop: "16px",
-              fontSize: "14px",
+              marginTop: "12px",
+              fontSize: "13px",
               color: "var(--gray-500)",
             }}
           >
@@ -528,16 +464,12 @@ const Login = () => {
             </Link>
           </div>
 
-          {/* ==================================================
-              BACK HOME
-          ================================================== */}
-
           {from !== "/" && (
             <div
               style={{
                 textAlign: "center",
-                marginTop: "12px",
-                fontSize: "13px",
+                marginTop: "8px",
+                fontSize: "12px",
                 color: "var(--gray-400)",
               }}
             >

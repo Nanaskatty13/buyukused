@@ -15,6 +15,7 @@ const PRODUCT_CATEGORIES = [
   "Laptops",
   "Tablets",
   "Accessories",
+  "Spare Parts",
   "Real Estate",
   "Jobs",
   "Electronics",
@@ -76,8 +77,8 @@ const productSchema = new mongoose.Schema(
       type: String,
       enum: PRODUCT_CATEGORIES,
       default: "Other",
-      trim: true,
       index: true,
+      trim: true,
     },
 
     location: {
@@ -168,12 +169,14 @@ const productSchema = new mongoose.Schema(
       type: String,
       default: "",
       trim: true,
+      index: true,
     },
 
     model: {
       type: String,
       default: "",
       trim: true,
+      index: true,
     },
 
     color: {
@@ -423,6 +426,265 @@ const productSchema = new mongoose.Schema(
     },
 
     // ========================================================
+    // SPARE PARTS
+    // ========================================================
+
+    sparePartType: {
+      type: String,
+      default: "",
+      trim: true,
+      index: true,
+    },
+
+    sparePartCategory: {
+      type: String,
+      default: "",
+      trim: true,
+      index: true,
+    },
+
+    partNumber: {
+      type: String,
+      default: "",
+      trim: true,
+      index: true,
+    },
+
+    oemNumber: {
+      type: String,
+      default: "",
+      trim: true,
+      index: true,
+    },
+
+    manufacturerPartNumber: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    vehicleMake: {
+      type: String,
+      default: "",
+      trim: true,
+      index: true,
+    },
+
+    vehicleModel: {
+      type: String,
+      default: "",
+      trim: true,
+      index: true,
+    },
+
+    vehicleYear: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    vehicleGeneration: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    vehicleTrim: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    vehicleEngine: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    vehicleEngineCode: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    vehicleTransmission: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    vehicleFuelType: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    vehicleDriveType: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    compatibilityYearFrom: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    compatibilityYearTo: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    partCondition: {
+      type: String,
+      enum: [
+        "",
+        "Brand New",
+        "Genuine",
+        "OEM",
+        "Aftermarket",
+        "Used",
+        "Refurbished",
+        "Reconditioned",
+      ],
+      default: "",
+      trim: true,
+    },
+
+    partBrand: {
+      type: String,
+      default: "",
+      trim: true,
+      index: true,
+    },
+
+    partManufacturer: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    partMaterial: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    partColor: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    partPosition: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    partSide: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    partPlacement: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    installationType: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    mountingType: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    quantity: {
+      type: Number,
+      default: null,
+      min: 0,
+    },
+
+    unit: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    packageIncludes: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 2000,
+    },
+
+    partCompatibility: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 2000,
+    },
+
+    interchangePartNumbers: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 2000,
+    },
+
+    vinCompatibility: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 1000,
+    },
+
+    installationAvailable: {
+      type: Boolean,
+      default: false,
+    },
+
+    installationFee: {
+      type: Number,
+      default: null,
+      min: 0,
+    },
+
+    originalPart: {
+      type: Boolean,
+      default: false,
+    },
+
+    genuinePart: {
+      type: Boolean,
+      default: false,
+    },
+
+    oemPart: {
+      type: Boolean,
+      default: false,
+    },
+
+    aftermarketPart: {
+      type: Boolean,
+      default: false,
+    },
+
+    importedPart: {
+      type: Boolean,
+      default: false,
+    },
+
+    // ========================================================
     // ACCESSORIES
     // ========================================================
 
@@ -528,28 +790,43 @@ const productSchema = new mongoose.Schema(
     },
 
     // ========================================================
-    // COSMETICS – Complete list of fields
+    // COSMETICS / BEAUTY
     // ========================================================
+
+    productType: {
+      type: String,
+      default: "",
+      trim: true,
+      index: true,
+    },
 
     cosmeticType: {
       type: String,
       default: "",
       trim: true,
+      index: true,
     },
 
     cosmeticBrand: {
       type: String,
       default: "",
       trim: true,
+      index: true,
     },
 
-    cosmeticShade: {
+    productLine: {
       type: String,
       default: "",
       trim: true,
     },
 
-    productLine: {
+    shade: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    cosmeticShade: {
       type: String,
       default: "",
       trim: true,
@@ -573,6 +850,37 @@ const productSchema = new mongoose.Schema(
       trim: true,
     },
 
+    volume: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    skinType: {
+      type: String,
+      default: "",
+      trim: true,
+      index: true,
+    },
+
+    skinConcern: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    hairType: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    hairConcern: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
     benefits: {
       type: String,
       default: "",
@@ -580,10 +888,11 @@ const productSchema = new mongoose.Schema(
       maxlength: 2000,
     },
 
-    skinConcern: {
+    ingredients: {
       type: String,
       default: "",
       trim: true,
+      maxlength: 2000,
     },
 
     spf: {
@@ -593,6 +902,12 @@ const productSchema = new mongoose.Schema(
     },
 
     expirationDate: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    expiryDate: {
       type: String,
       default: "",
       trim: true,
@@ -610,26 +925,25 @@ const productSchema = new mongoose.Schema(
       trim: true,
     },
 
-    skinType: {
+    cosmeticMaterial: {
       type: String,
       default: "",
       trim: true,
     },
 
-    volume: {
+    cosmeticFinish: {
       type: String,
       default: "",
       trim: true,
     },
 
-    ingredients: {
+    cosmeticForm: {
       type: String,
       default: "",
       trim: true,
-      maxlength: 2000,
     },
 
-    expiryDate: {
+    cosmeticSizeUnit: {
       type: String,
       default: "",
       trim: true,
@@ -757,15 +1071,7 @@ productSchema.pre("save", function (next) {
 });
 
 // ============================================================
-// VIRTUAL: GET SELLER WITH VERIFICATION STATUS
-// ============================================================
-//
-// This virtual populates the sellerId field and includes
-// the isVerified flag from the User model.
-//
-// Usage: await Product.findById(id).populate('seller')
-//         .then(p => console.log(p.seller.isVerified))
-//
+// SELLER VIRTUAL
 // ============================================================
 
 productSchema.virtual("seller", {
@@ -776,20 +1082,16 @@ productSchema.virtual("seller", {
 });
 
 // ============================================================
-// HELPER: CHECK IF SELLER IS VERIFIED
-// ============================================================
-//
-// This method can be used after populating the seller:
-//
-//   const product = await Product.findById(id).populate('seller');
-//   const isVerified = product.isSellerVerified();
-//
+// SELLER VERIFICATION HELPER
 // ============================================================
 
 productSchema.methods.isSellerVerified = function () {
-  // If seller is populated via virtual or direct population
   const seller = this.seller || this.sellerId;
-  if (!seller) return false;
+
+  if (!seller) {
+    return false;
+  }
+
   return seller.isVerified === true;
 };
 
@@ -802,13 +1104,34 @@ productSchema.index({
   description: "text",
   brand: "text",
   model: "text",
+
   accessoryType: "text",
   compatibleWith: "text",
   compatibility: "text",
+
+  // Spare Parts
+  sparePartType: "text",
+  sparePartCategory: "text",
+  partNumber: "text",
+  oemNumber: "text",
+  manufacturerPartNumber: "text",
+  vehicleMake: "text",
+  vehicleModel: "text",
+  vehicleEngine: "text",
+  partBrand: "text",
+  partManufacturer: "text",
+  partCompatibility: "text",
+  interchangePartNumbers: "text",
+
+  // Cosmetics
+  productType: "text",
   cosmeticType: "text",
   cosmeticBrand: "text",
   cosmeticShade: "text",
+  shade: "text",
   skinType: "text",
+  hairType: "text",
+  hairConcern: "text",
   ingredients: "text",
   productLine: "text",
   benefits: "text",
@@ -816,7 +1139,7 @@ productSchema.index({
 });
 
 // ============================================================
-// COMPOUND INDEXES
+// GENERAL COMPOUND INDEX
 // ============================================================
 
 productSchema.index({
@@ -824,6 +1147,10 @@ productSchema.index({
   location: 1,
   status: 1,
 });
+
+// ============================================================
+// SELLER INDEX
+// ============================================================
 
 productSchema.index({
   sellerId: 1,
@@ -959,8 +1286,96 @@ productSchema.index({
 });
 
 // ============================================================
+// SPARE PARTS INDEXES
+// ============================================================
+
+productSchema.index({
+  sparePartType: 1,
+});
+
+productSchema.index({
+  sparePartCategory: 1,
+});
+
+productSchema.index({
+  partNumber: 1,
+});
+
+productSchema.index({
+  oemNumber: 1,
+});
+
+productSchema.index({
+  manufacturerPartNumber: 1,
+});
+
+productSchema.index({
+  vehicleMake: 1,
+});
+
+productSchema.index({
+  vehicleModel: 1,
+});
+
+productSchema.index({
+  vehicleYear: 1,
+});
+
+productSchema.index({
+  vehicleEngine: 1,
+});
+
+productSchema.index({
+  vehicleFuelType: 1,
+});
+
+productSchema.index({
+  vehicleTransmission: 1,
+});
+
+productSchema.index({
+  partCondition: 1,
+});
+
+productSchema.index({
+  partBrand: 1,
+});
+
+productSchema.index({
+  partManufacturer: 1,
+});
+
+productSchema.index({
+  partPosition: 1,
+});
+
+productSchema.index({
+  partSide: 1,
+});
+
+productSchema.index({
+  installationAvailable: 1,
+});
+
+productSchema.index({
+  genuinePart: 1,
+});
+
+productSchema.index({
+  oemPart: 1,
+});
+
+productSchema.index({
+  aftermarketPart: 1,
+});
+
+// ============================================================
 // COSMETICS INDEXES
 // ============================================================
+
+productSchema.index({
+  productType: 1,
+});
 
 productSchema.index({
   cosmeticType: 1,
@@ -972,6 +1387,46 @@ productSchema.index({
 
 productSchema.index({
   skinType: 1,
+});
+
+productSchema.index({
+  hairType: 1,
+});
+
+productSchema.index({
+  gender: 1,
+});
+
+productSchema.index({
+  cosmeticShade: 1,
+});
+
+productSchema.index({
+  scent: 1,
+});
+
+productSchema.index({
+  coverage: 1,
+});
+
+productSchema.index({
+  sealed: 1,
+});
+
+productSchema.index({
+  authentic: 1,
+});
+
+productSchema.index({
+  crueltyFree: 1,
+});
+
+productSchema.index({
+  vegan: 1,
+});
+
+productSchema.index({
+  parabenFree: 1,
 });
 
 // ============================================================

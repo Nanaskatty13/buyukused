@@ -1,6 +1,12 @@
 // ============================================================
-// backend/constants/productCategories.js
-// BuyUKUsed - Canonical Product Categories
+// backend/models/Product.js
+// BuyUKUsed Product Model
+// ============================================================
+
+const mongoose = require("mongoose");
+
+// ============================================================
+// CONSTANTS
 // ============================================================
 
 const PRODUCT_CATEGORIES = [
@@ -17,438 +23,1088 @@ const PRODUCT_CATEGORIES = [
   "TVs",
   "Game Consoles",
   "Smartwatches",
-  "Cosmetics",   // ✅ added
+  "Spare Parts",
+  "Cosmetics",
   "Other",
 ];
 
+const PRODUCT_STATUSES = [
+  "active",
+  "pending",
+  "inactive",
+  "sold",
+];
+
+const PRODUCT_CONDITIONS = [
+  "Brand New",
+  "Like New",
+  "Excellent",
+  "Good",
+  "Fair",
+  "Poor",
+];
+
 // ============================================================
-// CATEGORY NORMALIZATION
+// PRODUCT SCHEMA
 // ============================================================
 
-const normalizeCategory = (value) => {
-  if (value === undefined || value === null) {
-    return "Other";
-  }
+const productSchema = new mongoose.Schema(
+  {
+    // ========================================================
+    // BASIC INFORMATION
+    // ========================================================
 
-  // FormData can sometimes produce arrays
-  if (Array.isArray(value)) {
-    value = value[0];
-  }
+    title: {
+      type: String,
+      required: true,
+      trim: true,
+      maxlength: 200,
+    },
 
-  // Handle objects such as { value: "Game Consoles" }
-  if (typeof value === "object" && value !== null) {
-    value =
-      value.value ??
-      value.name ??
-      value.label ??
-      "";
-  }
+    price: {
+      type: Number,
+      required: true,
+      min: 0,
+    },
 
-  const raw = String(value).trim();
+    oldPrice: {
+      type: Number,
+      default: null,
+      min: 0,
+    },
 
-  if (!raw) {
-    return "Other";
-  }
+    category: {
+      type: String,
+      enum: PRODUCT_CATEGORIES,
+      default: "Other",
+      index: true,
+      trim: true,
+    },
 
-  const normalized = raw
-    .toLowerCase()
-    .replace(/[_-]+/g, " ")
-    .replace(/[&/]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+    location: {
+      type: String,
+      default: "Ghana",
+      trim: true,
+      index: true,
+    },
 
-  // ==========================================================
-  // CATEGORY MAP
-  // ==========================================================
+    description: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 5000,
+    },
 
-  const categoryMap = {
-    // --------------------------------------------------------
-    // CARS
-    // --------------------------------------------------------
-    car: "Cars",
-    cars: "Cars",
-    automobile: "Cars",
-    automobiles: "Cars",
-    auto: "Cars",
-    autos: "Cars",
-    vehicle: "Cars",
-    vehicles: "Cars",
-    motor: "Cars",
-    motors: "Cars",
-    "motor vehicle": "Cars",
-    "motor vehicles": "Cars",
+    // ========================================================
+    // SELLER
+    // ========================================================
 
-    // --------------------------------------------------------
-    // PHONES
-    // --------------------------------------------------------
-    phone: "Phones",
-    phones: "Phones",
-    mobile: "Phones",
-    mobiles: "Phones",
-    smartphone: "Phones",
-    smartphones: "Phones",
-    "mobile phone": "Phones",
-    "mobile phones": "Phones",
-    "smart phone": "Phones",
-    "smart phones": "Phones",
-    iphone: "Phones",
-    iphones: "Phones",
-    samsung: "Phones",
-    android: "Phones",
-    "cell phone": "Phones",
-    "cell phones": "Phones",
+    sellerId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
+    },
 
-    // --------------------------------------------------------
-    // LAPTOPS
-    // --------------------------------------------------------
-    laptop: "Laptops",
-    laptops: "Laptops",
-    notebook: "Laptops",
-    notebooks: "Laptops",
-    computer: "Laptops",
-    computers: "Laptops",
-    "personal computer": "Laptops",
-    pc: "Laptops",
-    macbook: "Laptops",
-    macbooks: "Laptops",
+    sellerName: {
+      type: String,
+      default: "",
+      trim: true,
+    },
 
-    // --------------------------------------------------------
-    // TABLETS
-    // --------------------------------------------------------
-    tablet: "Tablets",
-    tablets: "Tablets",
-    ipad: "Tablets",
-    ipads: "Tablets",
-    "tablet computer": "Tablets",
-    "tablet computers": "Tablets",
+    sellerPhone: {
+      type: String,
+      default: "",
+      trim: true,
+    },
 
-    // --------------------------------------------------------
+    // ========================================================
+    // MEDIA
+    // ========================================================
+
+    image: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    images: {
+      type: [String],
+      default: [],
+    },
+
+    videos: {
+      type: [String],
+      default: [],
+    },
+
+    // ========================================================
+    // GENERAL PRODUCT DETAILS
+    // ========================================================
+
+    brand: {
+      type: String,
+      default: "",
+      trim: true,
+      index: true,
+    },
+
+    model: {
+      type: String,
+      default: "",
+      trim: true,
+      index: true,
+    },
+
+    color: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    condition: {
+      type: String,
+      enum: PRODUCT_CONDITIONS,
+      default: "Good",
+      trim: true,
+    },
+
+    warranty: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    // ========================================================
+    // COMPUTER / TABLET
+    // ========================================================
+
+    storage: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    ram: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    processor: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    graphics: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    screenSize: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    year: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    connectivity: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    // ========================================================
+    // GAME CONSOLE
+    // ========================================================
+
+    videoOutput: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    region: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    consoleType: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    edition: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    discDrive: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    controllersIncluded: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    battery: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    resolution: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    // ========================================================
+    // SMARTWATCH
+    // ========================================================
+
+    watchSize: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    // ========================================================
+    // TV
+    // ========================================================
+
+    tvType: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    displayTechnology: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    refreshRate: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    operatingSystem: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    hdr: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    hdmiPorts: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    usbPorts: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    smartTV: {
+      type: Boolean,
+      default: false,
+    },
+
+    voiceControl: {
+      type: Boolean,
+      default: false,
+    },
+
+    wallMountable: {
+      type: Boolean,
+      default: false,
+    },
+
+    // ========================================================
+    // CAR
+    // ========================================================
+
+    mileage: {
+      type: Number,
+      default: null,
+      min: 0,
+    },
+
+    bodyType: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    fuelType: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    transmission: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    driveType: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    engineSize: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    seatingCapacity: {
+      type: Number,
+      default: null,
+      min: 0,
+    },
+
+    exteriorColor: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    interiorColor: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    // ========================================================
     // ACCESSORIES
-    // --------------------------------------------------------
-    accessory: "Accessories",
-    accessories: "Accessories",
-    "phone accessory": "Accessories",
-    "phone accessories": "Accessories",
-    "computer accessory": "Accessories",
-    "computer accessories": "Accessories",
-    charger: "Accessories",
-    chargers: "Accessories",
-    cable: "Accessories",
-    cables: "Accessories",
-    earphone: "Accessories",
-    earphones: "Accessories",
-    headphone: "Accessories",
-    headphones: "Accessories",
-    earbuds: "Accessories",
+    // ========================================================
 
-    // --------------------------------------------------------
-    // REAL ESTATE
-    // --------------------------------------------------------
-    "real estate": "Real Estate",
-    realestate: "Real Estate",
-    property: "Real Estate",
-    properties: "Real Estate",
-    house: "Real Estate",
-    houses: "Real Estate",
-    land: "Real Estate",
-    lands: "Real Estate",
-    apartment: "Real Estate",
-    apartments: "Real Estate",
+    accessoryType: {
+      type: String,
+      default: "",
+      trim: true,
+    },
 
-    // --------------------------------------------------------
-    // JOBS
-    // --------------------------------------------------------
-    job: "Jobs",
-    jobs: "Jobs",
-    employment: "Jobs",
-    vacancy: "Jobs",
-    vacancies: "Jobs",
-    career: "Jobs",
-    careers: "Jobs",
+    compatibleWith: {
+      type: String,
+      default: "",
+      trim: true,
+    },
 
-    // --------------------------------------------------------
-    // ELECTRONICS
-    // --------------------------------------------------------
-    electronic: "Electronics",
-    electronics: "Electronics",
-    gadget: "Electronics",
-    gadgets: "Electronics",
-    device: "Electronics",
-    devices: "Electronics",
+    compatibility: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 1000,
+    },
 
-    // --------------------------------------------------------
-    // FASHION
-    // --------------------------------------------------------
-    fashion: "Fashion",
-    clothing: "Fashion",
-    clothes: "Fashion",
-    shoe: "Fashion",
-    shoes: "Fashion",
-    bag: "Fashion",
-    bags: "Fashion",
+    material: {
+      type: String,
+      default: "",
+      trim: true,
+    },
 
-    // --------------------------------------------------------
-    // HOME
-    // --------------------------------------------------------
-    home: "Home",
-    homes: "Home",
-    furniture: "Home",
-    household: "Home",
-    appliance: "Home",
-    appliances: "Home",
-    "home appliance": "Home",
-    "home appliances": "Home",
+    cableType: {
+      type: String,
+      default: "",
+      trim: true,
+    },
 
-    // --------------------------------------------------------
-    // TVS
-    // --------------------------------------------------------
-    tv: "TVs",
-    tvs: "TVs",
-    television: "TVs",
-    televisions: "TVs",
-    "smart tv": "TVs",
-    "smart tvs": "TVs",
-    "smart television": "TVs",
-    "smart televisions": "TVs",
+    connectorType: {
+      type: String,
+      default: "",
+      trim: true,
+    },
 
-    // --------------------------------------------------------
-    // GAME CONSOLES
-    // --------------------------------------------------------
-    console: "Game Consoles",
-    consoles: "Game Consoles",
-    gaming: "Game Consoles",
-    "game console": "Game Consoles",
-    "game consoles": "Game Consoles",
-    "gaming console": "Game Consoles",
-    "gaming consoles": "Game Consoles",
-    "game-console": "Game Consoles",
-    "game_consoles": "Game Consoles",
-    playstation: "Game Consoles",
-    playstations: "Game Consoles",
-    "play station": "Game Consoles",
-    "play stations": "Game Consoles",
-    playstation4: "Game Consoles",
-    playstation5: "Game Consoles",
-    ps4: "Game Consoles",
-    ps5: "Game Consoles",
-    xbox: "Game Consoles",
-    "xbox console": "Game Consoles",
-    "xbox series": "Game Consoles",
-    nintendo: "Game Consoles",
-    switch: "Game Consoles",
-    "nintendo switch": "Game Consoles",
+    powerOutput: {
+      type: String,
+      default: "",
+      trim: true,
+    },
 
-    // --------------------------------------------------------
-    // SMARTWATCHES
-    // --------------------------------------------------------
-    watch: "Smartwatches",
-    watches: "Smartwatches",
-    smartwatch: "Smartwatches",
-    smartwatches: "Smartwatches",
-    "smart watch": "Smartwatches",
-    "smart watches": "Smartwatches",
-    "smart wristwatch": "Smartwatches",
-    "smart wristwatches": "Smartwatches",
-    applewatch: "Smartwatches",
-    "apple watch": "Smartwatches",
+    capacity: {
+      type: String,
+      default: "",
+      trim: true,
+    },
 
-    // --------------------------------------------------------
-    // COSMETICS – ✅ NEW
-    // --------------------------------------------------------
-    cosmetic: "Cosmetics",
-    cosmetics: "Cosmetics",
-    beauty: "Cosmetics",
-    makeup: "Cosmetics",
-    skincare: "Cosmetics",
-    "skin care": "Cosmetics",
-    haircare: "Cosmetics",
-    "hair care": "Cosmetics",
-    fragrance: "Cosmetics",
-    perfumes: "Cosmetics",
-    lotion: "Cosmetics",
-    creams: "Cosmetics",
-    shampoo: "Cosmetics",
-    conditioner: "Cosmetics",
-    "body care": "Cosmetics",
-    bath: "Cosmetics",
-    shower: "Cosmetics",
-    nail: "Cosmetics",
-    "lip care": "Cosmetics",
-    "sun care": "Cosmetics",
-    "men grooming": "Cosmetics",
-    "women grooming": "Cosmetics",
+    batteryCapacity: {
+      type: String,
+      default: "",
+      trim: true,
+    },
 
-    // --------------------------------------------------------
-    // OTHER
-    // --------------------------------------------------------
-    other: "Other",
-  };
+    wireless: {
+      type: Boolean,
+      default: false,
+    },
 
-  if (categoryMap[normalized]) {
-    return categoryMap[normalized];
+    original: {
+      type: Boolean,
+      default: false,
+    },
+
+    // ========================================================
+    // PHONE
+    // ========================================================
+
+    batteryHealth: {
+      type: Number,
+      min: 0,
+      max: 100,
+      default: null,
+    },
+
+    faceId: {
+      type: String,
+      enum: [
+        "Working",
+        "Not Working",
+        "Not Available",
+        "",
+      ],
+      default: "",
+    },
+
+    simStatus: {
+      type: String,
+      enum: [
+        "eSIM Unlocked",
+        "SIM Unlocked",
+        "Locked",
+        "Bypass",
+        "Not Available",
+        "",
+      ],
+      default: "",
+      trim: true,
+    },
+
+    // ========================================================
+    // SPARE PARTS
+    // ========================================================
+
+    sparePartType: {
+      type: String,
+      default: "",
+      trim: true,
+      index: true,
+    },
+
+    partNumber: {
+      type: String,
+      default: "",
+      trim: true,
+      index: true,
+    },
+
+    oemNumber: {
+      type: String,
+      default: "",
+      trim: true,
+      index: true,
+    },
+
+    partBrand: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    vehicleMake: {
+      type: String,
+      default: "",
+      trim: true,
+      index: true,
+    },
+
+    vehicleModel: {
+      type: String,
+      default: "",
+      trim: true,
+      index: true,
+    },
+
+    vehicleYear: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    vehicleGeneration: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    vehicleEngine: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    vehicleTrim: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    partPosition: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    partSide: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    partMaterial: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    partColor: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    partCondition: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    isOEM: {
+      type: Boolean,
+      default: false,
+    },
+
+    isAftermarket: {
+      type: Boolean,
+      default: false,
+    },
+
+    isGenuine: {
+      type: Boolean,
+      default: false,
+    },
+
+    isUsedPart: {
+      type: Boolean,
+      default: false,
+    },
+
+    isNewPart: {
+      type: Boolean,
+      default: false,
+    },
+
+    // ========================================================
+    // COSMETICS
+    // ========================================================
+
+    cosmeticType: {
+      type: String,
+      default: "",
+      trim: true,
+      index: true,
+    },
+
+    cosmeticBrand: {
+      type: String,
+      default: "",
+      trim: true,
+      index: true,
+    },
+
+    productSize: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    volume: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    skinType: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    hairType: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    shade: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    scent: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    gender: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    ageGroup: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    expiryDate: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    ingredients: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 3000,
+    },
+
+    benefits: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 2000,
+    },
+
+    usageInstructions: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 3000,
+    },
+
+    countryOfOrigin: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    crueltyFree: {
+      type: Boolean,
+      default: false,
+    },
+
+    vegan: {
+      type: Boolean,
+      default: false,
+    },
+
+    organic: {
+      type: Boolean,
+      default: false,
+    },
+
+    sealed: {
+      type: Boolean,
+      default: false,
+    },
+
+    // ========================================================
+    // SELLING OPTIONS
+    // ========================================================
+
+    negotiation: {
+      type: Boolean,
+      default: false,
+    },
+
+    swapAccepted: {
+      type: Boolean,
+      default: false,
+    },
+
+    // ========================================================
+    // STATISTICS
+    // ========================================================
+
+    views: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+
+    // ========================================================
+    // STATUS
+    // ========================================================
+
+    status: {
+      type: String,
+      enum: PRODUCT_STATUSES,
+      default: "active",
+      index: true,
+    },
+
+    // ========================================================
+    // PROMOTION
+    // ========================================================
+
+    promo: {
+      type: Boolean,
+      default: false,
+    },
+
+    verified: {
+      type: Boolean,
+      default: false,
+    },
+
+    yearsOnPlatform: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+
+    // ========================================================
+    // SEO
+    // ========================================================
+
+    slug: {
+      type: String,
+      unique: true,
+      sparse: true,
+      trim: true,
+      index: true,
+    },
+  },
+  {
+    timestamps: true,
+    versionKey: false,
   }
-
-  // Exact canonical match
-  const canonical = PRODUCT_CATEGORIES.find(
-    (category) =>
-      category.toLowerCase() === normalized
-  );
-
-  if (canonical) {
-    return canonical;
-  }
-
-  // ==========================================================
-  // FUZZY MATCHING
-  // ==========================================================
-
-  if (
-    normalized.includes("phone") ||
-    normalized.includes("mobile") ||
-    normalized.includes("smartphone") ||
-    normalized.includes("iphone")
-  ) {
-    return "Phones";
-  }
-
-  if (
-    normalized.includes("laptop") ||
-    normalized.includes("notebook") ||
-    normalized === "computer" ||
-    normalized === "pc"
-  ) {
-    return "Laptops";
-  }
-
-  if (
-    normalized.includes("tablet") ||
-    normalized.includes("ipad")
-  ) {
-    return "Tablets";
-  }
-
-  if (
-    normalized.includes("car") ||
-    normalized.includes("automobile") ||
-    normalized.includes("vehicle")
-  ) {
-    return "Cars";
-  }
-
-  if (
-    normalized.includes("accessor") ||
-    normalized.includes("charger") ||
-    normalized.includes("headphone") ||
-    normalized.includes("earphone")
-  ) {
-    return "Accessories";
-  }
-
-  if (
-    normalized.includes("real estate") ||
-    normalized.includes("property") ||
-    normalized.includes("house") ||
-    normalized.includes("land")
-  ) {
-    return "Real Estate";
-  }
-
-  if (
-    normalized.includes("job") ||
-    normalized.includes("employment") ||
-    normalized.includes("career")
-  ) {
-    return "Jobs";
-  }
-
-  if (
-    normalized.includes("fashion") ||
-    normalized.includes("clothing")
-  ) {
-    return "Fashion";
-  }
-
-  if (
-    normalized.includes("television") ||
-    normalized === "tv" ||
-    normalized === "tvs"
-  ) {
-    return "TVs";
-  }
-
-  if (
-    normalized.includes("console") ||
-    normalized.includes("playstation") ||
-    normalized.includes("xbox") ||
-    normalized.includes("nintendo") ||
-    normalized === "ps4" ||
-    normalized === "ps5" ||
-    normalized === "switch"
-  ) {
-    return "Game Consoles";
-  }
-
-  if (
-    normalized.includes("watch") ||
-    normalized.includes("smartwatch")
-  ) {
-    return "Smartwatches";
-  }
-
-  if (
-    normalized.includes("electronic") ||
-    normalized.includes("gadget") ||
-    normalized.includes("device")
-  ) {
-    return "Electronics";
-  }
-
-  if (
-    normalized.includes("home") ||
-    normalized.includes("furniture") ||
-    normalized.includes("appliance")
-  ) {
-    return "Home";
-  }
-
-  // ─── NEW: Cosmetics fuzzy fallback ──────────────────────────
-  if (
-    normalized.includes("cosmetic") ||
-    normalized.includes("beauty") ||
-    normalized.includes("makeup") ||
-    normalized.includes("skincare") ||
-    normalized.includes("haircare") ||
-    normalized.includes("perfume") ||
-    normalized.includes("shampoo") ||
-    normalized.includes("lotion") ||
-    normalized.includes("cream") ||
-    normalized.includes("fragrance") ||
-    normalized.includes("bath") ||
-    normalized.includes("shower") ||
-    normalized.includes("nail")
-  ) {
-    return "Cosmetics";
-  }
-
-  return "Other";
-};
+);
 
 // ============================================================
-// VALIDATION
+// AUTO SLUG
 // ============================================================
 
-const isValidCategory = (value) => {
-  const normalized = normalizeCategory(value);
+productSchema.pre("save", function (next) {
+  if (!this.slug && this.title) {
+    const baseSlug = this.title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
 
-  return PRODUCT_CATEGORIES.includes(normalized);
-};
+    this.slug = `${baseSlug || "product"}-${Date.now()}`;
+  }
+
+  next();
+});
 
 // ============================================================
-// EXPORTS
+// TEXT INDEX
 // ============================================================
 
-module.exports = {
-  PRODUCT_CATEGORIES,
-  normalizeCategory,
-  isValidCategory,
-};
+productSchema.index({
+  title: "text",
+  description: "text",
+  brand: "text",
+  model: "text",
+  accessoryType: "text",
+  compatibleWith: "text",
+  compatibility: "text",
+  sparePartType: "text",
+  partNumber: "text",
+  oemNumber: "text",
+  partBrand: "text",
+  vehicleMake: "text",
+  vehicleModel: "text",
+  cosmeticType: "text",
+  cosmeticBrand: "text",
+  ingredients: "text",
+  benefits: "text",
+});
+
+// ============================================================
+// GENERAL INDEXES
+// ============================================================
+
+productSchema.index({
+  category: 1,
+  location: 1,
+  status: 1,
+});
+
+productSchema.index({
+  createdAt: -1,
+});
+
+productSchema.index({
+  price: 1,
+});
+
+productSchema.index({
+  sellerId: 1,
+  createdAt: -1,
+});
+
+// ============================================================
+// PHONE INDEXES
+// ============================================================
+
+productSchema.index({
+  simStatus: 1,
+});
+
+productSchema.index({
+  batteryHealth: 1,
+});
+
+// ============================================================
+// ACCESSORIES INDEXES
+// ============================================================
+
+productSchema.index({
+  accessoryType: 1,
+});
+
+productSchema.index({
+  compatibleWith: 1,
+});
+
+productSchema.index({
+  wireless: 1,
+});
+
+productSchema.index({
+  original: 1,
+});
+
+// ============================================================
+// GAME CONSOLE INDEXES
+// ============================================================
+
+productSchema.index({
+  videoOutput: 1,
+});
+
+productSchema.index({
+  region: 1,
+});
+
+productSchema.index({
+  resolution: 1,
+});
+
+// ============================================================
+// SMARTWATCH INDEXES
+// ============================================================
+
+productSchema.index({
+  watchSize: 1,
+});
+
+// ============================================================
+// TV INDEXES
+// ============================================================
+
+productSchema.index({
+  tvType: 1,
+});
+
+productSchema.index({
+  displayTechnology: 1,
+});
+
+productSchema.index({
+  refreshRate: 1,
+});
+
+productSchema.index({
+  operatingSystem: 1,
+});
+
+productSchema.index({
+  hdr: 1,
+});
+
+productSchema.index({
+  smartTV: 1,
+});
+
+// ============================================================
+// CAR INDEXES
+// ============================================================
+
+productSchema.index({
+  mileage: 1,
+});
+
+productSchema.index({
+  fuelType: 1,
+});
+
+productSchema.index({
+  transmission: 1,
+});
+
+productSchema.index({
+  bodyType: 1,
+});
+
+// ============================================================
+// SPARE PARTS INDEXES
+// ============================================================
+
+productSchema.index({
+  sparePartType: 1,
+});
+
+productSchema.index({
+  partNumber: 1,
+});
+
+productSchema.index({
+  oemNumber: 1,
+});
+
+productSchema.index({
+  vehicleMake: 1,
+});
+
+productSchema.index({
+  vehicleModel: 1,
+});
+
+productSchema.index({
+  vehicleYear: 1,
+});
+
+productSchema.index({
+  partPosition: 1,
+});
+
+productSchema.index({
+  isOEM: 1,
+});
+
+productSchema.index({
+  isAftermarket: 1,
+});
+
+productSchema.index({
+  isGenuine: 1,
+});
+
+// ============================================================
+// COSMETICS INDEXES
+// ============================================================
+
+productSchema.index({
+  cosmeticType: 1,
+});
+
+productSchema.index({
+  cosmeticBrand: 1,
+});
+
+productSchema.index({
+  skinType: 1,
+});
+
+productSchema.index({
+  hairType: 1,
+});
+
+productSchema.index({
+  shade: 1,
+});
+
+productSchema.index({
+  scent: 1,
+});
+
+productSchema.index({
+  gender: 1,
+});
+
+productSchema.index({
+  expiryDate: 1,
+});
+
+productSchema.index({
+  crueltyFree: 1,
+});
+
+productSchema.index({
+  vegan: 1,
+});
+
+productSchema.index({
+  organic: 1,
+});
+
+productSchema.index({
+  sealed: 1,
+});
+
+// ============================================================
+// BRAND / MODEL
+// ============================================================
+
+productSchema.index({
+  brand: 1,
+});
+
+productSchema.index({
+  model: 1,
+});
+
+// ============================================================
+// MODEL
+// ============================================================
+
+const Product =
+  mongoose.models.Product ||
+  mongoose.model("Product", productSchema);
+
+module.exports = Product;

@@ -43,6 +43,99 @@ const TV_BRANDS = ['Samsung', 'LG', 'Sony', 'TCL', 'Hisense', 'Panasonic', 'Phil
 const CONSOLE_BRANDS = ['Sony PlayStation', 'Microsoft Xbox', 'Nintendo', 'Sega', 'Atari', 'Other'];
 const ACCESSORY_BRANDS = ['Apple', 'Samsung', 'Sony', 'Bose', 'Beats', 'JBL', 'Logitech', 'Razer', 'Corsair', 'SteelSeries', 'HyperX', 'Other'];
 
+// ─── 🆕 PHONE BRAND / MODEL DATA (same as PostAd) ──────────────
+const PHONE_BRANDS = [
+  "iPhone",
+  "Samsung",
+  "Huawei",
+  "Google Pixel",
+];
+
+const PHONE_MODELS_BY_BRAND = {
+  iPhone: [
+    "iPhone XR",
+    "iPhone XS",
+    "iPhone XS Max",
+    "iPhone 11",
+    "iPhone 11 Pro",
+    "iPhone 11 Pro Max",
+    "iPhone 12",
+    "iPhone 12 mini",
+    "iPhone 12 Pro",
+    "iPhone 12 Pro Max",
+    "iPhone 13",
+    "iPhone 13 mini",
+    "iPhone 13 Pro",
+    "iPhone 13 Pro Max",
+    "iPhone 14",
+    "iPhone 14 Plus",
+    "iPhone 14 Pro",
+    "iPhone 14 Pro Max",
+    "iPhone 15",
+    "iPhone 15 Plus",
+    "iPhone 15 Pro",
+    "iPhone 15 Pro Max",
+    "iPhone 16",
+    "iPhone 16 Plus",
+    "iPhone 16 Pro",
+    "iPhone 16 Pro Max",
+    "iPhone 17",
+    "iPhone 17 Plus",
+    "iPhone 17 Pro",
+    "iPhone 17 Pro Max",
+    "iPhone SE (2020)",
+    "iPhone SE (2022)",
+  ],
+  Samsung: [
+    "Galaxy S21",
+    "Galaxy S21+",
+    "Galaxy S21 Ultra",
+    "Galaxy S22",
+    "Galaxy S22+",
+    "Galaxy S22 Ultra",
+    "Galaxy S23",
+    "Galaxy S23+",
+    "Galaxy S23 Ultra",
+    "Galaxy S24",
+    "Galaxy S24+",
+    "Galaxy S24 Ultra",
+    "Galaxy Z Fold3",
+    "Galaxy Z Fold4",
+    "Galaxy Z Fold5",
+    "Galaxy Z Flip3",
+    "Galaxy Z Flip4",
+    "Galaxy Z Flip5",
+    "Galaxy A52",
+    "Galaxy A53",
+    "Galaxy A54",
+    "Galaxy A55",
+    "Galaxy A52s",
+  ],
+  Huawei: [
+    "Mate 40 Pro",
+    "Mate 50 Pro",
+    "Mate 60 Pro",
+    "P40 Pro",
+    "P50 Pro",
+    "P60 Pro",
+    "nova 9",
+    "nova 10",
+    "nova 11",
+    "nova 12",
+  ],
+  "Google Pixel": [
+    "Pixel 6",
+    "Pixel 6 Pro",
+    "Pixel 7",
+    "Pixel 7 Pro",
+    "Pixel 8",
+    "Pixel 8 Pro",
+    "Pixel 9",
+    "Pixel 9 Pro",
+    "Pixel 9 Pro XL",
+  ],
+};
+
 // ── Unified colour list (iPhone colours + tablet colours) ──────
 const iphoneColors = [
   "Space Gray", "Orange", "Deep Blue", "Silver", "Gold", "Black", "White",
@@ -684,6 +777,17 @@ const ProductDetails = () => {
           : value,
     }));
   };
+
+  // ─── 🆕 When phone brand changes, clear model ─────────────────
+  useEffect(() => {
+    if (editForm.category === "Phones" && editForm.brand) {
+      // If current model is not in the new brand's list, clear it
+      const available = PHONE_MODELS_BY_BRAND[editForm.brand] || [];
+      if (!available.includes(editForm.model)) {
+        setEditForm((prev) => ({ ...prev, model: "" }));
+      }
+    }
+  }, [editForm.brand, editForm.category]);
 
   // ================================================================
   // REMOVE EXISTING IMAGE
@@ -2384,7 +2488,7 @@ const ProductDetails = () => {
           </div>
         )}
 
-        {/* EDIT MODAL */}
+        {/* ─────────── EDIT MODAL ─────────── */}
         {showEditModal && (
           <div
             style={{
@@ -2577,6 +2681,67 @@ const ProductDetails = () => {
                     }}
                   />
                 </div>
+
+                {/* ─── 🆕 PHONE BRAND & MODEL DROPDOWNS ───────── */}
+                {editForm.category === "Phones" && (
+                  <>
+                    <div className="form-group" style={{ marginBottom: "12px" }}>
+                      <label style={{ display: "block", fontWeight: 600, fontSize: "13px", marginBottom: "4px" }}>
+                        Phone Brand
+                      </label>
+                      <select
+                        name="brand"
+                        value={editForm.brand}
+                        onChange={handleEditChange}
+                        style={{
+                          width: "100%",
+                          padding: "10px 14px",
+                          border: "1.5px solid var(--gray-200)",
+                          borderRadius: "var(--radius-md)",
+                          fontSize: "14px",
+                        }}
+                      >
+                        <option value="">Select brand</option>
+                        {PHONE_BRANDS.map((brand) => (
+                          <option key={brand} value={brand}>
+                            {brand}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="form-group" style={{ marginBottom: "12px" }}>
+                      <label style={{ display: "block", fontWeight: 600, fontSize: "13px", marginBottom: "4px" }}>
+                        Phone Model
+                      </label>
+                      <select
+                        name="model"
+                        value={editForm.model}
+                        onChange={handleEditChange}
+                        disabled={!editForm.brand}
+                        style={{
+                          width: "100%",
+                          padding: "10px 14px",
+                          border: "1.5px solid var(--gray-200)",
+                          borderRadius: "var(--radius-md)",
+                          fontSize: "14px",
+                        }}
+                      >
+                        <option value="">Select model</option>
+                        {(PHONE_MODELS_BY_BRAND[editForm.brand] || []).map((model) => (
+                          <option key={model} value={model}>
+                            {model}
+                          </option>
+                        ))}
+                      </select>
+                      {!editForm.brand && (
+                        <span style={{ fontSize: "12px", color: "var(--gray-400)" }}>
+                          Please select a brand first.
+                        </span>
+                      )}
+                    </div>
+                  </>
+                )}
 
                 {/* Description */}
                 <div className="form-group" style={{ marginBottom: "12px" }}>

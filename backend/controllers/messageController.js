@@ -1,4 +1,7 @@
+// ============================================================
 // backend/controllers/messageController.js
+// BuyUKUsed - Message Controller
+// ============================================================
 
 const mongoose = require("mongoose");
 const Message = require("../models/Message");
@@ -12,32 +15,48 @@ const isValidObjectId = (id) => {
 };
 
 const getUserId = (req) => {
-  return req.userId || req.user?.id || req.user?._id;
+  return req.userId || req.user?.id || req.user?._id || null;
 };
 
-// ─── Populate helper ─────────────────────────────────────────────
-const populateSenderReceiver = async (message) => {
+const getUserIdString = (req) => {
+  const id = getUserId(req);
+  return id ? id.toString() : null;
+};
+
+// ============================================================
+// POPULATE MESSAGE
+// ============================================================
+
+const populateMessage = async (message) => {
+  if (!message) return message;
+
   await message.populate(
     "sender",
     "name email profileImage avatar photo isVerified"
   );
+
   await message.populate(
     "receiver",
     "name email profileImage avatar photo isVerified"
   );
-  await message.populate("productId", "title price image images");
+
+  await message.populate(
+    "productId",
+    "title price image images"
+  );
+
   return message;
 };
 
 // ============================================================
-// GET ALL MESSAGES FOR A USER
+// GET ALL MESSAGES FOR CURRENT USER
 // GET /api/messages/:userId
 // ============================================================
 
 const getUserMessages = async (req, res) => {
   try {
     const { userId } = req.params;
-    const currentUserId = getUserId(req);
+    const currentUserId = getUserIdString(req);
 
     if (!currentUserId) {
       return res.status(401).json({
@@ -54,7 +73,11 @@ const getUserMessages = async (req, res) => {
     }
 
     const isAdmin = req.user?.role === "admin";
-    if (userId.toString() !== currentUserId.toString() && !isAdmin) {
+
+    if (
+      userId.toString() !== currentUserId.toString() &&
+      !isAdmin
+    ) {
       return res.status(403).json({
         success: false,
         message: "Access denied.",
@@ -62,11 +85,23 @@ const getUserMessages = async (req, res) => {
     }
 
     const messages = await Message.find({
-      $or: [{ sender: userId }, { receiver: userId }],
+      $or: [
+        { sender: userId },
+        { receiver: userId },
+      ],
     })
-      .populate("sender", "name email profileImage avatar photo isVerified")
-      .populate("receiver", "name email profileImage avatar photo isVerified")
-      .populate("productId", "title price image images")
+      .populate(
+        "sender",
+        "name email profileImage avatar photo isVerified"
+      )
+      .populate(
+        "receiver",
+        "name email profileImage avatar photo isVerified"
+      )
+      .populate(
+        "productId",
+        "title price image images"
+      )
       .sort({ createdAt: 1 });
 
     return res.status(200).json({
@@ -76,6 +111,7 @@ const getUserMessages = async (req, res) => {
     });
   } catch (error) {
     console.error("❌ Error fetching user messages:", error);
+
     return res.status(500).json({
       success: false,
       message: error.message || "Failed to fetch messages.",
@@ -84,13 +120,13 @@ const getUserMessages = async (req, res) => {
 };
 
 // ============================================================
-// GET CONVERSATION BETWEEN TWO USERS
+// GET CONVERSATION
 // GET /api/messages/conversation/:userId
 // ============================================================
 
 const getConversation = async (req, res) => {
   try {
-    const currentUserId = getUserId(req);
+    const currentUserId = getUserIdString(req);
     const { userId: otherUserId } = req.params;
 
     if (!currentUserId) {
@@ -109,13 +145,28 @@ const getConversation = async (req, res) => {
 
     const messages = await Message.find({
       $or: [
-        { sender: currentUserId, receiver: otherUserId },
-        { sender: otherUserId, receiver: currentUserId },
+        {
+          sender: currentUserId,
+          receiver: otherUserId,
+        },
+        {
+          sender: otherUserId,
+          receiver: currentUserId,
+        },
       ],
     })
-      .populate("sender", "name email profileImage avatar photo isVerified")
-      .populate("receiver", "name email profileImage avatar photo isVerified")
-      .populate("productId", "title price image images")
+      .populate(
+        "sender",
+        "name email profileImage avatar photo isVerified"
+      )
+      .populate(
+        "receiver",
+        "name email profileImage avatar photo isVerified"
+      )
+      .populate(
+        "productId",
+        "title price image images"
+      )
       .sort({ createdAt: 1 });
 
     return res.status(200).json({
@@ -125,6 +176,7 @@ const getConversation = async (req, res) => {
     });
   } catch (error) {
     console.error("❌ Error fetching conversation:", error);
+
     return res.status(500).json({
       success: false,
       message: error.message || "Failed to fetch conversation.",
@@ -133,14 +185,20 @@ const getConversation = async (req, res) => {
 };
 
 // ============================================================
-// SEND MESSAGE (with attachment support)
+// SEND MESSAGE
 // POST /api/messages
 // ============================================================
 
 const sendMessage = async (req, res) => {
   try {
-    const senderId = getUserId(req);
-    const { receiver, productId, message, attachment } = req.body;
+    const senderId = getUserIdString(req);
+
+    const {
+      receiver,
+      productId,
+      message,
+      attachment,
+    } = req.body;
 
     if (!senderId) {
       return res.status(401).json({
@@ -170,17 +228,6 @@ const sendMessage = async (req, res) => {
       });
     }
 
-    // At least one of message or attachment must be present
-    const hasText = typeof message === "string" && message.trim().length > 0;
-    const hasAttachment = attachment && attachment.url && attachment.type;
-
-    if (!hasText && !hasAttachment) {
-      return res.status(400).json({
-        success: false,
-        message: "Message must contain text or an attachment.",
-      });
-    }
-
     if (senderId.toString() === receiver.toString()) {
       return res.status(400).json({
         success: false,
@@ -188,10 +235,29 @@ const sendMessage = async (req, res) => {
       });
     }
 
-    if (hasText && message.length > 5000) {
+    const hasText =
+      typeof message === "string" &&
+      message.trim().length > 0;
+
+    const hasAttachment =
+      attachment &&
+      typeof attachment === "object" &&
+      attachment.url &&
+      attachment.type;
+
+    if (!hasText && !hasAttachment) {
       return res.status(400).json({
         success: false,
-        message: "Message cannot exceed 5000 characters.",
+        message:
+          "Message must contain text or an attachment.",
+      });
+    }
+
+    if (hasText && message.trim().length > 5000) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Message cannot exceed 5000 characters.",
       });
     }
 
@@ -199,15 +265,26 @@ const sendMessage = async (req, res) => {
       sender: senderId,
       receiver,
       productId: productId || undefined,
-      message: hasText ? message.trim() : "",
-      attachment: hasAttachment ? attachment : null,
-      read: false,
+
+      message: hasText
+        ? message.trim()
+        : "",
+
+      attachment: hasAttachment
+        ? attachment
+        : null,
+
+      // Use ONE field consistently.
+      isRead: false,
     });
 
     await newMessage.save();
-    await populateSenderReceiver(newMessage);
 
-    console.log(`💬 Message sent: ${senderId} → ${receiver}`);
+    await populateMessage(newMessage);
+
+    console.log(
+      `💬 Message sent: ${senderId} → ${receiver}`
+    );
 
     return res.status(201).json({
       success: true,
@@ -215,21 +292,23 @@ const sendMessage = async (req, res) => {
     });
   } catch (error) {
     console.error("❌ Error sending message:", error);
+
     return res.status(500).json({
       success: false,
-      message: error.message || "Failed to send message.",
+      message:
+        error.message || "Failed to send message.",
     });
   }
 };
 
 // ============================================================
-// MARK MESSAGE AS READ
+// MARK ONE MESSAGE AS READ
 // PUT /api/messages/:id/read
 // ============================================================
 
 const markMessageAsRead = async (req, res) => {
   try {
-    const currentUserId = getUserId(req);
+    const currentUserId = getUserIdString(req);
     const { id } = req.params;
 
     if (!currentUserId) {
@@ -255,14 +334,25 @@ const markMessageAsRead = async (req, res) => {
       });
     }
 
-    if (message.receiver.toString() !== currentUserId.toString()) {
+    if (
+      message.receiver.toString() !==
+      currentUserId.toString()
+    ) {
       return res.status(403).json({
         success: false,
-        message: "You are not authorized to mark this message as read.",
+        message:
+          "You are not authorized to mark this message as read.",
       });
     }
 
-    message.read = true;
+    // Primary field used by this application.
+    message.isRead = true;
+
+    // If your Message schema still has `read`, keep it synchronized.
+    if (Object.prototype.hasOwnProperty.call(message.toObject(), "read")) {
+      message.read = true;
+    }
+
     await message.save();
 
     return res.status(200).json({
@@ -270,22 +360,28 @@ const markMessageAsRead = async (req, res) => {
       message,
     });
   } catch (error) {
-    console.error("❌ Error marking message as read:", error);
+    console.error(
+      "❌ Error marking message as read:",
+      error
+    );
+
     return res.status(500).json({
       success: false,
-      message: error.message || "Failed to mark message as read.",
+      message:
+        error.message ||
+        "Failed to mark message as read.",
     });
   }
 };
 
 // ============================================================
-// MARK ALL MESSAGES FROM A USER AS READ
+// MARK CONVERSATION AS READ
 // PUT /api/messages/conversation/:userId/read
 // ============================================================
 
 const markConversationAsRead = async (req, res) => {
   try {
-    const currentUserId = getUserId(req);
+    const currentUserId = getUserIdString(req);
     const { userId: senderId } = req.params;
 
     if (!currentUserId) {
@@ -302,37 +398,61 @@ const markConversationAsRead = async (req, res) => {
       });
     }
 
+    // Primary field.
     const result = await Message.updateMany(
       {
         sender: senderId,
         receiver: currentUserId,
-        read: false,
+
+        $or: [
+          { isRead: false },
+          { read: false },
+        ],
       },
-      { $set: { read: true } }
+      {
+        $set: {
+          isRead: true,
+          read: true,
+        },
+      }
     );
 
     return res.status(200).json({
       success: true,
       modifiedCount: result.modifiedCount || 0,
-      message: "Conversation marked as read.",
+      message:
+        "Conversation marked as read.",
     });
   } catch (error) {
-    console.error("❌ Error marking conversation as read:", error);
+    console.error(
+      "❌ Error marking conversation as read:",
+      error
+    );
+
     return res.status(500).json({
       success: false,
-      message: error.message || "Failed to mark conversation as read.",
+      message:
+        error.message ||
+        "Failed to mark conversation as read.",
     });
   }
 };
 
 // ============================================================
 // GET UNREAD MESSAGE COUNT
-// GET /api/messages/unread/count
+// GET /api/messages/unread-count
+// ============================================================
+//
+// IMPORTANT:
+// Navbar.jsx calls:
+// /api/messages/unread-count
+//
+// So this controller uses that exact endpoint.
 // ============================================================
 
 const getUnreadMessageCount = async (req, res) => {
   try {
-    const currentUserId = getUserId(req);
+    const currentUserId = getUserIdString(req);
 
     if (!currentUserId) {
       return res.status(401).json({
@@ -343,7 +463,12 @@ const getUnreadMessageCount = async (req, res) => {
 
     const count = await Message.countDocuments({
       receiver: currentUserId,
-      read: false,
+
+      // Supports both old `read` records and new `isRead` records.
+      $or: [
+        { isRead: false },
+        { read: false },
+      ],
     });
 
     return res.status(200).json({
@@ -351,10 +476,16 @@ const getUnreadMessageCount = async (req, res) => {
       count,
     });
   } catch (error) {
-    console.error("❌ Error getting unread message count:", error);
+    console.error(
+      "❌ Error getting unread message count:",
+      error
+    );
+
     return res.status(500).json({
       success: false,
-      message: error.message || "Failed to get unread message count.",
+      message:
+        error.message ||
+        "Failed to get unread message count.",
     });
   }
 };
@@ -366,7 +497,7 @@ const getUnreadMessageCount = async (req, res) => {
 
 const deleteMessage = async (req, res) => {
   try {
-    const currentUserId = getUserId(req);
+    const currentUserId = getUserIdString(req);
     const { id } = req.params;
 
     if (!currentUserId) {
@@ -392,30 +523,47 @@ const deleteMessage = async (req, res) => {
       });
     }
 
-    const isSender = message.sender.toString() === currentUserId.toString();
-    const isReceiver = message.receiver.toString() === currentUserId.toString();
-    const isAdmin = req.user?.role === "admin";
+    const isSender =
+      message.sender.toString() ===
+      currentUserId.toString();
+
+    const isReceiver =
+      message.receiver.toString() ===
+      currentUserId.toString();
+
+    const isAdmin =
+      req.user?.role === "admin";
 
     if (!isSender && !isReceiver && !isAdmin) {
       return res.status(403).json({
         success: false,
-        message: "You are not authorized to delete this message.",
+        message:
+          "You are not authorized to delete this message.",
       });
     }
 
     await message.deleteOne();
 
-    console.log(`🗑️ Message deleted: ${id}`);
+    console.log(
+      `🗑️ Message deleted: ${id}`
+    );
 
     return res.status(200).json({
       success: true,
-      message: "Message deleted successfully.",
+      message:
+        "Message deleted successfully.",
     });
   } catch (error) {
-    console.error("❌ Error deleting message:", error);
+    console.error(
+      "❌ Error deleting message:",
+      error
+    );
+
     return res.status(500).json({
       success: false,
-      message: error.message || "Failed to delete message.",
+      message:
+        error.message ||
+        "Failed to delete message.",
     });
   }
 };
