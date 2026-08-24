@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getProducts, deleteProduct, getImageUrl } from '../services/api';
+import VerifiedBadge from '../components/VerifiedBadge';
 
 const SellerProducts = () => {
   const { user, token } = useAuth();
@@ -51,6 +52,20 @@ const SellerProducts = () => {
     }
   };
 
+  // ─── Seller's own profile picture ─────────────────────────────
+  // Get the image field from the user object (supports multiple field names)
+  const sellerAvatar =
+    user?.profileImage ||
+    user?.avatar ||
+    user?.photo ||
+    user?.photoURL ||
+    null;
+
+  // ─── Always use getImageUrl to handle both relative paths and full Cloudinary URLs ───
+  const sellerAvatarUrl = sellerAvatar ? getImageUrl(sellerAvatar) : null;
+
+  const isVerified = user?.isVerified === true;
+
   if (loading) {
     return <div className="container" style={{ padding: '40px 20px', textAlign: 'center' }}>Loading your ads...</div>;
   }
@@ -61,26 +76,81 @@ const SellerProducts = () => {
 
   return (
     <div className="container" style={{ padding: '40px 20px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-        <h1 style={{ fontSize: '28px', fontWeight: 700 }}>My Ads</h1>
-        <Link
-          to="/post-ad"
-          className="btn-secondary"
+      {/* ─── Header with seller avatar and verified badge ─── */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '16px',
+          marginBottom: '24px',
+          flexWrap: 'wrap',
+        }}
+      >
+        <div
           style={{
-            padding: '10px 20px',
-            background: 'var(--secondary)',
-            color: 'white',
-            border: 'none',
-            borderRadius: 'var(--radius-full)',
-            fontWeight: 600,
-            textDecoration: 'none',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '8px',
+            width: '56px',
+            height: '56px',
+            borderRadius: '50%',
+            overflow: 'hidden',
+            background: 'var(--gray-200)',
+            flexShrink: 0,
+            border: '2px solid var(--gray-100)',
+            position: 'relative',
           }}
         >
-          <i className="fas fa-plus-circle"></i> Post New Ad
-        </Link>
+          {sellerAvatarUrl ? (
+            <img
+              src={sellerAvatarUrl}
+              alt={user?.name || 'Seller'}
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            />
+          ) : (
+            <i
+              className="fas fa-user-circle"
+              style={{ fontSize: '48px', color: 'var(--gray-400)', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}
+            />
+          )}
+        </div>
+
+        <div>
+          <h1
+            style={{
+              fontSize: '28px',
+              fontWeight: 700,
+              margin: 0,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+            }}
+          >
+            {user?.name || 'My Ads'}
+            {isVerified && <VerifiedBadge size={24} showLabel />}
+          </h1>
+          <div style={{ fontSize: '14px', color: 'var(--gray-500)' }}>
+            {products.length} {products.length === 1 ? 'ad' : 'ads'} posted
+          </div>
+        </div>
+
+        <div style={{ marginLeft: 'auto' }}>
+          <Link
+            to="/post-ad"
+            className="btn-secondary"
+            style={{
+              padding: '10px 20px',
+              background: 'var(--secondary)',
+              color: 'white',
+              border: 'none',
+              borderRadius: 'var(--radius-full)',
+              fontWeight: 600,
+              textDecoration: 'none',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+            }}
+          >
+            <i className="fas fa-plus-circle"></i> Post New Ad
+          </Link>
+        </div>
       </div>
 
       {products.length === 0 ? (

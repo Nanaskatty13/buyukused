@@ -31,12 +31,14 @@ const ProductCard = ({ product, onStatusToggle, appleStyle = false, videoPreview
     product.sellerId === user._id
   );
 
-  // ─── Seller object ─────────────────────────────────────────────
+  // ─── Seller object (includes the seller's profile picture fields) ───
   const seller = product.sellerId || product.seller || {};
   const sellerName = seller.name || seller.shopName || 'Seller';
   const isVerified = seller.isVerified === true;
 
-  // ─── Seller profile image ─────────────────────────────────────
+  // ─── Seller profile image – tries all fields where the user's photo is stored ───
+  //     The image may be a full Cloudinary URL (starts with http) or a relative path.
+  //     getImageUrl() correctly handles both – if it's already a full URL, it returns it unchanged.
   const sellerImage =
     seller.profileImage ||
     seller.avatar ||
@@ -45,10 +47,11 @@ const ProductCard = ({ product, onStatusToggle, appleStyle = false, videoPreview
     seller.profilePicture ||
     null;
 
+  // ─── Generate the final image URL ──────────────────────────────
+  //     If sellerImage is a full Cloudinary URL, getImageUrl returns it directly.
+  //     If it's a relative path, getImageUrl prepends the API base URL.
   const sellerImageUrl = sellerImage
-    ? sellerImage.startsWith('http')
-      ? sellerImage
-      : getImageUrl(sellerImage)
+    ? getImageUrl(sellerImage)  // <-- this handles Cloudinary URLs automatically
     : null;
 
   // ─── Helper: render category‑specific specs ──────────────────
@@ -205,7 +208,7 @@ const ProductCard = ({ product, onStatusToggle, appleStyle = false, videoPreview
           </span>
         )}
 
-        {/* ─── SELLER AVATAR + VERIFIED BADGE (on image) ─── */}
+        {/* ─── SELLER AVATAR (profile picture) + VERIFIED BADGE ─── */}
         <div
           style={{
             position: 'absolute',
@@ -234,30 +237,39 @@ const ProductCard = ({ product, onStatusToggle, appleStyle = false, videoPreview
                   border: '2px solid rgba(255,255,255,0.9)',
                   boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
                 }}
-              />
-            ) : (
-              <div
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  borderRadius: '50%',
-                  background: '#e5e7eb',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  border: '2px solid rgba(255,255,255,0.9)',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                onError={(e) => {
+                  // If the image fails, hide it and show the fallback
+                  e.currentTarget.style.display = 'none';
+                  const parent = e.currentTarget.parentElement;
+                  const fallback = parent.querySelector('.seller-avatar-fallback');
+                  if (fallback) fallback.style.display = 'flex';
                 }}
-              >
-                <i
-                  className="fas fa-user"
-                  style={{
-                    fontSize: '18px',
-                    color: '#9ca3af',
-                  }}
-                />
-              </div>
-            )}
+              />
+            ) : null}
+
+            {/* Fallback icon (shown when no image or image fails) */}
+            <div
+              className="seller-avatar-fallback"
+              style={{
+                width: '100%',
+                height: '100%',
+                borderRadius: '50%',
+                background: '#e5e7eb',
+                display: sellerImageUrl ? 'none' : 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                border: '2px solid rgba(255,255,255,0.9)',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+              }}
+            >
+              <i
+                className="fas fa-user"
+                style={{
+                  fontSize: '18px',
+                  color: '#9ca3af',
+                }}
+              />
+            </div>
 
             {/* Verified badge */}
             {isVerified && (
@@ -396,7 +408,7 @@ const ProductCard = ({ product, onStatusToggle, appleStyle = false, videoPreview
           </div>
         </Link>
 
-        {/* ─── Seller name is now REMOVED ─── */}
+        {/* ─── Seller name is REMOVED from here ─── */}
 
         <div
           className="price"

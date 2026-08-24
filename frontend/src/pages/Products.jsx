@@ -144,11 +144,8 @@ const ProductCard = ({ product }) => {
     sellerProfileImageProp ||
     null;
 
-  const sellerImageUrl = sellerImage
-    ? sellerImage.startsWith("http")
-      ? sellerImage
-      : getImageUrl(sellerImage)
-    : null;
+  // ─── Always use getImageUrl to handle both relative paths and full Cloudinary URLs ───
+  const sellerImageUrl = sellerImage ? getImageUrl(sellerImage) : null;
 
   const isVerified = sellerObj?.isVerified === true;
 
