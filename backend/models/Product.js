@@ -1,4 +1,13 @@
+// ============================================================
+// backend/models/Product.js
+// BuyUKUsed Product Model
+// ============================================================
+
 const mongoose = require("mongoose");
+
+// ============================================================
+// CONSTANTS
+// ============================================================
 
 const PRODUCT_CATEGORIES = [
   "Cars",
@@ -6,7 +15,6 @@ const PRODUCT_CATEGORIES = [
   "Laptops",
   "Tablets",
   "Accessories",
-  "Spare Parts",
   "Real Estate",
   "Jobs",
   "Electronics",
@@ -15,7 +23,6 @@ const PRODUCT_CATEGORIES = [
   "TVs",
   "Game Consoles",
   "Smartwatches",
-  "Cosmetics",
   "Other",
 ];
 
@@ -35,8 +42,16 @@ const PRODUCT_CONDITIONS = [
   "Poor",
 ];
 
+// ============================================================
+// PRODUCT SCHEMA
+// ============================================================
+
 const productSchema = new mongoose.Schema(
   {
+    // ========================================================
+    // BASIC INFORMATION
+    // ========================================================
+
     title: {
       type: String,
       required: true,
@@ -67,7 +82,6 @@ const productSchema = new mongoose.Schema(
       type: String,
       default: "Ghana",
       trim: true,
-      index: true,
     },
 
     description: {
@@ -77,11 +91,14 @@ const productSchema = new mongoose.Schema(
       maxlength: 5000,
     },
 
+    // ========================================================
+    // SELLER
+    // ========================================================
+
     sellerId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
-      index: true,
     },
 
     sellerName: {
@@ -96,21 +113,32 @@ const productSchema = new mongoose.Schema(
       trim: true,
     },
 
+    // ========================================================
+    // MEDIA
+    // ========================================================
+
+    // Legacy single image support
     image: {
       type: String,
       default: "",
       trim: true,
     },
 
+    // Multiple product images
     images: {
       type: [String],
       default: [],
     },
 
+    // Product videos
     videos: {
       type: [String],
       default: [],
     },
+
+    // ========================================================
+    // VISUAL SEARCH
+    // ========================================================
 
     imageEmbedding: {
       type: [Number],
@@ -130,6 +158,10 @@ const productSchema = new mongoose.Schema(
       default: null,
       select: false,
     },
+
+    // ========================================================
+    // GENERAL PRODUCT DETAILS
+    // ========================================================
 
     brand: {
       type: String,
@@ -161,6 +193,10 @@ const productSchema = new mongoose.Schema(
       default: "",
       trim: true,
     },
+
+    // ========================================================
+    // COMPUTER / LAPTOP / TABLET
+    // ========================================================
 
     storage: {
       type: String,
@@ -203,6 +239,46 @@ const productSchema = new mongoose.Schema(
       default: "",
       trim: true,
     },
+
+    // ========================================================
+    // PHONE
+    // ========================================================
+
+    batteryHealth: {
+      type: Number,
+      min: 0,
+      max: 100,
+      default: null,
+    },
+
+    faceId: {
+      type: String,
+      enum: [
+        "Working",
+        "Not Working",
+        "Not Available",
+        "",
+      ],
+      default: "",
+    },
+
+    simStatus: {
+      type: String,
+      enum: [
+        "eSIM Unlocked",
+        "SIM Unlocked",
+        "Locked",
+        "Bypass",
+        "Not Available",
+        "",
+      ],
+      default: "",
+      trim: true,
+    },
+
+    // ========================================================
+    // GAME CONSOLE
+    // ========================================================
 
     videoOutput: {
       type: String,
@@ -252,11 +328,19 @@ const productSchema = new mongoose.Schema(
       trim: true,
     },
 
+    // ========================================================
+    // SMARTWATCH
+    // ========================================================
+
     watchSize: {
       type: String,
       default: "",
       trim: true,
     },
+
+    // ========================================================
+    // TV
+    // ========================================================
 
     tvType: {
       type: String,
@@ -315,6 +399,10 @@ const productSchema = new mongoose.Schema(
       default: false,
     },
 
+    // ========================================================
+    // CAR
+    // ========================================================
+
     mileage: {
       type: Number,
       default: null,
@@ -369,35 +457,9 @@ const productSchema = new mongoose.Schema(
       trim: true,
     },
 
-    sparePartType: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    sparePartCategory: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    partNumber: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    oemNumber: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    manufacturerPartNumber: {
-      type: String,
-      default: "",
-      trim: true,
-    },
+    // ========================================================
+    // CAR ADDITIONAL DETAILS
+    // ========================================================
 
     vehicleMake: {
       type: String,
@@ -411,211 +473,9 @@ const productSchema = new mongoose.Schema(
       trim: true,
     },
 
-    vehicleYear: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    vehicleGeneration: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    vehicleTrim: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    vehicleEngine: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    vehicleEngineCode: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    vehicleTransmission: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    vehicleFuelType: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    vehicleDriveType: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    compatibilityYearFrom: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    compatibilityYearTo: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    partCondition: {
-      type: String,
-      enum: [
-        "",
-        "Brand New",
-        "Genuine",
-        "OEM",
-        "Aftermarket",
-        "Used",
-        "Refurbished",
-        "Reconditioned",
-      ],
-      default: "",
-      trim: true,
-    },
-
-    partBrand: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    partManufacturer: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    partMaterial: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    partColor: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    partPosition: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    partSide: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    partPlacement: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    installationType: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    mountingType: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    quantity: {
-      type: Number,
-      default: null,
-      min: 0,
-    },
-
-    unit: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    packageIncludes: {
-      type: String,
-      default: "",
-      trim: true,
-      maxlength: 2000,
-    },
-
-    partCompatibility: {
-      type: String,
-      default: "",
-      trim: true,
-      maxlength: 2000,
-    },
-
-    interchangePartNumbers: {
-      type: String,
-      default: "",
-      trim: true,
-      maxlength: 2000,
-    },
-
-    vinCompatibility: {
-      type: String,
-      default: "",
-      trim: true,
-      maxlength: 1000,
-    },
-
-    installationAvailable: {
-      type: Boolean,
-      default: false,
-    },
-
-    installationFee: {
-      type: Number,
-      default: null,
-      min: 0,
-    },
-
-    originalPart: {
-      type: Boolean,
-      default: false,
-    },
-
-    genuinePart: {
-      type: Boolean,
-      default: false,
-    },
-
-    oemPart: {
-      type: Boolean,
-      default: false,
-    },
-
-    aftermarketPart: {
-      type: Boolean,
-      default: false,
-    },
-
-    importedPart: {
-      type: Boolean,
-      default: false,
-    },
+    // ========================================================
+    // ACCESSORIES
+    // ========================================================
 
     accessoryType: {
       type: String,
@@ -682,39 +542,33 @@ const productSchema = new mongoose.Schema(
       default: false,
     },
 
-    batteryHealth: {
-      type: Number,
-      min: 0,
-      max: 100,
-      default: null,
-    },
+    // ========================================================
+    // SPARE PARTS
+    // ========================================================
 
-    faceId: {
+    oemNumber: {
       type: String,
-      enum: [
-        "Working",
-        "Not Working",
-        "Not Available",
-        "",
-      ],
-      default: "",
-    },
-
-    simStatus: {
-      type: String,
-      enum: [
-        "eSIM Unlocked",
-        "SIM Unlocked",
-        "Locked",
-        "Bypass",
-        "Not Available",
-        "",
-      ],
       default: "",
       trim: true,
     },
 
-    productType: {
+    partNumber: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    sparePartType: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    // ========================================================
+    // COSMETICS
+    // ========================================================
+
+    cosmeticBrand: {
       type: String,
       default: "",
       trim: true,
@@ -726,176 +580,9 @@ const productSchema = new mongoose.Schema(
       trim: true,
     },
 
-    cosmeticBrand: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    productLine: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    shade: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    cosmeticShade: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    scent: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    coverage: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    cosmeticSize: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    volume: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    skinType: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    skinConcern: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    hairType: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    hairConcern: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    benefits: {
-      type: String,
-      default: "",
-      trim: true,
-      maxlength: 2000,
-    },
-
-    ingredients: {
-      type: String,
-      default: "",
-      trim: true,
-      maxlength: 2000,
-    },
-
-    spf: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    expirationDate: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    expiryDate: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    batchNumber: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    countryOfOrigin: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    cosmeticMaterial: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    cosmeticFinish: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    cosmeticForm: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    cosmeticSizeUnit: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    gender: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    sealed: {
-      type: Boolean,
-      default: false,
-    },
-
-    authentic: {
-      type: Boolean,
-      default: false,
-    },
-
-    crueltyFree: {
-      type: Boolean,
-      default: false,
-    },
-
-    vegan: {
-      type: Boolean,
-      default: false,
-    },
-
-    parabenFree: {
-      type: Boolean,
-      default: false,
-    },
+    // ========================================================
+    // SELLING OPTIONS
+    // ========================================================
 
     negotiation: {
       type: Boolean,
@@ -907,18 +594,29 @@ const productSchema = new mongoose.Schema(
       default: false,
     },
 
+    // ========================================================
+    // STATISTICS
+    // ========================================================
+
     views: {
       type: Number,
       default: 0,
       min: 0,
     },
 
+    // ========================================================
+    // STATUS
+    // ========================================================
+
     status: {
       type: String,
       enum: PRODUCT_STATUSES,
       default: "active",
-      index: true,
     },
+
+    // ========================================================
+    // PROMOTION / TRUST
+    // ========================================================
 
     promo: {
       type: Boolean,
@@ -936,6 +634,10 @@ const productSchema = new mongoose.Schema(
       min: 0,
     },
 
+    // ========================================================
+    // SEO
+    // ========================================================
+
     slug: {
       type: String,
       unique: true,
@@ -948,6 +650,10 @@ const productSchema = new mongoose.Schema(
     versionKey: false,
   }
 );
+
+// ============================================================
+// AUTO SLUG
+// ============================================================
 
 productSchema.pre("save", function (next) {
   if (!this.slug && this.title) {
@@ -962,22 +668,9 @@ productSchema.pre("save", function (next) {
   next();
 });
 
-productSchema.virtual("seller", {
-  ref: "User",
-  localField: "sellerId",
-  foreignField: "_id",
-  justOne: true,
-});
-
-productSchema.methods.isSellerVerified = function () {
-  const seller = this.seller || this.sellerId;
-
-  if (!seller) {
-    return false;
-  }
-
-  return seller.isVerified === true;
-};
+// ============================================================
+// TEXT SEARCH INDEX
+// ============================================================
 
 productSchema.index({
   title: "text",
@@ -987,31 +680,18 @@ productSchema.index({
   accessoryType: "text",
   compatibleWith: "text",
   compatibility: "text",
-  sparePartType: "text",
-  sparePartCategory: "text",
-  partNumber: "text",
-  oemNumber: "text",
-  manufacturerPartNumber: "text",
   vehicleMake: "text",
   vehicleModel: "text",
-  vehicleEngine: "text",
-  partBrand: "text",
-  partManufacturer: "text",
-  partCompatibility: "text",
-  interchangePartNumbers: "text",
-  productType: "text",
-  cosmeticType: "text",
+  oemNumber: "text",
+  partNumber: "text",
+  sparePartType: "text",
   cosmeticBrand: "text",
-  cosmeticShade: "text",
-  shade: "text",
-  skinType: "text",
-  hairType: "text",
-  hairConcern: "text",
-  ingredients: "text",
-  productLine: "text",
-  benefits: "text",
-  skinConcern: "text",
+  cosmeticType: "text",
 });
+
+// ============================================================
+// COMPOUND INDEXES
+// ============================================================
 
 productSchema.index({
   category: 1,
@@ -1024,12 +704,40 @@ productSchema.index({
   createdAt: -1,
 });
 
+// ============================================================
+// SORTING INDEXES
+// ============================================================
+
 productSchema.index({
   createdAt: -1,
 });
 
 productSchema.index({
   price: 1,
+});
+
+// ============================================================
+// FILTER INDEXES
+// ============================================================
+
+productSchema.index({
+  category: 1,
+});
+
+productSchema.index({
+  location: 1,
+});
+
+productSchema.index({
+  status: 1,
+});
+
+productSchema.index({
+  brand: 1,
+});
+
+productSchema.index({
+  model: 1,
 });
 
 productSchema.index({
@@ -1056,13 +764,9 @@ productSchema.index({
   original: 1,
 });
 
-productSchema.index({
-  brand: 1,
-});
-
-productSchema.index({
-  model: 1,
-});
+// ============================================================
+// GAME CONSOLE INDEXES
+// ============================================================
 
 productSchema.index({
   videoOutput: 1,
@@ -1076,9 +780,17 @@ productSchema.index({
   resolution: 1,
 });
 
+// ============================================================
+// SMARTWATCH INDEX
+// ============================================================
+
 productSchema.index({
   watchSize: 1,
 });
+
+// ============================================================
+// TV INDEXES
+// ============================================================
 
 productSchema.index({
   tvType: 1,
@@ -1104,6 +816,10 @@ productSchema.index({
   smartTV: 1,
 });
 
+// ============================================================
+// CAR INDEXES
+// ============================================================
+
 productSchema.index({
   mileage: 1,
 });
@@ -1121,26 +837,6 @@ productSchema.index({
 });
 
 productSchema.index({
-  sparePartType: 1,
-});
-
-productSchema.index({
-  sparePartCategory: 1,
-});
-
-productSchema.index({
-  partNumber: 1,
-});
-
-productSchema.index({
-  oemNumber: 1,
-});
-
-productSchema.index({
-  manufacturerPartNumber: 1,
-});
-
-productSchema.index({
   vehicleMake: 1,
 });
 
@@ -1148,113 +844,37 @@ productSchema.index({
   vehicleModel: 1,
 });
 
+// ============================================================
+// SPARE PART INDEXES
+// ============================================================
+
 productSchema.index({
-  vehicleYear: 1,
+  oemNumber: 1,
 });
 
 productSchema.index({
-  vehicleEngine: 1,
+  partNumber: 1,
 });
 
 productSchema.index({
-  vehicleFuelType: 1,
+  sparePartType: 1,
 });
 
-productSchema.index({
-  vehicleTransmission: 1,
-});
-
-productSchema.index({
-  partCondition: 1,
-});
-
-productSchema.index({
-  partBrand: 1,
-});
-
-productSchema.index({
-  partManufacturer: 1,
-});
-
-productSchema.index({
-  partPosition: 1,
-});
-
-productSchema.index({
-  partSide: 1,
-});
-
-productSchema.index({
-  installationAvailable: 1,
-});
-
-productSchema.index({
-  genuinePart: 1,
-});
-
-productSchema.index({
-  oemPart: 1,
-});
-
-productSchema.index({
-  aftermarketPart: 1,
-});
-
-productSchema.index({
-  productType: 1,
-});
-
-productSchema.index({
-  cosmeticType: 1,
-});
+// ============================================================
+// COSMETIC INDEXES
+// ============================================================
 
 productSchema.index({
   cosmeticBrand: 1,
 });
 
 productSchema.index({
-  skinType: 1,
+  cosmeticType: 1,
 });
 
-productSchema.index({
-  hairType: 1,
-});
-
-productSchema.index({
-  gender: 1,
-});
-
-productSchema.index({
-  cosmeticShade: 1,
-});
-
-productSchema.index({
-  scent: 1,
-});
-
-productSchema.index({
-  coverage: 1,
-});
-
-productSchema.index({
-  sealed: 1,
-});
-
-productSchema.index({
-  authentic: 1,
-});
-
-productSchema.index({
-  crueltyFree: 1,
-});
-
-productSchema.index({
-  vegan: 1,
-});
-
-productSchema.index({
-  parabenFree: 1,
-});
+// ============================================================
+// MODEL
+// ============================================================
 
 const Product =
   mongoose.models.Product ||

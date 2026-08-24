@@ -23,8 +23,7 @@ const connectDB = require("./config/db");
 
 require("./config/passport")(passport);
 
-const activityMiddleware =
-  require("./middleware/activity");
+const activityMiddleware = require("./middleware/activity");
 
 const {
   ensureDefaultCategories,
@@ -41,16 +40,13 @@ const requiredEnv = [
   "JWT_SECRET",
 ];
 
-const missing =
-  requiredEnv.filter(
-    (key) => !process.env[key]
-  );
+const missing = requiredEnv.filter(
+  (key) => !process.env[key]
+);
 
 if (missing.length > 0) {
   console.error(
-    `❌ Missing environment variables: ${missing.join(
-      ", "
-    )}`
+    `❌ Missing environment variables: ${missing.join(", ")}`
   );
 
   process.exit(1);
@@ -101,19 +97,22 @@ app.use(
 // ============================================================
 
 const allowedOrigins = [
+  // Local development
   "http://localhost:5173",
   "http://127.0.0.1:5173",
 
+  // Main Vercel deployment
   "https://buyukused.vercel.app",
 
+  // BuyUKUsed Vercel deployments
   "https://buyukused-ggapyipm3-nanaskatty13s-projects.vercel.app",
-
   "https://buyukused-2w4b8fl3w-nanaskatty13s-projects.vercel.app",
 
+  // Previous Sell Platform deployments
   "https://sell-platform2.vercel.app",
-
   "https://sell-platform2-mcv0eniwt-nanaskatty13s-projects.vercel.app",
 
+  // Optional environment URL
   process.env.FRONTEND_URL,
 ].filter(Boolean);
 
@@ -127,15 +126,18 @@ console.log(
 // ============================================================
 
 const isAllowedOrigin = (origin) => {
+  // Requests without an Origin header include:
+  // Render health checks, curl, server-to-server requests, etc.
   if (!origin) {
     return true;
   }
 
+  // Explicitly allowed origins
   if (allowedOrigins.includes(origin)) {
     return true;
   }
 
-  // BuyUKUsed Vercel previews
+  // BuyUKUsed Vercel preview deployments
   if (
     /^https:\/\/buyukused-[a-zA-Z0-9-]+-nanaskatty13s-projects\.vercel\.app$/.test(
       origin
@@ -144,7 +146,7 @@ const isAllowedOrigin = (origin) => {
     return true;
   }
 
-  // Any standard Vercel deployment
+  // General Vercel deployments
   if (
     /^https:\/\/[a-zA-Z0-9-]+\.vercel\.app$/.test(
       origin
@@ -244,12 +246,11 @@ app.use(
 // STATIC UPLOADS
 // ============================================================
 
-const uploadsDirectory =
-  path.join(
-    __dirname,
-    "public",
-    "uploads"
-  );
+const uploadsDirectory = path.join(
+  __dirname,
+  "public",
+  "uploads"
+);
 
 app.use(
   "/uploads",
@@ -288,9 +289,7 @@ app.use(
 // ACTIVITY TRACKING
 // ============================================================
 
-app.use(
-  activityMiddleware
-);
+app.use(activityMiddleware);
 
 console.log(
   "🟢 Seller/user activity tracking enabled"
@@ -310,9 +309,7 @@ const skipIfAdmin = (
 
   if (
     !authHeader ||
-    !authHeader.startsWith(
-      "Bearer "
-    )
+    !authHeader.startsWith("Bearer ")
   ) {
     return next();
   }
@@ -321,65 +318,54 @@ const skipIfAdmin = (
     authHeader.split(" ")[1];
 
   try {
-    const decoded =
-      jwt.verify(
-        token,
-        process.env.JWT_SECRET
-      );
+    const decoded = jwt.verify(
+      token,
+      process.env.JWT_SECRET
+    );
 
-    if (
-      decoded.role === "admin"
-    ) {
+    if (decoded.role === "admin") {
       req.skipRateLimit = true;
     }
   } catch (error) {
-    // Ignore invalid token.
+    // Ignore invalid JWT.
   }
 
   next();
 };
 
-app.use(
-  skipIfAdmin
-);
+app.use(skipIfAdmin);
 
-const limiter =
-  rateLimit({
-    windowMs:
-      15 * 60 * 1000,
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
 
-    max:
-      process.env.NODE_ENV ===
-      "production"
-        ? 100
-        : 500,
+  max:
+    process.env.NODE_ENV === "production"
+      ? 100
+      : 500,
 
-    skip: (req) => {
-      if (
-        req.skipRateLimit
-      ) {
-        return true;
-      }
+  skip: (req) => {
+    if (req.skipRateLimit) {
+      return true;
+    }
 
-      if (
-        process.env.NODE_ENV ===
-        "development"
-      ) {
-        return true;
-      }
+    if (
+      process.env.NODE_ENV === "development"
+    ) {
+      return true;
+    }
 
-      return false;
-    },
+    return false;
+  },
 
-    standardHeaders: true,
-    legacyHeaders: false,
+  standardHeaders: true,
+  legacyHeaders: false,
 
-    message: {
-      success: false,
-      message:
-        "Too many requests, please try again later.",
-    },
-  });
+  message: {
+    success: false,
+    message:
+      "Too many requests, please try again later.",
+  },
+});
 
 app.use(
   "/api",
@@ -392,14 +378,13 @@ app.use(
 );
 
 // ============================================================
-// REQUEST LOGGER FOR DELIVERY API
+// DELIVERY REQUEST LOGGER
 // ============================================================
 
 app.use(
   "/api/deliveries",
   (req, res, next) => {
-    const startedAt =
-      Date.now();
+    const startedAt = Date.now();
 
     console.log(
       `🚴 DELIVERY REQUEST → ${req.method} ${req.originalUrl}`
@@ -410,8 +395,7 @@ app.use(
       () => {
         console.log(
           `🚴 DELIVERY RESPONSE ← ${req.method} ${req.originalUrl} | ${res.statusCode} | ${
-            Date.now() -
-            startedAt
+            Date.now() - startedAt
           }ms`
         );
       }
@@ -430,8 +414,7 @@ app.get(
   (req, res) => {
     res.status(200).json({
       success: true,
-      message:
-        "BuyUKUsed API is running",
+      message: "BuyUKUsed API is running",
       environment:
         process.env.NODE_ENV ||
         "development",
@@ -500,10 +483,6 @@ const sellerRoutes =
 const categoryRoutes =
   require("./routes/categories");
 
-// ============================================================
-// NEW: VISUAL SEARCH ROUTE
-// ============================================================
-
 const visualSearchRoutes =
   require("./routes/visualSearchRoutes");
 
@@ -548,7 +527,7 @@ app.use(
 );
 
 // ============================================================
-// VISUAL IMAGE SEARCH
+// VISUAL SEARCH
 // ============================================================
 
 app.use(
@@ -636,7 +615,7 @@ console.log(
 );
 
 // ============================================================
-// 404
+// 404 HANDLER
 // ============================================================
 
 app.use(
@@ -646,20 +625,13 @@ app.use(
     );
 
     if (
-      req.path.startsWith(
-        "/api"
-      ) ||
-      req.path.startsWith(
-        "/auth"
-      ) ||
-      req.path.startsWith(
-        "/sellers"
-      )
+      req.path.startsWith("/api") ||
+      req.path.startsWith("/auth") ||
+      req.path.startsWith("/sellers")
     ) {
       return res.status(404).json({
         success: false,
-        message:
-          "API endpoint not found",
+        message: "API endpoint not found",
         path: req.originalUrl,
       });
     }
@@ -686,6 +658,10 @@ app.use(
       err
     );
 
+    // --------------------------------------------------------
+    // CORS
+    // --------------------------------------------------------
+
     if (
       err &&
       err.message ===
@@ -697,14 +673,16 @@ app.use(
       });
     }
 
+    // --------------------------------------------------------
+    // MULTER
+    // --------------------------------------------------------
+
     if (
       err &&
-      err.name ===
-        "MulterError"
+      err.name === "MulterError"
     ) {
       if (
-        err.code ===
-        "LIMIT_FILE_SIZE"
+        err.code === "LIMIT_FILE_SIZE"
       ) {
         return res.status(413).json({
           success: false,
@@ -720,6 +698,10 @@ app.use(
           "File upload error.",
       });
     }
+
+    // --------------------------------------------------------
+    // DUPLICATE MONGODB KEY
+    // --------------------------------------------------------
 
     if (
       err &&
@@ -737,10 +719,13 @@ app.use(
       });
     }
 
+    // --------------------------------------------------------
+    // MONGOOSE VALIDATION
+    // --------------------------------------------------------
+
     if (
       err &&
-      err.name ===
-        "ValidationError"
+      err.name === "ValidationError"
     ) {
       const messages =
         Object.values(
@@ -757,6 +742,10 @@ app.use(
         errors: messages,
       });
     }
+
+    // --------------------------------------------------------
+    // DEFAULT ERROR
+    // --------------------------------------------------------
 
     return res
       .status(
@@ -983,17 +972,14 @@ const start =
         );
 
       // --------------------------------------------------------
-      // TIMEOUTS
+      // SERVER TIMEOUTS
       // --------------------------------------------------------
 
-      server.timeout =
-        120000;
+      server.timeout = 120000;
 
-      server.keepAliveTimeout =
-        65000;
+      server.keepAliveTimeout = 65000;
 
-      server.headersTimeout =
-        66000;
+      server.headersTimeout = 66000;
     } catch (error) {
       console.error(
         "❌ Server failed:",
