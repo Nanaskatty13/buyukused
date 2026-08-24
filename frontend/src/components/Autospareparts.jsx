@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useMemo, useState } from "react";
 
 const API_URL =
@@ -310,20 +312,15 @@ const initialForm = {
   title: "",
   price: "",
   negotiable: false,
-
   category: "",
   subcategory: "",
-
   condition: "",
   partType: "",
-
   description: "",
-
   partNumber: "",
   oemNumber: "",
   manufacturer: "",
   serialNumber: "",
-
   vehicleMake: "",
   vehicleModel: "",
   vehicleYearFrom: "",
@@ -331,27 +328,20 @@ const initialForm = {
   engineSize: "",
   engineType: "",
   transmissionType: "",
-
   color: "",
   material: "",
   position: "",
   side: "",
-
   mileage: "",
   mileageUnit: "km",
-
   quantity: "1",
-
   location: "Ghana",
   city: "",
   region: "",
-
   warranty: false,
   warrantyPeriod: "",
-
   deliveryAvailable: true,
   pickupAvailable: true,
-
   whatsapp: "",
   phone: "",
 };
@@ -368,7 +358,6 @@ export default function Autospareparts({
 
   const [images, setImages] = useState([]);
   const [imagePreviews, setImagePreviews] = useState([]);
-
   const [errors, setErrors] = useState({});
   const [submitError, setSubmitError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
@@ -437,13 +426,19 @@ export default function Autospareparts({
       });
     }
 
-    const availableSlots = 10 - images.length;
+    const remainingSlots = Math.max(0, 10 - images.length);
 
-    const filesToAdd = validFiles.slice(0, availableSlots);
-    const previewsToAdd = newPreviews.slice(0, availableSlots);
+    const filesToAdd = validFiles.slice(0, remainingSlots);
+    const previewsToAdd = newPreviews.slice(0, remainingSlots);
 
-    setImages((previous) => [...previous, ...filesToAdd]);
-    setImagePreviews((previous) => [...previous, ...previewsToAdd]);
+    if (validFiles.length > remainingSlots) {
+      setSubmitError("You can upload a maximum of 10 images.");
+    }
+
+    setImages((previous) => [...previous, ...filesToAdd].slice(0, 10));
+    setImagePreviews((previous) =>
+      [...previous, ...previewsToAdd].slice(0, 10)
+    );
 
     event.target.value = "";
   };
@@ -570,7 +565,7 @@ export default function Autospareparts({
           : null,
         yearTo: form.vehicleYearTo ? Number(form.vehicleYearTo) : null,
         engineSize: form.engineSize.trim(),
-        engineType: form.engineType,
+        engineType: form.engineType.trim(),
         transmissionType: form.transmissionType,
       },
 
@@ -622,6 +617,7 @@ export default function Autospareparts({
         top: 0,
         behavior: "smooth",
       });
+
       return;
     }
 
@@ -707,7 +703,9 @@ export default function Autospareparts({
   };
 
   const FieldError = ({ name }) => {
-    if (!errors[name]) return null;
+    if (!errors[name]) {
+      return null;
+    }
 
     return (
       <p className="mt-1 text-sm text-red-600">
@@ -799,6 +797,7 @@ export default function Autospareparts({
                   onChange={handleChange}
                   className="h-4 w-4"
                 />
+
                 Price is negotiable
               </label>
             </div>
@@ -1414,6 +1413,7 @@ export default function Autospareparts({
                 onChange={handleChange}
                 className="h-4 w-4"
               />
+
               Delivery available
             </label>
 
@@ -1425,6 +1425,7 @@ export default function Autospareparts({
                 onChange={handleChange}
                 className="h-4 w-4"
               />
+
               Buyer can pick up
             </label>
           </div>
@@ -1443,6 +1444,7 @@ export default function Autospareparts({
               onChange={handleChange}
               className="h-4 w-4"
             />
+
             This part comes with a warranty
           </label>
 
