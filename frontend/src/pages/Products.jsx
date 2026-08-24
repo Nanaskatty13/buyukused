@@ -60,7 +60,7 @@ const normalizeCategory = (category) => {
 // ================================================================
 
 const ProductCard = ({ product }) => {
-  const navigate = useNavigate(); // <-- added
+  const navigate = useNavigate();
 
   if (!product) return null;
 
@@ -132,9 +132,8 @@ const ProductCard = ({ product }) => {
 
   const isVerified = sellerObj?.isVerified === true;
   const yearsOnPlatform = sellerObj?.yearsOnPlatform || 0;
-  const accountType = sellerObj?.accountType || ""; // 'diamond', 'vip', 'enterprise'
+  const accountType = sellerObj?.accountType || "";
 
-  // ─── Account badge helper ──────────────────────────────────────
   const getAccountBadge = () => {
     const type = accountType.toLowerCase();
     if (type === "diamond") return { label: "💎 DIAMOND", color: "#0ea5e9", bg: "#e0f2fe" };
@@ -145,7 +144,7 @@ const ProductCard = ({ product }) => {
   const accountBadge = getAccountBadge();
 
   // ==============================================================
-  // PRODUCT IMAGE
+  // PRODUCT IMAGE – AUTOMATICALLY ADAPTS TO IMAGE SIZE
   // ==============================================================
 
   const imageUrl =
@@ -163,7 +162,6 @@ const ProductCard = ({ product }) => {
     minimumFractionDigits: 0,
   }).format(price || 0);
 
-  // ─── Helper: get city only from location ──────────────────────
   const getCityOnly = (locationStr) => {
     if (!locationStr) return "";
     const parts = locationStr.split(",").map((s) => s.trim());
@@ -214,7 +212,6 @@ const ProductCard = ({ product }) => {
       if (condition) specs.push({ icon: "📋", label: condition });
     }
 
-    // Max 4 specs
     return specs.slice(0, 4).map((spec, index) => (
       <span
         key={`${spec.label}-${index}`}
@@ -234,7 +231,6 @@ const ProductCard = ({ product }) => {
   const isSold = status === "sold";
 
   // ─── Contact handlers ──────────────────────────────────────────
-  // CHAT: navigate to product page with openChat param
   const handleChat = (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -279,7 +275,7 @@ const ProductCard = ({ product }) => {
       }}
     >
       {/* ==========================================================
-          IMAGE – square on desktop, taller on mobile
+          IMAGE – AUTOMATICALLY ADAPTS TO IMAGE SIZE
       ========================================================== */}
 
       <Link
@@ -290,7 +286,7 @@ const ProductCard = ({ product }) => {
           overflow: "hidden",
           background: "#f4f5f7",
           position: "relative",
-          paddingTop: "100%",
+          width: "100%",
         }}
       >
         <img
@@ -299,13 +295,8 @@ const ProductCard = ({ product }) => {
           loading="lazy"
           decoding="async"
           style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
             width: "100%",
-            height: "100%",
-            objectFit: "cover",
-            objectPosition: "center",
+            height: "auto",
             display: "block",
             transition: "transform 0.3s ease",
           }}
@@ -316,10 +307,8 @@ const ProductCard = ({ product }) => {
           }}
         />
 
-        {/* ─── Sold badge ─── */}
         {isSold && <SoldBadge variant="card" />}
 
-        {/* ─── Top-left badges (Jiji style) – now smaller ─── */}
         <div
           style={{
             position: "absolute",
@@ -399,7 +388,6 @@ const ProductCard = ({ product }) => {
           gap: "4px",
         }}
       >
-        {/* TITLE */}
         <Link
           to={`/product/${_id}`}
           style={{
@@ -425,7 +413,6 @@ const ProductCard = ({ product }) => {
           </div>
         </Link>
 
-        {/* PRICE */}
         <div
           className="price"
           style={{
@@ -454,7 +441,6 @@ const ProductCard = ({ product }) => {
           )}
         </div>
 
-        {/* LOCATION (city only) & CONDITION */}
         <div
           className="location-condition"
           style={{
@@ -471,7 +457,6 @@ const ProductCard = ({ product }) => {
           <span>{condition || "Used"}</span>
         </div>
 
-        {/* SPECS */}
         <div
           className="specs-row"
           style={{
@@ -505,7 +490,6 @@ const ProductCard = ({ product }) => {
           <span>{swapAccepted ? "🔄 Swap OK" : "🚫 No swap"}</span>
         </div>
 
-        {/* ─── PRODUCT DESCRIPTION (tiny, below specs) ─── */}
         {description && String(description).trim() && (
           <div
             className="product-description"
@@ -525,7 +509,6 @@ const ProductCard = ({ product }) => {
           </div>
         )}
 
-        {/* ─── SELLER INFO (Jiji style) ─── */}
         <div
           style={{
             marginTop: "auto",
@@ -602,7 +585,6 @@ const ProductCard = ({ product }) => {
           )}
         </div>
 
-        {/* ─── Contact buttons (CHAT + CALL) – compact & responsive ─── */}
         {sellerObj?.phone && (
           <div
             className="contact-buttons"
@@ -671,7 +653,6 @@ const ProductCard = ({ product }) => {
           </div>
         )}
 
-        {/* ─── "View Details" link ─── */}
         <Link
           to={`/product/${_id}`}
           style={{
@@ -714,8 +695,9 @@ const ProductSkeleton = () => {
         className="product-image-wrapper"
         style={{
           width: "100%",
-          paddingTop: "100%",
+          paddingBottom: "75%", // placeholder aspect ratio (4:3)
           background: "#f4f5f7",
+          position: "relative",
         }}
       />
       <div style={{ padding: "14px" }}>
@@ -809,14 +791,6 @@ const Products = () => {
   const [sortOption, setSortOption] =
     useState("recommended");
 
-  const [currentPage, setCurrentPage] =
-    useState(1);
-
-  const ITEMS_PER_PAGE = 8;
-
-  const [total, setTotal] = useState(0);
-  const [totalPages, setTotalPages] = useState(1);
-
   // ==============================================================
   // KEEP URL FILTERS IN SYNC
   // ==============================================================
@@ -841,12 +815,10 @@ const Products = () => {
       search,
       simStatus,
     }));
-
-    setCurrentPage(1);
   }, [location.search]);
 
   // ==============================================================
-  // FETCH PRODUCTS
+  // FETCH PRODUCTS – NO PAGINATION
   // ==============================================================
 
   const fetchProducts = useCallback(async () => {
@@ -905,8 +877,8 @@ const Products = () => {
             }
           : {}),
 
-        page: currentPage,
-        limit: ITEMS_PER_PAGE,
+        // ─── Fetch ALL products ──────────────────────────────────
+        limit: 1000, // large enough to get all
       };
 
       const data =
@@ -939,12 +911,6 @@ const Products = () => {
         }));
 
       setProducts(processedProducts);
-
-      setTotal(data?.total || 0);
-
-      setTotalPages(
-        data?.totalPages || 1
-      );
     } catch (err) {
       if (cancelled) return;
 
@@ -959,8 +925,6 @@ const Products = () => {
       );
 
       setProducts([]);
-      setTotal(0);
-      setTotalPages(1);
     } finally {
       if (!cancelled) {
         setLoading(false);
@@ -975,7 +939,6 @@ const Products = () => {
     priceMax,
     verifiedOnly,
     discountOnly,
-    currentPage,
   ]);
 
   useEffect(() => {
@@ -992,8 +955,6 @@ const Products = () => {
         ...prev,
         ...newFilters,
       }));
-
-      setCurrentPage(1);
     },
     []
   );
@@ -1015,28 +976,6 @@ const Products = () => {
 
     setVerifiedOnly(false);
     setDiscountOnly(false);
-
-    setCurrentPage(1);
-  };
-
-  // ==============================================================
-  // PAGINATION
-  // ==============================================================
-
-  const handlePageChange = (page) => {
-    if (
-      page < 1 ||
-      page > totalPages
-    ) {
-      return;
-    }
-
-    setCurrentPage(page);
-
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
-    });
   };
 
   // ==============================================================
@@ -1093,11 +1032,6 @@ const Products = () => {
 
   return (
     <>
-      {/* ==========================================================
-          RESPONSIVE PRODUCT GRID
-          4 COLUMNS ON LARGE SCREENS
-      ========================================================== */}
-
       <style>
         {`
           .products-grid {
@@ -1105,32 +1039,66 @@ const Products = () => {
             grid-template-columns: repeat(4, 1fr);
             gap: 20px;
             width: 100%;
+            max-width: 1400px;
+            margin: 0 auto;
           }
 
           @media (max-width: 1100px) {
             .products-grid {
               grid-template-columns: repeat(3, 1fr);
+              gap: 16px;
             }
           }
 
           @media (max-width: 800px) {
             .products-grid {
               grid-template-columns: repeat(2, 1fr);
+              gap: 14px;
             }
           }
 
           @media (max-width: 520px) {
             .products-grid {
               grid-template-columns: 1fr;
+              gap: 12px;
             }
           }
 
-          /* ─── Mobile: make product image taller ─── */
-          @media (max-width: 520px) {
-            .product-image-wrapper {
-              padding-top: 130% !important;
+          /* ─── LARGE SCREENS (≥ 1200px) ─── */
+          @media (min-width: 1200px) {
+            .products-grid {
+              grid-template-columns: repeat(3, 1fr);
+              gap: 24px;
             }
 
+            .product-card .title {
+              font-size: 16px !important;
+            }
+
+            .product-card .price {
+              font-size: 20px !important;
+            }
+          }
+
+          /* ─── EXTRA LARGE SCREENS (≥ 1600px) ─── */
+          @media (min-width: 1600px) {
+            .products-grid {
+              grid-template-columns: repeat(3, 1fr);
+              gap: 28px;
+              max-width: 1600px;
+            }
+
+            .product-card .title {
+              font-size: 17px !important;
+            }
+
+            .product-card .price {
+              font-size: 21px !important;
+            }
+          }
+
+          /* ─── Mobile ─── */
+          @media (max-width: 520px) {
             .location-text {
               font-size: 12px !important;
             }
@@ -1207,15 +1175,11 @@ const Products = () => {
         style={{
           display: "flex",
           gap: "24px",
-          maxWidth: "1200px",
+          maxWidth: "1440px",
           margin: "0 auto",
           padding: "20px 16px",
         }}
       >
-        {/* ========================================================
-            SIDEBAR
-        ======================================================== */}
-
         <div className="filter-sidebar-wrapper">
           <FilterSidebar
             filters={filters}
@@ -1246,10 +1210,6 @@ const Products = () => {
           />
         </div>
 
-        {/* ========================================================
-            MAIN CONTENT
-        ======================================================== */}
-
         <main
           className="main-content"
           style={{
@@ -1267,10 +1227,6 @@ const Products = () => {
               initialQuery={filters}
             />
           </div>
-
-          {/* ======================================================
-              HEADER
-          ====================================================== */}
 
           <div
             style={{
@@ -1293,7 +1249,7 @@ const Products = () => {
             >
               {loading
                 ? "Loading..."
-                : `${total} results`}
+                : `${products.length} results`}
 
               {filters.category !==
                 "all" && (
@@ -1347,10 +1303,6 @@ const Products = () => {
             </select>
           </div>
 
-          {/* ======================================================
-              ERROR
-          ====================================================== */}
-
           {error && !loading && (
             <div
               style={{
@@ -1395,10 +1347,6 @@ const Products = () => {
             </div>
           )}
 
-          {/* ======================================================
-              LOADING
-          ====================================================== */}
-
           {loading ? (
             <div className="products-grid">
               {Array.from({
@@ -1411,10 +1359,6 @@ const Products = () => {
             </div>
           ) : sortedProducts.length ===
             0 ? (
-            /* ====================================================
-               EMPTY
-            ==================================================== */
-
             <div
               style={{
                 textAlign: "center",
@@ -1440,157 +1384,16 @@ const Products = () => {
               </Link>
             </div>
           ) : (
-            <>
-              {/* ==================================================
-                  PRODUCTS GRID
-              ================================================== */}
-
-              <div className="products-grid">
-                {sortedProducts.map(
-                  (product) => (
-                    <ProductCard
-                      key={product._id}
-                      product={product}
-                    />
-                  )
-                )}
-              </div>
-
-              {/* ==================================================
-                  PAGINATION
-              ================================================== */}
-
-              {totalPages > 1 && (
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent:
-                      "center",
-                    gap: "8px",
-                    marginTop: "32px",
-                    flexWrap: "wrap",
-                  }}
-                >
-                  <button
-                    onClick={() =>
-                      handlePageChange(
-                        Math.max(
-                          1,
-                          currentPage - 1
-                        )
-                      )
-                    }
-                    disabled={
-                      currentPage === 1
-                    }
-                    style={{
-                      padding:
-                        "8px 12px",
-                      border:
-                        "1px solid #e5e7eb",
-                      borderRadius: "4px",
-                      background:
-                        "#fff",
-                      cursor:
-                        currentPage === 1
-                          ? "default"
-                          : "pointer",
-                      opacity:
-                        currentPage === 1
-                          ? 0.5
-                          : 1,
-                      fontWeight: 600,
-                    }}
-                  >
-                    Prev
-                  </button>
-
-                  {Array.from(
-                    {
-                      length:
-                        totalPages,
-                    },
-                    (_, i) => i + 1
-                  ).map((page) => (
-                    <button
-                      key={page}
-                      onClick={() =>
-                        handlePageChange(
-                          page
-                        )
-                      }
-                      style={{
-                        padding:
-                          "8px 12px",
-                        border:
-                          page ===
-                          currentPage
-                            ? "1px solid #0066cc"
-                            : "1px solid #e5e7eb",
-                        borderRadius:
-                          "4px",
-                        background:
-                          page ===
-                          currentPage
-                            ? "#0066cc"
-                            : "#fff",
-                        color:
-                          page ===
-                          currentPage
-                            ? "#fff"
-                            : "#333",
-                        cursor:
-                          "pointer",
-                        fontWeight:
-                          page ===
-                          currentPage
-                            ? 700
-                            : 400,
-                      }}
-                    >
-                      {page}
-                    </button>
-                  ))}
-
-                  <button
-                    onClick={() =>
-                      handlePageChange(
-                        Math.min(
-                          totalPages,
-                          currentPage + 1
-                        )
-                      )
-                    }
-                    disabled={
-                      currentPage ===
-                      totalPages
-                    }
-                    style={{
-                      padding:
-                        "8px 12px",
-                      border:
-                        "1px solid #e5e7eb",
-                      borderRadius: "4px",
-                      background:
-                        "#fff",
-                      cursor:
-                        currentPage ===
-                        totalPages
-                          ? "default"
-                          : "pointer",
-                      opacity:
-                        currentPage ===
-                        totalPages
-                          ? 0.5
-                          : 1,
-                      fontWeight: 600,
-                    }}
-                  >
-                    Next
-                  </button>
-                </div>
+            <div className="products-grid">
+              {sortedProducts.map(
+                (product) => (
+                  <ProductCard
+                    key={product._id}
+                    product={product}
+                  />
+                )
               )}
-            </>
+            </div>
           )}
         </main>
       </div>

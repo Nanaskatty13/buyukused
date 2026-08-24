@@ -19,7 +19,7 @@ import GameConsoleForm from "../components/GameConsoleForm";
 import AppleWatchForm from "../components/AppleWatchForm";
 import TVForm from "../components/TVForm";
 import CarForm from "../components/CarForm";
-import CosmeticsForm from "../components/CosmeticsForm"; // ✅ IMPORT
+import CosmeticsForm from "../components/CosmeticsForm";
 
 // ============================================================
 // LOCATION DATA (complete)
@@ -592,7 +592,7 @@ const PostAd = () => {
     smartwatches: "Smartwatches",
     tvs: "TVs",
     cars: "Cars",
-    cosmetics: "Cosmetics", // ✅ added
+    cosmetics: "Cosmetics",
   };
 
   // ==========================================================
@@ -607,7 +607,7 @@ const PostAd = () => {
   const isSmartwatch = formData.category === "smartwatches";
   const isTV = formData.category === "tvs";
   const isCar = formData.category === "cars";
-  const isCosmetics = formData.category === "cosmetics"; // ✅ added
+  const isCosmetics = formData.category === "cosmetics";
 
   // ==========================================================
   // LOCATION EFFECT
@@ -996,7 +996,7 @@ const PostAd = () => {
   };
 
   // ==========================================================
-  // STEP 1 VALIDATION
+  // STEP 1 VALIDATION – COSMETIC TYPE CHECK REMOVED
   // ==========================================================
 
   const goToNextStep = () => {
@@ -1074,16 +1074,11 @@ const PostAd = () => {
       return;
     }
 
-    // ─── Cosmetics ───
-    if (isCosmetics) {
-      if (!formData.cosmeticType) {
-        setError("Please select the cosmetic type.");
-        return;
-      }
-      if (!formData.brand.trim()) {
-        setError("Please enter the cosmetic brand.");
-        return;
-      }
+    // ─── Cosmetics: only check brand (visible in Step 1) ───
+    // The cosmetic type field is in Step 2, so don't validate it here.
+    if (isCosmetics && !formData.brand.trim()) {
+      setError("Please enter the cosmetic brand.");
+      return;
     }
 
     setStep(2);
@@ -1528,20 +1523,23 @@ const PostAd = () => {
     }
 
     // --------------------------------------------------------
-    // COSMETICS VALIDATION
+    // COSMETICS VALIDATION – now in final submit
     // --------------------------------------------------------
 
     if (isCosmetics) {
-      if (!formData.cosmeticType) {
+      if (!formData.cosmeticType || formData.cosmeticType.trim() === "") {
         setError("Please select the cosmetic type.");
+        setStep(1);
         return;
       }
       if (!formData.brand.trim()) {
         setError("Please enter the cosmetic brand.");
+        setStep(1);
         return;
       }
       if (!formData.model.trim()) {
         setError("Please enter the product name or model.");
+        setStep(1);
         return;
       }
     }
@@ -1675,7 +1673,7 @@ const PostAd = () => {
                 <option value="smartwatches">⌚ Smartwatches</option>
                 <option value="tvs">📺 TVs</option>
                 <option value="electronics">🔌 Electronics</option>
-                <option value="cosmetics">💄 Cosmetics</option> {/* ✅ added */}
+                <option value="cosmetics">💄 Cosmetics</option>
               </select>
             </div>
 

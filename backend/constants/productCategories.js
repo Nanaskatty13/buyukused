@@ -17,6 +17,7 @@ const PRODUCT_CATEGORIES = [
   "TVs",
   "Game Consoles",
   "Smartwatches",
+  "Cosmetics",   // ✅ added
   "Other",
 ];
 
@@ -252,6 +253,32 @@ const normalizeCategory = (value) => {
     "apple watch": "Smartwatches",
 
     // --------------------------------------------------------
+    // COSMETICS – ✅ NEW
+    // --------------------------------------------------------
+    cosmetic: "Cosmetics",
+    cosmetics: "Cosmetics",
+    beauty: "Cosmetics",
+    makeup: "Cosmetics",
+    skincare: "Cosmetics",
+    "skin care": "Cosmetics",
+    haircare: "Cosmetics",
+    "hair care": "Cosmetics",
+    fragrance: "Cosmetics",
+    perfumes: "Cosmetics",
+    lotion: "Cosmetics",
+    creams: "Cosmetics",
+    shampoo: "Cosmetics",
+    conditioner: "Cosmetics",
+    "body care": "Cosmetics",
+    bath: "Cosmetics",
+    shower: "Cosmetics",
+    nail: "Cosmetics",
+    "lip care": "Cosmetics",
+    "sun care": "Cosmetics",
+    "men grooming": "Cosmetics",
+    "women grooming": "Cosmetics",
+
+    // --------------------------------------------------------
     // OTHER
     // --------------------------------------------------------
     other: "Other",
@@ -382,6 +409,25 @@ const normalizeCategory = (value) => {
     normalized.includes("appliance")
   ) {
     return "Home";
+  }
+
+  // ─── NEW: Cosmetics fuzzy fallback ──────────────────────────
+  if (
+    normalized.includes("cosmetic") ||
+    normalized.includes("beauty") ||
+    normalized.includes("makeup") ||
+    normalized.includes("skincare") ||
+    normalized.includes("haircare") ||
+    normalized.includes("perfume") ||
+    normalized.includes("shampoo") ||
+    normalized.includes("lotion") ||
+    normalized.includes("cream") ||
+    normalized.includes("fragrance") ||
+    normalized.includes("bath") ||
+    normalized.includes("shower") ||
+    normalized.includes("nail")
+  ) {
+    return "Cosmetics";
   }
 
   return "Other";

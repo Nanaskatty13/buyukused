@@ -1,6 +1,6 @@
 // frontend/src/components/CosmeticsForm.jsx
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 
 // ─── Constants ──────────────────────────────────────────────────
 
@@ -186,6 +186,188 @@ const COSMETIC_CERTIFICATIONS = [
   "Other",
 ];
 
+// ─── Brand list ────────────────────────────────────────────────
+
+const COSMETIC_BRANDS = [
+  "4th & Reckless",
+  "A'Pieu",
+  "Aceology",
+  "Aēsop",
+  "AHC",
+  "AOA Studio",
+  "Apieu",
+  "Aromatica",
+  "Artdeco",
+  "Avène",
+  "B. by Superdrug",
+  "BareMinerals",
+  "Beauty Bakerie",
+  "Beauty of Joseon",
+  "Ben Nye",
+  "Benefit Cosmetics",
+  "Benton",
+  "Biotherm",
+  "Biore",
+  "Black Pearl",
+  "Blush",
+  "Bobby Brown",
+  "Bourjois",
+  "Burt's Bees",
+  "BYOMA",
+  "C'est Moi",
+  "C.O. Bigelow",
+  "Cake Beauty",
+  "Canmake",
+  "CeraVe",
+  "Chanel",
+  "Charlotte Tilbury",
+  "Chica Beauty",
+  "Clarins",
+  "Clinique",
+  "ColourPop",
+  "Cosrx",
+  "Cover FX",
+  "CoverGirl",
+  "Cultured",
+  "Danessa Myricks",
+  "Dear Klairs",
+  "Dermalogica",
+  "DHC",
+  "Dior",
+  "Dr. Jart+",
+  "Drunk Elephant",
+  "E.l.f. Cosmetics",
+  "EM Cosmetics",
+  "Embryolisse",
+  "Erno Laszlo",
+  "Essence",
+  "Estée Lauder",
+  "Etude House",
+  "Eve Lom",
+  "Fenty Beauty",
+  "Florence by Mills",
+  "Flower Beauty",
+  "Forbelovedone",
+  "Formula 10.0.6",
+  "Frudia",
+  "Garnier",
+  "Glossier",
+  "Good Molecules",
+  "Green Beaver",
+  "Guerlain",
+  "H&M Beauty",
+  "Hada Labo",
+  "Hanskin",
+  "Huda Beauty",
+  "I'm From",
+  "I Dew Care",
+  "I.T. Cosmetics",
+  "Illamasqua",
+  "Innisfree",
+  "ION Cosmetics",
+  "Isntree",
+  "IT Cosmetics",
+  "J. Cat Beauty",
+  "Jaxon Lane",
+  "Josie Maran",
+  "Kao",
+  "Kate Somerville",
+  "Kevyn Aucoin",
+  "Kiko Milano",
+  "Kiss",
+  "Klairs",
+  "Kokie Cosmetics",
+  "Korres",
+  "Kosas",
+  "KraveBeauty",
+  "Kylie Cosmetics",
+  "L'Oréal Paris",
+  "La Mer",
+  "La Roche-Posay",
+  "Lakmé",
+  "Laneige",
+  "Laura Mercier",
+  "Lemonhead",
+  "Lily Lolo",
+  "Lime Crime",
+  "Liquid Death",
+  "Lise Watier",
+  "Lush",
+  "LUX",
+  "MAC Cosmetics",
+  "Make Up For Ever",
+  "Makeup Geek",
+  "Makeup Revolution",
+  "Mally Beauty",
+  "Mario Badescu",
+  "Maybelline",
+  "Milani",
+  "Mizon",
+  "Morphe",
+  "NARS",
+  "Natasha Denona",
+  "Neutrogena",
+  "Nivea",
+  "No7",
+  "Nudestix",
+  "NYX Professional Makeup",
+  "Olay",
+  "Origins",
+  "Pacifica",
+  "Palladio",
+  "Pat McGrath Labs",
+  "Paula's Choice",
+  "Peach & Lily",
+  "Peripera",
+  "Physicians Formula",
+  "Pixi",
+  "POP Beauty",
+  "Pretty Vulgar",
+  "Purito",
+  "Pyunkang Yul",
+  "R+Co",
+  "R.E.M. Beauty",
+  "Rimmel",
+  "Rituel de Fille",
+  "RMS Beauty",
+  "RoC",
+  "Rose Inc",
+  "Sacha Cosmetics",
+  "Sally Hansen",
+  "Sanoflore",
+  "Seventh Generation",
+  "Shiseido",
+  "Skin 1004",
+  "Skinfood",
+  "SK-II",
+  "Smashbox",
+  "Some By Mi",
+  "Stila",
+  "Suave",
+  "Sugarbear Hair",
+  "Sun Bum",
+  "Supergoop!",
+  "Tarte Cosmetics",
+  "The Body Shop",
+  "The Creme Shop",
+  "The Face Shop",
+  "The Ordinary",
+  "Thrive Causemetics",
+  "Too Cool for School",
+  "Too Faced",
+  "Tonymoly",
+  "Tower 28",
+  "Ulta Beauty",
+  "Urban Decay",
+  "Vaseline",
+  "Vichy",
+  "Violet Voss",
+  "Wet n Wild",
+  "Yves Saint Laurent",
+  "Zoeva",
+  "Other",
+];
+
 // ─── Component ────────────────────────────────────────────────────
 
 const CosmeticsForm = ({
@@ -194,6 +376,22 @@ const CosmeticsForm = ({
   handleCheckboxChange,
   errors = {},
 }) => {
+  // ─── Local validation state ────────────────────────────────────
+  const [localErrors, setLocalErrors] = useState({});
+
+  // ─── Validate required fields on change ──────────────────────
+  useEffect(() => {
+    const newErrors = {};
+    if (!formData.model?.trim()) newErrors.model = 'Product Name is required';
+    if (!formData.cosmeticType) newErrors.cosmeticType = 'Please select the cosmetic type';
+    setLocalErrors(newErrors);
+  }, [formData.model, formData.cosmeticType]);
+
+  // ─── Helper: is brand "Other" ──────────────────────────────────
+  const isBrandOther = formData.cosmeticBrand === 'Other' || !COSMETIC_BRANDS.includes(formData.cosmeticBrand);
+
+  // ─── Render ────────────────────────────────────────────────────
+
   return (
     <>
       {/* ─── INFORMATION HEADER ─── */}
@@ -220,6 +418,8 @@ const CosmeticsForm = ({
         >
           Provide accurate product information so buyers can easily understand
           the cosmetic, skincare, haircare, fragrance, or beauty product.
+          <br />
+          <strong style={{ color: '#dc2626' }}>* Required fields</strong>
         </p>
       </div>
 
@@ -234,10 +434,15 @@ const CosmeticsForm = ({
           onChange={handleChange}
           placeholder="e.g. Hydrating Facial Cleanser"
           required
+          style={{
+            borderColor: localErrors.model ? '#dc2626' : undefined,
+          }}
         />
 
-        {errors.model && (
-          <span className="error">{errors.model}</span>
+        {(errors.model || localErrors.model) && (
+          <span className="error" style={{ color: '#dc2626', fontSize: '13px' }}>
+            {errors.model || localErrors.model}
+          </span>
         )}
       </div>
 
@@ -245,13 +450,30 @@ const CosmeticsForm = ({
       <div className="form-group">
         <label>Brand</label>
 
-        <input
-          type="text"
+        <select
           name="cosmeticBrand"
           value={formData.cosmeticBrand || ''}
           onChange={handleChange}
-          placeholder="e.g. CeraVe, Maybelline, The Ordinary"
-        />
+        >
+          <option value="">Select brand</option>
+
+          {COSMETIC_BRANDS.map((brand) => (
+            <option key={brand} value={brand}>
+              {brand}
+            </option>
+          ))}
+        </select>
+
+        {isBrandOther && (
+          <input
+            type="text"
+            name="cosmeticBrand"
+            value={formData.cosmeticBrand || ''}
+            onChange={handleChange}
+            placeholder="Enter custom brand name"
+            style={{ marginTop: '6px' }}
+          />
+        )}
       </div>
 
       {/* ─── COSMETIC TYPE ─── */}
@@ -263,6 +485,9 @@ const CosmeticsForm = ({
           value={formData.cosmeticType || ''}
           onChange={handleChange}
           required
+          style={{
+            borderColor: localErrors.cosmeticType ? '#dc2626' : undefined,
+          }}
         >
           <option value="">Select cosmetic type</option>
 
@@ -273,10 +498,21 @@ const CosmeticsForm = ({
           ))}
         </select>
 
-        {errors.cosmeticType && (
-          <span className="error">{errors.cosmeticType}</span>
+        {(errors.cosmeticType || localErrors.cosmeticType) && (
+          <span className="error" style={{ color: '#dc2626', fontSize: '13px' }}>
+            {errors.cosmeticType || localErrors.cosmeticType}
+          </span>
         )}
+
+        <small style={{ display: 'block', marginTop: '4px', color: '#6b7280', fontSize: '12px' }}>
+          This is the main category of your product – choose the most relevant one.
+        </small>
       </div>
+
+      {/* ─── All other fields (unchanged) ─── */}
+      {/* ... keep all remaining fields exactly as they were ... */}
+
+      {/* ─── (Keep the rest of the form fields – they are unchanged) ─── */}
 
       {/* ─── PRODUCT LINE ─── */}
       <div className="form-group">
