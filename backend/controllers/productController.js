@@ -1626,115 +1626,73 @@ exports.visualSearch =
 // GET SINGLE PRODUCT (with view tracking + notification)
 // ============================================================
 
-exports.getProductById =
-  async (req, res) => {
-    try {
-      const { id } =
-        req.params;
+exports.getProductById = async (req, res) => {
+  try {
+    const { id } = req.params;
 
-      if (!id) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Product ID is required",
-        });
-      }
-
-      if (
-        !mongoose.Types.ObjectId.isValid(
-          id
-        )
-      ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Invalid product ID",
-        });
-      }
-
-      const product =
-        await Product.findById(
-          id
-        ).populate(
-          "sellerId",
-          "name email phone location avatar isVerified profileImage"
-        );
-
-      if (!product) {
-        return res.status(404).json({
-          success: false,
-          message:
-            "Product not found",
-        });
-      }
-
-      // ─── Increment view count ──────────────────────────────────
-      await Product.findByIdAndUpdate(
-        id,
-        { $inc: { views: 1 } }
-      );
-      product.views = (product.views || 0) + 1;
-
-      // ─── Send notification to seller (if viewer logged in & not owner) ──
-      const viewerId = getUserId(req);
-      const sellerId = product.sellerId?._id || product.sellerId;
-
-      if (
-        viewerId &&
-        sellerId &&
-        viewerId.toString() !== sellerId.toString()
-      ) {
-        // Run asynchronously – don’t block response
-        setImmediate(async () => {
-          try {
-            const viewer = await User.findById(viewerId).select('name').lean();
-            const viewerName = viewer?.name || 'Someone';
-
-            // Optional: avoid duplicate notifications within 1 minute
-            const recent = await Notification.findOne({
-              user: sellerId,
-              sender: viewerId,
-              type: 'product_viewed',
-              link: `/product/${product._id}`,
-              createdAt: { $gte: new Date(Date.now() - 60 * 1000) },
-            });
-            if (recent) return;
-
-            const notification = new Notification({
-              user: sellerId,
-              sender: viewerId,
-              title: '📢 Product Viewed',
-              message: `${viewerName} viewed your product “${product.title}”`,
-              link: `/product/${product._id}`,
-              type: 'product_viewed',
-              read: false,
-            });
-            await notification.save();
-            console.log(`🔔 Notification sent: ${viewerName} viewed product ${product._id}`);
-          } catch (notifErr) {
-            console.error('❌ Failed to create product view notification:', notifErr);
-          }
-        });
-      }
-
-      return res.json({
-        success: true,
-        product,
-      });
-    } catch (error) {
-      console.error(
-        "❌ Get product error:",
-        error
-      );
-
-      return res.status(500).json({
+    if (!id) {
+      return res.status(400).json({
         success: false,
-        message:
-          error.message ||
-          "Failed to get product",
+        message: "Product ID is required",
       });
     }
-  };
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid product ID",
+      });
+    }
+
+    const product = await Product.findById(id).populate(
+      "sellerId",
+      "name email phone location avatar isVerified profileImage"
+    );
+
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: "Product not found",
+      });
+    }
+
+    // ─── Increment view count ──────────────────────────────────
+    await Product.findByIdAndUpdate(id, { $inc: { views: 1 } });
+    product.views = (product.views || 0) + 1;
+
+    // ─── Send notification to seller (if viewer logged in & not owner) ──
+    const viewerId = getUserId(req);
+    const sellerId = product.sellerId?._id || product.sellerId;
+
+    if (
+      viewerId &&
+      sellerId &&
+      viewerId.toString() !== sellerId.toString()
+    ) {
+      await Notification.create({
+        user: sellerId,
+        sender: viewerId,
+        title: "Your product was viewed",
+        message: `${product.title} was viewed by a buyer.`,
+        link: `/products/${product._id}`,
+        type: "product_viewed",
+        read: false,
+      });
+    }
+
+    return res.json({
+      success: true,
+      product,
+    });
+  } catch (error) {
+    console.error("❌ Get product error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to get product",
+    });
+  }
+};
 
 // ============================================================
 // CREATE PRODUCT
