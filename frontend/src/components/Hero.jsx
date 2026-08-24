@@ -1,39 +1,40 @@
 // frontend/src/components/Hero.jsx
+
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 
 const Hero = ({ onSearch }) => {
   // ─── Carousel slides ──────────────────────────────────────────
   const slides = [
-  {
-    id: 1,
-    image: '/categories/phones.webp',
-    title: 'Phones & Tablets',
-    subtitle: 'Latest smartphones and tablets',
-  },
-  {
-    id: 2,
-    image: '/categories/laptops.webp',
-    title: 'Laptops & Computers',
-    subtitle: 'MacBook, Dell, HP and more',
-  },
-  {
-    id: 3,
-    image: '/categories/cars.webp',
-    title: 'Cars & Vehicles',
-    subtitle: 'Trusted deals on wheels',
-  },
-  {
-    id: 4,
-    image: '/categories/real-estate.webp',
-    title: 'Real Estate',
-    subtitle: 'Houses, lands and apartments',
-  },
-];
+    {
+      id: 1,
+      image: '/categories/phones.webp',
+      title: 'Phones & Tablets',
+      subtitle: 'Latest smartphones and tablets',
+    },
+    {
+      id: 2,
+      image: '/categories/laptops.webp',
+      title: 'Laptops & Computers',
+      subtitle: 'MacBook, Dell, HP and more',
+    },
+    {
+      id: 3,
+      image: '/categories/cars.webp',
+      title: 'Cars & Vehicles',
+      subtitle: 'Trusted deals on wheels',
+    },
+    {
+      id: 4,
+      image: '/categories/real-estate.webp',
+      title: 'Real Estate',
+      subtitle: 'Houses, lands and apartments',
+    },
+  ];
 
   const [currentSlide, setCurrentSlide] = useState(0);
 
-  // ─── Auto‑slide every 6 seconds ──────────────────────────────
+  // ─── Auto-slide every 6 seconds ───────────────────────────────
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % slides.length);
@@ -42,12 +43,12 @@ const Hero = ({ onSearch }) => {
     return () => clearInterval(interval);
   }, [slides.length]);
 
-  // ─── Go to a specific slide ───────────────────────────────────
+  // ─── Go to a specific slide ──────────────────────────────────
   const goToSlide = (index) => {
     setCurrentSlide(index);
   };
 
-  // ─── Next / Previous ──────────────────────────────────────────
+  // ─── Next / Previous ─────────────────────────────────────────
   const nextSlide = () => {
     setCurrentSlide((prev) => (prev + 1) % slides.length);
   };
@@ -90,7 +91,11 @@ const Hero = ({ onSearch }) => {
             left: 0;
             right: 0;
             bottom: 0;
-            background: linear-gradient(135deg, rgba(15, 23, 42, 0.35) 0%, rgba(30, 41, 59, 0.15) 100%);
+            background: linear-gradient(
+              135deg,
+              rgba(15, 23, 42, 0.35) 0%,
+              rgba(30, 41, 59, 0.15) 100%
+            );
             z-index: 0;
           }
 
@@ -240,7 +245,11 @@ const Hero = ({ onSearch }) => {
             left: 0;
             right: 0;
             padding: 20px;
-            background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 100%);
+            background: linear-gradient(
+              to top,
+              rgba(0, 0, 0, 0.7) 0%,
+              transparent 100%
+            );
             color: #fff;
           }
 
@@ -401,11 +410,14 @@ const Hero = ({ onSearch }) => {
 
       <section className="hero-shopglowsy">
         <div className="container">
+
           {/* ─── Left: Text Content ─── */}
           <div className="hero-shopglowsy-content">
+
             <h1>
               Buy & Sell with <span>Trust</span> in Ghana
             </h1>
+
             <p>
               Join thousands of Ghanaians buying and selling safely.
               List your items for free and reach buyers across the country.
@@ -413,53 +425,86 @@ const Hero = ({ onSearch }) => {
 
             {/* ─── CTA Buttons ─── */}
             <div className="hero-shopglowsy-actions">
-              <Link to="/register" className="btn-primary">
-                <i className="fas fa-plus-circle"></i> Start Selling
+
+              {/* IMPORTANT:
+                  App.jsx uses /post-ad, so this must match exactly.
+              */}
+              <Link to="/post-ad" className="btn-primary">
+                <i className="fas fa-plus-circle"></i>
+                Start Selling
               </Link>
+
               <Link to="/products" className="btn-secondary">
-                <i className="fas fa-search"></i> Browse Ads
+                <i className="fas fa-search"></i>
+                Browse Ads
               </Link>
+
             </div>
 
             {/* ─── Stats ─── */}
             <div className="hero-shopglowsy-stats">
+
               <div className="stat">
                 <span className="stat-number">200+</span>
                 <span className="stat-label">Active Listings</span>
               </div>
+
               <div className="stat">
                 <span className="stat-number">90+</span>
                 <span className="stat-label">Trusted Sellers</span>
               </div>
+
               <div className="stat">
                 <span className="stat-number">10k+</span>
                 <span className="stat-label">Monthly Views</span>
               </div>
+
             </div>
           </div>
 
           {/* ─── Right: Carousel ─── */}
           <div className="hero-carousel">
+
             <div
               className="slide-track"
-              style={{ transform: `translateX(-${currentSlide * 100}%)` }}
+              style={{
+                transform: `translateX(-${currentSlide * 100}%)`,
+              }}
             >
               {slides.map((slide) => (
                 <div key={slide.id} className="slide">
-                  <img src={slide.image} alt={slide.title} loading="lazy" />
+
+                  <img
+                    src={slide.image}
+                    alt={slide.title}
+                    loading="lazy"
+                  />
+
                   <div className="slide-overlay">
                     <h3>🛒 {slide.title}</h3>
                     <p>{slide.subtitle}</p>
                   </div>
+
                 </div>
               ))}
             </div>
 
             {/* ─── Navigation Arrows ─── */}
-            <button className="carousel-arrow prev" onClick={prevSlide}>
+            <button
+              type="button"
+              className="carousel-arrow prev"
+              onClick={prevSlide}
+              aria-label="Previous slide"
+            >
               ‹
             </button>
-            <button className="carousel-arrow next" onClick={nextSlide}>
+
+            <button
+              type="button"
+              className="carousel-arrow next"
+              onClick={nextSlide}
+              aria-label="Next slide"
+            >
               ›
             </button>
 
@@ -468,12 +513,16 @@ const Hero = ({ onSearch }) => {
               {slides.map((_, index) => (
                 <button
                   key={index}
-                  className={`carousel-dot ${index === currentSlide ? 'active' : ''}`}
+                  type="button"
+                  className={`carousel-dot ${
+                    index === currentSlide ? 'active' : ''
+                  }`}
                   onClick={() => goToSlide(index)}
                   aria-label={`Go to slide ${index + 1}`}
                 />
               ))}
             </div>
+
           </div>
         </div>
       </section>
