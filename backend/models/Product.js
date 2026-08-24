@@ -60,7 +60,6 @@ const productSchema = new mongoose.Schema(
       type: String,
       enum: PRODUCT_CATEGORIES,
       default: "Other",
-      index: true,
       trim: true,
     },
 
@@ -136,14 +135,12 @@ const productSchema = new mongoose.Schema(
       type: String,
       default: "",
       trim: true,
-      index: true,
     },
 
     model: {
       type: String,
       default: "",
       trim: true,
-      index: true,
     },
 
     color: {
@@ -376,28 +373,24 @@ const productSchema = new mongoose.Schema(
       type: String,
       default: "",
       trim: true,
-      index: true,
     },
 
     sparePartCategory: {
       type: String,
       default: "",
       trim: true,
-      index: true,
     },
 
     partNumber: {
       type: String,
       default: "",
       trim: true,
-      index: true,
     },
 
     oemNumber: {
       type: String,
       default: "",
       trim: true,
-      index: true,
     },
 
     manufacturerPartNumber: {
@@ -410,14 +403,12 @@ const productSchema = new mongoose.Schema(
       type: String,
       default: "",
       trim: true,
-      index: true,
     },
 
     vehicleModel: {
       type: String,
       default: "",
       trim: true,
-      index: true,
     },
 
     vehicleYear: {
@@ -500,7 +491,6 @@ const productSchema = new mongoose.Schema(
       type: String,
       default: "",
       trim: true,
-      index: true,
     },
 
     partManufacturer: {
@@ -728,21 +718,18 @@ const productSchema = new mongoose.Schema(
       type: String,
       default: "",
       trim: true,
-      index: true,
     },
 
     cosmeticType: {
       type: String,
       default: "",
       trim: true,
-      index: true,
     },
 
     cosmeticBrand: {
       type: String,
       default: "",
       trim: true,
-      index: true,
     },
 
     productLine: {
@@ -791,7 +778,6 @@ const productSchema = new mongoose.Schema(
       type: String,
       default: "",
       trim: true,
-      index: true,
     },
 
     skinConcern: {
@@ -955,6 +941,7 @@ const productSchema = new mongoose.Schema(
       unique: true,
       sparse: true,
       trim: true,
+      index: true,
     },
   },
   {
@@ -1071,6 +1058,14 @@ productSchema.index({
 });
 
 productSchema.index({
+  brand: 1,
+});
+
+productSchema.index({
+  model: 1,
+});
+
+productSchema.index({
   videoOutput: 1,
 });
 
@@ -1127,7 +1122,31 @@ productSchema.index({
 });
 
 productSchema.index({
+  sparePartType: 1,
+});
+
+productSchema.index({
+  sparePartCategory: 1,
+});
+
+productSchema.index({
+  partNumber: 1,
+});
+
+productSchema.index({
+  oemNumber: 1,
+});
+
+productSchema.index({
   manufacturerPartNumber: 1,
+});
+
+productSchema.index({
+  vehicleMake: 1,
+});
+
+productSchema.index({
+  vehicleModel: 1,
 });
 
 productSchema.index({
@@ -1148,6 +1167,10 @@ productSchema.index({
 
 productSchema.index({
   partCondition: 1,
+});
+
+productSchema.index({
+  partBrand: 1,
 });
 
 productSchema.index({
@@ -1176,6 +1199,22 @@ productSchema.index({
 
 productSchema.index({
   aftermarketPart: 1,
+});
+
+productSchema.index({
+  productType: 1,
+});
+
+productSchema.index({
+  cosmeticType: 1,
+});
+
+productSchema.index({
+  cosmeticBrand: 1,
+});
+
+productSchema.index({
+  skinType: 1,
 });
 
 productSchema.index({
