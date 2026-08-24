@@ -1,6 +1,6 @@
 // frontend/src/pages/ProductDetails.jsx
 import React, { useState, useEffect, useRef } from "react";
-import { Link, useParams, useNavigate } from "react-router-dom";
+import { Link, useParams, useNavigate, useLocation } from "react-router-dom";
 
 import { FaMotorcycle } from "react-icons/fa";
 
@@ -16,7 +16,7 @@ import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
 
 import SoldBadge from "../components/SoldBadge";
-import VerifiedBadge from "../components/VerifiedBadge"; // NEW
+import VerifiedBadge from "../components/VerifiedBadge";
 
 // ── Laptop constants ──────────────────────────────────────────────
 import {
@@ -57,7 +57,7 @@ const ALL_COLORS = [
   ...new Set([...iphoneColors, ...TABLET_COLORS]),
 ].sort((a, b) => a.localeCompare(b));
 
-// ─── Console‑specific option lists (aligned with GameConsoleForm) ──
+// ─── Console‑specific option lists ──────────────────────────────
 const CONSOLE_TYPES = [
   'Home Console',
   'Handheld Console',
@@ -375,6 +375,7 @@ const RelatedProductCard = ({ product }) => {
 const ProductDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation(); // <-- added for query param detection
 
   const { user, token } = useAuth();
   const { toggleFavorite, isFavorite } = useCart();
@@ -482,6 +483,19 @@ const ProductDetails = () => {
 
   // Polling interval reference
   const pollInterval = useRef(null);
+
+  // ================================================================
+  // AUTO-OPEN CHAT MODAL (from ?openChat=true query param)
+  // ================================================================
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('openChat') === 'true') {
+      if (user) {
+        openChat();
+      }
+    }
+  }, [location.search, user]);
 
   // ================================================================
   // FETCH PRODUCT

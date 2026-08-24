@@ -1,13 +1,15 @@
 // frontend/src/pages/Products.jsx
 
 import React, { useState, useEffect, useCallback } from "react";
-import { useLocation, Link } from "react-router-dom";
+import { useLocation, Link, useNavigate } from "react-router-dom";
 import SearchBar from "../components/SearchBar";
 import FilterSidebar from "../components/FilterSidebar";
 import Footer from "../components/Footer";
 
 // API
 import { getProducts, getImageUrl } from "../services/api";
+import VerifiedBadge from "../components/VerifiedBadge";
+import SoldBadge from "../components/SoldBadge";
 
 // ================================================================
 // CATEGORY HELPERS
@@ -54,10 +56,12 @@ const normalizeCategory = (category) => {
 };
 
 // ================================================================
-// PRODUCT CARD
+// PRODUCT CARD (JIJI STYLE) with CHAT & CALL buttons
 // ================================================================
 
 const ProductCard = ({ product }) => {
+  const navigate = useNavigate(); // <-- added
+
   if (!product) return null;
 
   const {
@@ -67,16 +71,13 @@ const ProductCard = ({ product }) => {
     location,
     images,
     image,
-
     description,
-
     storage,
     simStatus,
     swapAccepted,
     condition,
     category,
     warranty,
-
     brand,
     model,
     processor,
@@ -87,13 +88,12 @@ const ProductCard = ({ product }) => {
     connectivity,
     batteryHealth,
     faceId,
-
     sellerId,
     seller,
     sellerName: sellerNameProp,
     sellerProfileImage: sellerProfileImageProp,
-
     status,
+    popular = false,
   } = product;
 
   // ==============================================================
@@ -101,24 +101,8 @@ const ProductCard = ({ product }) => {
   // ==============================================================
 
   const normalizedCategory = normalizeCategory(category);
-
-  // ==============================================================
-  // SIM STATUS MUST ONLY APPEAR FOR PHONES
-  // ==============================================================
-
   const isPhone = normalizedCategory === "Phones";
-
-  // ==============================================================
-  // DEBUG
-  // ==============================================================
-
-  console.log(`📦 Product ${_id}:`, {
-    title,
-    category,
-    normalizedCategory,
-    simStatus,
-    isPhone,
-  });
+  const isProperty = normalizedCategory === "Real Estate" || normalizedCategory === "Property";
 
   // ==============================================================
   // SELLER
@@ -144,10 +128,21 @@ const ProductCard = ({ product }) => {
     sellerProfileImageProp ||
     null;
 
-  // ─── Always use getImageUrl to handle both relative paths and full Cloudinary URLs ───
   const sellerImageUrl = sellerImage ? getImageUrl(sellerImage) : null;
 
   const isVerified = sellerObj?.isVerified === true;
+  const yearsOnPlatform = sellerObj?.yearsOnPlatform || 0;
+  const accountType = sellerObj?.accountType || ""; // 'diamond', 'vip', 'enterprise'
+
+  // ─── Account badge helper ──────────────────────────────────────
+  const getAccountBadge = () => {
+    const type = accountType.toLowerCase();
+    if (type === "diamond") return { label: "💎 DIAMOND", color: "#0ea5e9", bg: "#e0f2fe" };
+    if (type === "vip") return { label: "⭐ VIP", color: "#f59e0b", bg: "#fef3c7" };
+    if (type === "enterprise") return { label: "🏢 ENTERPRISE", color: "#8b5cf6", bg: "#ede9fe" };
+    return null;
+  };
+  const accountBadge = getAccountBadge();
 
   // ==============================================================
   // PRODUCT IMAGE
@@ -168,6 +163,13 @@ const ProductCard = ({ product }) => {
     minimumFractionDigits: 0,
   }).format(price || 0);
 
+  // ─── Helper: get city only from location ──────────────────────
+  const getCityOnly = (locationStr) => {
+    if (!locationStr) return "";
+    const parts = locationStr.split(",").map((s) => s.trim());
+    return parts[0] || locationStr;
+  };
+
   // ==============================================================
   // CATEGORY SPECIFICATIONS
   // ==============================================================
@@ -175,279 +177,84 @@ const ProductCard = ({ product }) => {
   const renderCategorySpecs = () => {
     const specs = [];
 
-    // ------------------------------------------------------------
-    // LAPTOPS
-    // ------------------------------------------------------------
-
     if (normalizedCategory === "Laptops") {
-      if (brand) {
-        specs.push({
-          icon: "🏷️",
-          label: brand,
-        });
-      }
-
-      if (model) {
-        specs.push({
-          icon: "📟",
-          label: model,
-        });
-      }
-
-      if (processor) {
-        specs.push({
-          icon: "⚡",
-          label: processor,
-        });
-      }
-
-      if (ram) {
-        specs.push({
-          icon: "🧠",
-          label: ram,
-        });
-      }
-
-      if (graphics) {
-        specs.push({
-          icon: "🖥️",
-          label: graphics,
-        });
-      }
-
-      if (screenSize) {
-        specs.push({
-          icon: "📐",
-          label: screenSize,
-        });
-      }
-
-      if (storage) {
-        specs.push({
-          icon: "💾",
-          label: storage,
-        });
-      }
+      if (brand) specs.push({ icon: "🏷️", label: brand });
+      if (model) specs.push({ icon: "📟", label: model });
+      if (processor) specs.push({ icon: "⚡", label: processor });
+      if (ram) specs.push({ icon: "🧠", label: ram });
+      if (graphics) specs.push({ icon: "🖥️", label: graphics });
+      if (screenSize) specs.push({ icon: "📐", label: screenSize });
+      if (storage) specs.push({ icon: "💾", label: storage });
+      if (condition) specs.push({ icon: "📋", label: condition });
+    } else if (normalizedCategory === "Tablets") {
+      if (brand) specs.push({ icon: "🏷️", label: brand });
+      if (model) specs.push({ icon: "📟", label: model });
+      if (year) specs.push({ icon: "📅", label: year });
+      if (connectivity) specs.push({ icon: "📶", label: connectivity });
+      if (screenSize) specs.push({ icon: "📐", label: screenSize });
+      if (storage) specs.push({ icon: "💾", label: storage });
+      if (condition) specs.push({ icon: "📋", label: condition });
+    } else if (normalizedCategory === "Phones") {
+      if (brand) specs.push({ icon: "🏷️", label: brand });
+      if (model) specs.push({ icon: "📟", label: model });
+      if (storage) specs.push({ icon: "💾", label: storage });
+      if (batteryHealth) specs.push({ icon: "🔋", label: `${batteryHealth}%` });
+      if (faceId) specs.push({ icon: "😊", label: faceId });
+      if (condition) specs.push({ icon: "📋", label: condition });
+    } else if (isProperty) {
+      if (product.bedrooms) specs.push({ icon: "🛏️", label: `${product.bedrooms} bedrooms` });
+      if (product.bathrooms) specs.push({ icon: "🚿", label: `${product.bathrooms} baths` });
+      if (product.sqm) specs.push({ icon: "📐", label: `${product.sqm} sqm` });
+      if (product.propertyType) specs.push({ icon: "🏠", label: product.propertyType });
+      if (condition) specs.push({ icon: "📋", label: condition });
+    } else {
+      if (brand) specs.push({ icon: "🏷️", label: brand });
+      if (model) specs.push({ icon: "📟", label: model });
+      if (storage) specs.push({ icon: "💾", label: storage });
+      if (condition) specs.push({ icon: "📋", label: condition });
     }
 
-    // ------------------------------------------------------------
-    // TABLETS
-    // ------------------------------------------------------------
+    // Max 4 specs
+    return specs.slice(0, 4).map((spec, index) => (
+      <span
+        key={`${spec.label}-${index}`}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "4px",
+          fontSize: "12px",
+          color: "#6b7280",
+        }}
+      >
+        {spec.icon} {spec.label}
+      </span>
+    ));
+  };
 
-    else if (normalizedCategory === "Tablets") {
-      if (brand) {
-        specs.push({
-          icon: "🏷️",
-          label: brand,
-        });
-      }
+  const isSold = status === "sold";
 
-      if (model) {
-        specs.push({
-          icon: "📟",
-          label: model,
-        });
-      }
+  // ─── Contact handlers ──────────────────────────────────────────
+  // CHAT: navigate to product page with openChat param
+  const handleChat = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    navigate(`/product/${_id}?openChat=true`);
+  };
 
-      if (year) {
-        specs.push({
-          icon: "📅",
-          label: year,
-        });
-      }
+  const handleCall = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
 
-      if (connectivity) {
-        specs.push({
-          icon: "📶",
-          label: connectivity,
-        });
-      }
-
-      if (screenSize) {
-        specs.push({
-          icon: "📐",
-          label: screenSize,
-        });
-      }
-
-      if (storage) {
-        specs.push({
-          icon: "💾",
-          label: storage,
-        });
-      }
+    const rawPhone = sellerObj?.phone || '';
+    let phone = String(rawPhone).replace(/\D/g, '');
+    if (phone.startsWith('0') && phone.length === 10) {
+      phone = '233' + phone.substring(1);
     }
-
-    // ------------------------------------------------------------
-    // TVS
-    // ------------------------------------------------------------
-
-    else if (normalizedCategory === "TVs") {
-      if (brand) {
-        specs.push({
-          icon: "🏷️",
-          label: brand,
-        });
-      }
-
-      if (model) {
-        specs.push({
-          icon: "📟",
-          label: model,
-        });
-      }
-
-      if (screenSize) {
-        specs.push({
-          icon: "📐",
-          label: screenSize,
-        });
-      }
-
-      if (connectivity) {
-        specs.push({
-          icon: "📶",
-          label: connectivity,
-        });
-      }
+    if (!phone || phone.length < 10) {
+      alert('This seller has not provided a valid phone number.');
+      return;
     }
-
-    // ------------------------------------------------------------
-    // GAME CONSOLES
-    // ------------------------------------------------------------
-
-    else if (normalizedCategory === "Game Consoles") {
-      if (brand) {
-        specs.push({
-          icon: "🏷️",
-          label: brand,
-        });
-      }
-
-      if (model) {
-        specs.push({
-          icon: "🎮",
-          label: model,
-        });
-      }
-
-      if (storage) {
-        specs.push({
-          icon: "💾",
-          label: storage,
-        });
-      }
-
-      if (connectivity) {
-        specs.push({
-          icon: "📶",
-          label: connectivity,
-        });
-      }
-    }
-
-    // ------------------------------------------------------------
-    // ACCESSORIES
-    // ------------------------------------------------------------
-
-    else if (normalizedCategory === "Accessories") {
-      if (brand) {
-        specs.push({
-          icon: "🏷️",
-          label: brand,
-        });
-      }
-
-      if (model) {
-        specs.push({
-          icon: "📟",
-          label: model,
-        });
-      }
-
-      if (connectivity) {
-        specs.push({
-          icon: "📶",
-          label: connectivity,
-        });
-      }
-    }
-
-    // ------------------------------------------------------------
-    // PHONES
-    // ------------------------------------------------------------
-
-    else if (normalizedCategory === "Phones") {
-      if (brand) {
-        specs.push({
-          icon: "🏷️",
-          label: brand,
-        });
-      }
-
-      if (model) {
-        specs.push({
-          icon: "📟",
-          label: model,
-        });
-      }
-
-      if (storage) {
-        specs.push({
-          icon: "💾",
-          label: storage,
-        });
-      }
-
-      if (batteryHealth) {
-        specs.push({
-          icon: "🔋",
-          label: `${batteryHealth}%`,
-        });
-      }
-
-      if (faceId) {
-        specs.push({
-          icon: "😊",
-          label: faceId,
-        });
-      }
-    }
-
-    // ============================================================
-    // CONDITION
-    // ============================================================
-
-    if (
-      condition &&
-      !specs.some((spec) => spec.label === condition)
-    ) {
-      specs.push({
-        icon: "📋",
-        label: condition,
-      });
-    }
-
-    // ============================================================
-    // MAX 4 SPECS ON CARD
-    // ============================================================
-
-    return specs
-      .slice(0, 4)
-      .map((spec, index) => (
-        <span
-          key={`${spec.label}-${index}`}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "4px",
-            fontSize: "12px",
-            color: "#666",
-          }}
-        >
-          {spec.icon} {spec.label}
-        </span>
-      ));
+    window.location.href = `tel:+${phone}`;
   };
 
   // ==============================================================
@@ -459,29 +266,31 @@ const ProductCard = ({ product }) => {
       className="product-card"
       style={{
         background: "#fff",
-        borderRadius: "8px",
+        borderRadius: "12px",
         overflow: "hidden",
         border: "1px solid #e5e7eb",
-        boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
         transition: "all 0.2s ease",
-        height: "100%",
+        boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
         display: "flex",
         flexDirection: "column",
-        minWidth: 0,
+        width: "100%",
+        height: "100%",
+        position: "relative",
       }}
     >
       {/* ==========================================================
-          IMAGE
+          IMAGE – square on desktop, taller on mobile
       ========================================================== */}
 
       <Link
         to={`/product/${_id}`}
+        className="product-image-wrapper"
         style={{
           display: "block",
           overflow: "hidden",
           background: "#f4f5f7",
           position: "relative",
-          paddingTop: "75%",
+          paddingTop: "100%",
         }}
       >
         <img
@@ -495,7 +304,8 @@ const ProductCard = ({ product }) => {
             left: 0,
             width: "100%",
             height: "100%",
-            objectFit: "contain",
+            objectFit: "cover",
+            objectPosition: "center",
             display: "block",
             transition: "transform 0.3s ease",
           }}
@@ -504,145 +314,76 @@ const ProductCard = ({ product }) => {
               e.currentTarget.src = "/placeholder.png";
             }
           }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.transform = "scale(1.03)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = "scale(1)";
-          }}
         />
 
-        {/* ========================================================
-            SELLER AVATAR + VERIFIED BADGE (NO NAME)
-        ======================================================== */}
+        {/* ─── Sold badge ─── */}
+        {isSold && <SoldBadge variant="card" />}
 
+        {/* ─── Top-left badges (Jiji style) – now smaller ─── */}
         <div
           style={{
             position: "absolute",
-            top: "10px",
-            left: "10px",
+            top: "8px",
+            left: "8px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "3px",
             zIndex: 2,
-            pointerEvents: "none",
           }}
         >
-          <div
-            style={{
-              position: "relative",
-              width: "40px",
-              height: "40px",
-            }}
-          >
-            {sellerImageUrl ? (
-              <img
-                src={sellerImageUrl}
-                alt={sellerName}
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  borderRadius: "50%",
-                  objectFit: "cover",
-                  border: "2px solid rgba(255,255,255,0.9)",
-                  boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
-                }}
-                onError={(e) => {
-                  // If the image fails, hide it and show the fallback
-                  e.currentTarget.style.display = "none";
-                  const parent = e.currentTarget.parentElement;
-                  const fallback = parent.querySelector(".seller-avatar-fallback");
-                  if (fallback) {
-                    fallback.style.display = "flex";
-                  }
-                }}
-              />
-            ) : null}
-
-            {/* Fallback avatar (shown when no image or image fails) */}
-            <div
-              className="seller-avatar-fallback"
+          {isVerified && (
+            <span
               style={{
-                width: "100%",
-                height: "100%",
-                borderRadius: "50%",
-                background: "#e5e7eb",
-                display: sellerImageUrl ? "none" : "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                border: "2px solid rgba(255,255,255,0.9)",
-                boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
+                background: "#1DA1F2",
+                color: "white",
+                fontSize: "8px",
+                fontWeight: 700,
+                padding: "1px 6px",
+                borderRadius: "8px",
+                textTransform: "uppercase",
+                display: "inline-block",
+                boxShadow: "0 1px 2px rgba(0,0,0,0.15)",
+                letterSpacing: "0.3px",
               }}
             >
-              <i
-                className="fas fa-user"
-                style={{
-                  fontSize: "18px",
-                  color: "#9ca3af",
-                }}
-              />
-            </div>
-
-            {isVerified && (
-              <div
-                style={{
-                  position: "absolute",
-                  bottom: 0,
-                  right: 0,
-                  width: "18px",
-                  height: "18px",
-                  background: "#1DA1F2",
-                  borderRadius: "50%",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  border: "2px solid white",
-                  boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
-                }}
-              >
-                <svg
-                  width="10"
-                  height="10"
-                  viewBox="0 0 20 20"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    d="M7.5 10.5L9.5 12.5L14 8"
-                    stroke="white"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </div>
-            )}
-          </div>
+              ✓ Verified ID
+            </span>
+          )}
+          {popular && (
+            <span
+              style={{
+                background: "#f59e0b",
+                color: "white",
+                fontSize: "8px",
+                fontWeight: 700,
+                padding: "1px 6px",
+                borderRadius: "8px",
+                textTransform: "uppercase",
+                display: "inline-block",
+                boxShadow: "0 1px 2px rgba(0,0,0,0.15)",
+              }}
+            >
+              ★ Popular
+            </span>
+          )}
+          {yearsOnPlatform >= 5 && (
+            <span
+              style={{
+                background: "#10b981",
+                color: "white",
+                fontSize: "8px",
+                fontWeight: 700,
+                padding: "1px 6px",
+                borderRadius: "8px",
+                textTransform: "uppercase",
+                display: "inline-block",
+                boxShadow: "0 1px 2px rgba(0,0,0,0.15)",
+              }}
+            >
+              {yearsOnPlatform}+ years on Jiji
+            </span>
+          )}
         </div>
-
-        {/* ========================================================
-            SOLD
-        ======================================================== */}
-
-        {status === "sold" && (
-          <div
-            style={{
-              position: "absolute",
-              top: "10px",
-              right: "10px",
-              background: "#dc2626",
-              color: "white",
-              padding: "4px 12px",
-              borderRadius: "20px",
-              fontSize: "12px",
-              fontWeight: 700,
-              textTransform: "uppercase",
-              letterSpacing: "0.5px",
-              boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
-              zIndex: 2,
-              pointerEvents: "none",
-            }}
-          >
-            SOLD
-          </div>
-        )}
       </Link>
 
       {/* ==========================================================
@@ -651,15 +392,14 @@ const ProductCard = ({ product }) => {
 
       <div
         style={{
-          padding: "12px 14px",
+          padding: "12px 14px 14px",
           flex: 1,
           display: "flex",
           flexDirection: "column",
-          minWidth: 0,
+          gap: "4px",
         }}
       >
         {/* TITLE */}
-
         <Link
           to={`/product/${_id}`}
           style={{
@@ -667,202 +407,284 @@ const ProductCard = ({ product }) => {
             color: "inherit",
           }}
         >
-          <h3
+          <div
+            className="title"
             style={{
-              fontSize: "15px",
               fontWeight: 600,
-              margin: "0 0 4px 0",
+              fontSize: "15px",
+              lineHeight: 1.3,
               display: "-webkit-box",
               WebkitLineClamp: 2,
               WebkitBoxOrient: "vertical",
               overflow: "hidden",
-              lineHeight: 1.3,
-              color: "#333",
+              color: "#111827",
+              marginBottom: "2px",
             }}
           >
             {title || "Untitled Product"}
-          </h3>
+          </div>
         </Link>
 
         {/* PRICE */}
-
         <div
+          className="price"
           style={{
-            fontSize: "16px",
+            fontSize: "20px",
             fontWeight: 700,
-            color: "#0066cc",
-            margin: "4px 0",
+            color: isSold ? "#9ca3af" : "#0066cc",
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
           }}
         >
           {formattedPrice}
+          {isSold && (
+            <span
+              style={{
+                fontSize: "11px",
+                fontWeight: 700,
+                color: "#dc2626",
+                background: "#fee2e2",
+                padding: "2px 8px",
+                borderRadius: "4px",
+              }}
+            >
+              SOLD
+            </span>
+          )}
         </div>
 
-        {/* LOCATION */}
-
+        {/* LOCATION (city only) & CONDITION */}
         <div
+          className="location-condition"
           style={{
-            fontSize: "12px",
-            color: "#777",
-            marginBottom: "8px",
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            fontSize: "13px",
+            color: "#6b7280",
+            marginTop: "2px",
           }}
         >
-          <i
-            className="fas fa-map-marker-alt"
-            style={{ marginRight: "4px" }}
-          />
-
-          {location || "Ghana"}
+          <span className="location-text">{getCityOnly(location) || "Ghana"}</span>
+          <span>•</span>
+          <span>{condition || "Used"}</span>
         </div>
 
-        {/* ========================================================
-            SPECIFICATIONS
-        ======================================================== */}
-
+        {/* SPECS */}
         <div
+          className="specs-row"
           style={{
             display: "flex",
             flexWrap: "wrap",
-            gap: "6px 12px",
-            margin: "6px 0 10px 0",
+            gap: "4px 10px",
             fontSize: "12px",
-            color: "#666",
+            color: "#6b7280",
+            margin: "6px 0 8px",
           }}
         >
           {renderCategorySpecs()}
-
-          {/* ======================================================
-              SIM STATUS — PHONES ONLY
-          ====================================================== */}
-
+          {warranty && (
+            <span style={{ display: "flex", alignItems: "center", gap: "3px" }}>
+              <i className="fas fa-shield-alt" /> {warranty}
+            </span>
+          )}
           {isPhone && simStatus && (
             <span
               style={{
                 display: "flex",
                 alignItems: "center",
-                gap: "4px",
+                gap: "3px",
                 color: "#0055a5",
                 fontWeight: 600,
               }}
             >
-              <i className="fas fa-sim-card" />
-              SIM: {simStatus}
+              <i className="fas fa-sim-card" /> SIM: {simStatus}
             </span>
           )}
+          <span>{swapAccepted ? "🔄 Swap OK" : "🚫 No swap"}</span>
+        </div>
 
-          {/* ======================================================
-              WARRANTY
-          ====================================================== */}
+        {/* ─── PRODUCT DESCRIPTION (tiny, below specs) ─── */}
+        {description && String(description).trim() && (
+          <div
+            className="product-description"
+            style={{
+              margin: "4px 0 6px",
+              fontSize: "12px",
+              lineHeight: 1.4,
+              color: "#6b7280",
+              display: "-webkit-box",
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: "vertical",
+              overflow: "hidden",
+              wordBreak: "break-word",
+            }}
+          >
+            {description}
+          </div>
+        )}
 
-          {warranty && (
-            <span
+        {/* ─── SELLER INFO (Jiji style) ─── */}
+        <div
+          style={{
+            marginTop: "auto",
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            paddingTop: "10px",
+            borderTop: "1px solid #f3f4f6",
+          }}
+        >
+          {sellerImageUrl ? (
+            <img
+              src={sellerImageUrl}
+              alt={sellerName}
               style={{
+                width: "28px",
+                height: "28px",
+                borderRadius: "50%",
+                objectFit: "cover",
+                border: "1px solid #e5e7eb",
+              }}
+            />
+          ) : (
+            <div
+              style={{
+                width: "28px",
+                height: "28px",
+                borderRadius: "50%",
+                background: "#e5e7eb",
                 display: "flex",
                 alignItems: "center",
-                gap: "4px",
+                justifyContent: "center",
+                fontSize: "12px",
+                color: "#9ca3af",
               }}
             >
-              <i className="fas fa-shield-alt" />
-              {warranty}
-            </span>
+              <i className="fas fa-user" />
+            </div>
           )}
-
-          {/* ======================================================
-              SWAP
-          ====================================================== */}
-
-          {swapAccepted !== undefined && (
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "4px", flexWrap: "wrap" }}>
+              <span style={{ fontSize: "13px", fontWeight: 500, color: "#111827" }}>
+                {sellerName}
+              </span>
+              {isVerified && <VerifiedBadge size={12} />}
+            </div>
+            {accountBadge && (
+              <span
+                style={{
+                  fontSize: "10px",
+                  fontWeight: 700,
+                  color: accountBadge.color,
+                  background: accountBadge.bg,
+                  padding: "1px 6px",
+                  borderRadius: "10px",
+                  display: "inline-block",
+                  marginTop: "2px",
+                }}
+              >
+                {accountBadge.label}
+              </span>
+            )}
+          </div>
+          {yearsOnPlatform >= 3 && (
             <span
               style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "4px",
+                fontSize: "10px",
+                color: "#6b7280",
+                whiteSpace: "nowrap",
               }}
             >
-              {swapAccepted ? (
-                <span style={{ color: "#22c55e" }}>
-                  🔄 Swap OK
-                </span>
-              ) : (
-                <span style={{ color: "#94a3b8" }}>
-                  🚫 No swap
-                </span>
-              )}
+              {yearsOnPlatform}+ yrs
             </span>
           )}
         </div>
 
-        {/* ========================================================
-            PRODUCT DESCRIPTION
-            APPEARS BELOW ALL EXISTING PRODUCT DETAILS
-        ======================================================== */}
-
-        {description && String(description).trim() && (
+        {/* ─── Contact buttons (CHAT + CALL) – compact & responsive ─── */}
+        {sellerObj?.phone && (
           <div
+            className="contact-buttons"
             style={{
-              marginTop: "2px",
-              marginBottom: "12px",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              marginTop: "8px",
               paddingTop: "8px",
-              borderTop: "1px solid #f0f0f0",
+              borderTop: "1px solid #f3f4f6",
             }}
           >
-            <div
+            <button
+              onClick={handleChat}
+              className="contact-btn chat-btn"
               style={{
-                fontSize: "11px",
-                fontWeight: 700,
-                color: "#555",
-                marginBottom: "4px",
-                textTransform: "uppercase",
-                letterSpacing: "0.3px",
-              }}
-            >
-              Description
-            </div>
-
-            <p
-              style={{
-                margin: 0,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "4px",
+                padding: "5px 12px",
+                borderRadius: "16px",
+                border: "none",
+                background: "#25D366",
+                color: "white",
                 fontSize: "12px",
-                lineHeight: 1.5,
-                color: "#666",
-                display: "-webkit-box",
-                WebkitLineClamp: 3,
-                WebkitBoxOrient: "vertical",
-                overflow: "hidden",
-                wordBreak: "break-word",
+                fontWeight: 600,
+                cursor: "pointer",
+                transition: "background 0.2s",
+                flex: 1,
+                minHeight: "28px",
               }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = "#1ebe5c")}
+              onMouseLeave={(e) => (e.currentTarget.style.background = "#25D366")}
             >
-              {description}
-            </p>
+              <i className="fas fa-comment-dots" style={{ fontSize: "13px" }} />
+              CHAT
+            </button>
+
+            <button
+              onClick={handleCall}
+              className="contact-btn call-btn"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "4px",
+                padding: "5px 12px",
+                borderRadius: "16px",
+                border: "none",
+                background: "#3b82f6",
+                color: "white",
+                fontSize: "12px",
+                fontWeight: 600,
+                cursor: "pointer",
+                transition: "background 0.2s",
+                flex: 1,
+                minHeight: "28px",
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = "#2563eb")}
+              onMouseLeave={(e) => (e.currentTarget.style.background = "#3b82f6")}
+            >
+              <i className="fas fa-phone" style={{ fontSize: "13px" }} />
+              CALL
+            </button>
           </div>
         )}
 
-        {/* ========================================================
-            VIEW DETAILS
-        ======================================================== */}
-
+        {/* ─── "View Details" link ─── */}
         <Link
           to={`/product/${_id}`}
           style={{
-            marginTop: "auto",
-            padding: "8px 16px",
-            background: "#0066cc",
-            color: "white",
-            border: "none",
-            borderRadius: "4px",
-            fontWeight: 600,
-            fontSize: "13px",
+            marginTop: "8px",
+            padding: "6px 0",
             textAlign: "center",
+            fontSize: "13px",
+            fontWeight: 600,
+            color: "#0066cc",
             textDecoration: "none",
-            transition: "all 0.2s ease",
+            borderTop: "1px solid #f3f4f6",
+            paddingTop: "8px",
             display: "block",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = "#005bb5";
-            e.currentTarget.style.transform = "translateY(-1px)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = "#0066cc";
-            e.currentTarget.style.transform = "translateY(0)";
           }}
         >
           View Details →
@@ -882,20 +704,20 @@ const ProductSkeleton = () => {
       className="product-card"
       style={{
         background: "#fff",
-        borderRadius: "8px",
+        borderRadius: "12px",
         overflow: "hidden",
         border: "1px solid #e5e7eb",
-        boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+        boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
       }}
     >
       <div
+        className="product-image-wrapper"
         style={{
           width: "100%",
-          height: "200px",
+          paddingTop: "100%",
           background: "#f4f5f7",
         }}
       />
-
       <div style={{ padding: "14px" }}>
         <div
           style={{
@@ -906,7 +728,6 @@ const ProductSkeleton = () => {
             marginBottom: "10px",
           }}
         />
-
         <div
           style={{
             width: "45%",
@@ -916,7 +737,6 @@ const ProductSkeleton = () => {
             marginBottom: "10px",
           }}
         />
-
         <div
           style={{
             width: "60%",
@@ -926,7 +746,6 @@ const ProductSkeleton = () => {
             marginBottom: "10px",
           }}
         />
-
         <div
           style={{
             width: "80%",
@@ -936,7 +755,6 @@ const ProductSkeleton = () => {
             marginBottom: "18px",
           }}
         />
-
         <div
           style={{
             width: "100%",
@@ -1284,26 +1102,101 @@ const Products = () => {
         {`
           .products-grid {
             display: grid;
-            grid-template-columns: repeat(4, minmax(0, 1fr));
-            gap: 16px;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
             width: 100%;
           }
 
           @media (max-width: 1100px) {
             .products-grid {
-              grid-template-columns: repeat(3, minmax(0, 1fr));
+              grid-template-columns: repeat(3, 1fr);
             }
           }
 
           @media (max-width: 800px) {
             .products-grid {
-              grid-template-columns: repeat(2, minmax(0, 1fr));
+              grid-template-columns: repeat(2, 1fr);
             }
           }
 
           @media (max-width: 520px) {
             .products-grid {
               grid-template-columns: 1fr;
+            }
+          }
+
+          /* ─── Mobile: make product image taller ─── */
+          @media (max-width: 520px) {
+            .product-image-wrapper {
+              padding-top: 130% !important;
+            }
+
+            .location-text {
+              font-size: 12px !important;
+            }
+
+            .product-description {
+              font-size: 10px !important;
+              line-height: 1.3 !important;
+              margin: 2px 0 4px !important;
+              -webkit-line-clamp: 2 !important;
+            }
+
+            .specs-row {
+              font-size: 10px !important;
+              gap: 3px 8px !important;
+              margin: 4px 0 6px !important;
+            }
+            .specs-row span {
+              font-size: 10px !important;
+            }
+
+            .contact-buttons {
+              gap: 6px !important;
+            }
+
+            .contact-btn {
+              padding: 4px 8px !important;
+              font-size: 10px !important;
+              min-height: 24px !important;
+              border-radius: 12px !important;
+            }
+
+            .contact-btn i {
+              font-size: 10px !important;
+            }
+
+            .product-card .title {
+              font-size: 14px !important;
+            }
+
+            .product-card .price {
+              font-size: 17px !important;
+            }
+
+            .location-condition {
+              font-size: 11px !important;
+            }
+          }
+
+          @media (max-width: 380px) {
+            .contact-btn {
+              padding: 3px 6px !important;
+              font-size: 9px !important;
+              min-height: 22px !important;
+            }
+            .contact-btn i {
+              font-size: 9px !important;
+            }
+
+            .product-description {
+              font-size: 9px !important;
+            }
+            .specs-row {
+              font-size: 9px !important;
+            }
+            .specs-row span {
+              font-size: 9px !important;
             }
           }
         `}

@@ -5,6 +5,7 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { getImageUrl, updateProductStatus } from '../services/api';
 import SoldBadge from './SoldBadge';
+import VerifiedBadge from './VerifiedBadge';
 
 const ProductCard = ({ product, onStatusToggle, appleStyle = false, videoPreview = false }) => {
   const { toggleFavorite, isFavorite } = useCart();
@@ -31,14 +32,11 @@ const ProductCard = ({ product, onStatusToggle, appleStyle = false, videoPreview
     product.sellerId === user._id
   );
 
-  // ─── Seller object (includes the seller's profile picture fields) ───
+  // ─── Seller data ──────────────────────────────────────────────
   const seller = product.sellerId || product.seller || {};
   const sellerName = seller.name || seller.shopName || 'Seller';
   const isVerified = seller.isVerified === true;
 
-  // ─── Seller profile image – tries all fields where the user's photo is stored ───
-  //     The image may be a full Cloudinary URL (starts with http) or a relative path.
-  //     getImageUrl() correctly handles both – if it's already a full URL, it returns it unchanged.
   const sellerImage =
     seller.profileImage ||
     seller.avatar ||
@@ -46,13 +44,23 @@ const ProductCard = ({ product, onStatusToggle, appleStyle = false, videoPreview
     seller.picture ||
     seller.profilePicture ||
     null;
+  const sellerImageUrl = sellerImage ? getImageUrl(sellerImage) : null;
 
-  // ─── Generate the final image URL ──────────────────────────────
-  //     If sellerImage is a full Cloudinary URL, getImageUrl returns it directly.
-  //     If it's a relative path, getImageUrl prepends the API base URL.
-  const sellerImageUrl = sellerImage
-    ? getImageUrl(sellerImage)  // <-- this handles Cloudinary URLs automatically
-    : null;
+  // ─── Jiji-style seller attributes ──────────────────────────────
+  const yearsOnPlatform = seller.yearsOnPlatform || 0;
+  const accountType = seller.accountType || ''; // 'diamond', 'vip', 'enterprise'
+  const isPopular = product.popular || false;
+  const isVerifiedId = isVerified; // same as verified
+
+  // ─── Helper: badge colors ──────────────────────────────────────
+  const getAccountBadge = () => {
+    const type = accountType.toLowerCase();
+    if (type === 'diamond') return { label: '💎 DIAMOND', color: '#0ea5e9', bg: '#e0f2fe' };
+    if (type === 'vip') return { label: '⭐ VIP', color: '#f59e0b', bg: '#fef3c7' };
+    if (type === 'enterprise') return { label: '🏢 ENTERPRISE', color: '#8b5cf6', bg: '#ede9fe' };
+    return null;
+  };
+  const accountBadge = getAccountBadge();
 
   // ─── Helper: render category‑specific specs ──────────────────
   const renderCategorySpecs = () => {
@@ -86,6 +94,13 @@ const ProductCard = ({ product, onStatusToggle, appleStyle = false, videoPreview
       if (product.storage) specs.push({ icon: '💾', label: product.storage });
       if (product.condition) specs.push({ icon: '📋', label: product.condition });
     }
+    else if (category === 'Property' || category === 'Real Estate') {
+      if (product.bedrooms) specs.push({ icon: '🛏️', label: `${product.bedrooms} bedrooms` });
+      if (product.bathrooms) specs.push({ icon: '🚿', label: `${product.bathrooms} baths` });
+      if (product.sqm) specs.push({ icon: '📐', label: `${product.sqm} sqm` });
+      if (product.propertyType) specs.push({ icon: '🏠', label: product.propertyType });
+      if (product.condition) specs.push({ icon: '📋', label: product.condition });
+    }
     else {
       if (product.brand) specs.push({ icon: '🏷️', label: product.brand });
       if (product.model) specs.push({ icon: '📟', label: product.model });
@@ -94,39 +109,56 @@ const ProductCard = ({ product, onStatusToggle, appleStyle = false, videoPreview
     }
 
     return specs.slice(0, 4).map((spec, index) => (
-      <span key={index} style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: '#666' }}>
+      <span key={index} style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: '#6b7280' }}>
         {spec.icon} {spec.label}
       </span>
     ));
+  };
+
+  // ─── Contact handlers ──────────────────────────────────────────
+  // CHAT: navigate to product page with openChat param
+  const handleChat = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    navigate(`/product/${product._id}?openChat=true`);
+  };
+
+  const handleCall = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const rawPhone = seller?.phone || '';
+    let phone = String(rawPhone).replace(/\D/g, '');
+    if (phone.startsWith('0') && phone.length === 10) {
+      phone = '233' + phone.substring(1);
+    }
+    if (!phone || phone.length < 10) {
+      alert('This seller has not provided a valid phone number.');
+      return;
+    }
+    window.location.href = `tel:+${phone}`;
   };
 
   // ─── Handle "Mark as Sold" ─────────────────────────────────────
   const handleMarkAsSold = async (e) => {
     e.preventDefault();
     e.stopPropagation();
-
     if (!user) {
       alert('Please login to manage your products.');
       return;
     }
-
     const newStatus = isSold ? 'active' : 'sold';
     const confirmMessage = isSold
       ? `Mark "${product.title}" as available again?`
       : `Mark "${product.title}" as sold? This will hide the Contact button.`;
-
     if (!window.confirm(confirmMessage)) return;
-
     setIsUpdating(true);
     try {
       const result = await updateProductStatus(product._id, newStatus, token);
       if (result.success) {
         alert(`✅ Product marked as ${newStatus === 'sold' ? 'sold' : 'available'}!`);
-        if (onStatusToggle) {
-          onStatusToggle(product._id);
-        } else {
-          window.location.reload();
-        }
+        if (onStatusToggle) onStatusToggle(product._id);
+        else window.location.reload();
       } else {
         alert('❌ Failed to update status: ' + (result.message || 'Unknown error'));
       }
@@ -137,22 +169,22 @@ const ProductCard = ({ product, onStatusToggle, appleStyle = false, videoPreview
     }
   };
 
+  // ─── Render ─────────────────────────────────────────────────────
   return (
     <div
-      className={`product-card ${appleStyle ? 'product-card-apple' : ''}`}
+      className="product-card"
       style={{
-        background: 'white',
-        borderRadius: appleStyle ? '18px' : '8px',
+        background: '#fff',
+        borderRadius: '12px',
         overflow: 'hidden',
-        border: appleStyle ? 'none' : '1px solid #e5e7eb',
+        border: '1px solid #e5e7eb',
         transition: 'all 0.2s ease',
-        boxShadow: appleStyle ? '0 2px 12px rgba(0,0,0,0.04)' : '0 1px 2px rgba(0,0,0,0.05)',
-        cursor: 'pointer',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
         display: 'flex',
         flexDirection: 'column',
-        maxWidth: '280px',
-        margin: '0 auto',
+        width: '100%',
         height: '100%',
+        position: 'relative',
       }}
     >
       {/* ─── Image ─── */}
@@ -161,7 +193,7 @@ const ProductCard = ({ product, onStatusToggle, appleStyle = false, videoPreview
         className="image-wrapper"
         style={{
           position: 'relative',
-          paddingTop: '100%',
+          paddingTop: '75%',
           background: '#f4f5f7',
           overflow: 'hidden',
           display: 'block',
@@ -188,126 +220,92 @@ const ProductCard = ({ product, onStatusToggle, appleStyle = false, videoPreview
 
         {isSold && <SoldBadge variant="card" />}
 
-        {product.promo && (
-          <span
-            className="promo-badge"
-            style={{
-              position: 'absolute',
-              top: '10px',
-              left: '10px',
+        {/* ─── Top-left badges (Jiji style) ─── */}
+        <div style={{ position: 'absolute', top: '8px', left: '8px', display: 'flex', flexDirection: 'column', gap: '4px', zIndex: 2 }}>
+          {isVerifiedId && (
+            <span style={{
+              background: '#1DA1F2',
+              color: 'white',
+              fontSize: '10px',
+              fontWeight: 700,
+              padding: '2px 8px',
+              borderRadius: '12px',
+              textTransform: 'uppercase',
+              display: 'inline-block',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+            }}>
+              ✓ Verified ID
+            </span>
+          )}
+          {isPopular && (
+            <span style={{
               background: '#f59e0b',
               color: 'white',
-              fontSize: '12px',
+              fontSize: '10px',
               fontWeight: 700,
-              padding: '3px 10px',
-              borderRadius: '4px',
+              padding: '2px 8px',
+              borderRadius: '12px',
               textTransform: 'uppercase',
-            }}
-          >
-            Promoted
-          </span>
-        )}
+              display: 'inline-block',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+            }}>
+              ★ Popular
+            </span>
+          )}
+          {yearsOnPlatform >= 5 && (
+            <span style={{
+              background: '#10b981',
+              color: 'white',
+              fontSize: '10px',
+              fontWeight: 700,
+              padding: '2px 8px',
+              borderRadius: '12px',
+              textTransform: 'uppercase',
+              display: 'inline-block',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+            }}>
+              {yearsOnPlatform}+ years on Jiji
+            </span>
+          )}
+        </div>
 
-        {/* ─── SELLER AVATAR (profile picture) + VERIFIED BADGE ─── */}
-        <div
+        {/* ─── Favourite button ─── */}
+        <button
+          type="button"
+          className="fav-btn"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (!user) {
+              navigate('/login', { state: { from: location.pathname } });
+              return;
+            }
+            toggleFavorite(product._id);
+          }}
           style={{
             position: 'absolute',
-            top: '10px',
-            left: '10px',
-            zIndex: 2,
-            pointerEvents: 'none',
+            top: '8px',
+            right: '8px',
+            background: 'rgba(255,255,255,0.85)',
+            border: 'none',
+            borderRadius: '50%',
+            width: '32px',
+            height: '32px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '16px',
+            color: liked ? '#e74c3c' : '#666',
+            transition: '0.2s',
+            cursor: 'pointer',
+            zIndex: 3,
+            backdropFilter: 'blur(4px)',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
           }}
+          aria-label={liked ? 'Remove from favorites' : 'Add to favorites'}
         >
-          <div
-            style={{
-              position: 'relative',
-              width: '40px',
-              height: '40px',
-            }}
-          >
-            {sellerImageUrl ? (
-              <img
-                src={sellerImageUrl}
-                alt={sellerName}
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  borderRadius: '50%',
-                  objectFit: 'cover',
-                  border: '2px solid rgba(255,255,255,0.9)',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-                }}
-                onError={(e) => {
-                  // If the image fails, hide it and show the fallback
-                  e.currentTarget.style.display = 'none';
-                  const parent = e.currentTarget.parentElement;
-                  const fallback = parent.querySelector('.seller-avatar-fallback');
-                  if (fallback) fallback.style.display = 'flex';
-                }}
-              />
-            ) : null}
-
-            {/* Fallback icon (shown when no image or image fails) */}
-            <div
-              className="seller-avatar-fallback"
-              style={{
-                width: '100%',
-                height: '100%',
-                borderRadius: '50%',
-                background: '#e5e7eb',
-                display: sellerImageUrl ? 'none' : 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                border: '2px solid rgba(255,255,255,0.9)',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-              }}
-            >
-              <i
-                className="fas fa-user"
-                style={{
-                  fontSize: '18px',
-                  color: '#9ca3af',
-                }}
-              />
-            </div>
-
-            {/* Verified badge */}
-            {isVerified && (
-              <div
-                style={{
-                  position: 'absolute',
-                  bottom: 0,
-                  right: 0,
-                  width: '18px',
-                  height: '18px',
-                  background: '#1DA1F2',
-                  borderRadius: '50%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  border: '2px solid white',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-                }}
-              >
-                <svg
-                  width="10"
-                  height="10"
-                  viewBox="0 0 20 20"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    d="M7.5 10.5L9.5 12.5L14 8"
-                    stroke="white"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </div>
-            )}
-          </div>
-        </div>
+          <i className={liked ? 'fas fa-heart' : 'far fa-heart'}></i>
+        </button>
 
         {videoPreview && (
           <div
@@ -334,55 +332,20 @@ const ProductCard = ({ product, onStatusToggle, appleStyle = false, videoPreview
             <span style={{ marginLeft: '2px' }}>▶</span>
           </div>
         )}
-
-        {/* ─── FAVOURITE BUTTON (with auth check) ─── */}
-        <button
-          type="button"
-          className="fav-btn"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            if (!user) {
-              navigate('/login', { state: { from: location.pathname } });
-              return;
-            }
-            toggleFavorite(product._id);
-          }}
-          style={{
-            position: 'absolute',
-            top: '10px',
-            right: '10px',
-            background: 'rgba(255,255,255,0.8)',
-            border: 'none',
-            borderRadius: '50%',
-            width: '32px',
-            height: '32px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '14px',
-            color: liked ? '#e74c3c' : '#666',
-            transition: '0.2s',
-            cursor: 'pointer',
-            zIndex: 3,
-            backdropFilter: 'blur(4px)',
-          }}
-          aria-label={liked ? 'Remove from favorites' : 'Add to favorites'}
-        >
-          <i className={liked ? 'fas fa-heart' : 'far fa-heart'}></i>
-        </button>
       </Link>
 
       {/* ─── Product Info ─── */}
       <div
         className="info"
         style={{
-          padding: appleStyle ? '14px 16px 16px' : '12px',
+          padding: '12px 14px 14px',
           flex: 1,
           display: 'flex',
           flexDirection: 'column',
+          gap: '4px',
         }}
       >
+        {/* Title */}
         <Link
           to={`/product/${product._id}`}
           style={{
@@ -394,29 +357,27 @@ const ProductCard = ({ product, onStatusToggle, appleStyle = false, videoPreview
             className="title"
             style={{
               fontWeight: 600,
-              fontSize: appleStyle ? '15px' : '14px',
-              marginBottom: '4px',
+              fontSize: '15px',
               lineHeight: 1.3,
               display: '-webkit-box',
               WebkitLineClamp: 2,
               WebkitBoxOrient: 'vertical',
               overflow: 'hidden',
-              color: '#333',
+              color: '#111827',
+              marginBottom: '2px',
             }}
           >
             {product.title || 'Untitled'}
           </div>
         </Link>
 
-        {/* ─── Seller name is REMOVED from here ─── */}
-
+        {/* Price */}
         <div
           className="price"
           style={{
-            fontSize: appleStyle ? '18px' : '16px',
+            fontSize: '20px',
             fontWeight: 700,
             color: isSold ? '#9ca3af' : '#0066cc',
-            marginBottom: '4px',
             display: 'flex',
             alignItems: 'center',
             gap: '8px',
@@ -439,154 +400,233 @@ const ProductCard = ({ product, onStatusToggle, appleStyle = false, videoPreview
           )}
         </div>
 
-        {/* ─── Category‑specific specs ─── */}
+        {/* Location & condition */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            fontSize: '13px',
+            color: '#6b7280',
+            marginTop: '2px',
+          }}
+        >
+          <span>{product.location || 'Ghana'}</span>
+          <span>•</span>
+          <span>{product.condition || 'Used'}</span>
+        </div>
+
+        {/* Specs row */}
         <div
           style={{
             display: 'flex',
             flexWrap: 'wrap',
             gap: '4px 10px',
-            fontSize: '11px',
-            color: '#666',
-            marginBottom: '6px',
+            fontSize: '12px',
+            color: '#6b7280',
+            margin: '6px 0 8px',
           }}
         >
           {renderCategorySpecs()}
-        </div>
-
-        {/* ─── Common extra fields ─── */}
-        <div
-          style={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: '4px 10px',
-            fontSize: '11px',
-            color: '#666',
-            marginBottom: '6px',
-          }}
-        >
           {product.warranty && (
             <span style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
               <i className="fas fa-shield-alt"></i> {product.warranty}
             </span>
           )}
-          <span style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
-            {swapLabel}
-          </span>
-
-          {/* ─── SIM STATUS – hidden for laptops ─── */}
           {product.simStatus && product.category !== 'Laptops' && (
             <span style={{ display: 'flex', alignItems: 'center', gap: '3px', color: '#0055a5', fontWeight: 600 }}>
               <i className="fas fa-sim-card"></i> SIM: {product.simStatus}
             </span>
           )}
+          <span>{swapLabel}</span>
         </div>
 
-        <div
-          className="meta"
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            fontSize: '11px',
-            color: '#777',
-            marginTop: '2px',
-            marginBottom: '8px',
-            flexWrap: 'wrap',
-            gap: '3px',
-          }}
-        >
-          <span className="location">
-            <i className="fas fa-map-marker-alt"></i> {product.location || 'Ghana'}
-          </span>
-          <span className="date">
-            {product.createdAt ? new Date(product.createdAt).toLocaleDateString() : ''}
-          </span>
-        </div>
-
+        {/* ─── Seller info (Jiji style) ─── */}
         <div
           style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '6px',
             marginTop: 'auto',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            paddingTop: '10px',
+            borderTop: '1px solid #f3f4f6',
           }}
         >
-          <Link
-            to={`/product/${product._id}`}
+          {sellerImageUrl ? (
+            <img
+              src={sellerImageUrl}
+              alt={sellerName}
+              style={{
+                width: '28px',
+                height: '28px',
+                borderRadius: '50%',
+                objectFit: 'cover',
+                border: '1px solid #e5e7eb',
+              }}
+            />
+          ) : (
+            <div
+              style={{
+                width: '28px',
+                height: '28px',
+                borderRadius: '50%',
+                background: '#e5e7eb',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '12px',
+                color: '#9ca3af',
+              }}
+            >
+              <i className="fas fa-user"></i>
+            </div>
+          )}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '13px', fontWeight: 500, color: '#111827' }}>
+                {sellerName}
+              </span>
+              {isVerified && <VerifiedBadge size={12} />}
+            </div>
+            {accountBadge && (
+              <span
+                style={{
+                  fontSize: '10px',
+                  fontWeight: 700,
+                  color: accountBadge.color,
+                  background: accountBadge.bg,
+                  padding: '1px 6px',
+                  borderRadius: '10px',
+                  display: 'inline-block',
+                  marginTop: '2px',
+                }}
+              >
+                {accountBadge.label}
+              </span>
+            )}
+          </div>
+          {yearsOnPlatform >= 3 && (
+            <span
+              style={{
+                fontSize: '10px',
+                color: '#6b7280',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {yearsOnPlatform}+ yrs
+            </span>
+          )}
+        </div>
+
+        {/* ─── Contact buttons (CHAT + CALL) – compact ─── */}
+        {seller?.phone && (
+          <div
+            className="contact-buttons"
             style={{
-              padding: appleStyle ? '8px 16px' : '8px 12px',
-              background: isSold ? '#9ca3af' : '#0066cc',
-              color: 'white',
-              border: 'none',
-              borderRadius: appleStyle ? '9999px' : '4px',
-              fontWeight: 600,
-              fontSize: appleStyle ? '13px' : '12px',
-              textAlign: 'center',
-              textDecoration: 'none',
-              transition: 'all 0.2s ease',
-              display: 'block',
-              cursor: isSold ? 'default' : 'pointer',
-              boxShadow: isSold ? 'none' : '0 2px 4px rgba(0,102,204,0.2)',
-            }}
-            onMouseEnter={(e) => {
-              if (!isSold) {
-                e.currentTarget.style.background = '#005bb5';
-                e.currentTarget.style.transform = 'translateY(-1px)';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!isSold) {
-                e.currentTarget.style.background = '#0066cc';
-                e.currentTarget.style.transform = 'translateY(0)';
-              }
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              marginTop: '8px',
+              paddingTop: '8px',
+              borderTop: '1px solid #f3f4f6',
             }}
           >
-            {isSold ? 'Sold Out' : 'View Product →'}
-          </Link>
+            <button
+              onClick={handleChat}
+              className="contact-btn chat-btn"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '4px',
+                padding: '5px 12px',
+                borderRadius: '16px',
+                border: 'none',
+                background: '#25D366',
+                color: 'white',
+                fontSize: '12px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'background 0.2s',
+                flex: 1,
+                minHeight: '28px',
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = '#1ebe5c')}
+              onMouseLeave={(e) => (e.currentTarget.style.background = '#25D366')}
+            >
+              <i className="fas fa-comment-dots" style={{ fontSize: '13px' }} />
+              CHAT
+            </button>
 
-          {isOwner && !isUpdating && (
+            <button
+              onClick={handleCall}
+              className="contact-btn call-btn"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '4px',
+                padding: '5px 12px',
+                borderRadius: '16px',
+                border: 'none',
+                background: '#3b82f6',
+                color: 'white',
+                fontSize: '12px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'background 0.2s',
+                flex: 1,
+                minHeight: '28px',
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = '#2563eb')}
+              onMouseLeave={(e) => (e.currentTarget.style.background = '#3b82f6')}
+            >
+              <i className="fas fa-phone" style={{ fontSize: '13px' }} />
+              CALL
+            </button>
+          </div>
+        )}
+
+        {/* ─── Action buttons (owner only) ─── */}
+        {isOwner && (
+          <div style={{ marginTop: '8px', display: 'flex', gap: '6px' }}>
             <button
               onClick={handleMarkAsSold}
+              disabled={isUpdating}
               style={{
-                padding: appleStyle ? '6px 14px' : '4px 10px',
+                padding: '4px 12px',
                 background: isSold ? '#22c55e' : '#dc2626',
                 color: 'white',
                 border: 'none',
-                borderRadius: appleStyle ? '9999px' : '4px',
-                fontWeight: 600,
-                fontSize: appleStyle ? '12px' : '11px',
-                textAlign: 'center',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                display: 'block',
-                width: '100%',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = isSold ? '#16a34a' : '#b91c1c';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = isSold ? '#22c55e' : '#dc2626';
-              }}
-            >
-              {isSold ? '🔁 Mark Available' : '⚡ Mark as Sold'}
-            </button>
-          )}
-
-          {isOwner && isUpdating && (
-            <div
-              style={{
-                padding: '6px 14px',
-                background: '#9ca3af',
-                color: 'white',
-                borderRadius: appleStyle ? '9999px' : '4px',
+                borderRadius: '4px',
                 fontSize: '12px',
-                textAlign: 'center',
-                opacity: 0.7,
+                fontWeight: 600,
+                cursor: isUpdating ? 'not-allowed' : 'pointer',
+                opacity: isUpdating ? 0.6 : 1,
+                flex: 1,
               }}
             >
-              ⏳ Updating...
-            </div>
-          )}
-        </div>
+              {isUpdating ? '⏳' : isSold ? 'Mark Available' : 'Mark Sold'}
+            </button>
+            <Link
+              to={`/edit-product/${product._id}`}
+              style={{
+                padding: '4px 12px',
+                background: '#2563eb',
+                color: 'white',
+                borderRadius: '4px',
+                fontSize: '12px',
+                fontWeight: 600,
+                textDecoration: 'none',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              Edit
+            </Link>
+          </div>
+        )}
       </div>
     </div>
   );
