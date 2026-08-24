@@ -10,7 +10,7 @@ import React, {
 import { useAuth } from "../../../context/AuthContext";
 
 import {
-  getNotifications,
+  getAdminNotifications,
   markNotificationRead,
 } from "../../../services/api";
 
@@ -71,10 +71,9 @@ const AdminHeader = ({
           "🔔 Fetching admin notifications..."
         );
 
-        // IMPORTANT:
-        // getForAdmin() expects ONLY the token.
+        // ─── FIXED: Use admin-specific endpoint ───
         const data =
-          await getNotifications(token);
+          await getAdminNotifications(token);
 
         console.log(
           "✅ Admin notifications:",
@@ -93,10 +92,6 @@ const AdminHeader = ({
           "❌ Error fetching notifications:",
           err
         );
-
-        // Do not log the user out here.
-        // A notification failure should not destroy
-        // an otherwise valid login session.
 
         if (
           err?.status === 401 ||
@@ -347,7 +342,7 @@ const AdminHeader = ({
           flexWrap: "wrap",
         }}
       >
-        {/* Sidebar */}
+        {/* Sidebar toggle */}
         <button
           type="button"
           onClick={() =>

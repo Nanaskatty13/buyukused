@@ -28,8 +28,8 @@ router.get('/:userId', auth, async (req, res) => {
     const messages = await Message.find({
       $or: [{ sender: userId }, { receiver: userId }],
     })
-      .populate('sender', 'name email profileImage')
-      .populate('receiver', 'name email profileImage')
+      .populate('sender', 'name email profileImage avatar photo isVerified')
+      .populate('receiver', 'name email profileImage avatar photo isVerified')
       .populate('productId', 'title image price')
       .sort({ createdAt: -1 });
     res.json({ success: true, messages });
@@ -50,8 +50,8 @@ router.get('/conversation/:otherUserId', auth, async (req, res) => {
         { sender: otherUserId, receiver: userId },
       ],
     })
-      .populate('sender', 'name email profileImage')
-      .populate('receiver', 'name email profileImage')
+      .populate('sender', 'name email profileImage avatar photo isVerified')
+      .populate('receiver', 'name email profileImage avatar photo isVerified')
       .populate('productId', 'title image price')
       .sort({ createdAt: 1 });
     res.json({ success: true, messages });
@@ -76,8 +76,8 @@ router.post('/', auth, async (req, res) => {
       isRead: false,
     });
     await newMessage.save();
-    await newMessage.populate('sender', 'name email profileImage');
-    await newMessage.populate('receiver', 'name email profileImage');
+    await newMessage.populate('sender', 'name email profileImage avatar photo isVerified');
+    await newMessage.populate('receiver', 'name email profileImage avatar photo isVerified');
     await newMessage.populate('productId', 'title image price');
     res.status(201).json({ success: true, message: newMessage });
   } catch (error) {

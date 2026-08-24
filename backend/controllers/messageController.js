@@ -15,6 +15,20 @@ const getUserId = (req) => {
   return req.userId || req.user?.id || req.user?._id;
 };
 
+// ─── Populate helper ─────────────────────────────────────────────
+const populateSenderReceiver = async (message) => {
+  await message.populate(
+    "sender",
+    "name email profileImage avatar photo isVerified"
+  );
+  await message.populate(
+    "receiver",
+    "name email profileImage avatar photo isVerified"
+  );
+  await message.populate("productId", "title price image images");
+  return message;
+};
+
 // ============================================================
 // GET ALL MESSAGES FOR A USER
 // GET /api/messages/:userId
@@ -39,14 +53,8 @@ const getUserMessages = async (req, res) => {
       });
     }
 
-    // Only allow users to retrieve their own messages.
-    // Admins can retrieve another user's messages.
     const isAdmin = req.user?.role === "admin";
-
-    if (
-      userId.toString() !== currentUserId.toString() &&
-      !isAdmin
-    ) {
+    if (userId.toString() !== currentUserId.toString() && !isAdmin) {
       return res.status(403).json({
         success: false,
         message: "Access denied.",
@@ -54,26 +62,12 @@ const getUserMessages = async (req, res) => {
     }
 
     const messages = await Message.find({
-      $or: [
-        { sender: userId },
-        { receiver: userId },
-      ],
+      $or: [{ sender: userId }, { receiver: userId }],
     })
-      .populate(
-        "sender",
-        "name email photoURL profilePicture"
-      )
-      .populate(
-        "receiver",
-        "name email photoURL profilePicture"
-      )
-      .populate(
-        "productId",
-        "title price image images"
-      )
-      .sort({
-        createdAt: 1,
-      });
+      .populate("sender", "name email profileImage avatar photo isVerified")
+      .populate("receiver", "name email profileImage avatar photo isVerified")
+      .populate("productId", "title price image images")
+      .sort({ createdAt: 1 });
 
     return res.status(200).json({
       success: true,
@@ -81,16 +75,10 @@ const getUserMessages = async (req, res) => {
       messages,
     });
   } catch (error) {
-    console.error(
-      "❌ Error fetching user messages:",
-      error
-    );
-
+    console.error("❌ Error fetching user messages:", error);
     return res.status(500).json({
       success: false,
-      message:
-        error.message ||
-        "Failed to fetch messages.",
+      message: error.message || "Failed to fetch messages.",
     });
   }
 };
@@ -121,31 +109,14 @@ const getConversation = async (req, res) => {
 
     const messages = await Message.find({
       $or: [
-        {
-          sender: currentUserId,
-          receiver: otherUserId,
-        },
-        {
-          sender: otherUserId,
-          receiver: currentUserId,
-        },
+        { sender: currentUserId, receiver: otherUserId },
+        { sender: otherUserId, receiver: currentUserId },
       ],
     })
-      .populate(
-        "sender",
-        "name email photoURL profilePicture"
-      )
-      .populate(
-        "receiver",
-        "name email photoURL profilePicture"
-      )
-      .populate(
-        "productId",
-        "title price image images"
-      )
-      .sort({
-        createdAt: 1,
-      });
+      .populate("sender", "name email profileImage avatar photo isVerified")
+      .populate("receiver", "name email profileImage avatar photo isVerified")
+      .populate("productId", "title price image images")
+      .sort({ createdAt: 1 });
 
     return res.status(200).json({
       success: true,
@@ -153,34 +124,23 @@ const getConversation = async (req, res) => {
       messages,
     });
   } catch (error) {
-    console.error(
-      "❌ Error fetching conversation:",
-      error
-    );
-
+    console.error("❌ Error fetching conversation:", error);
     return res.status(500).json({
       success: false,
-      message:
-        error.message ||
-        "Failed to fetch conversation.",
+      message: error.message || "Failed to fetch conversation.",
     });
   }
 };
 
 // ============================================================
-// SEND MESSAGE
+// SEND MESSAGE (with attachment support)
 // POST /api/messages
 // ============================================================
 
 const sendMessage = async (req, res) => {
   try {
     const senderId = getUserId(req);
-
-    const {
-      receiver,
-      productId,
-      message,
-    } = req.body;
+    const { receiver, productId, message, attachment } = req.body;
 
     if (!senderId) {
       return res.status(401).json({
@@ -203,98 +163,61 @@ const sendMessage = async (req, res) => {
       });
     }
 
-    if (
-      productId &&
-      !isValidObjectId(productId)
-    ) {
+    if (productId && !isValidObjectId(productId)) {
       return res.status(400).json({
         success: false,
         message: "Invalid product ID.",
       });
     }
 
-    if (
-      typeof message !== "string" ||
-      !message.trim()
-    ) {
+    // At least one of message or attachment must be present
+    const hasText = typeof message === "string" && message.trim().length > 0;
+    const hasAttachment = attachment && attachment.url && attachment.type;
+
+    if (!hasText && !hasAttachment) {
       return res.status(400).json({
         success: false,
-        message: "Message cannot be empty.",
+        message: "Message must contain text or an attachment.",
       });
     }
 
-    const cleanMessage = message.trim();
-
-    // Prevent sending a message to yourself.
-    if (
-      senderId.toString() ===
-      receiver.toString()
-    ) {
+    if (senderId.toString() === receiver.toString()) {
       return res.status(400).json({
         success: false,
-        message:
-          "You cannot send a message to yourself.",
+        message: "You cannot send a message to yourself.",
       });
     }
 
-    // Optional protection against extremely large messages.
-    if (cleanMessage.length > 5000) {
+    if (hasText && message.length > 5000) {
       return res.status(400).json({
         success: false,
-        message:
-          "Message cannot exceed 5000 characters.",
+        message: "Message cannot exceed 5000 characters.",
       });
     }
 
     const newMessage = new Message({
       sender: senderId,
       receiver,
-      productId:
-        productId || undefined,
-      message: cleanMessage,
+      productId: productId || undefined,
+      message: hasText ? message.trim() : "",
+      attachment: hasAttachment ? attachment : null,
       read: false,
     });
 
     await newMessage.save();
+    await populateSenderReceiver(newMessage);
 
-    // Populate the message before returning it.
-    await newMessage.populate([
-      {
-        path: "sender",
-        select:
-          "name email photoURL profilePicture",
-      },
-      {
-        path: "receiver",
-        select:
-          "name email photoURL profilePicture",
-      },
-      {
-        path: "productId",
-        select:
-          "title price image images",
-      },
-    ]);
-
-    console.log(
-      `💬 Message sent: ${senderId} → ${receiver}`
-    );
+    console.log(`💬 Message sent: ${senderId} → ${receiver}`);
 
     return res.status(201).json({
       success: true,
       message: newMessage,
     });
   } catch (error) {
-    console.error(
-      "❌ Error sending message:",
-      error
-    );
-
+    console.error("❌ Error sending message:", error);
     return res.status(500).json({
       success: false,
-      message:
-        error.message ||
-        "Failed to send message.",
+      message: error.message || "Failed to send message.",
     });
   }
 };
@@ -332,20 +255,14 @@ const markMessageAsRead = async (req, res) => {
       });
     }
 
-    // Only the receiver can mark the message as read.
-    if (
-      message.receiver.toString() !==
-      currentUserId.toString()
-    ) {
+    if (message.receiver.toString() !== currentUserId.toString()) {
       return res.status(403).json({
         success: false,
-        message:
-          "You are not authorized to mark this message as read.",
+        message: "You are not authorized to mark this message as read.",
       });
     }
 
     message.read = true;
-
     await message.save();
 
     return res.status(200).json({
@@ -353,16 +270,10 @@ const markMessageAsRead = async (req, res) => {
       message,
     });
   } catch (error) {
-    console.error(
-      "❌ Error marking message as read:",
-      error
-    );
-
+    console.error("❌ Error marking message as read:", error);
     return res.status(500).json({
       success: false,
-      message:
-        error.message ||
-        "Failed to mark message as read.",
+      message: error.message || "Failed to mark message as read.",
     });
   }
 };
@@ -372,10 +283,7 @@ const markMessageAsRead = async (req, res) => {
 // PUT /api/messages/conversation/:userId/read
 // ============================================================
 
-const markConversationAsRead = async (
-  req,
-  res
-) => {
+const markConversationAsRead = async (req, res) => {
   try {
     const currentUserId = getUserId(req);
     const { userId: senderId } = req.params;
@@ -394,38 +302,25 @@ const markConversationAsRead = async (
       });
     }
 
-    const result =
-      await Message.updateMany(
-        {
-          sender: senderId,
-          receiver: currentUserId,
-          read: false,
-        },
-        {
-          $set: {
-            read: true,
-          },
-        }
-      );
+    const result = await Message.updateMany(
+      {
+        sender: senderId,
+        receiver: currentUserId,
+        read: false,
+      },
+      { $set: { read: true } }
+    );
 
     return res.status(200).json({
       success: true,
-      modifiedCount:
-        result.modifiedCount || 0,
-      message:
-        "Conversation marked as read.",
+      modifiedCount: result.modifiedCount || 0,
+      message: "Conversation marked as read.",
     });
   } catch (error) {
-    console.error(
-      "❌ Error marking conversation as read:",
-      error
-    );
-
+    console.error("❌ Error marking conversation as read:", error);
     return res.status(500).json({
       success: false,
-      message:
-        error.message ||
-        "Failed to mark conversation as read.",
+      message: error.message || "Failed to mark conversation as read.",
     });
   }
 };
@@ -435,10 +330,7 @@ const markConversationAsRead = async (
 // GET /api/messages/unread/count
 // ============================================================
 
-const getUnreadMessageCount = async (
-  req,
-  res
-) => {
+const getUnreadMessageCount = async (req, res) => {
   try {
     const currentUserId = getUserId(req);
 
@@ -449,27 +341,20 @@ const getUnreadMessageCount = async (
       });
     }
 
-    const count =
-      await Message.countDocuments({
-        receiver: currentUserId,
-        read: false,
-      });
+    const count = await Message.countDocuments({
+      receiver: currentUserId,
+      read: false,
+    });
 
     return res.status(200).json({
       success: true,
       count,
     });
   } catch (error) {
-    console.error(
-      "❌ Error getting unread message count:",
-      error
-    );
-
+    console.error("❌ Error getting unread message count:", error);
     return res.status(500).json({
       success: false,
-      message:
-        error.message ||
-        "Failed to get unread message count.",
+      message: error.message || "Failed to get unread message count.",
     });
   }
 };
@@ -507,50 +392,30 @@ const deleteMessage = async (req, res) => {
       });
     }
 
-    const isSender =
-      message.sender.toString() ===
-      currentUserId.toString();
+    const isSender = message.sender.toString() === currentUserId.toString();
+    const isReceiver = message.receiver.toString() === currentUserId.toString();
+    const isAdmin = req.user?.role === "admin";
 
-    const isReceiver =
-      message.receiver.toString() ===
-      currentUserId.toString();
-
-    const isAdmin =
-      req.user?.role === "admin";
-
-    if (
-      !isSender &&
-      !isReceiver &&
-      !isAdmin
-    ) {
+    if (!isSender && !isReceiver && !isAdmin) {
       return res.status(403).json({
         success: false,
-        message:
-          "You are not authorized to delete this message.",
+        message: "You are not authorized to delete this message.",
       });
     }
 
     await message.deleteOne();
 
-    console.log(
-      `🗑️ Message deleted: ${id}`
-    );
+    console.log(`🗑️ Message deleted: ${id}`);
 
     return res.status(200).json({
       success: true,
       message: "Message deleted successfully.",
     });
   } catch (error) {
-    console.error(
-      "❌ Error deleting message:",
-      error
-    );
-
+    console.error("❌ Error deleting message:", error);
     return res.status(500).json({
       success: false,
-      message:
-        error.message ||
-        "Failed to delete message.",
+      message: error.message || "Failed to delete message.",
     });
   }
 };

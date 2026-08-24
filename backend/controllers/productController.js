@@ -5,6 +5,8 @@
 
 const mongoose = require("mongoose");
 const Product = require("../models/Product");
+const User = require("../models/User");
+const Notification = require("../models/Notification");
 const cloudinary = require("../config/cloudinary");
 const streamifier = require("streamifier");
 
@@ -1621,7 +1623,7 @@ exports.visualSearch =
   };
 
 // ============================================================
-// GET SINGLE PRODUCT
+// GET SINGLE PRODUCT (with view tracking + notification)
 // ============================================================
 
 exports.getProductById =
@@ -1655,7 +1657,7 @@ exports.getProductById =
           id
         ).populate(
           "sellerId",
-          "name email phone location avatar"
+          "name email phone location avatar isVerified profileImage"
         );
 
       if (!product) {
@@ -1666,17 +1668,54 @@ exports.getProductById =
         });
       }
 
+      // ─── Increment view count ──────────────────────────────────
       await Product.findByIdAndUpdate(
         id,
-        {
-          $inc: {
-            views: 1,
-          },
-        }
+        { $inc: { views: 1 } }
       );
+      product.views = (product.views || 0) + 1;
 
-      product.views =
-        (product.views || 0) + 1;
+      // ─── Send notification to seller (if viewer logged in & not owner) ──
+      const viewerId = getUserId(req);
+      const sellerId = product.sellerId?._id || product.sellerId;
+
+      if (
+        viewerId &&
+        sellerId &&
+        viewerId.toString() !== sellerId.toString()
+      ) {
+        // Run asynchronously – don’t block response
+        setImmediate(async () => {
+          try {
+            const viewer = await User.findById(viewerId).select('name').lean();
+            const viewerName = viewer?.name || 'Someone';
+
+            // Optional: avoid duplicate notifications within 1 minute
+            const recent = await Notification.findOne({
+              user: sellerId,
+              sender: viewerId,
+              type: 'product_viewed',
+              link: `/product/${product._id}`,
+              createdAt: { $gte: new Date(Date.now() - 60 * 1000) },
+            });
+            if (recent) return;
+
+            const notification = new Notification({
+              user: sellerId,
+              sender: viewerId,
+              title: '📢 Product Viewed',
+              message: `${viewerName} viewed your product “${product.title}”`,
+              link: `/product/${product._id}`,
+              type: 'product_viewed',
+              read: false,
+            });
+            await notification.save();
+            console.log(`🔔 Notification sent: ${viewerName} viewed product ${product._id}`);
+          } catch (notifErr) {
+            console.error('❌ Failed to create product view notification:', notifErr);
+          }
+        });
+      }
 
       return res.json({
         success: true,

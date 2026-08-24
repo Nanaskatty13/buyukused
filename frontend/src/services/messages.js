@@ -25,7 +25,7 @@ export const messages = {
    * Get all messages for a specific user
    * @param {string} userId - The user ID to fetch messages for
    * @param {string} token - JWT token
-   * @returns {Promise<Array>} Array of message objects
+   * @returns {Promise<Object>} { success, messages }
    */
   getForUser: async (userId, token) => {
     const res = await fetch(`${API_URL}/api/messages/${userId}`, {
@@ -50,23 +50,23 @@ export const messages = {
 
   /**
    * Send a new message
-   * @param {string} receiverId - Recipient user ID
+   * @param {string} receiver - Recipient user ID (matches backend field)
    * @param {string} message - Message text
    * @param {string} productId - Related product ID (optional)
    * @param {string} token - JWT token
-   * @returns {Promise<Object>} Created message
+   * @returns {Promise<Object>} Created message with populated sender/receiver
    */
-  send: async (receiverId, message, productId, token) => {
+  send: async (receiver, message, productId, token) => {
     const res = await fetch(`${API_URL}/api/messages`, {
       method: 'POST',
       headers: getHeaders(token),
-      body: JSON.stringify({ receiverId, message, productId }),
+      body: JSON.stringify({ receiver, message, productId }),
     });
     return handleResponse(res);
   },
 
   /**
-   * Delete a message (optional)
+   * Delete a message
    * @param {string} messageId - Message ID to delete
    * @param {string} token - JWT token
    * @returns {Promise<Object>} Success message

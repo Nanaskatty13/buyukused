@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
-import { getNotifications } from '../services/api';
+import { getAdminNotifications } from '../services/api';
 
 const getToken = () => localStorage.getItem('token') || localStorage.getItem('authToken') || null;
 
@@ -52,14 +52,27 @@ const Navbar = () => {
     }
 
     const fetchCounts = async () => {
-      try {
-        const notifData = await getNotifications(user._id);
-        const notifications = notifData?.notifications || notifData?.data || [];
-        const unread = notifications.filter(n => !n.isRead).length;
-        setUnreadNotifications(unread);
+      // ─── Notifications: only for admins ───────────────────────
+      if (user.role === 'admin') {
+        try {
+          const token = getToken();
+          const data = await getAdminNotifications(token);
+          const notifications = data?.notifications || data?.data || [];
+          const unread = notifications.filter(n => !n.isRead).length;
+          setUnreadNotifications(unread);
+        } catch (err) {
+          console.warn('Admin notification fetch failed:', err.message);
+          setUnreadNotifications(0);
+        }
+      } else {
+        // Non‑admin users have no notifications to show
+        setUnreadNotifications(0);
+      }
 
-        const token = getToken();
-        if (token) {
+      // ─── Messages: try to fetch unread count ──────────────────
+      const token = getToken();
+      if (token) {
+        try {
           const response = await fetch(`${import.meta.env.VITE_API_URL}/api/messages/unread-count`, {
             headers: {
               'Authorization': `Bearer ${token}`,
@@ -70,20 +83,20 @@ const Navbar = () => {
             const data = await response.json();
             setUnreadMessages(data.count || 0);
           } else {
-            console.warn('Message count request returned', response.status);
+            // Silently ignore 401/404 – the endpoint might not exist
             setUnreadMessages(0);
           }
-        } else {
+        } catch {
           setUnreadMessages(0);
         }
-      } catch (error) {
-        console.error('Failed to fetch unread counts:', error);
-        setUnreadNotifications(0);
+      } else {
         setUnreadMessages(0);
       }
     };
 
     fetchCounts();
+
+    // Poll every 30 seconds
     const interval = setInterval(fetchCounts, 30000);
     return () => clearInterval(interval);
   }, [user]);

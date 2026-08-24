@@ -1,47 +1,53 @@
 // backend/models/Notification.js
-
-const mongoose = require("mongoose");
+const mongoose = require('mongoose');
 
 const notificationSchema = new mongoose.Schema(
   {
-    // Every notification belongs to an actual User.
-    userId: {
+    // Recipient (the user who will see this notification)
+    user: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+      ref: 'User',
       required: true,
       index: true,
     },
 
+    // Optional: who triggered this notification (e.g., the viewer)
+    sender: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
+
     title: {
       type: String,
-      required: [true, "Title is required"],
+      required: true,
       trim: true,
-      maxlength: 200,
+      maxlength: 100,
     },
 
     message: {
       type: String,
-      required: [true, "Message is required"],
+      required: true,
       trim: true,
-      maxlength: 2000,
+      maxlength: 500,
+    },
+
+    link: {
+      type: String,
+      default: '',
+      trim: true,
     },
 
     type: {
       type: String,
-      enum: ["info", "success", "warning", "error"],
-      default: "info",
+      enum: ['system', 'product_viewed', 'message', 'order_update', 'promotion', 'other'],
+      default: 'system',
     },
 
     read: {
       type: Boolean,
       default: false,
       index: true,
-    },
-
-    link: {
-      type: String,
-      default: "",
-      trim: true,
     },
   },
   {
@@ -50,33 +56,4 @@ const notificationSchema = new mongoose.Schema(
   }
 );
 
-// ============================================================
-// INDEXES
-// ============================================================
-
-notificationSchema.index({
-  userId: 1,
-  read: 1,
-});
-
-notificationSchema.index({
-  userId: 1,
-  createdAt: -1,
-});
-
-notificationSchema.index({
-  createdAt: -1,
-});
-
-// ============================================================
-// MODEL
-// ============================================================
-
-const Notification =
-  mongoose.models.Notification ||
-  mongoose.model(
-    "Notification",
-    notificationSchema
-  );
-
-module.exports = Notification;
+module.exports = mongoose.models.Notification || mongoose.model('Notification', notificationSchema);
