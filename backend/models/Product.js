@@ -1,13 +1,4 @@
-// ============================================================
-// backend/models/Product.js
-// BuyUKUsed Product Model
-// ============================================================
-
 const mongoose = require("mongoose");
-
-// ============================================================
-// CONSTANTS
-// ============================================================
 
 const PRODUCT_CATEGORIES = [
   "Cars",
@@ -44,16 +35,8 @@ const PRODUCT_CONDITIONS = [
   "Poor",
 ];
 
-// ============================================================
-// PRODUCT SCHEMA
-// ============================================================
-
 const productSchema = new mongoose.Schema(
   {
-    // ========================================================
-    // BASIC INFORMATION
-    // ========================================================
-
     title: {
       type: String,
       required: true,
@@ -95,10 +78,6 @@ const productSchema = new mongoose.Schema(
       maxlength: 5000,
     },
 
-    // ========================================================
-    // SELLER
-    // ========================================================
-
     sellerId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
@@ -118,10 +97,6 @@ const productSchema = new mongoose.Schema(
       trim: true,
     },
 
-    // ========================================================
-    // MEDIA
-    // ========================================================
-
     image: {
       type: String,
       default: "",
@@ -137,10 +112,6 @@ const productSchema = new mongoose.Schema(
       type: [String],
       default: [],
     },
-
-    // ========================================================
-    // VISUAL SEARCH
-    // ========================================================
 
     imageEmbedding: {
       type: [Number],
@@ -160,10 +131,6 @@ const productSchema = new mongoose.Schema(
       default: null,
       select: false,
     },
-
-    // ========================================================
-    // GENERAL PRODUCT DETAILS
-    // ========================================================
 
     brand: {
       type: String,
@@ -197,10 +164,6 @@ const productSchema = new mongoose.Schema(
       default: "",
       trim: true,
     },
-
-    // ========================================================
-    // COMPUTER / TABLET
-    // ========================================================
 
     storage: {
       type: String,
@@ -243,10 +206,6 @@ const productSchema = new mongoose.Schema(
       default: "",
       trim: true,
     },
-
-    // ========================================================
-    // GAME CONSOLE
-    // ========================================================
 
     videoOutput: {
       type: String,
@@ -296,19 +255,11 @@ const productSchema = new mongoose.Schema(
       trim: true,
     },
 
-    // ========================================================
-    // SMARTWATCH
-    // ========================================================
-
     watchSize: {
       type: String,
       default: "",
       trim: true,
     },
-
-    // ========================================================
-    // TV
-    // ========================================================
 
     tvType: {
       type: String,
@@ -367,10 +318,6 @@ const productSchema = new mongoose.Schema(
       default: false,
     },
 
-    // ========================================================
-    // CAR
-    // ========================================================
-
     mileage: {
       type: Number,
       default: null,
@@ -424,10 +371,6 @@ const productSchema = new mongoose.Schema(
       default: "",
       trim: true,
     },
-
-    // ========================================================
-    // SPARE PARTS
-    // ========================================================
 
     sparePartType: {
       type: String,
@@ -684,10 +627,6 @@ const productSchema = new mongoose.Schema(
       default: false,
     },
 
-    // ========================================================
-    // ACCESSORIES
-    // ========================================================
-
     accessoryType: {
       type: String,
       default: "",
@@ -753,10 +692,6 @@ const productSchema = new mongoose.Schema(
       default: false,
     },
 
-    // ========================================================
-    // PHONE
-    // ========================================================
-
     batteryHealth: {
       type: Number,
       min: 0,
@@ -788,10 +723,6 @@ const productSchema = new mongoose.Schema(
       default: "",
       trim: true,
     },
-
-    // ========================================================
-    // COSMETICS / BEAUTY
-    // ========================================================
 
     productType: {
       type: String,
@@ -980,10 +911,6 @@ const productSchema = new mongoose.Schema(
       default: false,
     },
 
-    // ========================================================
-    // SELLING OPTIONS
-    // ========================================================
-
     negotiation: {
       type: Boolean,
       default: false,
@@ -994,19 +921,11 @@ const productSchema = new mongoose.Schema(
       default: false,
     },
 
-    // ========================================================
-    // STATISTICS
-    // ========================================================
-
     views: {
       type: Number,
       default: 0,
       min: 0,
     },
-
-    // ========================================================
-    // STATUS
-    // ========================================================
 
     status: {
       type: String,
@@ -1014,10 +933,6 @@ const productSchema = new mongoose.Schema(
       default: "active",
       index: true,
     },
-
-    // ========================================================
-    // PROMOTION
-    // ========================================================
 
     promo: {
       type: Boolean,
@@ -1035,16 +950,11 @@ const productSchema = new mongoose.Schema(
       min: 0,
     },
 
-    // ========================================================
-    // SEO
-    // ========================================================
-
     slug: {
       type: String,
       unique: true,
       sparse: true,
       trim: true,
-      index: true,
     },
   },
   {
@@ -1052,10 +962,6 @@ const productSchema = new mongoose.Schema(
     versionKey: false,
   }
 );
-
-// ============================================================
-// AUTO SLUG
-// ============================================================
 
 productSchema.pre("save", function (next) {
   if (!this.slug && this.title) {
@@ -1070,20 +976,12 @@ productSchema.pre("save", function (next) {
   next();
 });
 
-// ============================================================
-// SELLER VIRTUAL
-// ============================================================
-
 productSchema.virtual("seller", {
   ref: "User",
   localField: "sellerId",
   foreignField: "_id",
   justOne: true,
 });
-
-// ============================================================
-// SELLER VERIFICATION HELPER
-// ============================================================
 
 productSchema.methods.isSellerVerified = function () {
   const seller = this.seller || this.sellerId;
@@ -1095,21 +993,14 @@ productSchema.methods.isSellerVerified = function () {
   return seller.isVerified === true;
 };
 
-// ============================================================
-// TEXT INDEX
-// ============================================================
-
 productSchema.index({
   title: "text",
   description: "text",
   brand: "text",
   model: "text",
-
   accessoryType: "text",
   compatibleWith: "text",
   compatibility: "text",
-
-  // Spare Parts
   sparePartType: "text",
   sparePartCategory: "text",
   partNumber: "text",
@@ -1122,8 +1013,6 @@ productSchema.index({
   partManufacturer: "text",
   partCompatibility: "text",
   interchangePartNumbers: "text",
-
-  // Cosmetics
   productType: "text",
   cosmeticType: "text",
   cosmeticBrand: "text",
@@ -1138,28 +1027,16 @@ productSchema.index({
   skinConcern: "text",
 });
 
-// ============================================================
-// GENERAL COMPOUND INDEX
-// ============================================================
-
 productSchema.index({
   category: 1,
   location: 1,
   status: 1,
 });
 
-// ============================================================
-// SELLER INDEX
-// ============================================================
-
 productSchema.index({
   sellerId: 1,
   createdAt: -1,
 });
-
-// ============================================================
-// SORTING INDEXES
-// ============================================================
 
 productSchema.index({
   createdAt: -1,
@@ -1169,10 +1046,6 @@ productSchema.index({
   price: 1,
 });
 
-// ============================================================
-// PHONE INDEXES
-// ============================================================
-
 productSchema.index({
   simStatus: 1,
 });
@@ -1180,10 +1053,6 @@ productSchema.index({
 productSchema.index({
   batteryHealth: 1,
 });
-
-// ============================================================
-// ACCESSORY INDEXES
-// ============================================================
 
 productSchema.index({
   accessoryType: 1,
@@ -1201,22 +1070,6 @@ productSchema.index({
   original: 1,
 });
 
-// ============================================================
-// GENERAL PRODUCT INDEXES
-// ============================================================
-
-productSchema.index({
-  brand: 1,
-});
-
-productSchema.index({
-  model: 1,
-});
-
-// ============================================================
-// GAME CONSOLE INDEXES
-// ============================================================
-
 productSchema.index({
   videoOutput: 1,
 });
@@ -1229,17 +1082,9 @@ productSchema.index({
   resolution: 1,
 });
 
-// ============================================================
-// SMARTWATCH INDEX
-// ============================================================
-
 productSchema.index({
   watchSize: 1,
 });
-
-// ============================================================
-// TV INDEXES
-// ============================================================
 
 productSchema.index({
   tvType: 1,
@@ -1265,10 +1110,6 @@ productSchema.index({
   smartTV: 1,
 });
 
-// ============================================================
-// CAR INDEXES
-// ============================================================
-
 productSchema.index({
   mileage: 1,
 });
@@ -1285,36 +1126,8 @@ productSchema.index({
   bodyType: 1,
 });
 
-// ============================================================
-// SPARE PARTS INDEXES
-// ============================================================
-
-productSchema.index({
-  sparePartType: 1,
-});
-
-productSchema.index({
-  sparePartCategory: 1,
-});
-
-productSchema.index({
-  partNumber: 1,
-});
-
-productSchema.index({
-  oemNumber: 1,
-});
-
 productSchema.index({
   manufacturerPartNumber: 1,
-});
-
-productSchema.index({
-  vehicleMake: 1,
-});
-
-productSchema.index({
-  vehicleModel: 1,
 });
 
 productSchema.index({
@@ -1335,10 +1148,6 @@ productSchema.index({
 
 productSchema.index({
   partCondition: 1,
-});
-
-productSchema.index({
-  partBrand: 1,
 });
 
 productSchema.index({
@@ -1367,26 +1176,6 @@ productSchema.index({
 
 productSchema.index({
   aftermarketPart: 1,
-});
-
-// ============================================================
-// COSMETICS INDEXES
-// ============================================================
-
-productSchema.index({
-  productType: 1,
-});
-
-productSchema.index({
-  cosmeticType: 1,
-});
-
-productSchema.index({
-  cosmeticBrand: 1,
-});
-
-productSchema.index({
-  skinType: 1,
 });
 
 productSchema.index({
@@ -1428,10 +1217,6 @@ productSchema.index({
 productSchema.index({
   parabenFree: 1,
 });
-
-// ============================================================
-// MODEL
-// ============================================================
 
 const Product =
   mongoose.models.Product ||
