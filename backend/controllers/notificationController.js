@@ -1,22 +1,77 @@
-// backend/controllers/notificationController.js
-
 const mongoose = require("mongoose");
 const Notification = require("../models/Notification");
 
-// ============================================================
-// HELPER
-// ============================================================
+const VALID_NOTIFICATION_TYPES = [
+  "system",
+  "product_viewed",
+  "message",
+  "order_update",
+  "promotion",
+  "other",
+];
 
 const isValidObjectId = (id) => {
-  return mongoose.Types.ObjectId.isValid(id);
+  return Boolean(
+    id &&
+      mongoose.Types.ObjectId.isValid(id)
+  );
 };
 
-// ============================================================
-// GET USER NOTIFICATIONS
-// GET /api/notifications/:userId
-// ============================================================
+const getCurrentUserId = (req) => {
+  return (
+    req.user?.id ||
+    req.user?._id ||
+    req.user?.userId ||
+    req.userId ||
+    null
+  );
+};
 
-exports.getUserNotifications = async (req, res) => {
+const getCurrentUserRole = (req) => {
+  return req.user?.role || "";
+};
+
+const isAdmin = (req) => {
+  return getCurrentUserRole(req) === "admin";
+};
+
+const normalizeType = (type) => {
+  if (
+    !type ||
+    typeof type !== "string"
+  ) {
+    return "system";
+  }
+
+  const normalized = type
+    .trim()
+    .toLowerCase();
+
+  return VALID_NOTIFICATION_TYPES.includes(
+    normalized
+  )
+    ? normalized
+    : "system";
+};
+
+const cleanString = (
+  value,
+  defaultValue = ""
+) => {
+  if (
+    value === undefined ||
+    value === null
+  ) {
+    return defaultValue;
+  }
+
+  return String(value).trim();
+};
+
+exports.getUserNotifications = async (
+  req,
+  res
+) => {
   try {
     const { userId } = req.params;
 
@@ -27,19 +82,28 @@ exports.getUserNotifications = async (req, res) => {
       });
     }
 
-    const requestingUserId =
-      req.userId.toString();
+    const currentUserId =
+      getCurrentUserId(req);
+
+    if (!currentUserId) {
+      return res.status(401).json({
+        success: false,
+        message:
+          "Authentication required",
+      });
+    }
 
     const requestedUserId =
       userId.toString();
 
-    const isOwner =
-      requestingUserId === requestedUserId;
+    const authenticatedUserId =
+      currentUserId.toString();
 
-    const isAdmin =
-      req.user?.role === "admin";
+    const owner =
+      requestedUserId ===
+      authenticatedUserId;
 
-    if (!isOwner && !isAdmin) {
+    if (!owner && !isAdmin(req)) {
       return res.status(403).json({
         success: false,
         message: "Access denied",
@@ -48,16 +112,29 @@ exports.getUserNotifications = async (req, res) => {
 
     const notifications =
       await Notification.find({
-        userId: requestedUserId,
+        user: requestedUserId,
       })
-        .sort({ createdAt: -1 })
+        .populate(
+          "sender",
+          "name email avatar profileImage"
+        )
+        .sort({
+          createdAt: -1,
+        })
         .limit(50)
         .lean();
+
+    const unreadCount =
+      await Notification.countDocuments({
+        user: requestedUserId,
+        read: false,
+      });
 
     return res.status(200).json({
       success: true,
       notifications,
       count: notifications.length,
+      unreadCount,
     });
   } catch (error) {
     console.error(
@@ -67,43 +144,61 @@ exports.getUserNotifications = async (req, res) => {
 
     return res.status(500).json({
       success: false,
-      message: "Failed to fetch notifications",
+      message:
+        "Failed to fetch notifications",
     });
   }
 };
-
-// ============================================================
-// GET ADMIN NOTIFICATIONS
-// GET /api/notifications/admin
-// ============================================================
 
 exports.getAdminNotifications = async (
   req,
   res
 ) => {
   try {
-    if (req.user?.role !== "admin") {
+    if (!isAdmin(req)) {
       return res.status(403).json({
         success: false,
-        message: "Access denied. Admin only.",
+        message:
+          "Access denied. Admin only.",
       });
     }
 
     const adminId =
-      req.userId.toString();
+      getCurrentUserId(req);
+
+    if (!adminId) {
+      return res.status(401).json({
+        success: false,
+        message:
+          "Authentication required",
+      });
+    }
 
     const notifications =
       await Notification.find({
-        userId: adminId,
+        user: adminId,
       })
-        .sort({ createdAt: -1 })
+        .populate(
+          "sender",
+          "name email avatar profileImage"
+        )
+        .sort({
+          createdAt: -1,
+        })
         .limit(100)
         .lean();
+
+    const unreadCount =
+      await Notification.countDocuments({
+        user: adminId,
+        read: false,
+      });
 
     return res.status(200).json({
       success: true,
       notifications,
       count: notifications.length,
+      unreadCount,
     });
   } catch (error) {
     console.error(
@@ -119,53 +214,88 @@ exports.getAdminNotifications = async (
   }
 };
 
-// ============================================================
-// CREATE NOTIFICATION
-// POST /api/notifications
-// ============================================================
-
 exports.createNotification = async (
   req,
   res
 ) => {
   try {
     const {
+      user,
       userId,
+      sender,
+      senderId,
       title,
       message,
-      type = "info",
+      type = "system",
       link = "",
-    } = req.body;
+      read = false,
+    } = req.body || {};
 
-    if (!userId || !title || !message) {
+    const targetUserId =
+      user || userId;
+
+    const notificationSenderId =
+      sender || senderId || null;
+
+    if (
+      !targetUserId ||
+      !title ||
+      !message
+    ) {
       return res.status(400).json({
         success: false,
         message:
-          "userId, title and message are required",
+          "user, title and message are required",
       });
     }
 
-    if (!isValidObjectId(userId)) {
+    if (
+      !isValidObjectId(
+        targetUserId
+      )
+    ) {
       return res.status(400).json({
         success: false,
-        message: "Invalid user ID",
+        message:
+          "Invalid notification user ID",
       });
     }
 
-    const targetUserId =
-      userId.toString();
+    if (
+      notificationSenderId &&
+      !isValidObjectId(
+        notificationSenderId
+      )
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Invalid sender ID",
+      });
+    }
 
     const currentUserId =
-      req.userId.toString();
+      getCurrentUserId(req);
 
-    const isAdmin =
-      req.user?.role === "admin";
+    if (!currentUserId) {
+      return res.status(401).json({
+        success: false,
+        message:
+          "Authentication required",
+      });
+    }
 
-    // Normal users can only create
-    // notifications for themselves.
+    const targetId =
+      targetUserId.toString();
+
+    const currentId =
+      currentUserId.toString();
+
+    const admin = isAdmin(req);
+
     if (
-      !isAdmin &&
-      targetUserId !== currentUserId
+      !admin &&
+      targetId !== currentId
     ) {
       return res.status(403).json({
         success: false,
@@ -174,35 +304,38 @@ exports.createNotification = async (
       });
     }
 
-    const allowedTypes = [
-      "info",
-      "success",
-      "warning",
-      "error",
-    ];
-
     const notificationType =
-      allowedTypes.includes(type)
-        ? type
-        : "info";
+      normalizeType(type);
 
     const notification =
       await Notification.create({
-        userId: targetUserId,
-        title: String(title).trim(),
-        message: String(message).trim(),
+        user: targetId,
+        sender:
+          notificationSenderId || null,
+        title: cleanString(title),
+        message: cleanString(message),
         type: notificationType,
-        link: link
-          ? String(link).trim()
-          : "",
-        read: false,
+        link: cleanString(link),
+        read: Boolean(read),
       });
+
+    const populatedNotification =
+      await Notification.findById(
+        notification._id
+      )
+        .populate(
+          "sender",
+          "name email avatar profileImage"
+        )
+        .lean();
 
     return res.status(201).json({
       success: true,
       message:
         "Notification created successfully",
-      notification,
+      notification:
+        populatedNotification ||
+        notification,
     });
   } catch (error) {
     console.error(
@@ -216,14 +349,15 @@ exports.createNotification = async (
     ) {
       const errors =
         Object.values(
-          error.errors
+          error.errors || {}
         ).map(
           (item) => item.message
         );
 
       return res.status(400).json({
         success: false,
-        message: "Validation error",
+        message:
+          "Notification validation failed",
         errors,
       });
     }
@@ -231,20 +365,17 @@ exports.createNotification = async (
     return res.status(500).json({
       success: false,
       message:
+        error.message ||
         "Failed to create notification",
     });
   }
 };
 
-// ============================================================
-// MARK NOTIFICATION AS READ
-// PUT /api/notifications/:id/read
-// ============================================================
-
 exports.markNotificationRead =
   async (req, res) => {
     try {
-      const { id } = req.params;
+      const { id } =
+        req.params;
 
       if (!isValidObjectId(id)) {
         return res.status(400).json({
@@ -254,8 +385,21 @@ exports.markNotificationRead =
         });
       }
 
+      const currentUserId =
+        getCurrentUserId(req);
+
+      if (!currentUserId) {
+        return res.status(401).json({
+          success: false,
+          message:
+            "Authentication required",
+        });
+      }
+
       const notification =
-        await Notification.findById(id);
+        await Notification.findById(
+          id
+        );
 
       if (!notification) {
         return res.status(404).json({
@@ -266,19 +410,16 @@ exports.markNotificationRead =
       }
 
       const notificationUserId =
-        notification.userId.toString();
+        notification.user?.toString();
 
-      const currentUserId =
-        req.userId.toString();
+      const currentId =
+        currentUserId.toString();
 
-      const isOwner =
+      const owner =
         notificationUserId ===
-        currentUserId;
+        currentId;
 
-      const isAdmin =
-        req.user?.role === "admin";
-
-      if (!isOwner && !isAdmin) {
+      if (!owner && !isAdmin(req)) {
         return res.status(403).json({
           success: false,
           message: "Access denied",
@@ -309,15 +450,59 @@ exports.markNotificationRead =
     }
   };
 
-// ============================================================
-// DELETE NOTIFICATION
-// DELETE /api/notifications/:id
-// ============================================================
+exports.markAllNotificationsRead =
+  async (req, res) => {
+    try {
+      const currentUserId =
+        getCurrentUserId(req);
+
+      if (!currentUserId) {
+        return res.status(401).json({
+          success: false,
+          message:
+            "Authentication required",
+        });
+      }
+
+      const result =
+        await Notification.updateMany(
+          {
+            user: currentUserId,
+            read: false,
+          },
+          {
+            $set: {
+              read: true,
+            },
+          }
+        );
+
+      return res.status(200).json({
+        success: true,
+        message:
+          "All notifications marked as read",
+        modifiedCount:
+          result.modifiedCount || 0,
+      });
+    } catch (error) {
+      console.error(
+        "❌ Mark all notifications read error:",
+        error
+      );
+
+      return res.status(500).json({
+        success: false,
+        message:
+          "Failed to mark all notifications as read",
+      });
+    }
+  };
 
 exports.deleteNotification =
   async (req, res) => {
     try {
-      const { id } = req.params;
+      const { id } =
+        req.params;
 
       if (!isValidObjectId(id)) {
         return res.status(400).json({
@@ -327,8 +512,21 @@ exports.deleteNotification =
         });
       }
 
+      const currentUserId =
+        getCurrentUserId(req);
+
+      if (!currentUserId) {
+        return res.status(401).json({
+          success: false,
+          message:
+            "Authentication required",
+        });
+      }
+
       const notification =
-        await Notification.findById(id);
+        await Notification.findById(
+          id
+        );
 
       if (!notification) {
         return res.status(404).json({
@@ -339,19 +537,16 @@ exports.deleteNotification =
       }
 
       const notificationUserId =
-        notification.userId.toString();
+        notification.user?.toString();
 
-      const currentUserId =
-        req.userId.toString();
+      const currentId =
+        currentUserId.toString();
 
-      const isOwner =
+      const owner =
         notificationUserId ===
-        currentUserId;
+        currentId;
 
-      const isAdmin =
-        req.user?.role === "admin";
-
-      if (!isOwner && !isAdmin) {
+      if (!owner && !isAdmin(req)) {
         return res.status(403).json({
           success: false,
           message: "Access denied",
@@ -378,3 +573,66 @@ exports.deleteNotification =
       });
     }
   };
+
+exports.deleteAllNotifications =
+  async (req, res) => {
+    try {
+      const currentUserId =
+        getCurrentUserId(req);
+
+      if (!currentUserId) {
+        return res.status(401).json({
+          success: false,
+          message:
+            "Authentication required",
+        });
+      }
+
+      const result =
+        await Notification.deleteMany({
+          user: currentUserId,
+        });
+
+      return res.status(200).json({
+        success: true,
+        message:
+          "All notifications deleted successfully",
+        deletedCount:
+          result.deletedCount || 0,
+      });
+    } catch (error) {
+      console.error(
+        "❌ Delete all notifications error:",
+        error
+      );
+
+      return res.status(500).json({
+        success: false,
+        message:
+          "Failed to delete all notifications",
+      });
+    }
+  };
+
+module.exports = {
+  getUserNotifications:
+    exports.getUserNotifications,
+
+  getAdminNotifications:
+    exports.getAdminNotifications,
+
+  createNotification:
+    exports.createNotification,
+
+  markNotificationRead:
+    exports.markNotificationRead,
+
+  markAllNotificationsRead:
+    exports.markAllNotificationsRead,
+
+  deleteNotification:
+    exports.deleteNotification,
+
+  deleteAllNotifications:
+    exports.deleteAllNotifications,
+};

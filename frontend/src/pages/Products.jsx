@@ -1,15 +1,19 @@
 // frontend/src/pages/Products.jsx
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useLocation, Link, useNavigate } from "react-router-dom";
+
 import SearchBar from "../components/SearchBar";
 import FilterSidebar from "../components/FilterSidebar";
 import Footer from "../components/Footer";
 
-// API
 import { getProducts, getImageUrl } from "../services/api";
+
 import VerifiedBadge from "../components/VerifiedBadge";
 import SoldBadge from "../components/SoldBadge";
+
+import { useCart } from "../context/CartContext";
+import { useAuth } from "../context/AuthContext";
 
 // ================================================================
 // CATEGORY HELPERS
@@ -20,19 +24,27 @@ const normalizeCategory = (category) => {
 
   const value = String(category).trim().toLowerCase();
 
-  if (["phone", "phones", "mobile phone", "mobile phones"].includes(value)) {
+  if (
+    ["phone", "phones", "mobile phone", "mobile phones"].includes(value)
+  ) {
     return "Phones";
   }
 
-  if (["laptop", "laptops", "macbook", "macbooks"].includes(value)) {
+  if (
+    ["laptop", "laptops", "macbook", "macbooks"].includes(value)
+  ) {
     return "Laptops";
   }
 
-  if (["tablet", "tablets", "ipad", "ipads"].includes(value)) {
+  if (
+    ["tablet", "tablets", "ipad", "ipads"].includes(value)
+  ) {
     return "Tablets";
   }
 
-  if (["tv", "tvs", "television", "televisions"].includes(value)) {
+  if (
+    ["tv", "tvs", "television", "televisions"].includes(value)
+  ) {
     return "TVs";
   }
 
@@ -52,15 +64,23 @@ const normalizeCategory = (category) => {
     return "Accessories";
   }
 
+  if (["real estate", "property"].includes(value)) {
+    return "Real Estate";
+  }
+
   return category;
 };
 
 // ================================================================
-// PRODUCT CARD (JIJI STYLE) with CHAT & CALL buttons
+// PRODUCT CARD
 // ================================================================
 
 const ProductCard = ({ product }) => {
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const { toggleFavorite, isFavorite } = useCart();
+  const { user } = useAuth();
 
   if (!product) return null;
 
@@ -68,7 +88,7 @@ const ProductCard = ({ product }) => {
     _id,
     title,
     price,
-    location,
+    location: productLocation,
     images,
     image,
     description,
@@ -97,12 +117,43 @@ const ProductCard = ({ product }) => {
   } = product;
 
   // ==============================================================
+  // FAVORITE STATE
+  // ==============================================================
+
+  const liked = Boolean(isFavorite(_id));
+
+  // ==============================================================
+  // FAVORITE HANDLER
+  // ==============================================================
+
+  const handleFavorite = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Login required
+    if (!user) {
+      navigate("/login", {
+        state: {
+          from: location.pathname + location.search,
+        },
+      });
+      return;
+    }
+
+    toggleFavorite(_id);
+  };
+
+  // ==============================================================
   // NORMALIZED CATEGORY
   // ==============================================================
 
   const normalizedCategory = normalizeCategory(category);
+
   const isPhone = normalizedCategory === "Phones";
-  const isProperty = normalizedCategory === "Real Estate" || normalizedCategory === "Property";
+
+  const isProperty =
+    normalizedCategory === "Real Estate" ||
+    normalizedCategory === "Property";
 
   // ==============================================================
   // SELLER
@@ -128,23 +179,56 @@ const ProductCard = ({ product }) => {
     sellerProfileImageProp ||
     null;
 
-  const sellerImageUrl = sellerImage ? getImageUrl(sellerImage) : null;
+  const sellerImageUrl = sellerImage
+    ? getImageUrl(sellerImage)
+    : null;
 
   const isVerified = sellerObj?.isVerified === true;
-  const yearsOnPlatform = sellerObj?.yearsOnPlatform || 0;
-  const accountType = sellerObj?.accountType || "";
+
+  const yearsOnPlatform =
+    sellerObj?.yearsOnPlatform || 0;
+
+  const accountType =
+    sellerObj?.accountType || "";
+
+  // ==============================================================
+  // ACCOUNT BADGE
+  // ==============================================================
 
   const getAccountBadge = () => {
     const type = accountType.toLowerCase();
-    if (type === "diamond") return { label: "💎 DIAMOND", color: "#0ea5e9", bg: "#e0f2fe" };
-    if (type === "vip") return { label: "⭐ VIP", color: "#f59e0b", bg: "#fef3c7" };
-    if (type === "enterprise") return { label: "🏢 ENTERPRISE", color: "#8b5cf6", bg: "#ede9fe" };
+
+    if (type === "diamond") {
+      return {
+        label: "💎 DIAMOND",
+        color: "#0ea5e9",
+        bg: "#e0f2fe",
+      };
+    }
+
+    if (type === "vip") {
+      return {
+        label: "⭐ VIP",
+        color: "#f59e0b",
+        bg: "#fef3c7",
+      };
+    }
+
+    if (type === "enterprise") {
+      return {
+        label: "🏢 ENTERPRISE",
+        color: "#8b5cf6",
+        bg: "#ede9fe",
+      };
+    }
+
     return null;
   };
+
   const accountBadge = getAccountBadge();
 
   // ==============================================================
-  // PRODUCT IMAGE – AUTOMATICALLY ADAPTS TO IMAGE SIZE
+  // PRODUCT IMAGE
   // ==============================================================
 
   const imageUrl =
@@ -156,15 +240,26 @@ const ProductCard = ({ product }) => {
   // PRICE
   // ==============================================================
 
-  const formattedPrice = new Intl.NumberFormat("en-GH", {
-    style: "currency",
-    currency: "GHS",
-    minimumFractionDigits: 0,
-  }).format(price || 0);
+  const formattedPrice = new Intl.NumberFormat(
+    "en-GH",
+    {
+      style: "currency",
+      currency: "GHS",
+      minimumFractionDigits: 0,
+    }
+  ).format(price || 0);
+
+  // ==============================================================
+  // CITY
+  // ==============================================================
 
   const getCityOnly = (locationStr) => {
     if (!locationStr) return "";
-    const parts = locationStr.split(",").map((s) => s.trim());
+
+    const parts = String(locationStr)
+      .split(",")
+      .map((s) => s.trim());
+
     return parts[0] || locationStr;
   };
 
@@ -176,81 +271,265 @@ const ProductCard = ({ product }) => {
     const specs = [];
 
     if (normalizedCategory === "Laptops") {
-      if (brand) specs.push({ icon: "🏷️", label: brand });
-      if (model) specs.push({ icon: "📟", label: model });
-      if (processor) specs.push({ icon: "⚡", label: processor });
-      if (ram) specs.push({ icon: "🧠", label: ram });
-      if (graphics) specs.push({ icon: "🖥️", label: graphics });
-      if (screenSize) specs.push({ icon: "📐", label: screenSize });
-      if (storage) specs.push({ icon: "💾", label: storage });
-      if (condition) specs.push({ icon: "📋", label: condition });
-    } else if (normalizedCategory === "Tablets") {
-      if (brand) specs.push({ icon: "🏷️", label: brand });
-      if (model) specs.push({ icon: "📟", label: model });
-      if (year) specs.push({ icon: "📅", label: year });
-      if (connectivity) specs.push({ icon: "📶", label: connectivity });
-      if (screenSize) specs.push({ icon: "📐", label: screenSize });
-      if (storage) specs.push({ icon: "💾", label: storage });
-      if (condition) specs.push({ icon: "📋", label: condition });
-    } else if (normalizedCategory === "Phones") {
-      if (brand) specs.push({ icon: "🏷️", label: brand });
-      if (model) specs.push({ icon: "📟", label: model });
-      if (storage) specs.push({ icon: "💾", label: storage });
-      if (batteryHealth) specs.push({ icon: "🔋", label: `${batteryHealth}%` });
-      if (faceId) specs.push({ icon: "😊", label: faceId });
-      if (condition) specs.push({ icon: "📋", label: condition });
-    } else if (isProperty) {
-      if (product.bedrooms) specs.push({ icon: "🛏️", label: `${product.bedrooms} bedrooms` });
-      if (product.bathrooms) specs.push({ icon: "🚿", label: `${product.bathrooms} baths` });
-      if (product.sqm) specs.push({ icon: "📐", label: `${product.sqm} sqm` });
-      if (product.propertyType) specs.push({ icon: "🏠", label: product.propertyType });
-      if (condition) specs.push({ icon: "📋", label: condition });
-    } else {
-      if (brand) specs.push({ icon: "🏷️", label: brand });
-      if (model) specs.push({ icon: "📟", label: model });
-      if (storage) specs.push({ icon: "💾", label: storage });
-      if (condition) specs.push({ icon: "📋", label: condition });
+      if (brand)
+        specs.push({
+          icon: "🏷️",
+          label: brand,
+        });
+
+      if (model)
+        specs.push({
+          icon: "📟",
+          label: model,
+        });
+
+      if (processor)
+        specs.push({
+          icon: "⚡",
+          label: processor,
+        });
+
+      if (ram)
+        specs.push({
+          icon: "🧠",
+          label: ram,
+        });
+
+      if (graphics)
+        specs.push({
+          icon: "🖥️",
+          label: graphics,
+        });
+
+      if (screenSize)
+        specs.push({
+          icon: "📐",
+          label: screenSize,
+        });
+
+      if (storage)
+        specs.push({
+          icon: "💾",
+          label: storage,
+        });
+
+      if (condition)
+        specs.push({
+          icon: "📋",
+          label: condition,
+        });
     }
 
-    return specs.slice(0, 4).map((spec, index) => (
-      <span
-        key={`${spec.label}-${index}`}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "4px",
-          fontSize: "12px",
-          color: "#6b7280",
-        }}
-      >
-        {spec.icon} {spec.label}
-      </span>
-    ));
+    else if (normalizedCategory === "Tablets") {
+      if (brand)
+        specs.push({
+          icon: "🏷️",
+          label: brand,
+        });
+
+      if (model)
+        specs.push({
+          icon: "📟",
+          label: model,
+        });
+
+      if (year)
+        specs.push({
+          icon: "📅",
+          label: year,
+        });
+
+      if (connectivity)
+        specs.push({
+          icon: "📶",
+          label: connectivity,
+        });
+
+      if (screenSize)
+        specs.push({
+          icon: "📐",
+          label: screenSize,
+        });
+
+      if (storage)
+        specs.push({
+          icon: "💾",
+          label: storage,
+        });
+
+      if (condition)
+        specs.push({
+          icon: "📋",
+          label: condition,
+        });
+    }
+
+    else if (normalizedCategory === "Phones") {
+      if (brand)
+        specs.push({
+          icon: "🏷️",
+          label: brand,
+        });
+
+      if (model)
+        specs.push({
+          icon: "📟",
+          label: model,
+        });
+
+      if (storage)
+        specs.push({
+          icon: "💾",
+          label: storage,
+        });
+
+      if (batteryHealth)
+        specs.push({
+          icon: "🔋",
+          label: `${batteryHealth}%`,
+        });
+
+      if (faceId)
+        specs.push({
+          icon: "😊",
+          label: faceId,
+        });
+
+      if (condition)
+        specs.push({
+          icon: "📋",
+          label: condition,
+        });
+    }
+
+    else if (isProperty) {
+      if (product.bedrooms)
+        specs.push({
+          icon: "🛏️",
+          label: `${product.bedrooms} bedrooms`,
+        });
+
+      if (product.bathrooms)
+        specs.push({
+          icon: "🚿",
+          label: `${product.bathrooms} baths`,
+        });
+
+      if (product.sqm)
+        specs.push({
+          icon: "📐",
+          label: `${product.sqm} sqm`,
+        });
+
+      if (product.propertyType)
+        specs.push({
+          icon: "🏠",
+          label: product.propertyType,
+        });
+
+      if (condition)
+        specs.push({
+          icon: "📋",
+          label: condition,
+        });
+    }
+
+    else {
+      if (brand)
+        specs.push({
+          icon: "🏷️",
+          label: brand,
+        });
+
+      if (model)
+        specs.push({
+          icon: "📟",
+          label: model,
+        });
+
+      if (storage)
+        specs.push({
+          icon: "💾",
+          label: storage,
+        });
+
+      if (condition)
+        specs.push({
+          icon: "📋",
+          label: condition,
+        });
+    }
+
+    return specs
+      .slice(0, 4)
+      .map((spec, index) => (
+        <span
+          key={`${spec.label}-${index}`}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "4px",
+            fontSize: "12px",
+            color: "#6b7280",
+          }}
+        >
+          {spec.icon} {spec.label}
+        </span>
+      ));
   };
 
   const isSold = status === "sold";
 
-  // ─── Contact handlers ──────────────────────────────────────────
+  // ==============================================================
+  // CHAT
+  // ==============================================================
+
   const handleChat = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    navigate(`/product/${_id}?openChat=true`);
+
+    navigate(
+      `/product/${_id}?openChat=true`
+    );
   };
+
+  // ==============================================================
+  // CALL
+  // ==============================================================
 
   const handleCall = (e) => {
     e.preventDefault();
     e.stopPropagation();
 
-    const rawPhone = sellerObj?.phone || '';
-    let phone = String(rawPhone).replace(/\D/g, '');
-    if (phone.startsWith('0') && phone.length === 10) {
-      phone = '233' + phone.substring(1);
+    const rawPhone =
+      sellerObj?.phone || "";
+
+    let phone = String(rawPhone).replace(
+      /\D/g,
+      ""
+    );
+
+    if (
+      phone.startsWith("0") &&
+      phone.length === 10
+    ) {
+      phone =
+        "233" +
+        phone.substring(1);
     }
-    if (!phone || phone.length < 10) {
-      alert('This seller has not provided a valid phone number.');
+
+    if (
+      !phone ||
+      phone.length < 10
+    ) {
+      alert(
+        "This seller has not provided a valid phone number."
+      );
       return;
     }
-    window.location.href = `tel:+${phone}`;
+
+    window.location.href =
+      `tel:+${phone}`;
   };
 
   // ==============================================================
@@ -264,9 +543,12 @@ const ProductCard = ({ product }) => {
         background: "#fff",
         borderRadius: "12px",
         overflow: "hidden",
-        border: "1px solid #e5e7eb",
-        transition: "all 0.2s ease",
-        boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
+        border:
+          "1px solid #e5e7eb",
+        transition:
+          "all 0.2s ease",
+        boxShadow:
+          "0 1px 3px rgba(0,0,0,0.04)",
         display: "flex",
         flexDirection: "column",
         width: "100%",
@@ -274,9 +556,10 @@ const ProductCard = ({ product }) => {
         position: "relative",
       }}
     >
-      {/* ==========================================================
-          IMAGE – AUTOMATICALLY ADAPTS TO IMAGE SIZE
-      ========================================================== */}
+
+      {/* ========================================================
+          IMAGE
+      ======================================================== */}
 
       <Link
         to={`/product/${_id}`}
@@ -291,23 +574,38 @@ const ProductCard = ({ product }) => {
       >
         <img
           src={imageUrl}
-          alt={title || "Product"}
+          alt={
+            title ||
+            "Product"
+          }
           loading="lazy"
           decoding="async"
           style={{
             width: "100%",
             height: "auto",
             display: "block",
-            transition: "transform 0.3s ease",
+            transition:
+              "transform 0.3s ease",
           }}
           onError={(e) => {
-            if (e.currentTarget.src !== "/placeholder.png") {
-              e.currentTarget.src = "/placeholder.png";
+            if (
+              e.currentTarget.src !==
+              window.location.origin +
+                "/placeholder.png"
+            ) {
+              e.currentTarget.src =
+                "/placeholder.png";
             }
           }}
         />
 
-        {isSold && <SoldBadge variant="card" />}
+        {isSold && (
+          <SoldBadge variant="card" />
+        )}
+
+        {/* ======================================================
+            TOP LEFT BADGES
+        ====================================================== */}
 
         <div
           style={{
@@ -315,7 +613,8 @@ const ProductCard = ({ product }) => {
             top: "8px",
             left: "8px",
             display: "flex",
-            flexDirection: "column",
+            flexDirection:
+              "column",
             gap: "3px",
             zIndex: 2,
           }}
@@ -323,75 +622,183 @@ const ProductCard = ({ product }) => {
           {isVerified && (
             <span
               style={{
-                background: "#1DA1F2",
+                background:
+                  "#1DA1F2",
                 color: "white",
                 fontSize: "8px",
                 fontWeight: 700,
-                padding: "1px 6px",
-                borderRadius: "8px",
-                textTransform: "uppercase",
-                display: "inline-block",
-                boxShadow: "0 1px 2px rgba(0,0,0,0.15)",
-                letterSpacing: "0.3px",
+                padding:
+                  "1px 6px",
+                borderRadius:
+                  "8px",
+                textTransform:
+                  "uppercase",
+                display:
+                  "inline-block",
+                boxShadow:
+                  "0 1px 2px rgba(0,0,0,0.15)",
+                letterSpacing:
+                  "0.3px",
               }}
             >
               ✓ Verified ID
             </span>
           )}
+
           {popular && (
             <span
               style={{
-                background: "#f59e0b",
+                background:
+                  "#f59e0b",
                 color: "white",
                 fontSize: "8px",
                 fontWeight: 700,
-                padding: "1px 6px",
-                borderRadius: "8px",
-                textTransform: "uppercase",
-                display: "inline-block",
-                boxShadow: "0 1px 2px rgba(0,0,0,0.15)",
+                padding:
+                  "1px 6px",
+                borderRadius:
+                  "8px",
+                textTransform:
+                  "uppercase",
+                display:
+                  "inline-block",
+                boxShadow:
+                  "0 1px 2px rgba(0,0,0,0.15)",
               }}
             >
               ★ Popular
             </span>
           )}
+
           {yearsOnPlatform >= 5 && (
             <span
               style={{
-                background: "#10b981",
+                background:
+                  "#10b981",
                 color: "white",
                 fontSize: "8px",
                 fontWeight: 700,
-                padding: "1px 6px",
-                borderRadius: "8px",
-                textTransform: "uppercase",
-                display: "inline-block",
-                boxShadow: "0 1px 2px rgba(0,0,0,0.15)",
+                padding:
+                  "1px 6px",
+                borderRadius:
+                  "8px",
+                textTransform:
+                  "uppercase",
+                display:
+                  "inline-block",
+                boxShadow:
+                  "0 1px 2px rgba(0,0,0,0.15)",
               }}
             >
-              {yearsOnPlatform}+ years on Jiji
+              {yearsOnPlatform}+
+              {" "}
+              years on Jiji
             </span>
           )}
         </div>
+
+        {/* ======================================================
+            FAVORITE HEART
+        ====================================================== */}
+
+        <button
+          type="button"
+          className={`favorite-button ${
+            liked
+              ? "favorite-active"
+              : ""
+          }`}
+          onClick={
+            handleFavorite
+          }
+          aria-label={
+            liked
+              ? "Remove from favorites"
+              : "Add to favorites"
+          }
+          title={
+            liked
+              ? "Remove from favorites"
+              : "Add to favorites"
+          }
+          style={{
+            position: "absolute",
+            top: "8px",
+            right: "8px",
+            width: "38px",
+            height: "38px",
+            borderRadius: "50%",
+            border: "none",
+            background:
+              "rgba(255,255,255,0.94)",
+            display: "flex",
+            alignItems:
+              "center",
+            justifyContent:
+              "center",
+            cursor: "pointer",
+            zIndex: 5,
+            color: liked
+              ? "#e11d48"
+              : "#374151",
+            fontSize: "18px",
+            boxShadow:
+              "0 2px 8px rgba(0,0,0,0.16)",
+            transition:
+              "all 0.2s ease",
+            backdropFilter:
+              "blur(6px)",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform =
+              "scale(1.08)";
+            e.currentTarget.style.background =
+              "#ffffff";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform =
+              "scale(1)";
+          }}
+        >
+          <i
+            className={
+              liked
+                ? "fas fa-heart"
+                : "far fa-heart"
+            }
+            style={{
+              color: liked
+                ? "#e11d48"
+                : "#374151",
+              transition:
+                "color 0.2s ease, transform 0.2s ease",
+            }}
+          />
+        </button>
       </Link>
 
-      {/* ==========================================================
+      {/* ========================================================
           PRODUCT INFORMATION
-      ========================================================== */}
+      ======================================================== */}
 
       <div
         style={{
-          padding: "12px 14px 14px",
+          padding:
+            "12px 14px 14px",
           flex: 1,
           display: "flex",
-          flexDirection: "column",
+          flexDirection:
+            "column",
           gap: "4px",
         }}
       >
+
+        {/* TITLE */}
+
         <Link
           to={`/product/${_id}`}
           style={{
-            textDecoration: "none",
+            textDecoration:
+              "none",
             color: "inherit",
           }}
         >
@@ -401,39 +808,54 @@ const ProductCard = ({ product }) => {
               fontWeight: 600,
               fontSize: "15px",
               lineHeight: 1.3,
-              display: "-webkit-box",
+              display:
+                "-webkit-box",
               WebkitLineClamp: 2,
-              WebkitBoxOrient: "vertical",
-              overflow: "hidden",
+              WebkitBoxOrient:
+                "vertical",
+              overflow:
+                "hidden",
               color: "#111827",
-              marginBottom: "2px",
+              marginBottom:
+                "2px",
             }}
           >
-            {title || "Untitled Product"}
+            {title ||
+              "Untitled Product"}
           </div>
         </Link>
+
+        {/* PRICE */}
 
         <div
           className="price"
           style={{
             fontSize: "20px",
             fontWeight: 700,
-            color: isSold ? "#9ca3af" : "#0066cc",
+            color: isSold
+              ? "#9ca3af"
+              : "#0066cc",
             display: "flex",
-            alignItems: "center",
+            alignItems:
+              "center",
             gap: "8px",
           }}
         >
           {formattedPrice}
+
           {isSold && (
             <span
               style={{
                 fontSize: "11px",
                 fontWeight: 700,
-                color: "#dc2626",
-                background: "#fee2e2",
-                padding: "2px 8px",
-                borderRadius: "4px",
+                color:
+                  "#dc2626",
+                background:
+                  "#fee2e2",
+                padding:
+                  "2px 8px",
+                borderRadius:
+                  "4px",
               }}
             >
               SOLD
@@ -441,21 +863,35 @@ const ProductCard = ({ product }) => {
           )}
         </div>
 
+        {/* LOCATION */}
+
         <div
           className="location-condition"
           style={{
             display: "flex",
-            alignItems: "center",
+            alignItems:
+              "center",
             gap: "8px",
             fontSize: "13px",
             color: "#6b7280",
             marginTop: "2px",
           }}
         >
-          <span className="location-text">{getCityOnly(location) || "Ghana"}</span>
+          <span className="location-text">
+            {getCityOnly(
+              productLocation
+            ) || "Ghana"}
+          </span>
+
           <span>•</span>
-          <span>{condition || "Used"}</span>
+
+          <span>
+            {condition ||
+              "Used"}
+          </span>
         </div>
+
+        {/* SPECS */}
 
         <div
           className="specs-row"
@@ -465,70 +901,118 @@ const ProductCard = ({ product }) => {
             gap: "4px 10px",
             fontSize: "12px",
             color: "#6b7280",
-            margin: "6px 0 8px",
+            margin:
+              "6px 0 8px",
           }}
         >
           {renderCategorySpecs()}
+
           {warranty && (
-            <span style={{ display: "flex", alignItems: "center", gap: "3px" }}>
-              <i className="fas fa-shield-alt" /> {warranty}
-            </span>
-          )}
-          {isPhone && simStatus && (
             <span
               style={{
-                display: "flex",
-                alignItems: "center",
+                display:
+                  "flex",
+                alignItems:
+                  "center",
                 gap: "3px",
-                color: "#0055a5",
-                fontWeight: 600,
               }}
             >
-              <i className="fas fa-sim-card" /> SIM: {simStatus}
+              <i className="fas fa-shield-alt" />
+              {" "}
+              {warranty}
             </span>
           )}
-          <span>{swapAccepted ? "🔄 Swap OK" : "🚫 No swap"}</span>
+
+          {isPhone &&
+            simStatus && (
+              <span
+                style={{
+                  display:
+                    "flex",
+                  alignItems:
+                    "center",
+                  gap: "3px",
+                  color:
+                    "#0055a5",
+                  fontWeight: 600,
+                }}
+              >
+                <i className="fas fa-sim-card" />
+                {" "}
+                SIM:{" "}
+                {simStatus}
+              </span>
+            )}
+
+          <span>
+            {swapAccepted
+              ? "🔄 Swap OK"
+              : "🚫 No swap"}
+          </span>
         </div>
 
-        {description && String(description).trim() && (
-          <div
-            className="product-description"
-            style={{
-              margin: "4px 0 6px",
-              fontSize: "12px",
-              lineHeight: 1.4,
-              color: "#6b7280",
-              display: "-webkit-box",
-              WebkitLineClamp: 2,
-              WebkitBoxOrient: "vertical",
-              overflow: "hidden",
-              wordBreak: "break-word",
-            }}
-          >
-            {description}
-          </div>
-        )}
+        {/* DESCRIPTION */}
+
+        {description &&
+          String(
+            description
+          ).trim() && (
+            <div
+              className="product-description"
+              style={{
+                margin:
+                  "4px 0 6px",
+                fontSize: "12px",
+                lineHeight: 1.4,
+                color:
+                  "#6b7280",
+                display:
+                  "-webkit-box",
+                WebkitLineClamp: 2,
+                WebkitBoxOrient:
+                  "vertical",
+                overflow:
+                  "hidden",
+                wordBreak:
+                  "break-word",
+              }}
+            >
+              {description}
+            </div>
+          )}
+
+        {/* SELLER */}
 
         <div
           style={{
             marginTop: "auto",
             display: "flex",
-            alignItems: "center",
+            alignItems:
+              "center",
             gap: "8px",
-            paddingTop: "10px",
-            borderTop: "1px solid #f3f4f6",
+            paddingTop:
+              "10px",
+            borderTop:
+              "1px solid #f3f4f6",
           }}
         >
           {sellerImageUrl ? (
             <img
-              src={sellerImageUrl}
-              alt={sellerName}
+              src={
+                sellerImageUrl
+              }
+              alt={
+                sellerName
+              }
               style={{
                 width: "28px",
                 height: "28px",
-                borderRadius: "50%",
-                objectFit: "cover",
-                border: "1px solid #e5e7eb",
+                borderRadius:
+                  "50%",
+                objectFit:
+                  "cover",
+                border:
+                  "1px solid #e5e7eb",
               }}
             />
           ) : (
@@ -536,136 +1020,271 @@ const ProductCard = ({ product }) => {
               style={{
                 width: "28px",
                 height: "28px",
-                borderRadius: "50%",
-                background: "#e5e7eb",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
+                borderRadius:
+                  "50%",
+                background:
+                  "#e5e7eb",
+                display:
+                  "flex",
+                alignItems:
+                  "center",
+                justifyContent:
+                  "center",
                 fontSize: "12px",
-                color: "#9ca3af",
+                color:
+                  "#9ca3af",
               }}
             >
               <i className="fas fa-user" />
             </div>
           )}
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "4px", flexWrap: "wrap" }}>
-              <span style={{ fontSize: "13px", fontWeight: 500, color: "#111827" }}>
+
+          <div
+            style={{
+              flex: 1,
+              minWidth: 0,
+            }}
+          >
+            <div
+              style={{
+                display:
+                  "flex",
+                alignItems:
+                  "center",
+                gap: "4px",
+                flexWrap:
+                  "wrap",
+              }}
+            >
+              <span
+                style={{
+                  fontSize:
+                    "13px",
+                  fontWeight:
+                    500,
+                  color:
+                    "#111827",
+                }}
+              >
                 {sellerName}
               </span>
-              {isVerified && <VerifiedBadge size={12} />}
+
+              {isVerified && (
+                <VerifiedBadge
+                  size={12}
+                />
+              )}
             </div>
+
             {accountBadge && (
               <span
                 style={{
-                  fontSize: "10px",
-                  fontWeight: 700,
-                  color: accountBadge.color,
-                  background: accountBadge.bg,
-                  padding: "1px 6px",
-                  borderRadius: "10px",
-                  display: "inline-block",
-                  marginTop: "2px",
+                  fontSize:
+                    "10px",
+                  fontWeight:
+                    700,
+                  color:
+                    accountBadge.color,
+                  background:
+                    accountBadge.bg,
+                  padding:
+                    "1px 6px",
+                  borderRadius:
+                    "10px",
+                  display:
+                    "inline-block",
+                  marginTop:
+                    "2px",
                 }}
               >
-                {accountBadge.label}
+                {
+                  accountBadge.label
+                }
               </span>
             )}
           </div>
-          {yearsOnPlatform >= 3 && (
+
+          {yearsOnPlatform >=
+            3 && (
             <span
               style={{
-                fontSize: "10px",
-                color: "#6b7280",
-                whiteSpace: "nowrap",
+                fontSize:
+                  "10px",
+                color:
+                  "#6b7280",
+                whiteSpace:
+                  "nowrap",
               }}
             >
-              {yearsOnPlatform}+ yrs
+              {yearsOnPlatform}+
+              {" "}
+              yrs
             </span>
           )}
         </div>
+
+        {/* CONTACT BUTTONS */}
 
         {sellerObj?.phone && (
           <div
             className="contact-buttons"
             style={{
-              display: "flex",
-              alignItems: "center",
+              display:
+                "flex",
+              alignItems:
+                "center",
               gap: "8px",
-              marginTop: "8px",
-              paddingTop: "8px",
-              borderTop: "1px solid #f3f4f6",
+              marginTop:
+                "8px",
+              paddingTop:
+                "8px",
+              borderTop:
+                "1px solid #f3f4f6",
             }}
           >
             <button
-              onClick={handleChat}
+              onClick={
+                handleChat
+              }
               className="contact-btn chat-btn"
               style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
+                display:
+                  "flex",
+                alignItems:
+                  "center",
+                justifyContent:
+                  "center",
                 gap: "4px",
-                padding: "5px 12px",
-                borderRadius: "16px",
-                border: "none",
-                background: "#25D366",
+                padding:
+                  "5px 12px",
+                borderRadius:
+                  "16px",
+                border:
+                  "none",
+                background:
+                  "#25D366",
                 color: "white",
-                fontSize: "12px",
-                fontWeight: 600,
-                cursor: "pointer",
-                transition: "background 0.2s",
+                fontSize:
+                  "12px",
+                fontWeight:
+                  600,
+                cursor:
+                  "pointer",
+                transition:
+                  "background 0.2s",
                 flex: 1,
-                minHeight: "28px",
+                minHeight:
+                  "28px",
               }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = "#1ebe5c")}
-              onMouseLeave={(e) => (e.currentTarget.style.background = "#25D366")}
+              onMouseEnter={(
+                e
+              ) =>
+                (e.currentTarget.style.background =
+                  "#1ebe5c")
+              }
+              onMouseLeave={(
+                e
+              ) =>
+                (e.currentTarget.style.background =
+                  "#25D366")
+              }
             >
-              <i className="fas fa-comment-dots" style={{ fontSize: "13px" }} />
+              <i
+                className="fas fa-comment-dots"
+                style={{
+                  fontSize:
+                    "13px",
+                }}
+              />
+
               CHAT
             </button>
 
             <button
-              onClick={handleCall}
+              onClick={
+                handleCall
+              }
               className="contact-btn call-btn"
               style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
+                display:
+                  "flex",
+                alignItems:
+                  "center",
+                justifyContent:
+                  "center",
                 gap: "4px",
-                padding: "5px 12px",
-                borderRadius: "16px",
-                border: "none",
-                background: "#3b82f6",
+                padding:
+                  "5px 12px",
+                borderRadius:
+                  "16px",
+                border:
+                  "none",
+                background:
+                  "#3b82f6",
                 color: "white",
-                fontSize: "12px",
-                fontWeight: 600,
-                cursor: "pointer",
-                transition: "background 0.2s",
+                fontSize:
+                  "12px",
+                fontWeight:
+                  600,
+                cursor:
+                  "pointer",
+                transition:
+                  "background 0.2s",
                 flex: 1,
-                minHeight: "28px",
+                minHeight:
+                  "28px",
               }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = "#2563eb")}
-              onMouseLeave={(e) => (e.currentTarget.style.background = "#3b82f6")}
+              onMouseEnter={(
+                e
+              ) =>
+                (e.currentTarget.style.background =
+                  "#2563eb")
+              }
+              onMouseLeave={(
+                e
+              ) =>
+                (e.currentTarget.style.background =
+                  "#3b82f6")
+              }
             >
-              <i className="fas fa-phone" style={{ fontSize: "13px" }} />
+              <i
+                className="fas fa-phone"
+                style={{
+                  fontSize:
+                    "13px",
+                }}
+              />
+
               CALL
             </button>
           </div>
         )}
 
+        {/* VIEW DETAILS */}
+
         <Link
           to={`/product/${_id}`}
           style={{
-            marginTop: "8px",
-            padding: "6px 0",
-            textAlign: "center",
-            fontSize: "13px",
-            fontWeight: 600,
-            color: "#0066cc",
-            textDecoration: "none",
-            borderTop: "1px solid #f3f4f6",
-            paddingTop: "8px",
-            display: "block",
+            marginTop:
+              "8px",
+            padding:
+              "6px 0",
+            textAlign:
+              "center",
+            fontSize:
+              "13px",
+            fontWeight:
+              600,
+            color:
+              "#0066cc",
+            textDecoration:
+              "none",
+            borderTop:
+              "1px solid #f3f4f6",
+            paddingTop:
+              "8px",
+            display:
+              "block",
           }}
         >
           View Details →
@@ -687,62 +1306,90 @@ const ProductSkeleton = () => {
         background: "#fff",
         borderRadius: "12px",
         overflow: "hidden",
-        border: "1px solid #e5e7eb",
-        boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
+        border:
+          "1px solid #e5e7eb",
+        boxShadow:
+          "0 1px 3px rgba(0,0,0,0.04)",
       }}
     >
       <div
         className="product-image-wrapper"
         style={{
           width: "100%",
-          paddingBottom: "75%", // placeholder aspect ratio (4:3)
-          background: "#f4f5f7",
-          position: "relative",
+          paddingBottom:
+            "75%",
+          background:
+            "#f4f5f7",
+          position:
+            "relative",
         }}
       />
-      <div style={{ padding: "14px" }}>
+
+      <div
+        style={{
+          padding: "14px",
+        }}
+      >
         <div
           style={{
             width: "80%",
             height: "18px",
-            background: "#e5e7eb",
-            borderRadius: "4px",
-            marginBottom: "10px",
+            background:
+              "#e5e7eb",
+            borderRadius:
+              "4px",
+            marginBottom:
+              "10px",
           }}
         />
+
         <div
           style={{
             width: "45%",
             height: "20px",
-            background: "#e5e7eb",
-            borderRadius: "4px",
-            marginBottom: "10px",
+            background:
+              "#e5e7eb",
+            borderRadius:
+              "4px",
+            marginBottom:
+              "10px",
           }}
         />
+
         <div
           style={{
             width: "60%",
             height: "14px",
-            background: "#e5e7eb",
-            borderRadius: "4px",
-            marginBottom: "10px",
+            background:
+              "#e5e7eb",
+            borderRadius:
+              "4px",
+            marginBottom:
+              "10px",
           }}
         />
+
         <div
           style={{
             width: "80%",
             height: "38px",
-            background: "#e5e7eb",
-            borderRadius: "4px",
-            marginBottom: "18px",
+            background:
+              "#e5e7eb",
+            borderRadius:
+              "4px",
+            marginBottom:
+              "18px",
           }}
         />
+
         <div
           style={{
             width: "100%",
             height: "34px",
-            background: "#e5e7eb",
-            borderRadius: "4px",
+            background:
+              "#e5e7eb",
+            borderRadius:
+              "4px",
           }}
         />
       </div>
@@ -757,30 +1404,51 @@ const ProductSkeleton = () => {
 const Products = () => {
   const location = useLocation();
 
-  const queryParams = new URLSearchParams(location.search);
+  const queryParams =
+    new URLSearchParams(
+      location.search
+    );
 
   const initialCategory =
-    queryParams.get("category") || "all";
+    queryParams.get(
+      "category"
+    ) || "all";
 
   const initialSearch =
-    queryParams.get("search") || "";
+    queryParams.get(
+      "search"
+    ) || "";
 
   const initialSimStatus =
-    queryParams.get("simStatus") || "";
+    queryParams.get(
+      "simStatus"
+    ) || "";
 
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [products, setProducts] =
+    useState([]);
 
-  const [filters, setFilters] = useState({
-    search: initialSearch,
-    category: initialCategory,
-    location: "all",
-    simStatus: initialSimStatus,
-  });
+  const [loading, setLoading] =
+    useState(true);
 
-  const [priceMin, setPriceMin] = useState("");
-  const [priceMax, setPriceMax] = useState("");
+  const [error, setError] =
+    useState("");
+
+  const [filters, setFilters] =
+    useState({
+      search:
+        initialSearch,
+      category:
+        initialCategory,
+      location: "all",
+      simStatus:
+        initialSimStatus,
+    });
+
+  const [priceMin, setPriceMin] =
+    useState("");
+
+  const [priceMax, setPriceMax] =
+    useState("");
 
   const [verifiedOnly, setVerifiedOnly] =
     useState(false);
@@ -796,18 +1464,25 @@ const Products = () => {
   // ==============================================================
 
   useEffect(() => {
-    const params = new URLSearchParams(
-      location.search
-    );
+    const params =
+      new URLSearchParams(
+        location.search
+      );
 
     const category =
-      params.get("category") || "all";
+      params.get(
+        "category"
+      ) || "all";
 
     const search =
-      params.get("search") || "";
+      params.get(
+        "search"
+      ) || "";
 
     const simStatus =
-      params.get("simStatus") || "";
+      params.get(
+        "simStatus"
+      ) || "";
 
     setFilters((prev) => ({
       ...prev,
@@ -818,128 +1493,154 @@ const Products = () => {
   }, [location.search]);
 
   // ==============================================================
-  // FETCH PRODUCTS – NO PAGINATION
+  // FETCH PRODUCTS
   // ==============================================================
 
-  const fetchProducts = useCallback(async () => {
-    let cancelled = false;
+  const fetchProducts =
+    useCallback(async () => {
+      let cancelled = false;
 
-    setLoading(true);
-    setError("");
+      setLoading(true);
+      setError("");
 
-    try {
-      const cleanFilters = {
-        ...(filters.search
-          ? { search: filters.search }
-          : {}),
+      try {
+        const cleanFilters = {
+          ...(filters.search
+            ? {
+                search:
+                  filters.search,
+              }
+            : {}),
 
-        ...(filters.category &&
-        filters.category !== "all"
-          ? {
-              category: filters.category,
-            }
-          : {}),
+          ...(filters.category &&
+          filters.category !==
+            "all"
+            ? {
+                category:
+                  filters.category,
+              }
+            : {}),
 
-        ...(filters.location &&
-        filters.location !== "all"
-          ? {
-              location: filters.location,
-            }
-          : {}),
+          ...(filters.location &&
+          filters.location !==
+            "all"
+            ? {
+                location:
+                  filters.location,
+              }
+            : {}),
 
-        ...(filters.simStatus
-          ? {
-              simStatus: filters.simStatus,
-            }
-          : {}),
+          ...(filters.simStatus
+            ? {
+                simStatus:
+                  filters.simStatus,
+              }
+            : {}),
 
-        ...(priceMin
-          ? {
-              priceMin,
-            }
-          : {}),
+          ...(priceMin
+            ? {
+                priceMin,
+              }
+            : {}),
 
-        ...(priceMax
-          ? {
-              priceMax,
-            }
-          : {}),
+          ...(priceMax
+            ? {
+                priceMax,
+              }
+            : {}),
 
-        ...(verifiedOnly
-          ? {
-              verified: true,
-            }
-          : {}),
+          ...(verifiedOnly
+            ? {
+                verified: true,
+              }
+            : {}),
 
-        ...(discountOnly
-          ? {
-              discount: true,
-            }
-          : {}),
+          ...(discountOnly
+            ? {
+                discount: true,
+              }
+            : {}),
 
-        // ─── Fetch ALL products ──────────────────────────────────
-        limit: 1000, // large enough to get all
-      };
+          limit: 1000,
+        };
 
-      const data =
-        await getProducts(cleanFilters);
+        const data =
+          await getProducts(
+            cleanFilters
+          );
 
-      if (cancelled) return;
+        if (cancelled) return;
 
-      const productList =
-        Array.isArray(data?.products)
-          ? data.products
-          : [];
-
-      const processedProducts =
-        productList.map((product) => ({
-          ...product,
-
-          images: Array.isArray(
-            product.images
+        const productList =
+          Array.isArray(
+            data?.products
           )
-            ? product.images
-                .filter(Boolean)
-                .map((img) =>
-                  getImageUrl(img)
+            ? data.products
+            : [];
+
+        const processedProducts =
+          productList.map(
+            (product) => ({
+              ...product,
+
+              images:
+                Array.isArray(
+                  product.images
                 )
-            : [],
+                  ? product.images
+                      .filter(
+                        Boolean
+                      )
+                      .map(
+                        (img) =>
+                          getImageUrl(
+                            img
+                          )
+                      )
+                  : [],
 
-          image: product.image
-            ? getImageUrl(product.image)
-            : null,
-        }));
+              image:
+                product.image
+                  ? getImageUrl(
+                      product.image
+                    )
+                  : null,
+            })
+          );
 
-      setProducts(processedProducts);
-    } catch (err) {
-      if (cancelled) return;
+        setProducts(
+          processedProducts
+        );
+      } catch (err) {
+        if (cancelled)
+          return;
 
-      console.error(
-        "❌ Error fetching products:",
-        err
-      );
+        console.error(
+          "❌ Error fetching products:",
+          err
+        );
 
-      setError(
-        err?.message ||
-          "Unable to load products. Please try again."
-      );
+        setError(
+          err?.message ||
+            "Unable to load products. Please try again."
+        );
 
-      setProducts([]);
-    } finally {
-      if (!cancelled) {
-        setLoading(false);
+        setProducts([]);
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
-    }
-  }, [
-    filters.search,
-    filters.category,
-    filters.location,
-    filters.simStatus,
-    priceMin,
-    priceMax,
-    verifiedOnly,
-    discountOnly,
-  ]);
+    }, [
+      filters.search,
+      filters.category,
+      filters.location,
+      filters.simStatus,
+      priceMin,
+      priceMax,
+      verifiedOnly,
+      discountOnly,
+    ]);
 
   useEffect(() => {
     fetchProducts();
@@ -949,61 +1650,74 @@ const Products = () => {
   // SEARCH
   // ==============================================================
 
-  const handleSearch = useCallback(
-    (newFilters = {}) => {
-      setFilters((prev) => ({
-        ...prev,
-        ...newFilters,
-      }));
-    },
-    []
-  );
+  const handleSearch =
+    useCallback(
+      (newFilters = {}) => {
+        setFilters(
+          (prev) => ({
+            ...prev,
+            ...newFilters,
+          })
+        );
+      },
+      []
+    );
 
   // ==============================================================
   // CLEAR FILTERS
   // ==============================================================
 
-  const handleClearFilters = () => {
-    setFilters({
-      search: "",
-      category: "all",
-      location: "all",
-      simStatus: "",
-    });
+  const handleClearFilters =
+    () => {
+      setFilters({
+        search: "",
+        category: "all",
+        location: "all",
+        simStatus: "",
+      });
 
-    setPriceMin("");
-    setPriceMax("");
+      setPriceMin("");
+      setPriceMax("");
 
-    setVerifiedOnly(false);
-    setDiscountOnly(false);
-  };
+      setVerifiedOnly(false);
+      setDiscountOnly(false);
+    };
 
   // ==============================================================
   // SORT
   // ==============================================================
 
   const sortedProducts =
-    React.useMemo(() => {
-      if (!products.length) {
+    useMemo(() => {
+      if (
+        !products.length
+      ) {
         return [];
       }
 
-      const sorted = [...products];
+      const sorted =
+        [...products];
 
-      switch (sortOption) {
+      switch (
+        sortOption
+      ) {
         case "price-asc":
           sorted.sort(
             (a, b) =>
-              (a.price || 0) -
-              (b.price || 0)
+              (a.price ||
+                0) -
+              (b.price ||
+                0)
           );
           break;
 
         case "price-desc":
           sorted.sort(
             (a, b) =>
-              (b.price || 0) -
-              (a.price || 0)
+              (b.price ||
+                0) -
+              (a.price ||
+                0)
           );
           break;
 
@@ -1011,10 +1725,12 @@ const Products = () => {
           sorted.sort(
             (a, b) =>
               new Date(
-                b.createdAt || 0
+                b.createdAt ||
+                  0
               ) -
               new Date(
-                a.createdAt || 0
+                a.createdAt ||
+                  0
               )
           );
           break;
@@ -1024,7 +1740,10 @@ const Products = () => {
       }
 
       return sorted;
-    }, [products, sortOption]);
+    }, [
+      products,
+      sortOption,
+    ]);
 
   // ==============================================================
   // RENDER
@@ -1041,6 +1760,14 @@ const Products = () => {
             width: 100%;
             max-width: 1400px;
             margin: 0 auto;
+          }
+
+          .favorite-button:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.18) !important;
+          }
+
+          .favorite-button:active {
+            transform: scale(0.94) !important;
           }
 
           @media (max-width: 1100px) {
@@ -1062,43 +1789,7 @@ const Products = () => {
               grid-template-columns: 1fr;
               gap: 12px;
             }
-          }
 
-          /* ─── LARGE SCREENS (≥ 1200px) ─── */
-          @media (min-width: 1200px) {
-            .products-grid {
-              grid-template-columns: repeat(3, 1fr);
-              gap: 24px;
-            }
-
-            .product-card .title {
-              font-size: 16px !important;
-            }
-
-            .product-card .price {
-              font-size: 20px !important;
-            }
-          }
-
-          /* ─── EXTRA LARGE SCREENS (≥ 1600px) ─── */
-          @media (min-width: 1600px) {
-            .products-grid {
-              grid-template-columns: repeat(3, 1fr);
-              gap: 28px;
-              max-width: 1600px;
-            }
-
-            .product-card .title {
-              font-size: 17px !important;
-            }
-
-            .product-card .price {
-              font-size: 21px !important;
-            }
-          }
-
-          /* ─── Mobile ─── */
-          @media (max-width: 520px) {
             .location-text {
               font-size: 12px !important;
             }
@@ -1115,6 +1806,7 @@ const Products = () => {
               gap: 3px 8px !important;
               margin: 4px 0 6px !important;
             }
+
             .specs-row span {
               font-size: 10px !important;
             }
@@ -1153,6 +1845,7 @@ const Products = () => {
               font-size: 9px !important;
               min-height: 22px !important;
             }
+
             .contact-btn i {
               font-size: 9px !important;
             }
@@ -1160,11 +1853,50 @@ const Products = () => {
             .product-description {
               font-size: 9px !important;
             }
+
             .specs-row {
               font-size: 9px !important;
             }
+
             .specs-row span {
               font-size: 9px !important;
+            }
+
+            .favorite-button {
+              width: 34px !important;
+              height: 34px !important;
+              font-size: 16px !important;
+            }
+          }
+
+          @media (min-width: 1200px) {
+            .products-grid {
+              grid-template-columns: repeat(3, 1fr);
+              gap: 24px;
+            }
+
+            .product-card .title {
+              font-size: 16px !important;
+            }
+
+            .product-card .price {
+              font-size: 20px !important;
+            }
+          }
+
+          @media (min-width: 1600px) {
+            .products-grid {
+              grid-template-columns: repeat(3, 1fr);
+              gap: 28px;
+              max-width: 1600px;
+            }
+
+            .product-card .title {
+              font-size: 17px !important;
+            }
+
+            .product-card .price {
+              font-size: 21px !important;
             }
           }
         `}
@@ -1177,21 +1909,40 @@ const Products = () => {
           gap: "24px",
           maxWidth: "1440px",
           margin: "0 auto",
-          padding: "20px 16px",
+          padding:
+            "20px 16px",
         }}
       >
+        {/* ======================================================
+            FILTER SIDEBAR
+        ====================================================== */}
+
         <div className="filter-sidebar-wrapper">
           <FilterSidebar
             filters={filters}
-            setFilters={setFilters}
+            setFilters={
+              setFilters
+            }
             priceMin={priceMin}
-            setPriceMin={setPriceMin}
+            setPriceMin={
+              setPriceMin
+            }
             priceMax={priceMax}
-            setPriceMax={setPriceMax}
-            verifiedOnly={verifiedOnly}
-            setVerifiedOnly={setVerifiedOnly}
-            discountOnly={discountOnly}
-            setDiscountOnly={setDiscountOnly}
+            setPriceMax={
+              setPriceMax
+            }
+            verifiedOnly={
+              verifiedOnly
+            }
+            setVerifiedOnly={
+              setVerifiedOnly
+            }
+            discountOnly={
+              discountOnly
+            }
+            setDiscountOnly={
+              setDiscountOnly
+            }
             onClearFilters={
               handleClearFilters
             }
@@ -1201,14 +1952,23 @@ const Products = () => {
             simStatus={
               filters.simStatus
             }
-            setSimStatus={(value) =>
-              setFilters((prev) => ({
-                ...prev,
-                simStatus: value,
-              }))
+            setSimStatus={(
+              value
+            ) =>
+              setFilters(
+                (prev) => ({
+                  ...prev,
+                  simStatus:
+                    value,
+                })
+              )
             }
           />
         </div>
+
+        {/* ======================================================
+            MAIN CONTENT
+        ====================================================== */}
 
         <main
           className="main-content"
@@ -1217,34 +1977,49 @@ const Products = () => {
             minWidth: 0,
           }}
         >
+          {/* SEARCH */}
+
           <div
             style={{
-              marginBottom: "24px",
+              marginBottom:
+                "24px",
             }}
           >
             <SearchBar
-              onSearch={handleSearch}
-              initialQuery={filters}
+              onSearch={
+                handleSearch
+              }
+              initialQuery={
+                filters
+              }
             />
           </div>
+
+          {/* HEADER */}
 
           <div
             style={{
               display: "flex",
               justifyContent:
                 "space-between",
-              alignItems: "center",
-              flexWrap: "wrap",
+              alignItems:
+                "center",
+              flexWrap:
+                "wrap",
               gap: "12px",
-              marginBottom: "20px",
+              marginBottom:
+                "20px",
             }}
           >
             <h1
               style={{
-                fontSize: "22px",
-                fontWeight: 700,
+                fontSize:
+                  "22px",
+                fontWeight:
+                  700,
                 margin: 0,
-                color: "#333",
+                color:
+                  "#333",
               }}
             >
               {loading
@@ -1258,31 +2033,45 @@ const Products = () => {
                   for{" "}
                   <span
                     style={{
-                      color: "#0066cc",
+                      color:
+                        "#0066cc",
                     }}
                   >
-                    {filters.category}
+                    {
+                      filters.category
+                    }
                   </span>
                 </>
               )}
             </h1>
 
             <select
-              value={sortOption}
-              onChange={(e) =>
+              value={
+                sortOption
+              }
+              onChange={(
+                e
+              ) =>
                 setSortOption(
-                  e.target.value
+                  e.target
+                    .value
                 )
               }
               style={{
-                padding: "8px 12px",
+                padding:
+                  "8px 12px",
                 border:
                   "1px solid #e5e7eb",
-                borderRadius: "4px",
-                fontSize: "14px",
-                outline: "none",
-                background: "#fff",
-                cursor: "pointer",
+                borderRadius:
+                  "4px",
+                fontSize:
+                  "14px",
+                outline:
+                  "none",
+                background:
+                  "#fff",
+                cursor:
+                  "pointer",
               }}
             >
               <option value="recommended">
@@ -1303,67 +2092,92 @@ const Products = () => {
             </select>
           </div>
 
-          {error && !loading && (
-            <div
-              style={{
-                textAlign: "center",
-                padding: "30px 20px",
-                marginBottom: "24px",
-                color: "#dc2626",
-                background: "#fef2f2",
-                border:
-                  "1px solid #fecaca",
-                borderRadius: "8px",
-              }}
-            >
-              <p
-                style={{
-                  marginBottom:
-                    "12px",
-                }}
-              >
-                {error}
-              </p>
+          {/* ERROR */}
 
-              <button
-                type="button"
-                onClick={() =>
-                  fetchProducts()
-                }
+          {error &&
+            !loading && (
+              <div
                 style={{
-                  border: "none",
-                  borderRadius: "4px",
+                  textAlign:
+                    "center",
                   padding:
-                    "8px 18px",
-                  cursor: "pointer",
-                  fontWeight: 600,
+                    "30px 20px",
+                  marginBottom:
+                    "24px",
+                  color:
+                    "#dc2626",
                   background:
-                    "#0066cc",
-                  color: "white",
+                    "#fef2f2",
+                  border:
+                    "1px solid #fecaca",
+                  borderRadius:
+                    "8px",
                 }}
               >
-                Try Again
-              </button>
-            </div>
-          )}
+                <p
+                  style={{
+                    marginBottom:
+                      "12px",
+                  }}
+                >
+                  {error}
+                </p>
+
+                <button
+                  type="button"
+                  onClick={
+                    fetchProducts
+                  }
+                  style={{
+                    border:
+                      "none",
+                    borderRadius:
+                      "4px",
+                    padding:
+                      "8px 18px",
+                    cursor:
+                      "pointer",
+                    fontWeight:
+                      600,
+                    background:
+                      "#0066cc",
+                    color:
+                      "white",
+                  }}
+                >
+                  Try Again
+                </button>
+              </div>
+            )}
+
+          {/* LOADING */}
 
           {loading ? (
             <div className="products-grid">
-              {Array.from({
-                length: 8,
-              }).map((_, index) => (
-                <ProductSkeleton
-                  key={index}
-                />
-              ))}
+              {Array.from(
+                {
+                  length: 8,
+                }
+              ).map(
+                (_, index) => (
+                  <ProductSkeleton
+                    key={
+                      index
+                    }
+                  />
+                )
+              )}
             </div>
           ) : sortedProducts.length ===
             0 ? (
             <div
               style={{
-                textAlign: "center",
-                padding: "60px 0",
-                color: "#777",
+                textAlign:
+                  "center",
+                padding:
+                  "60px 0",
+                color:
+                  "#777",
               }}
             >
               No ads found.
@@ -1375,9 +2189,12 @@ const Products = () => {
                 style={{
                   display:
                     "inline-block",
-                  marginTop: "10px",
-                  color: "#0066cc",
-                  fontWeight: 600,
+                  marginTop:
+                    "10px",
+                  color:
+                    "#0066cc",
+                  fontWeight:
+                    600,
                 }}
               >
                 Post your ad now!
@@ -1388,8 +2205,12 @@ const Products = () => {
               {sortedProducts.map(
                 (product) => (
                   <ProductCard
-                    key={product._id}
-                    product={product}
+                    key={
+                      product._id
+                    }
+                    product={
+                      product
+                    }
                   />
                 )
               )}

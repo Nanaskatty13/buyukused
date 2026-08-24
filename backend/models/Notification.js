@@ -1,20 +1,17 @@
-// backend/models/Notification.js
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
 const notificationSchema = new mongoose.Schema(
   {
-    // Recipient (the user who will see this notification)
     user: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
+      ref: "User",
       required: true,
       index: true,
     },
 
-    // Optional: who triggered this notification (e.g., the viewer)
     sender: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
+      ref: "User",
       default: null,
     },
 
@@ -34,14 +31,22 @@ const notificationSchema = new mongoose.Schema(
 
     link: {
       type: String,
-      default: '',
+      default: "",
       trim: true,
     },
 
     type: {
       type: String,
-      enum: ['system', 'product_viewed', 'message', 'order_update', 'promotion', 'other'],
-      default: 'system',
+      enum: [
+        "system",
+        "product_viewed",
+        "message",
+        "order_update",
+        "promotion",
+        "other",
+      ],
+      default: "system",
+      index: true,
     },
 
     read: {
@@ -56,4 +61,26 @@ const notificationSchema = new mongoose.Schema(
   }
 );
 
-module.exports = mongoose.models.Notification || mongoose.model('Notification', notificationSchema);
+notificationSchema.index({
+  user: 1,
+  createdAt: -1,
+});
+
+notificationSchema.index({
+  user: 1,
+  read: 1,
+  createdAt: -1,
+});
+
+notificationSchema.index({
+  user: 1,
+  type: 1,
+  createdAt: -1,
+});
+
+module.exports =
+  mongoose.models.Notification ||
+  mongoose.model(
+    "Notification",
+    notificationSchema
+  );

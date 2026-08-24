@@ -90,8 +90,7 @@ app.use(compression());
 
 app.use(
   morgan(
-    process.env.NODE_ENV ===
-      "production"
+    process.env.NODE_ENV === "production"
       ? "combined"
       : "dev"
   )
@@ -127,18 +126,12 @@ console.log(
 // CORS HELPER
 // ============================================================
 
-const isAllowedOrigin = (
-  origin
-) => {
+const isAllowedOrigin = (origin) => {
   if (!origin) {
     return true;
   }
 
-  if (
-    allowedOrigins.includes(
-      origin
-    )
-  ) {
+  if (allowedOrigins.includes(origin)) {
     return true;
   }
 
@@ -168,22 +161,14 @@ const isAllowedOrigin = (
 // ============================================================
 
 const corsOptions = {
-  origin: (
-    origin,
-    callback
-  ) => {
+  origin: (origin, callback) => {
     console.log(
       "🔍 Incoming origin:",
       origin || "undefined"
     );
 
-    if (
-      isAllowedOrigin(origin)
-    ) {
-      return callback(
-        null,
-        true
-      );
+    if (isAllowedOrigin(origin)) {
+      return callback(null, true);
     }
 
     console.log(
@@ -231,9 +216,7 @@ const corsOptions = {
 // APPLY CORS
 // ============================================================
 
-app.use(
-  cors(corsOptions)
-);
+app.use(cors(corsOptions));
 
 app.options(
   "*",
@@ -979,6 +962,10 @@ const start =
 
             console.log(
               "🖼️ Visual Search API: /api/visual-search"
+            );
+
+            console.log(
+              "🔔 Notifications API: /api/notifications"
             );
 
             console.log(
