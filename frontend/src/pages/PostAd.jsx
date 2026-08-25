@@ -1195,31 +1195,8 @@ const PostAd = () => {
     }
 
     // ========================================================
-    // CAR SPARE PARTS VALIDATION
+    // CAR SPARE PARTS VALIDATION - REMOVED (moved to final submit)
     // ========================================================
-
-    if (isCarSpareParts) {
-      if (!formData.sparePartCategory) {
-        setError(
-          "Please select a spare parts category."
-        );
-        return;
-      }
-
-      if (!formData.sparePartType) {
-        setError(
-          "Please select the spare part type."
-        );
-        return;
-      }
-
-      if (!formData.sparePartVehicleMake) {
-        setError(
-          "Please select the vehicle make."
-        );
-        return;
-      }
-    }
 
     setStep(2);
   };
@@ -2933,12 +2910,8 @@ const PostAd = () => {
             {isCarSpareParts && (
               <AutoSpareParts
                 formData={formData}
-                handleChange={
-                  handleChange
-                }
-                handleCheckboxChange={
-                  handleCheckboxChange
-                }
+                handleChange={handleChange}
+                handleCheckboxChange={handleCheckboxChange}
                 errors={{}}
               />
             )}
@@ -2950,12 +2923,8 @@ const PostAd = () => {
             {isLaptop && (
               <LaptopForm
                 formData={formData}
-                handleChange={
-                  handleChange
-                }
-                handleCheckboxChange={
-                  handleCheckboxChange
-                }
+                handleChange={handleChange}
+                handleCheckboxChange={handleCheckboxChange}
                 errors={{}}
               />
             )}
@@ -2967,12 +2936,8 @@ const PostAd = () => {
             {isTablet && (
               <TabletForm
                 formData={formData}
-                handleChange={
-                  handleChange
-                }
-                handleCheckboxChange={
-                  handleCheckboxChange
-                }
+                handleChange={handleChange}
+                handleCheckboxChange={handleCheckboxChange}
                 errors={{}}
               />
             )}
@@ -2984,12 +2949,8 @@ const PostAd = () => {
             {isGameConsole && (
               <GameConsoleForm
                 formData={formData}
-                handleChange={
-                  handleChange
-                }
-                handleCheckboxChange={
-                  handleCheckboxChange
-                }
+                handleChange={handleChange}
+                handleCheckboxChange={handleCheckboxChange}
                 errors={{}}
               />
             )}
@@ -3001,12 +2962,8 @@ const PostAd = () => {
             {isSmartwatch && (
               <AppleWatchForm
                 formData={formData}
-                handleChange={
-                  handleChange
-                }
-                handleCheckboxChange={
-                  handleCheckboxChange
-                }
+                handleChange={handleChange}
+                handleCheckboxChange={handleCheckboxChange}
                 errors={{}}
               />
             )}
@@ -3018,12 +2975,8 @@ const PostAd = () => {
             {isTV && (
               <TVForm
                 formData={formData}
-                handleChange={
-                  handleChange
-                }
-                handleCheckboxChange={
-                  handleCheckboxChange
-                }
+                handleChange={handleChange}
+                handleCheckboxChange={handleCheckboxChange}
                 errors={{}}
               />
             )}
@@ -3035,12 +2988,8 @@ const PostAd = () => {
             {isCar && (
               <CarForm
                 formData={formData}
-                handleChange={
-                  handleChange
-                }
-                handleCheckboxChange={
-                  handleCheckboxChange
-                }
+                handleChange={handleChange}
+                handleCheckboxChange={handleCheckboxChange}
                 errors={{}}
               />
             )}
