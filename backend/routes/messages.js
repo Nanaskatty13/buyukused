@@ -1,109 +1,128 @@
 // ============================================================
 // backend/routes/messages.js
-// BuyUKUsed - Message Routes
+// BuyUKUsed - Messaging Routes
 // ============================================================
 
 const express = require("express");
 
-const router = express.Router();
-
-const auth = require("../middleware/auth");
-
 const {
-  getUserMessages,
-  getConversation,
   sendMessage,
+  getMessages,
+  getConversation,
+  getConversations,
+  getUnreadCount,
   markMessageAsRead,
   markConversationAsRead,
-  getUnreadMessageCount,
   deleteMessage,
 } = require("../controllers/messageController");
+
+const router = express.Router();
+
+// ============================================================
+// AUTHENTICATION
+// ============================================================
+
+// Your project uses the auth middleware.
+// Adjust ONLY this import if your actual middleware exports
+// the authentication function under a different name.
+const { protect } = require("../middleware/auth");
+
+// ============================================================
+// GET ALL MESSAGES FOR CURRENT USER
+// GET /api/messages
+// ============================================================
+
+router.get(
+  "/",
+  protect,
+  getMessages
+);
+
+// ============================================================
+// GET ALL CONVERSATIONS
+// GET /api/messages/conversations
+// ============================================================
+
+router.get(
+  "/conversations",
+  protect,
+  getConversations
+);
 
 // ============================================================
 // UNREAD COUNT
 // ============================================================
-//
-// IMPORTANT:
-// This route MUST appear before /:userId.
-// Navbar.jsx calls:
-//
+
+// Main endpoint
 // GET /api/messages/unread-count
-//
-// ============================================================
 
 router.get(
   "/unread-count",
-  auth,
-  getUnreadMessageCount
+  protect,
+  getUnreadCount
 );
 
-// Backward-compatible endpoint.
-// Some older frontend code may use /unread/count.
+// Compatibility endpoint
+// GET /api/messages/unread/count
+
 router.get(
   "/unread/count",
-  auth,
-  getUnreadMessageCount
+  protect,
+  getUnreadCount
 );
 
 // ============================================================
-// CONVERSATION
+// GET CONVERSATION
+// GET /api/messages/conversation/:userId
 // ============================================================
 
-// GET /api/messages/conversation/:userId
 router.get(
   "/conversation/:userId",
-  auth,
+  protect,
   getConversation
 );
 
+// ============================================================
+// MARK CONVERSATION AS READ
 // PUT /api/messages/conversation/:userId/read
+// ============================================================
+
 router.put(
   "/conversation/:userId/read",
-  auth,
+  protect,
   markConversationAsRead
 );
 
 // ============================================================
 // SEND MESSAGE
+// POST /api/messages
 // ============================================================
 
-// POST /api/messages
 router.post(
   "/",
-  auth,
+  protect,
   sendMessage
 );
 
 // ============================================================
-// USER MESSAGES
-// ============================================================
-
-// GET /api/messages/:userId
-router.get(
-  "/:userId",
-  auth,
-  getUserMessages
-);
-
-// ============================================================
 // MARK ONE MESSAGE AS READ
+// PUT /api/messages/:id/read
 // ============================================================
 
-// PUT /api/messages/:id/read
 router.put(
   "/:id/read",
-  auth,
+  protect,
   markMessageAsRead
 );
 
 // ============================================================
 // DELETE MESSAGE
+// DELETE /api/messages/:id
 // ============================================================
 
-// DELETE /api/messages/:id
 router.delete(
   "/:id",
-  auth,
+  protect,
   deleteMessage
 );
 

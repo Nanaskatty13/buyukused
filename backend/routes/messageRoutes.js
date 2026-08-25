@@ -1,6 +1,9 @@
 // ============================================================
 // backend/routes/messageRoutes.js
+// BuyUKUsed - Message Routes
 // ============================================================
+
+"use strict";
 
 const express = require("express");
 
@@ -16,46 +19,23 @@ const {
   deleteMessage,
 } = require("../controllers/messageController");
 
-const { protect } = require("../middleware/auth");
+const {
+  protect,
+} = require("../middleware/auth");
 
 // ============================================================
-// AUTHENTICATION
-// ============================================================
-//
-// All message endpoints require a valid JWT.
-//
-// Frontend sends:
-//
-// Authorization: Bearer <token>
-//
-// protect middleware verifies the token and sets:
-//
-// req.user
-// req.userId
-// req.auth
-//
-// ============================================================
-
-
-// ============================================================
-// GET UNREAD MESSAGE COUNT
+// UNREAD MESSAGE COUNT
 // GET /api/messages/unread-count
 // ============================================================
 //
 // IMPORTANT:
+// This route must be BEFORE /:userId.
 //
-// This MUST come BEFORE:
+// Frontend:
+// GET /api/messages/unread-count
 //
-// /:userId
-//
-// Otherwise Express could interpret:
-//
-// /unread-count
-//
-// as:
-//
-// /:userId
-//
+// Authentication:
+// Authorization: Bearer <JWT>
 // ============================================================
 
 router.get(
@@ -64,19 +44,21 @@ router.get(
   getUnreadMessageCount
 );
 
+// ============================================================
+// BACKWARD COMPATIBILITY
+// GET /api/messages/unread/count
+// ============================================================
+
+router.get(
+  "/unread/count",
+  protect,
+  getUnreadMessageCount
+);
 
 // ============================================================
-// GET CONVERSATION BETWEEN TWO USERS
+// GET CONVERSATION
 // GET /api/messages/conversation/:userId
 // ============================================================
-//
-// This MUST also come BEFORE:
-//
-// /:userId
-//
-// Otherwise "conversation" could be interpreted
-// as a userId.
-//
 
 router.get(
   "/conversation/:userId",
@@ -84,27 +66,16 @@ router.get(
   getConversation
 );
 
-
 // ============================================================
-// MARK ALL MESSAGES FROM A USER AS READ
+// MARK CONVERSATION AS READ
 // PUT /api/messages/conversation/:userId/read
 // ============================================================
-//
-// IMPORTANT:
-//
-// This route must come before:
-//
-// /:id/read
-//
-// because "conversation" is a fixed route segment.
-//
 
 router.put(
   "/conversation/:userId/read",
   protect,
   markConversationAsRead
 );
-
 
 // ============================================================
 // SEND MESSAGE
@@ -117,10 +88,13 @@ router.post(
   sendMessage
 );
 
-
 // ============================================================
 // MARK SINGLE MESSAGE AS READ
 // PUT /api/messages/:id/read
+// ============================================================
+//
+// IMPORTANT:
+// This comes before /:userId.
 // ============================================================
 
 router.put(
@@ -128,7 +102,6 @@ router.put(
   protect,
   markMessageAsRead
 );
-
 
 // ============================================================
 // DELETE MESSAGE
@@ -141,14 +114,13 @@ router.delete(
   deleteMessage
 );
 
-
 // ============================================================
 // GET ALL MESSAGES FOR A USER
 // GET /api/messages/:userId
 // ============================================================
 //
-// Keep this route AFTER all fixed routes above.
-//
+// Keep this LAST because :userId is dynamic.
+// ============================================================
 
 router.get(
   "/:userId",
@@ -156,9 +128,8 @@ router.get(
   getUserMessages
 );
 
-
 // ============================================================
-// EXPORT ROUTER
+// EXPORT
 // ============================================================
 
 module.exports = router;

@@ -1,121 +1,265 @@
 // ============================================================
 // backend/controllers/messageController.js
-// BuyUKUsed - Message Controller
+// BuyUKUsed - Messaging Controller
 // ============================================================
 
 const mongoose = require("mongoose");
 const Message = require("../models/Message");
+const User = require("../models/User");
+const Product = require("../models/Product");
 
 // ============================================================
 // HELPERS
 // ============================================================
 
+const getAuthenticatedUserId = (req) => {
+  return (
+    req.user?._id ||
+    req.user?.id ||
+    req.user?.userId ||
+    req.user?.user_id ||
+    null
+  );
+};
+
 const isValidObjectId = (id) => {
   return mongoose.Types.ObjectId.isValid(id);
 };
 
-const getUserId = (req) => {
-  return req.userId || req.user?.id || req.user?._id || null;
+const normalizeId = (value) => {
+  if (!value) return null;
+  return String(value);
 };
 
-const getUserIdString = (req) => {
-  const id = getUserId(req);
-  return id ? id.toString() : null;
-};
-
-// ============================================================
-// POPULATE MESSAGE
-// ============================================================
-
-const populateMessage = async (message) => {
-  if (!message) return message;
-
-  await message.populate(
-    "sender",
-    "name email profileImage avatar photo isVerified"
-  );
-
-  await message.populate(
-    "receiver",
-    "name email profileImage avatar photo isVerified"
-  );
-
-  await message.populate(
-    "productId",
-    "title price image images"
-  );
-
-  return message;
+const populateMessage = (query) => {
+  return query
+    .populate("sender", "name email phone profileImage avatar photo")
+    .populate("receiver", "name email phone profileImage avatar photo")
+    .populate("productId", "title price image images sellerId");
 };
 
 // ============================================================
-// GET ALL MESSAGES FOR CURRENT USER
-// GET /api/messages/:userId
+// SEND MESSAGE
+// POST /api/messages
 // ============================================================
 
-const getUserMessages = async (req, res) => {
+const sendMessage = async (req, res, next) => {
   try {
-    const { userId } = req.params;
-    const currentUserId = getUserIdString(req);
+    const senderId = getAuthenticatedUserId(req);
 
-    if (!currentUserId) {
+    if (!senderId) {
       return res.status(401).json({
         success: false,
         message: "Authentication required.",
       });
     }
 
-    if (!isValidObjectId(userId)) {
+    const {
+      receiver,
+      receiverId,
+      recipientId,
+      productId,
+      message,
+      text,
+      attachment,
+    } = req.body;
+
+    const targetReceiver = receiver || receiverId || recipientId;
+    const messageText =
+      typeof message === "string"
+        ? message.trim()
+        : typeof text === "string"
+          ? text.trim()
+          : "";
+
+    // ----------------------------------------------------------
+    // Validate receiver
+    // ----------------------------------------------------------
+
+    if (!targetReceiver) {
       return res.status(400).json({
         success: false,
-        message: "Invalid user ID.",
+        message: "Receiver is required.",
       });
     }
 
-    const isAdmin = req.user?.role === "admin";
+    if (!isValidObjectId(targetReceiver)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid receiver ID.",
+      });
+    }
 
-    if (
-      userId.toString() !== currentUserId.toString() &&
-      !isAdmin
-    ) {
+    if (normalizeId(senderId) === normalizeId(targetReceiver)) {
+      return res.status(400).json({
+        success: false,
+        message: "You cannot send a message to yourself.",
+      });
+    }
+
+    // ----------------------------------------------------------
+    // Verify receiver exists
+    // ----------------------------------------------------------
+
+    const receiverUser = await User.findById(targetReceiver)
+      .select("_id name email isActive")
+      .lean();
+
+    if (!receiverUser) {
+      return res.status(404).json({
+        success: false,
+        message: "Receiver not found.",
+      });
+    }
+
+    if (receiverUser.isActive === false) {
       return res.status(403).json({
         success: false,
-        message: "Access denied.",
+        message: "This user account is inactive.",
       });
     }
 
-    const messages = await Message.find({
-      $or: [
-        { sender: userId },
-        { receiver: userId },
-      ],
-    })
-      .populate(
-        "sender",
-        "name email profileImage avatar photo isVerified"
-      )
-      .populate(
-        "receiver",
-        "name email profileImage avatar photo isVerified"
-      )
-      .populate(
-        "productId",
-        "title price image images"
-      )
-      .sort({ createdAt: 1 });
+    // ----------------------------------------------------------
+    // Validate product if supplied
+    // ----------------------------------------------------------
+
+    let validProductId = null;
+
+    if (productId) {
+      if (!isValidObjectId(productId)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid product ID.",
+        });
+      }
+
+      const product = await Product.findById(productId)
+        .select("_id title sellerId")
+        .lean();
+
+      if (!product) {
+        return res.status(404).json({
+          success: false,
+          message: "Product not found.",
+        });
+      }
+
+      validProductId = product._id;
+    }
+
+    // ----------------------------------------------------------
+    // Normalize attachment
+    // ----------------------------------------------------------
+
+    let validAttachment = null;
+
+    if (attachment) {
+      if (
+        typeof attachment !== "object" ||
+        !attachment.url ||
+        typeof attachment.url !== "string"
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid attachment.",
+        });
+      }
+
+      validAttachment = {
+        url: attachment.url.trim(),
+        type:
+          typeof attachment.type === "string"
+            ? attachment.type.trim()
+            : "file",
+        name:
+          typeof attachment.name === "string"
+            ? attachment.name.trim()
+            : "",
+        size:
+          Number.isFinite(Number(attachment.size))
+            ? Number(attachment.size)
+            : 0,
+      };
+    }
+
+    // ----------------------------------------------------------
+    // Message must contain text or attachment
+    // ----------------------------------------------------------
+
+    if (!messageText && !validAttachment) {
+      return res.status(400).json({
+        success: false,
+        message: "Message must contain text or an attachment.",
+      });
+    }
+
+    // ----------------------------------------------------------
+    // Create message
+    // ----------------------------------------------------------
+
+    const newMessage = new Message({
+      sender: senderId,
+      receiver: targetReceiver,
+      productId: validProductId,
+      message: messageText,
+      attachment: validAttachment,
+      read: false,
+    });
+
+    await newMessage.save();
+
+    // ----------------------------------------------------------
+    // Populate response
+    // ----------------------------------------------------------
+
+    const populatedMessage = await populateMessage(
+      Message.findById(newMessage._id)
+    );
+
+    return res.status(201).json({
+      success: true,
+      message: "Message sent successfully.",
+      data: populatedMessage,
+      messageData: populatedMessage,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ============================================================
+// GET USER'S MESSAGES
+// GET /api/messages
+// ============================================================
+
+const getMessages = async (req, res, next) => {
+  try {
+    const userId = getAuthenticatedUserId(req);
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required.",
+      });
+    }
+
+    const messages = await populateMessage(
+      Message.find({
+        $or: [
+          { sender: userId },
+          { receiver: userId },
+        ],
+      }).sort({ createdAt: -1 })
+    ).lean();
 
     return res.status(200).json({
       success: true,
       count: messages.length,
       messages,
+      data: messages,
     });
   } catch (error) {
-    console.error("❌ Error fetching user messages:", error);
-
-    return res.status(500).json({
-      success: false,
-      message: error.message || "Failed to fetch messages.",
-    });
+    next(error);
   }
 };
 
@@ -124,10 +268,10 @@ const getUserMessages = async (req, res) => {
 // GET /api/messages/conversation/:userId
 // ============================================================
 
-const getConversation = async (req, res) => {
+const getConversation = async (req, res, next) => {
   try {
-    const currentUserId = getUserIdString(req);
-    const { userId: otherUserId } = req.params;
+    const currentUserId = getAuthenticatedUserId(req);
+    const otherUserId = req.params.userId;
 
     if (!currentUserId) {
       return res.status(401).json({
@@ -143,161 +287,159 @@ const getConversation = async (req, res) => {
       });
     }
 
-    const messages = await Message.find({
-      $or: [
-        {
-          sender: currentUserId,
-          receiver: otherUserId,
-        },
-        {
-          sender: otherUserId,
-          receiver: currentUserId,
-        },
-      ],
-    })
-      .populate(
-        "sender",
-        "name email profileImage avatar photo isVerified"
-      )
-      .populate(
-        "receiver",
-        "name email profileImage avatar photo isVerified"
-      )
-      .populate(
-        "productId",
-        "title price image images"
-      )
-      .sort({ createdAt: 1 });
+    const otherUser = await User.findById(otherUserId)
+      .select("_id name email phone profileImage avatar photo")
+      .lean();
+
+    if (!otherUser) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found.",
+      });
+    }
+
+    const messages = await populateMessage(
+      Message.find({
+        $or: [
+          {
+            sender: currentUserId,
+            receiver: otherUserId,
+          },
+          {
+            sender: otherUserId,
+            receiver: currentUserId,
+          },
+        ],
+      }).sort({ createdAt: 1 })
+    ).lean();
 
     return res.status(200).json({
       success: true,
       count: messages.length,
       messages,
+      data: messages,
+      user: otherUser,
     });
   } catch (error) {
-    console.error("❌ Error fetching conversation:", error);
-
-    return res.status(500).json({
-      success: false,
-      message: error.message || "Failed to fetch conversation.",
-    });
+    next(error);
   }
 };
 
 // ============================================================
-// SEND MESSAGE
-// POST /api/messages
+// GET CONVERSATIONS
+// GET /api/messages/conversations
 // ============================================================
 
-const sendMessage = async (req, res) => {
+const getConversations = async (req, res, next) => {
   try {
-    const senderId = getUserIdString(req);
+    const currentUserId = getAuthenticatedUserId(req);
 
-    const {
-      receiver,
-      productId,
-      message,
-      attachment,
-    } = req.body;
-
-    if (!senderId) {
+    if (!currentUserId) {
       return res.status(401).json({
         success: false,
         message: "Authentication required.",
       });
     }
 
-    if (!receiver) {
-      return res.status(400).json({
-        success: false,
-        message: "Receiver is required.",
-      });
+    const messages = await Message.find({
+      $or: [
+        { sender: currentUserId },
+        { receiver: currentUserId },
+      ],
+    })
+      .sort({ createdAt: -1 })
+      .populate(
+        "sender",
+        "name email profileImage avatar photo"
+      )
+      .populate(
+        "receiver",
+        "name email profileImage avatar photo"
+      )
+      .populate(
+        "productId",
+        "title price image images"
+      )
+      .lean();
+
+    const conversationMap = new Map();
+
+    for (const message of messages) {
+      const senderId = normalizeId(message.sender?._id);
+      const receiverId = normalizeId(message.receiver?._id);
+
+      const otherUser =
+        senderId === normalizeId(currentUserId)
+          ? message.receiver
+          : message.sender;
+
+      if (!otherUser?._id) {
+        continue;
+      }
+
+      const conversationKey = normalizeId(otherUser._id);
+
+      if (!conversationMap.has(conversationKey)) {
+        conversationMap.set(conversationKey, {
+          user: otherUser,
+          lastMessage: message,
+          unreadCount: 0,
+        });
+      }
+
+      if (
+        normalizeId(message.receiver?._id) ===
+          normalizeId(currentUserId) &&
+        message.read === false
+      ) {
+        conversationMap.get(conversationKey).unreadCount += 1;
+      }
     }
 
-    if (!isValidObjectId(receiver)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid receiver ID.",
-      });
-    }
-
-    if (productId && !isValidObjectId(productId)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid product ID.",
-      });
-    }
-
-    if (senderId.toString() === receiver.toString()) {
-      return res.status(400).json({
-        success: false,
-        message: "You cannot send a message to yourself.",
-      });
-    }
-
-    const hasText =
-      typeof message === "string" &&
-      message.trim().length > 0;
-
-    const hasAttachment =
-      attachment &&
-      typeof attachment === "object" &&
-      attachment.url &&
-      attachment.type;
-
-    if (!hasText && !hasAttachment) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Message must contain text or an attachment.",
-      });
-    }
-
-    if (hasText && message.trim().length > 5000) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Message cannot exceed 5000 characters.",
-      });
-    }
-
-    const newMessage = new Message({
-      sender: senderId,
-      receiver,
-      productId: productId || undefined,
-
-      message: hasText
-        ? message.trim()
-        : "",
-
-      attachment: hasAttachment
-        ? attachment
-        : null,
-
-      // Use ONE field consistently.
-      isRead: false,
-    });
-
-    await newMessage.save();
-
-    await populateMessage(newMessage);
-
-    console.log(
-      `💬 Message sent: ${senderId} → ${receiver}`
+    const conversations = Array.from(
+      conversationMap.values()
     );
 
-    return res.status(201).json({
+    return res.status(200).json({
       success: true,
-      message: newMessage,
+      count: conversations.length,
+      conversations,
+      data: conversations,
     });
   } catch (error) {
-    console.error("❌ Error sending message:", error);
+    next(error);
+  }
+};
 
-    return res.status(500).json({
-      success: false,
-      message:
-        error.message || "Failed to send message.",
+// ============================================================
+// GET UNREAD MESSAGE COUNT
+// GET /api/messages/unread-count
+// GET /api/messages/unread/count
+// ============================================================
+
+const getUnreadCount = async (req, res, next) => {
+  try {
+    const userId = getAuthenticatedUserId(req);
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required.",
+      });
+    }
+
+    const count = await Message.countDocuments({
+      receiver: userId,
+      read: false,
     });
+
+    return res.status(200).json({
+      success: true,
+      count,
+      unreadCount: count,
+    });
+  } catch (error) {
+    next(error);
   }
 };
 
@@ -306,71 +448,55 @@ const sendMessage = async (req, res) => {
 // PUT /api/messages/:id/read
 // ============================================================
 
-const markMessageAsRead = async (req, res) => {
+const markMessageAsRead = async (req, res, next) => {
   try {
-    const currentUserId = getUserIdString(req);
-    const { id } = req.params;
+    const userId = getAuthenticatedUserId(req);
+    const messageId = req.params.id;
 
-    if (!currentUserId) {
+    if (!userId) {
       return res.status(401).json({
         success: false,
         message: "Authentication required.",
       });
     }
 
-    if (!isValidObjectId(id)) {
+    if (!isValidObjectId(messageId)) {
       return res.status(400).json({
         success: false,
         message: "Invalid message ID.",
       });
     }
 
-    const message = await Message.findById(id);
+    const updatedMessage = await Message.findOneAndUpdate(
+      {
+        _id: messageId,
+        receiver: userId,
+      },
+      {
+        $set: {
+          read: true,
+        },
+      },
+      {
+        new: true,
+      }
+    );
 
-    if (!message) {
+    if (!updatedMessage) {
       return res.status(404).json({
         success: false,
-        message: "Message not found.",
-      });
-    }
-
-    if (
-      message.receiver.toString() !==
-      currentUserId.toString()
-    ) {
-      return res.status(403).json({
-        success: false,
         message:
-          "You are not authorized to mark this message as read.",
+          "Message not found or you are not authorized to mark it as read.",
       });
     }
-
-    // Primary field used by this application.
-    message.isRead = true;
-
-    // If your Message schema still has `read`, keep it synchronized.
-    if (Object.prototype.hasOwnProperty.call(message.toObject(), "read")) {
-      message.read = true;
-    }
-
-    await message.save();
 
     return res.status(200).json({
       success: true,
-      message,
+      message: "Message marked as read.",
+      data: updatedMessage,
     });
   } catch (error) {
-    console.error(
-      "❌ Error marking message as read:",
-      error
-    );
-
-    return res.status(500).json({
-      success: false,
-      message:
-        error.message ||
-        "Failed to mark message as read.",
-    });
+    next(error);
   }
 };
 
@@ -379,10 +505,10 @@ const markMessageAsRead = async (req, res) => {
 // PUT /api/messages/conversation/:userId/read
 // ============================================================
 
-const markConversationAsRead = async (req, res) => {
+const markConversationAsRead = async (req, res, next) => {
   try {
-    const currentUserId = getUserIdString(req);
-    const { userId: senderId } = req.params;
+    const currentUserId = getAuthenticatedUserId(req);
+    const otherUserId = req.params.userId;
 
     if (!currentUserId) {
       return res.status(401).json({
@@ -391,27 +517,21 @@ const markConversationAsRead = async (req, res) => {
       });
     }
 
-    if (!isValidObjectId(senderId)) {
+    if (!isValidObjectId(otherUserId)) {
       return res.status(400).json({
         success: false,
         message: "Invalid user ID.",
       });
     }
 
-    // Primary field.
     const result = await Message.updateMany(
       {
-        sender: senderId,
+        sender: otherUserId,
         receiver: currentUserId,
-
-        $or: [
-          { isRead: false },
-          { read: false },
-        ],
+        read: false,
       },
       {
         $set: {
-          isRead: true,
           read: true,
         },
       }
@@ -419,74 +539,11 @@ const markConversationAsRead = async (req, res) => {
 
     return res.status(200).json({
       success: true,
+      message: "Conversation marked as read.",
       modifiedCount: result.modifiedCount || 0,
-      message:
-        "Conversation marked as read.",
     });
   } catch (error) {
-    console.error(
-      "❌ Error marking conversation as read:",
-      error
-    );
-
-    return res.status(500).json({
-      success: false,
-      message:
-        error.message ||
-        "Failed to mark conversation as read.",
-    });
-  }
-};
-
-// ============================================================
-// GET UNREAD MESSAGE COUNT
-// GET /api/messages/unread-count
-// ============================================================
-//
-// IMPORTANT:
-// Navbar.jsx calls:
-// /api/messages/unread-count
-//
-// So this controller uses that exact endpoint.
-// ============================================================
-
-const getUnreadMessageCount = async (req, res) => {
-  try {
-    const currentUserId = getUserIdString(req);
-
-    if (!currentUserId) {
-      return res.status(401).json({
-        success: false,
-        message: "Authentication required.",
-      });
-    }
-
-    const count = await Message.countDocuments({
-      receiver: currentUserId,
-
-      // Supports both old `read` records and new `isRead` records.
-      $or: [
-        { isRead: false },
-        { read: false },
-      ],
-    });
-
-    return res.status(200).json({
-      success: true,
-      count,
-    });
-  } catch (error) {
-    console.error(
-      "❌ Error getting unread message count:",
-      error
-    );
-
-    return res.status(500).json({
-      success: false,
-      message:
-        error.message ||
-        "Failed to get unread message count.",
-    });
+    next(error);
   }
 };
 
@@ -495,76 +552,49 @@ const getUnreadMessageCount = async (req, res) => {
 // DELETE /api/messages/:id
 // ============================================================
 
-const deleteMessage = async (req, res) => {
+const deleteMessage = async (req, res, next) => {
   try {
-    const currentUserId = getUserIdString(req);
-    const { id } = req.params;
+    const userId = getAuthenticatedUserId(req);
+    const messageId = req.params.id;
 
-    if (!currentUserId) {
+    if (!userId) {
       return res.status(401).json({
         success: false,
         message: "Authentication required.",
       });
     }
 
-    if (!isValidObjectId(id)) {
+    if (!isValidObjectId(messageId)) {
       return res.status(400).json({
         success: false,
         message: "Invalid message ID.",
       });
     }
 
-    const message = await Message.findById(id);
+    const message = await Message.findOne({
+      _id: messageId,
+      sender: userId,
+    });
 
     if (!message) {
       return res.status(404).json({
         success: false,
-        message: "Message not found.",
-      });
-    }
-
-    const isSender =
-      message.sender.toString() ===
-      currentUserId.toString();
-
-    const isReceiver =
-      message.receiver.toString() ===
-      currentUserId.toString();
-
-    const isAdmin =
-      req.user?.role === "admin";
-
-    if (!isSender && !isReceiver && !isAdmin) {
-      return res.status(403).json({
-        success: false,
         message:
-          "You are not authorized to delete this message.",
+          "Message not found or you are not authorized to delete it.",
       });
     }
 
-    await message.deleteOne();
-
-    console.log(
-      `🗑️ Message deleted: ${id}`
-    );
+    await Message.deleteOne({
+      _id: messageId,
+      sender: userId,
+    });
 
     return res.status(200).json({
       success: true,
-      message:
-        "Message deleted successfully.",
+      message: "Message deleted successfully.",
     });
   } catch (error) {
-    console.error(
-      "❌ Error deleting message:",
-      error
-    );
-
-    return res.status(500).json({
-      success: false,
-      message:
-        error.message ||
-        "Failed to delete message.",
-    });
+    next(error);
   }
 };
 
@@ -573,11 +603,12 @@ const deleteMessage = async (req, res) => {
 // ============================================================
 
 module.exports = {
-  getUserMessages,
-  getConversation,
   sendMessage,
+  getMessages,
+  getConversation,
+  getConversations,
+  getUnreadCount,
   markMessageAsRead,
   markConversationAsRead,
-  getUnreadMessageCount,
   deleteMessage,
 };

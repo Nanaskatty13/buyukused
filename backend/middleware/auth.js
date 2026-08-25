@@ -1,7 +1,20 @@
+// ============================================================
 // backend/middleware/auth.js
+// BuyUKUsed - Authentication Middleware
+// ============================================================
+
+"use strict";
 
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
+
+// ============================================================
+// SAFE OBJECT ID CHECK
+// ============================================================
+
+const mongooseSafeObjectId = (id) => {
+  return /^[a-fA-F0-9]{24}$/.test(String(id));
+};
 
 // ============================================================
 // VERIFY JWT TOKEN
@@ -9,133 +22,193 @@ const User = require("../models/User");
 
 const verifyToken = async (req, res, next) => {
   try {
+    // ----------------------------------------------------------
+    // Check JWT secret
+    // ----------------------------------------------------------
+
     if (!process.env.JWT_SECRET) {
-      console.error(
-        "❌ JWT_SECRET is not configured"
-      );
+      console.error("❌ JWT_SECRET is not configured");
 
       return res.status(500).json({
         success: false,
-        message:
-          "Server authentication is not configured",
+        message: "Server authentication is not configured.",
       });
     }
 
-    const authHeader =
-      req.headers.authorization || "";
+    // ----------------------------------------------------------
+    // Get Authorization header
+    // ----------------------------------------------------------
+
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required.",
+        code: "NO_AUTH_HEADER",
+      });
+    }
+
+    // ----------------------------------------------------------
+    // Must be Bearer token
+    // ----------------------------------------------------------
 
     if (!authHeader.startsWith("Bearer ")) {
       return res.status(401).json({
         success: false,
-        message:
-          "No authentication token provided",
+        message: "Invalid authorization format.",
+        code: "INVALID_AUTH_FORMAT",
       });
     }
 
-    const token =
-      authHeader.substring(7).trim();
+    // ----------------------------------------------------------
+    // Extract token
+    // ----------------------------------------------------------
+
+    const token = authHeader.slice(7).trim();
 
     if (!token) {
       return res.status(401).json({
         success: false,
-        message:
-          "Authentication token missing",
+        message: "Authentication token missing.",
+        code: "TOKEN_MISSING",
       });
     }
 
-    const decoded = jwt.verify(
-      token,
-      process.env.JWT_SECRET
-    );
+    // ----------------------------------------------------------
+    // Verify token
+    // ----------------------------------------------------------
+
+    let decoded;
+
+    try {
+      decoded = jwt.verify(
+        token,
+        process.env.JWT_SECRET
+      );
+    } catch (jwtError) {
+      console.error(
+        "❌ JWT verification failed:",
+        jwtError.message
+      );
+
+      if (jwtError.name === "TokenExpiredError") {
+        return res.status(401).json({
+          success: false,
+          message: "Authentication token expired.",
+          code: "TOKEN_EXPIRED",
+        });
+      }
+
+      if (jwtError.name === "JsonWebTokenError") {
+        return res.status(401).json({
+          success: false,
+          message: "Invalid authentication token.",
+          code: "INVALID_TOKEN",
+        });
+      }
+
+      return res.status(401).json({
+        success: false,
+        message: "Authentication failed.",
+        code: "AUTH_FAILED",
+      });
+    }
+
+    // ----------------------------------------------------------
+    // Extract user ID
+    // ----------------------------------------------------------
 
     const userId =
       decoded.id ||
       decoded._id ||
-      decoded.userId;
+      decoded.userId ||
+      decoded.user_id;
 
     if (!userId) {
+      console.error(
+        "❌ JWT does not contain a user ID:",
+        decoded
+      );
+
       return res.status(401).json({
         success: false,
-        message:
-          "Invalid token payload",
+        message: "Invalid token payload.",
+        code: "INVALID_TOKEN_PAYLOAD",
       });
     }
+
+    // ----------------------------------------------------------
+    // Validate user ID
+    // ----------------------------------------------------------
 
     if (!mongooseSafeObjectId(userId)) {
       return res.status(401).json({
         success: false,
-        message:
-          "Invalid user ID in token",
+        message: "Invalid user ID in authentication token.",
+        code: "INVALID_USER_ID",
       });
     }
 
-    const user =
-      await User.findById(userId)
-        .select("-password");
+    // ----------------------------------------------------------
+    // Find user
+    // ----------------------------------------------------------
+
+    const user = await User.findById(userId)
+      .select("-password");
 
     if (!user) {
       return res.status(401).json({
         success: false,
-        message:
-          "User not found",
+        message: "User account not found.",
+        code: "USER_NOT_FOUND",
       });
     }
+
+    // ----------------------------------------------------------
+    // Check account status
+    // ----------------------------------------------------------
 
     if (user.isActive === false) {
       return res.status(403).json({
         success: false,
-        message:
-          "Account is deactivated",
+        message: "Your account has been deactivated.",
+        code: "ACCOUNT_DEACTIVATED",
       });
     }
+
+    // ----------------------------------------------------------
+    // Attach authentication information
+    // ----------------------------------------------------------
 
     req.user = user;
+
     req.userId = user._id.toString();
+
     req.auth = decoded;
 
-    next();
+    // Helpful aliases for compatibility
+    req.authenticatedUser = user;
+    req.currentUser = user;
+
+    // ----------------------------------------------------------
+    // Continue
+    // ----------------------------------------------------------
+
+    return next();
+
   } catch (error) {
     console.error(
-      "❌ Auth middleware error:",
-      error.message
+      "❌ Authentication middleware error:",
+      error
     );
-
-    if (
-      error.name ===
-      "TokenExpiredError"
-    ) {
-      return res.status(401).json({
-        success: false,
-        message: "Token expired",
-      });
-    }
-
-    if (
-      error.name ===
-      "JsonWebTokenError"
-    ) {
-      return res.status(401).json({
-        success: false,
-        message: "Invalid token",
-      });
-    }
 
     return res.status(401).json({
       success: false,
-      message:
-        "Authentication failed",
+      message: "Authentication failed.",
+      code: "AUTHENTICATION_FAILED",
     });
   }
-};
-
-// ============================================================
-// SAFE OBJECT ID CHECK
-// ============================================================
-
-const mongooseSafeObjectId = (id) => {
-  return /^[a-fA-F0-9]{24}$/.test(
-    String(id)
-  );
 };
 
 // ============================================================
@@ -152,8 +225,7 @@ const isAdmin = (req, res, next) => {
 
   return res.status(403).json({
     success: false,
-    message:
-      "Access denied. Admin only.",
+    message: "Access denied. Admin only.",
   });
 };
 
@@ -174,8 +246,7 @@ const isSeller = (req, res, next) => {
 
   return res.status(403).json({
     success: false,
-    message:
-      "Access denied. Seller only.",
+    message: "Access denied. Seller only.",
   });
 };
 
@@ -193,8 +264,7 @@ const isRider = (req, res, next) => {
 
   return res.status(403).json({
     success: false,
-    message:
-      "Access denied. Rider only.",
+    message: "Access denied. Rider only.",
   });
 };
 
@@ -207,7 +277,8 @@ const isCustomer = (req, res, next) => {
     req.user &&
     (
       req.user.role === "buyer" ||
-      req.user.role === "seller"
+      req.user.role === "seller" ||
+      req.user.role === "admin"
     )
   ) {
     return next();
@@ -215,8 +286,7 @@ const isCustomer = (req, res, next) => {
 
   return res.status(403).json({
     success: false,
-    message:
-      "Access denied. Customer only.",
+    message: "Access denied. Customer only.",
   });
 };
 
@@ -225,31 +295,22 @@ const isCustomer = (req, res, next) => {
 // ============================================================
 
 const protect = verifyToken;
+const auth = verifyToken;
 const seller = isSeller;
 
 // ============================================================
 // EXPORTS
 // ============================================================
 
+// Default export
 module.exports = verifyToken;
 
-module.exports.verifyToken =
-  verifyToken;
-
-module.exports.protect =
-  protect;
-
-module.exports.isAdmin =
-  isAdmin;
-
-module.exports.isSeller =
-  isSeller;
-
-module.exports.isRider =
-  isRider;
-
-module.exports.isCustomer =
-  isCustomer;
-
-module.exports.seller =
-  seller;
+// Named exports
+module.exports.verifyToken = verifyToken;
+module.exports.protect = protect;
+module.exports.auth = auth;
+module.exports.isAdmin = isAdmin;
+module.exports.isSeller = isSeller;
+module.exports.isRider = isRider;
+module.exports.isCustomer = isCustomer;
+module.exports.seller = seller;
