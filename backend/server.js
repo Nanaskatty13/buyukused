@@ -486,6 +486,12 @@ const categoryRoutes =
 const visualSearchRoutes =
   require("./routes/visualSearchRoutes");
 
+// ============================================================
+// LISTINGS (Spare Parts) – NEW
+// ============================================================
+
+const listingRoutes = require("./routes/listings");
+
 console.log(
   "✅ Routes loaded successfully"
 );
@@ -612,6 +618,19 @@ app.use(
 
 console.log(
   "📂 Categories API mounted at /api/categories"
+);
+
+// ============================================================
+// LISTINGS – NEW
+// ============================================================
+
+app.use(
+  "/api/listings",
+  listingRoutes
+);
+
+console.log(
+  "🔧 Listings API mounted at /api/listings"
 );
 
 // ============================================================
@@ -955,6 +974,11 @@ const start =
 
             console.log(
               "🔔 Notifications API: /api/notifications"
+            );
+
+            // ---- NEW: Listings API log ----
+            console.log(
+              "🔧 Listings API: /api/listings"
             );
 
             console.log(

@@ -1,16 +1,31 @@
+
 // ============================================================
 // backend/controllers/productController.js
 // BuyUKUsed Product Controller
 // ============================================================
 
+"use strict";
+
 const mongoose = require("mongoose");
+
 const Product = require("../models/Product");
 const User = require("../models/User");
 const Notification = require("../models/Notification");
 const cloudinary = require("../config/cloudinary");
 const streamifier = require("streamifier");
 
-const PRODUCT_CATEGORIES = require("../constants/productCategories");
+// IMPORTANT:
+// This is the canonical category source.
+// Do NOT do:
+// const PRODUCT_CATEGORIES = require("../src/constants/productCategories");
+//
+// because that returns an object.
+//
+// We destructure the actual exports instead.
+const {
+  PRODUCT_CATEGORIES,
+  normalizeProductCategory,
+} = require("../src/constants/productCategories");
 
 const {
   createImageEmbeddingFromBuffer,
@@ -38,20 +53,19 @@ const VALID_CONDITIONS = [
   "Poor",
 ];
 
-const VECTOR_INDEX_NAME = "product_image_vector_index";
-
-const SELLER_SELECT =
-  "name email phone location avatar isVerified profileImage";
-
-const DEFAULT_PRODUCT_LIMIT = 12;
-const MAX_PRODUCT_LIMIT = 100;
+const VECTOR_INDEX_NAME =
+  "product_image_vector_index";
 
 // ============================================================
 // CATEGORY NORMALIZATION
 // ============================================================
 
 const normalizeCategory = (value) => {
-  if (value === undefined || value === null) {
+  if (
+    value === undefined ||
+    value === null ||
+    value === ""
+  ) {
     return "Other";
   }
 
@@ -59,7 +73,10 @@ const normalizeCategory = (value) => {
     value = value[0];
   }
 
-  if (typeof value === "object" && value !== null) {
+  if (
+    typeof value === "object" &&
+    value !== null
+  ) {
     value =
       value.value ||
       value.name ||
@@ -67,398 +84,7 @@ const normalizeCategory = (value) => {
       "";
   }
 
-  const raw = String(value)
-    .trim()
-    .toLowerCase();
-
-  if (!raw) {
-    return "Other";
-  }
-
-  const normalized = raw
-    .replace(/[_-]+/g, " ")
-    .replace(/[&/]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-
-  const categoryMap = {
-    // ========================================================
-    // CARS
-    // ========================================================
-
-    car: "Cars",
-    cars: "Cars",
-    automobile: "Cars",
-    automobiles: "Cars",
-    auto: "Cars",
-    autos: "Cars",
-    vehicle: "Cars",
-    vehicles: "Cars",
-    motor: "Cars",
-    motors: "Cars",
-    "motor vehicle": "Cars",
-    "motor vehicles": "Cars",
-
-    // ========================================================
-    // PHONES
-    // ========================================================
-
-    phone: "Phones",
-    phones: "Phones",
-    mobile: "Phones",
-    mobiles: "Phones",
-    smartphone: "Phones",
-    smartphones: "Phones",
-    "mobile phone": "Phones",
-    "mobile phones": "Phones",
-    "smart phone": "Phones",
-    "smart phones": "Phones",
-    iphone: "Phones",
-    iphones: "Phones",
-    samsung: "Phones",
-    android: "Phones",
-    "cell phone": "Phones",
-    "cell phones": "Phones",
-
-    // ========================================================
-    // LAPTOPS
-    // ========================================================
-
-    laptop: "Laptops",
-    laptops: "Laptops",
-    notebook: "Laptops",
-    notebooks: "Laptops",
-    computer: "Laptops",
-    computers: "Laptops",
-    "personal computer": "Laptops",
-    pc: "Laptops",
-    macbook: "Laptops",
-    macbooks: "Laptops",
-
-    // ========================================================
-    // TABLETS
-    // ========================================================
-
-    tablet: "Tablets",
-    tablets: "Tablets",
-    ipad: "Tablets",
-    ipads: "Tablets",
-    "tablet computer": "Tablets",
-    "tablet computers": "Tablets",
-
-    // ========================================================
-    // ACCESSORIES
-    // ========================================================
-
-    accessory: "Accessories",
-    accessories: "Accessories",
-    "phone accessory": "Accessories",
-    "phone accessories": "Accessories",
-    "computer accessory": "Accessories",
-    "computer accessories": "Accessories",
-    charger: "Accessories",
-    chargers: "Accessories",
-    cable: "Accessories",
-    cables: "Accessories",
-    earphone: "Accessories",
-    earphones: "Accessories",
-    headphone: "Accessories",
-    headphones: "Accessories",
-    earbud: "Accessories",
-    earbuds: "Accessories",
-
-    // ========================================================
-    // REAL ESTATE
-    // ========================================================
-
-    "real estate": "Real Estate",
-    realestate: "Real Estate",
-    property: "Real Estate",
-    properties: "Real Estate",
-    house: "Real Estate",
-    houses: "Real Estate",
-    land: "Real Estate",
-    lands: "Real Estate",
-    apartment: "Real Estate",
-    apartments: "Real Estate",
-
-    // ========================================================
-    // JOBS
-    // ========================================================
-
-    job: "Jobs",
-    jobs: "Jobs",
-    employment: "Jobs",
-    vacancy: "Jobs",
-    vacancies: "Jobs",
-    career: "Jobs",
-    careers: "Jobs",
-
-    // ========================================================
-    // ELECTRONICS
-    // ========================================================
-
-    electronic: "Electronics",
-    electronics: "Electronics",
-    gadget: "Electronics",
-    gadgets: "Electronics",
-    device: "Electronics",
-    devices: "Electronics",
-
-    // ========================================================
-    // FASHION
-    // ========================================================
-
-    fashion: "Fashion",
-    clothing: "Fashion",
-    clothes: "Fashion",
-    shoe: "Fashion",
-    shoes: "Fashion",
-    bag: "Fashion",
-    bags: "Fashion",
-
-    // ========================================================
-    // HOME
-    // ========================================================
-
-    home: "Home",
-    homes: "Home",
-    furniture: "Home",
-    household: "Home",
-    "home appliance": "Home",
-    "home appliances": "Home",
-    appliance: "Home",
-    appliances: "Home",
-
-    // ========================================================
-    // TVS
-    // ========================================================
-
-    tv: "TVs",
-    tvs: "TVs",
-    television: "TVs",
-    televisions: "TVs",
-    "smart tv": "TVs",
-    "smart tvs": "TVs",
-    "smart television": "TVs",
-    "smart televisions": "TVs",
-
-    // ========================================================
-    // GAME CONSOLES
-    // ========================================================
-
-    console: "Game Consoles",
-    consoles: "Game Consoles",
-    gaming: "Game Consoles",
-    "game console": "Game Consoles",
-    "game consoles": "Game Consoles",
-    "gaming console": "Game Consoles",
-    "gaming consoles": "Game Consoles",
-    playstation: "Game Consoles",
-    playstations: "Game Consoles",
-    "play station": "Game Consoles",
-    "play stations": "Game Consoles",
-    ps4: "Game Consoles",
-    ps5: "Game Consoles",
-    xbox: "Game Consoles",
-    "xbox console": "Game Consoles",
-    "xbox series": "Game Consoles",
-    nintendo: "Game Consoles",
-    "nintendo switch": "Game Consoles",
-    switch: "Game Consoles",
-
-    // ========================================================
-    // SMARTWATCHES
-    // ========================================================
-
-    watch: "Smartwatches",
-    watches: "Smartwatches",
-    smartwatch: "Smartwatches",
-    smartwatches: "Smartwatches",
-    "smart watch": "Smartwatches",
-    "smart watches": "Smartwatches",
-    "smart wristwatch": "Smartwatches",
-    "smart wristwatches": "Smartwatches",
-    applewatch: "Smartwatches",
-    "apple watch": "Smartwatches",
-
-    // ========================================================
-    // COSMETICS
-    // ========================================================
-
-    cosmetic: "Cosmetics",
-    cosmetics: "Cosmetics",
-    beauty: "Cosmetics",
-    makeup: "Cosmetics",
-    makeups: "Cosmetics",
-    skincare: "Cosmetics",
-    "skin care": "Cosmetics",
-    haircare: "Cosmetics",
-    "hair care": "Cosmetics",
-    bodycare: "Cosmetics",
-    "body care": "Cosmetics",
-    perfume: "Cosmetics",
-    perfumes: "Cosmetics",
-    fragrance: "Cosmetics",
-    fragrances: "Cosmetics",
-    lotion: "Cosmetics",
-    lotions: "Cosmetics",
-    cream: "Cosmetics",
-    creams: "Cosmetics",
-    shampoo: "Cosmetics",
-    shampoos: "Cosmetics",
-    conditioner: "Cosmetics",
-    conditioners: "Cosmetics",
-    "hair product": "Cosmetics",
-    "hair products": "Cosmetics",
-    "skin product": "Cosmetics",
-    "skin products": "Cosmetics",
-    "beauty product": "Cosmetics",
-    "beauty products": "Cosmetics",
-
-    other: "Other",
-  };
-
-  if (categoryMap[normalized]) {
-    return categoryMap[normalized];
-  }
-
-  const canonicalCategory = PRODUCT_CATEGORIES.find(
-    (category) =>
-      String(category).trim().toLowerCase() === normalized
-  );
-
-  if (canonicalCategory) {
-    return canonicalCategory;
-  }
-
-  // ========================================================
-  // FALLBACK MATCHING
-  // ========================================================
-
-  if (
-    normalized.includes("phone") ||
-    normalized.includes("mobile") ||
-    normalized.includes("smartphone") ||
-    normalized.includes("iphone")
-  ) {
-    return "Phones";
-  }
-
-  if (
-    normalized.includes("laptop") ||
-    normalized.includes("notebook") ||
-    normalized === "computer" ||
-    normalized === "computers" ||
-    normalized === "pc"
-  ) {
-    return "Laptops";
-  }
-
-  if (
-    normalized.includes("tablet") ||
-    normalized.includes("ipad")
-  ) {
-    return "Tablets";
-  }
-
-  if (
-    normalized.includes("car") ||
-    normalized.includes("automobile") ||
-    normalized.includes("vehicle")
-  ) {
-    return "Cars";
-  }
-
-  if (normalized.includes("accessor")) {
-    return "Accessories";
-  }
-
-  if (
-    normalized.includes("real estate") ||
-    normalized.includes("property") ||
-    normalized.includes("house") ||
-    normalized.includes("land")
-  ) {
-    return "Real Estate";
-  }
-
-  if (
-    normalized.includes("job") ||
-    normalized.includes("employment") ||
-    normalized.includes("career")
-  ) {
-    return "Jobs";
-  }
-
-  if (
-    normalized.includes("fashion") ||
-    normalized.includes("clothing") ||
-    normalized.includes("shoe") ||
-    normalized.includes("bag")
-  ) {
-    return "Fashion";
-  }
-
-  if (
-    normalized.includes("television") ||
-    normalized === "tv" ||
-    normalized === "tvs"
-  ) {
-    return "TVs";
-  }
-
-  if (
-    normalized.includes("console") ||
-    normalized.includes("playstation") ||
-    normalized.includes("xbox") ||
-    normalized.includes("nintendo") ||
-    normalized === "ps4" ||
-    normalized === "ps5"
-  ) {
-    return "Game Consoles";
-  }
-
-  if (
-    normalized.includes("watch") ||
-    normalized.includes("smartwatch")
-  ) {
-    return "Smartwatches";
-  }
-
-  if (
-    normalized.includes("cosmetic") ||
-    normalized.includes("beauty") ||
-    normalized.includes("makeup") ||
-    normalized.includes("skincare") ||
-    normalized.includes("skin care") ||
-    normalized.includes("haircare") ||
-    normalized.includes("hair care") ||
-    normalized.includes("bodycare") ||
-    normalized.includes("body care") ||
-    normalized.includes("perfume") ||
-    normalized.includes("fragrance")
-  ) {
-    return "Cosmetics";
-  }
-
-  if (
-    normalized.includes("electronic") ||
-    normalized.includes("gadget") ||
-    normalized.includes("device")
-  ) {
-    return "Electronics";
-  }
-
-  if (
-    normalized.includes("home") ||
-    normalized.includes("furniture") ||
-    normalized.includes("appliance")
-  ) {
-    return "Home";
-  }
-
-  return "Other";
+  return normalizeProductCategory(value);
 };
 
 // ============================================================
@@ -474,12 +100,12 @@ const normalizeStatus = (value) => {
     return "active";
   }
 
-  const status = String(value)
+  const normalized = String(value)
     .trim()
     .toLowerCase();
 
-  return VALID_STATUSES.includes(status)
-    ? status
+  return VALID_STATUSES.includes(normalized)
+    ? normalized
     : "active";
 };
 
@@ -512,7 +138,10 @@ const normalizeCondition = (value) => {
 // BOOLEAN HELPER
 // ============================================================
 
-const toBoolean = (value, defaultValue = false) => {
+const toBoolean = (
+  value,
+  defaultValue = false
+) => {
   if (
     value === undefined ||
     value === null ||
@@ -535,17 +164,23 @@ const toBoolean = (value, defaultValue = false) => {
       .toLowerCase();
 
     if (
-      ["true", "1", "yes", "on"].includes(
-        normalized
-      )
+      [
+        "true",
+        "1",
+        "yes",
+        "on",
+      ].includes(normalized)
     ) {
       return true;
     }
 
     if (
-      ["false", "0", "no", "off"].includes(
-        normalized
-      )
+      [
+        "false",
+        "0",
+        "no",
+        "off",
+      ].includes(normalized)
     ) {
       return false;
     }
@@ -614,45 +249,6 @@ const cleanString = (
 };
 
 // ============================================================
-// ARRAY HELPER
-// ============================================================
-
-const parseStringArray = (value) => {
-  if (
-    value === undefined ||
-    value === null ||
-    value === ""
-  ) {
-    return null;
-  }
-
-  if (Array.isArray(value)) {
-    return value
-      .map((item) => cleanString(item))
-      .filter(Boolean);
-  }
-
-  if (typeof value === "string") {
-    try {
-      const parsed = JSON.parse(value);
-
-      if (Array.isArray(parsed)) {
-        return parsed
-          .map((item) => cleanString(item))
-          .filter(Boolean);
-      }
-    } catch {
-      return value
-        .split(",")
-        .map((item) => item.trim())
-        .filter(Boolean);
-    }
-  }
-
-  return null;
-};
-
-// ============================================================
 // USER HELPERS
 // ============================================================
 
@@ -666,11 +262,14 @@ const getUserId = (req) => {
 };
 
 const getUserRole = (req) => {
-  return req.user?.role || "";
+  return (
+    req.user?.role ||
+    ""
+  );
 };
 
 // ============================================================
-// ESCAPE REGEX
+// REGEX HELPER
 // ============================================================
 
 const escapeRegex = (value) => {
@@ -678,6 +277,35 @@ const escapeRegex = (value) => {
     /[.*+?^${}()|[\]\\]/g,
     "\\$&"
   );
+};
+
+// ============================================================
+// FILE HELPER
+// ============================================================
+
+const getUploadedFiles = (req) => {
+  if (!req) {
+    return [];
+  }
+
+  if (Array.isArray(req.files)) {
+    return req.files;
+  }
+
+  if (
+    req.files &&
+    typeof req.files === "object"
+  ) {
+    return Object.values(req.files)
+      .flat()
+      .filter(Boolean);
+  }
+
+  if (req.file) {
+    return [req.file];
+  }
+
+  return [];
 };
 
 // ============================================================
@@ -689,165 +317,176 @@ const uploadToCloudinary = (
   resourceType = "image",
   folder = "buyukused/products"
 ) => {
-  return new Promise((resolve, reject) => {
-    if (
-      !buffer ||
-      !Buffer.isBuffer(buffer)
-    ) {
-      return reject(
-        new Error("Invalid file buffer")
-      );
-    }
+  return new Promise(
+    (resolve, reject) => {
+      if (
+        !buffer ||
+        !Buffer.isBuffer(buffer)
+      ) {
+        return reject(
+          new Error(
+            "Invalid file buffer"
+          )
+        );
+      }
 
-    const uploadStream =
-      cloudinary.uploader.upload_stream(
-        {
-          folder,
-          resource_type: resourceType,
-        },
-        (error, result) => {
-          if (error) {
-            return reject(error);
+      const uploadStream =
+        cloudinary.uploader.upload_stream(
+          {
+            folder,
+            resource_type:
+              resourceType,
+          },
+          (error, result) => {
+            if (error) {
+              return reject(error);
+            }
+
+            resolve(result);
           }
+        );
 
-          resolve(result);
-        }
-      );
-
-    streamifier
-      .createReadStream(buffer)
-      .pipe(uploadStream);
-  });
+      streamifier
+        .createReadStream(buffer)
+        .pipe(uploadStream);
+    }
+  );
 };
 
 // ============================================================
 // CLOUDINARY DELETE
 // ============================================================
 
-const deleteFromCloudinary = async (
-  fileUrl,
-  resourceType = "image"
-) => {
-  try {
-    if (
-      !fileUrl ||
-      !fileUrl.includes("cloudinary.com")
-    ) {
-      return;
-    }
-
-    const uploadIndex =
-      fileUrl.indexOf("/upload/");
-
-    if (uploadIndex === -1) {
-      return;
-    }
-
-    let publicId = fileUrl.substring(
-      uploadIndex + "/upload/".length
-    );
-
-    publicId = publicId.replace(
-      /^v\d+\//,
-      ""
-    );
-
-    publicId = publicId.replace(
-      /\.[^/.]+$/,
-      ""
-    );
-
-    if (!publicId) {
-      return;
-    }
-
-    await cloudinary.uploader.destroy(
-      publicId,
-      {
-        resource_type: resourceType,
+const deleteFromCloudinary =
+  async (
+    fileUrl,
+    resourceType = "image"
+  ) => {
+    try {
+      if (
+        !fileUrl ||
+        !fileUrl.includes(
+          "cloudinary.com"
+        )
+      ) {
+        return;
       }
-    );
-  } catch (error) {
-    console.error(
-      "❌ Cloudinary delete error:",
-      error.message
-    );
-  }
-};
+
+      const uploadIndex =
+        fileUrl.indexOf(
+          "/upload/"
+        );
+
+      if (uploadIndex === -1) {
+        return;
+      }
+
+      let publicId =
+        fileUrl.substring(
+          uploadIndex +
+            "/upload/".length
+        );
+
+      publicId =
+        publicId.replace(
+          /^v\d+\//,
+          ""
+        );
+
+      publicId =
+        publicId.replace(
+          /\.[^/.]+$/,
+          ""
+        );
+
+      if (!publicId) {
+        return;
+      }
+
+      await cloudinary.uploader.destroy(
+        publicId,
+        {
+          resource_type:
+            resourceType,
+        }
+      );
+    } catch (error) {
+      console.error(
+        "❌ Cloudinary delete error:",
+        error.message
+      );
+    }
+  };
 
 // ============================================================
 // UPLOAD PRODUCT FILES
 // ============================================================
 
-const uploadProductFiles = async (
-  files
-) => {
-  const imageUrls = [];
-  const videoUrls = [];
+const uploadProductFiles =
+  async (files) => {
+    const imageUrls = [];
+    const videoUrls = [];
 
-  if (
-    !files ||
-    !Array.isArray(files) ||
-    files.length === 0
-  ) {
+    if (
+      !Array.isArray(files) ||
+      files.length === 0
+    ) {
+      return {
+        imageUrls,
+        videoUrls,
+      };
+    }
+
+    for (const file of files) {
+      if (
+        !file ||
+        !file.buffer
+      ) {
+        continue;
+      }
+
+      if (
+        file.mimetype?.startsWith(
+          "image/"
+        )
+      ) {
+        const result =
+          await uploadToCloudinary(
+            file.buffer,
+            "image",
+            "buyukused/products"
+          );
+
+        if (result?.secure_url) {
+          imageUrls.push(
+            result.secure_url
+          );
+        }
+      } else if (
+        file.mimetype?.startsWith(
+          "video/"
+        )
+      ) {
+        const result =
+          await uploadToCloudinary(
+            file.buffer,
+            "video",
+            "buyukused/products/videos"
+          );
+
+        if (result?.secure_url) {
+          videoUrls.push(
+            result.secure_url
+          );
+        }
+      }
+    }
+
     return {
       imageUrls,
       videoUrls,
     };
-  }
-
-  for (const file of files) {
-    if (
-      !file ||
-      !file.buffer
-    ) {
-      continue;
-    }
-
-    if (
-      file.mimetype?.startsWith(
-        "image/"
-      )
-    ) {
-      const result =
-        await uploadToCloudinary(
-          file.buffer,
-          "image"
-        );
-
-      if (result?.secure_url) {
-        imageUrls.push(
-          result.secure_url
-        );
-      }
-
-      continue;
-    }
-
-    if (
-      file.mimetype?.startsWith(
-        "video/"
-      )
-    ) {
-      const result =
-        await uploadToCloudinary(
-          file.buffer,
-          "video"
-        );
-
-      if (result?.secure_url) {
-        videoUrls.push(
-          result.secure_url
-        );
-      }
-    }
-  }
-
-  return {
-    imageUrls,
-    videoUrls,
   };
-};
 
 // ============================================================
 // BUILD PRODUCT DATA
@@ -862,7 +501,7 @@ const buildProductData = (
       body?.category
     );
 
-  return {
+  const data = {
     // ========================================================
     // BASIC
     // ========================================================
@@ -939,7 +578,7 @@ const buildProductData = (
       ),
 
     // ========================================================
-    // PHONES / LAPTOPS / TABLETS
+    // COMPUTER / PHONE / TABLET
     // ========================================================
 
     storage:
@@ -967,6 +606,11 @@ const buildProductData = (
         body.connectivity
       ),
 
+    operatingSystem:
+      cleanString(
+        body.operatingSystem
+      ),
+
     battery:
       cleanString(body.battery),
 
@@ -975,10 +619,9 @@ const buildProductData = (
         body.resolution
       ),
 
-    operatingSystem:
-      cleanString(
-        body.operatingSystem
-      ),
+    // ========================================================
+    // PHONE
+    // ========================================================
 
     batteryHealth:
       toNumberOrNull(
@@ -1026,7 +669,7 @@ const buildProductData = (
       ),
 
     // ========================================================
-    // SMARTWATCHES
+    // SMARTWATCH
     // ========================================================
 
     watchSize:
@@ -1062,6 +705,19 @@ const buildProductData = (
     usbPorts:
       cleanString(
         body.usbPorts
+      ),
+
+    smartTV:
+      toBoolean(body.smartTV),
+
+    voiceControl:
+      toBoolean(
+        body.voiceControl
+      ),
+
+    wallMountable:
+      toBoolean(
+        body.wallMountable
       ),
 
     // ========================================================
@@ -1162,6 +818,114 @@ const buildProductData = (
         body.batteryCapacity
       ),
 
+    wireless:
+      toBoolean(body.wireless),
+
+    original:
+      toBoolean(body.original),
+
+    // ========================================================
+    // SPARE PARTS
+    // ========================================================
+
+    sparePartType:
+      cleanString(
+        body.sparePartType
+      ),
+
+    partNumber:
+      cleanString(
+        body.partNumber
+      ),
+
+    oemNumber:
+      cleanString(
+        body.oemNumber
+      ),
+
+    partBrand:
+      cleanString(
+        body.partBrand
+      ),
+
+    vehicleMake:
+      cleanString(
+        body.vehicleMake
+      ),
+
+    vehicleModel:
+      cleanString(
+        body.vehicleModel
+      ),
+
+    vehicleYear:
+      cleanString(
+        body.vehicleYear
+      ),
+
+    vehicleGeneration:
+      cleanString(
+        body.vehicleGeneration
+      ),
+
+    vehicleEngine:
+      cleanString(
+        body.vehicleEngine
+      ),
+
+    vehicleTrim:
+      cleanString(
+        body.vehicleTrim
+      ),
+
+    partPosition:
+      cleanString(
+        body.partPosition
+      ),
+
+    partSide:
+      cleanString(
+        body.partSide
+      ),
+
+    partMaterial:
+      cleanString(
+        body.partMaterial
+      ),
+
+    partColor:
+      cleanString(
+        body.partColor
+      ),
+
+    partCondition:
+      cleanString(
+        body.partCondition
+      ),
+
+    isOEM:
+      toBoolean(body.isOEM),
+
+    isAftermarket:
+      toBoolean(
+        body.isAftermarket
+      ),
+
+    isGenuine:
+      toBoolean(
+        body.isGenuine
+      ),
+
+    isUsedPart:
+      toBoolean(
+        body.isUsedPart
+      ),
+
+    isNewPart:
+      toBoolean(
+        body.isNewPart
+      ),
+
     // ========================================================
     // COSMETICS
     // ========================================================
@@ -1171,10 +935,18 @@ const buildProductData = (
         body.cosmeticType
       ),
 
-    productType:
+    cosmeticBrand:
       cleanString(
-        body.productType
+        body.cosmeticBrand
       ),
+
+    productSize:
+      cleanString(
+        body.productSize
+      ),
+
+    volume:
+      cleanString(body.volume),
 
     skinType:
       cleanString(
@@ -1186,24 +958,18 @@ const buildProductData = (
         body.hairType
       ),
 
-    gender:
-      cleanString(
-        body.gender
-      ),
-
     shade:
-      cleanString(
-        body.shade
-      ),
+      cleanString(body.shade),
 
-    volume:
-      cleanString(
-        body.volume
-      ),
+    scent:
+      cleanString(body.scent),
 
-    ingredients:
+    gender:
+      cleanString(body.gender),
+
+    ageGroup:
       cleanString(
-        body.ingredients
+        body.ageGroup
       ),
 
     expiryDate:
@@ -1211,24 +977,9 @@ const buildProductData = (
         body.expiryDate
       ),
 
-    productLine:
+    ingredients:
       cleanString(
-        body.productLine
-      ),
-
-    scent:
-      cleanString(
-        body.scent
-      ),
-
-    coverage:
-      cleanString(
-        body.coverage
-      ),
-
-    cosmeticSize:
-      cleanString(
-        body.cosmeticSize
+        body.ingredients
       ),
 
     benefits:
@@ -1236,39 +987,14 @@ const buildProductData = (
         body.benefits
       ),
 
-    skinConcern:
+    usageInstructions:
       cleanString(
-        body.skinConcern
-      ),
-
-    spf:
-      cleanString(body.spf),
-
-    expirationDate:
-      cleanString(
-        body.expirationDate
-      ),
-
-    batchNumber:
-      cleanString(
-        body.batchNumber
+        body.usageInstructions
       ),
 
     countryOfOrigin:
       cleanString(
         body.countryOfOrigin
-      ),
-
-    // ========================================================
-    // COSMETIC BOOLEAN FIELDS
-    // ========================================================
-
-    sealed:
-      toBoolean(body.sealed),
-
-    authentic:
-      toBoolean(
-        body.authentic
       ),
 
     crueltyFree:
@@ -1279,33 +1005,17 @@ const buildProductData = (
     vegan:
       toBoolean(body.vegan),
 
-    parabenFree:
+    organic:
       toBoolean(
-        body.parabenFree
+        body.organic
       ),
+
+    sealed:
+      toBoolean(body.sealed),
 
     // ========================================================
-    // GENERAL BOOLEAN FIELDS
+    // SELLING OPTIONS
     // ========================================================
-
-    smartTV:
-      toBoolean(body.smartTV),
-
-    voiceControl:
-      toBoolean(
-        body.voiceControl
-      ),
-
-    wallMountable:
-      toBoolean(
-        body.wallMountable
-      ),
-
-    wireless:
-      toBoolean(body.wireless),
-
-    original:
-      toBoolean(body.original),
 
     negotiation:
       toBoolean(
@@ -1325,7 +1035,26 @@ const buildProductData = (
       normalizeStatus(
         body.status
       ),
+
+    // ========================================================
+    // PROMOTION
+    // ========================================================
+
+    promo:
+      toBoolean(body.promo),
+
+    verified:
+      toBoolean(
+        body.verified
+      ),
+
+    yearsOnPlatform:
+      toNumberOrNull(
+        body.yearsOnPlatform
+      ) ?? 0,
   };
+
+  return data;
 };
 
 // ============================================================
@@ -1411,12 +1140,12 @@ const validateProductData = (
 // ============================================================
 
 const createProductVisualEmbedding =
-  async (
-    imageBuffer
-  ) => {
+  async (imageBuffer) => {
     if (
       !imageBuffer ||
-      !Buffer.isBuffer(imageBuffer)
+      !Buffer.isBuffer(
+        imageBuffer
+      )
     ) {
       return null;
     }
@@ -1451,56 +1180,6 @@ const createProductVisualEmbedding =
   };
 
 // ============================================================
-// CREATE VIEW NOTIFICATION
-// ============================================================
-
-const createProductViewNotification =
-  async ({
-    sellerId,
-    viewerId,
-    product,
-  }) => {
-    try {
-      if (
-        !sellerId ||
-        !viewerId ||
-        !product
-      ) {
-        return;
-      }
-
-      if (
-        sellerId.toString() ===
-        viewerId.toString()
-      ) {
-        return;
-      }
-
-      // Your Notification model should use userId.
-      // We intentionally do not allow notification failure
-      // to break product retrieval.
-
-      await Notification.create({
-        userId: sellerId,
-        title:
-          "Your product was viewed",
-        message:
-          `${product.title} was viewed by a buyer.`,
-        link:
-          `/products/${product._id}`,
-        type:
-          "product_viewed",
-        read: false,
-      });
-    } catch (error) {
-      console.error(
-        "⚠️ Product view notification failed:",
-        error.message
-      );
-    }
-  };
-
-// ============================================================
 // GET PRODUCTS
 // ============================================================
 
@@ -1517,24 +1196,25 @@ exports.getProducts =
         status,
         minPrice,
         maxPrice,
-        sellerId,
         page = 1,
-        limit = DEFAULT_PRODUCT_LIMIT,
+        limit = 12,
+        sellerId,
       } = req.query;
 
-      const pageNumber = Math.max(
-        Number(page) || 1,
-        1
-      );
-
-      const limitNumber = Math.min(
+      const pageNumber =
         Math.max(
-          Number(limit) ||
-            DEFAULT_PRODUCT_LIMIT,
+          Number(page) || 1,
           1
-        ),
-        MAX_PRODUCT_LIMIT
-      );
+        );
+
+      const limitNumber =
+        Math.min(
+          Math.max(
+            Number(limit) || 12,
+            1
+          ),
+          100
+        );
 
       const query = {};
 
@@ -1698,6 +1378,8 @@ exports.getProducts =
                 $options: "i",
               },
             },
+
+            // Accessories
             {
               accessoryType: {
                 $regex:
@@ -1719,6 +1401,52 @@ exports.getProducts =
                 $options: "i",
               },
             },
+
+            // Spare Parts
+            {
+              sparePartType: {
+                $regex:
+                  safeSearch,
+                $options: "i",
+              },
+            },
+            {
+              partNumber: {
+                $regex:
+                  safeSearch,
+                $options: "i",
+              },
+            },
+            {
+              oemNumber: {
+                $regex:
+                  safeSearch,
+                $options: "i",
+              },
+            },
+            {
+              partBrand: {
+                $regex:
+                  safeSearch,
+                $options: "i",
+              },
+            },
+            {
+              vehicleMake: {
+                $regex:
+                  safeSearch,
+                $options: "i",
+              },
+            },
+            {
+              vehicleModel: {
+                $regex:
+                  safeSearch,
+                $options: "i",
+              },
+            },
+
+            // Cosmetics
             {
               cosmeticType: {
                 $regex:
@@ -1727,7 +1455,7 @@ exports.getProducts =
               },
             },
             {
-              productType: {
+              cosmeticBrand: {
                 $regex:
                   safeSearch,
                 $options: "i",
@@ -1748,7 +1476,7 @@ exports.getProducts =
               },
             },
             {
-              productLine: {
+              ingredients: {
                 $regex:
                   safeSearch,
                 $options: "i",
@@ -1761,6 +1489,8 @@ exports.getProducts =
                 $options: "i",
               },
             },
+
+            // TV
             {
               tvType: {
                 $regex:
@@ -1768,6 +1498,8 @@ exports.getProducts =
                 $options: "i",
               },
             },
+
+            // Game Consoles
             {
               consoleType: {
                 $regex:
@@ -1779,15 +1511,14 @@ exports.getProducts =
         }
       }
 
-      // --------------------------------------------------------
-      // QUERY
-      // --------------------------------------------------------
-
       const products =
         await Product.find(query)
           .populate(
             "sellerId",
-            SELLER_SELECT
+            "name email phone location avatar isVerified profileImage"
+          )
+          .select(
+            "-imageEmbedding -imageEmbeddingModel -imageEmbeddingUpdatedAt"
           )
           .limit(limitNumber)
           .skip(
@@ -1796,7 +1527,8 @@ exports.getProducts =
           )
           .sort({
             createdAt: -1,
-          });
+          })
+          .lean();
 
       const total =
         await Product.countDocuments(
@@ -1842,10 +1574,16 @@ exports.getProducts =
 exports.visualSearch =
   async (req, res) => {
     try {
+      const files =
+        getUploadedFiles(req);
+
       const file =
-        Array.isArray(req.files)
-          ? req.files[0]
-          : req.file;
+        files.find(
+          (item) =>
+            item?.mimetype?.startsWith(
+              "image/"
+            )
+        );
 
       if (
         !file ||
@@ -1855,19 +1593,6 @@ exports.visualSearch =
           success: false,
           message:
             "Please upload an image",
-        });
-      }
-
-      if (
-        !file.mimetype ||
-        !file.mimetype.startsWith(
-          "image/"
-        )
-      ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Only image files are supported",
         });
       }
 
@@ -1902,7 +1627,7 @@ exports.visualSearch =
             Number(limit) || 24,
             1
           ),
-          MAX_PRODUCT_LIMIT
+          100
         );
 
       const filter = {
@@ -2016,20 +1741,13 @@ exports.visualSearch =
           $addFields: {
             sellerId: {
               _id: "$seller._id",
-              name:
-                "$seller.name",
-              email:
-                "$seller.email",
-              phone:
-                "$seller.phone",
+              name: "$seller.name",
+              email: "$seller.email",
+              phone: "$seller.phone",
               location:
                 "$seller.location",
               avatar:
                 "$seller.avatar",
-              isVerified:
-                "$seller.isVerified",
-              profileImage:
-                "$seller.profileImage",
             },
           },
         },
@@ -2054,7 +1772,8 @@ exports.visualSearch =
         count:
           products.length,
         visualSearch: true,
-        model: MODEL_ID,
+        model:
+          MODEL_ID,
         dimensions:
           EMBEDDING_DIMENSIONS,
       });
@@ -2065,17 +1784,19 @@ exports.visualSearch =
       );
 
       if (
-        error.message?.toLowerCase().includes(
-          "vector"
-        ) &&
-        error.message?.toLowerCase().includes(
+        error.message?.includes(
           "index"
+        ) &&
+        error.message?.includes(
+          "vector"
         )
       ) {
         return res.status(500).json({
           success: false,
           message:
             "Visual search index is not configured in MongoDB Atlas",
+          error:
+            error.message,
         });
       }
 
@@ -2119,12 +1840,14 @@ exports.getProductById =
       }
 
       const product =
-        await Product.findById(
-          id
-        ).populate(
-          "sellerId",
-          SELLER_SELECT
-        );
+        await Product.findById(id)
+          .populate(
+            "sellerId",
+            "name email phone location avatar isVerified profileImage"
+          )
+          .select(
+            "-imageEmbedding -imageEmbeddingModel -imageEmbeddingUpdatedAt"
+          );
 
       if (!product) {
         return res.status(404).json({
@@ -2151,7 +1874,7 @@ exports.getProductById =
         (product.views || 0) + 1;
 
       // --------------------------------------------------------
-      // NOTIFICATION
+      // SELLER NOTIFICATION
       // --------------------------------------------------------
 
       const viewerId =
@@ -2161,17 +1884,86 @@ exports.getProductById =
         product.sellerId?._id ||
         product.sellerId;
 
-      await createProductViewNotification(
-        {
-          sellerId,
-          viewerId,
-          product,
-        }
-      );
+      if (
+        viewerId &&
+        sellerId &&
+        viewerId.toString() !==
+          sellerId.toString()
+      ) {
+        setImmediate(
+          async () => {
+            try {
+              const viewer =
+                await User.findById(
+                  viewerId
+                )
+                  .select("name")
+                  .lean();
 
-      // --------------------------------------------------------
-      // RESPONSE
-      // --------------------------------------------------------
+              const viewerName =
+                viewer?.name ||
+                "Someone";
+
+              // Your Notification model uses userId.
+              const recent =
+                await Notification.findOne(
+                  {
+                    userId:
+                      sellerId,
+                    title:
+                      "📢 Product Viewed",
+                    message: {
+                      $regex:
+                        escapeRegex(
+                          product.title
+                        ),
+                      $options: "i",
+                    },
+                    timestamp: {
+                      $gte:
+                        new Date(
+                          Date.now() -
+                            60 *
+                              1000
+                        ),
+                    },
+                  }
+                );
+
+              if (recent) {
+                return;
+              }
+
+              await Notification.create(
+                {
+                  userId:
+                    sellerId,
+
+                  title:
+                    "📢 Product Viewed",
+
+                  message:
+                    `${viewerName} viewed your product "${product.title}"`,
+
+                  read: false,
+
+                  timestamp:
+                    new Date(),
+                }
+              );
+
+              console.log(
+                `🔔 Product view notification created for seller ${sellerId}`
+              );
+            } catch (notificationError) {
+              console.error(
+                "❌ Product view notification error:",
+                notificationError.message
+              );
+            }
+          }
+        );
+      }
 
       return res.json({
         success: true,
@@ -2224,25 +2016,14 @@ exports.createProduct =
         userId;
 
       console.log(
-        "📦 Product category:",
+        "📦 Category:",
         productData.category
       );
 
       console.log(
-        "📦 Product title:",
+        "📦 Title:",
         productData.title
       );
-
-      console.log(
-        "📦 Incoming files:",
-        Array.isArray(req.files)
-          ? req.files.length
-          : 0
-      );
-
-      // --------------------------------------------------------
-      // VALIDATE
-      // --------------------------------------------------------
 
       const validationErrors =
         validateProductData(
@@ -2250,7 +2031,7 @@ exports.createProduct =
         );
 
       if (
-        validationErrors.length > 0
+        validationErrors.length
       ) {
         return res.status(400).json({
           success: false,
@@ -2262,15 +2043,18 @@ exports.createProduct =
       }
 
       // --------------------------------------------------------
-      // UPLOAD MEDIA
+      // UPLOAD FILES
       // --------------------------------------------------------
+
+      const files =
+        getUploadedFiles(req);
 
       const {
         imageUrls,
         videoUrls,
       } =
         await uploadProductFiles(
-          req.files
+          files
         );
 
       productData.images =
@@ -2283,36 +2067,32 @@ exports.createProduct =
         imageUrls[0] || "";
 
       // --------------------------------------------------------
-      // CREATE IMAGE EMBEDDING
+      // VISUAL EMBEDDING
       // --------------------------------------------------------
 
-      if (
-        Array.isArray(req.files)
-      ) {
-        const firstImage =
-          req.files.find(
-            (file) =>
-              file?.mimetype?.startsWith(
-                "image/"
-              )
+      const firstImage =
+        files.find(
+          (file) =>
+            file?.mimetype?.startsWith(
+              "image/"
+            )
+        );
+
+      if (firstImage) {
+        const embedding =
+          await createProductVisualEmbedding(
+            firstImage.buffer
           );
 
-        if (firstImage) {
-          const embedding =
-            await createProductVisualEmbedding(
-              firstImage.buffer
-            );
+        if (embedding) {
+          productData.imageEmbedding =
+            embedding;
 
-          if (embedding) {
-            productData.imageEmbedding =
-              embedding;
+          productData.imageEmbeddingModel =
+            MODEL_ID;
 
-            productData.imageEmbeddingModel =
-              MODEL_ID;
-
-            productData.imageEmbeddingUpdatedAt =
-              new Date();
-          }
+          productData.imageEmbeddingUpdatedAt =
+            new Date();
         }
       }
 
@@ -2353,6 +2133,8 @@ exports.createProduct =
           success: false,
           message:
             "Duplicate product entry",
+          error:
+            error.keyValue || null,
         });
       }
 
@@ -2364,12 +2146,13 @@ exports.createProduct =
           success: false,
           message:
             "Product validation failed",
-          errors: Object.values(
-            error.errors || {}
-          ).map(
-            (err) =>
-              err.message
-          ),
+          errors:
+            Object.values(
+              error.errors || {}
+            ).map(
+              (err) =>
+                err.message
+            ),
         });
       }
 
@@ -2413,9 +2196,7 @@ exports.updateProduct =
       }
 
       const product =
-        await Product.findById(
-          id
-        ).select(
+        await Product.findById(id).select(
           "+imageEmbedding +imageEmbeddingModel +imageEmbeddingUpdatedAt"
         );
 
@@ -2430,9 +2211,6 @@ exports.updateProduct =
       const userId =
         getUserId(req);
 
-      const role =
-        getUserRole(req);
-
       if (!userId) {
         return res.status(401).json({
           success: false,
@@ -2440,6 +2218,9 @@ exports.updateProduct =
             "Authentication required",
         });
       }
+
+      const role =
+        getUserRole(req);
 
       const isAdmin =
         role === "admin";
@@ -2449,7 +2230,10 @@ exports.updateProduct =
         product.sellerId.toString() ===
           userId.toString();
 
-      if (!isAdmin && !isOwner) {
+      if (
+        !isAdmin &&
+        !isOwner
+      ) {
         return res.status(403).json({
           success: false,
           message:
@@ -2458,7 +2242,7 @@ exports.updateProduct =
       }
 
       // ========================================================
-      // ALLOWED FIELDS
+      // ALL FIELDS THAT EXIST IN Product.js
       // ========================================================
 
       const allowedFields = [
@@ -2481,7 +2265,7 @@ exports.updateProduct =
         "condition",
         "warranty",
 
-        // Computer / phone / tablet
+        // Computer / Phone / Tablet
         "storage",
         "ram",
         "processor",
@@ -2489,14 +2273,16 @@ exports.updateProduct =
         "screenSize",
         "year",
         "connectivity",
+        "operatingSystem",
         "battery",
         "resolution",
-        "operatingSystem",
+
+        // Phone
         "batteryHealth",
         "faceId",
         "simStatus",
 
-        // Game consoles
+        // Game Console
         "videoOutput",
         "region",
         "consoleType",
@@ -2514,6 +2300,9 @@ exports.updateProduct =
         "hdr",
         "hdmiPorts",
         "usbPorts",
+        "smartTV",
+        "voiceControl",
+        "wallMountable",
 
         // Cars
         "mileage",
@@ -2536,403 +2325,302 @@ exports.updateProduct =
         "powerOutput",
         "capacity",
         "batteryCapacity",
+        "wireless",
+        "original",
+
+        // Spare Parts
+        "sparePartType",
+        "partNumber",
+        "oemNumber",
+        "partBrand",
+        "vehicleMake",
+        "vehicleModel",
+        "vehicleYear",
+        "vehicleGeneration",
+        "vehicleEngine",
+        "vehicleTrim",
+        "partPosition",
+        "partSide",
+        "partMaterial",
+        "partColor",
+        "partCondition",
+        "isOEM",
+        "isAftermarket",
+        "isGenuine",
+        "isUsedPart",
+        "isNewPart",
 
         // Cosmetics
         "cosmeticType",
-        "productType",
+        "cosmeticBrand",
+        "productSize",
+        "volume",
         "skinType",
         "hairType",
-        "gender",
         "shade",
-        "volume",
-        "ingredients",
-        "expiryDate",
-        "productLine",
         "scent",
-        "coverage",
-        "cosmeticSize",
+        "gender",
+        "ageGroup",
+        "expiryDate",
+        "ingredients",
         "benefits",
-        "skinConcern",
-        "spf",
-        "expirationDate",
-        "batchNumber",
+        "usageInstructions",
         "countryOfOrigin",
-
-        // Boolean
-        "smartTV",
-        "voiceControl",
-        "wallMountable",
-        "wireless",
-        "original",
-        "negotiation",
-        "swapAccepted",
-        "sealed",
-        "authentic",
         "crueltyFree",
         "vegan",
-        "parabenFree",
+        "organic",
+        "sealed",
+
+        // Selling
+        "negotiation",
+        "swapAccepted",
 
         // Status
         "status",
-      ];
 
-      const numericFields = [
-        "price",
-        "oldPrice",
-        "batteryHealth",
-        "mileage",
-        "seatingCapacity",
-      ];
-
-      const booleanFields = [
-        "smartTV",
-        "voiceControl",
-        "wallMountable",
-        "wireless",
-        "original",
-        "negotiation",
-        "swapAccepted",
-        "sealed",
-        "authentic",
-        "crueltyFree",
-        "vegan",
-        "parabenFree",
+        // Promotion
+        "promo",
+        "verified",
+        "yearsOnPlatform",
       ];
 
       // ========================================================
-      // APPLY FIELD UPDATES
+      // APPLY FIELDS
       // ========================================================
 
       for (
         const field of allowedFields
       ) {
         if (
-          req.body[field] ===
-          undefined
-        ) {
-          continue;
-        }
-
-        const value =
-          req.body[field];
-
-        // Category
-        if (
-          field === "category"
-        ) {
-          product.category =
-            normalizeCategory(
-              value
-            );
-          continue;
-        }
-
-        // Status
-        if (
-          field === "status"
-        ) {
-          product.status =
-            normalizeStatus(
-              value
-            );
-          continue;
-        }
-
-        // Condition
-        if (
-          field === "condition"
-        ) {
-          product.condition =
-            normalizeCondition(
-              value
-            );
-          continue;
-        }
-
-        // Boolean
-        if (
-          booleanFields.includes(
+          Object.prototype.hasOwnProperty.call(
+            req.body || {},
             field
           )
         ) {
-          product[field] =
-            toBoolean(value);
-          continue;
-        }
+          let value =
+            req.body[field];
 
-        // Number
-        if (
-          numericFields.includes(
-            field
-          )
-        ) {
-          product[field] =
-            toNumberOrNull(
-              value
-            );
-          continue;
-        }
+          // ----------------------------------------------
+          // CATEGORY
+          // ----------------------------------------------
 
-        // String
-        product[field] =
-          cleanString(value);
+          if (
+            field ===
+            "category"
+          ) {
+            value =
+              normalizeCategory(
+                value
+              );
+          }
+
+          // ----------------------------------------------
+          // STATUS
+          // ----------------------------------------------
+
+          else if (
+            field ===
+            "status"
+          ) {
+            value =
+              normalizeStatus(
+                value
+              );
+          }
+
+          // ----------------------------------------------
+          // CONDITION
+          // ----------------------------------------------
+
+          else if (
+            field ===
+            "condition"
+          ) {
+            value =
+              normalizeCondition(
+                value
+              );
+          }
+
+          // ----------------------------------------------
+          // NUMBERS
+          // ----------------------------------------------
+
+          else if (
+            [
+              "price",
+              "oldPrice",
+              "mileage",
+              "seatingCapacity",
+              "batteryHealth",
+              "yearsOnPlatform",
+            ].includes(field)
+          ) {
+            value =
+              toNumberOrNull(
+                value
+              );
+
+            if (
+              value === null &&
+              field ===
+                "yearsOnPlatform"
+            ) {
+              value = 0;
+            }
+          }
+
+          // ----------------------------------------------
+          // BOOLEANS
+          // ----------------------------------------------
+
+          else if (
+            [
+              "smartTV",
+              "voiceControl",
+              "wallMountable",
+              "wireless",
+              "original",
+              "isOEM",
+              "isAftermarket",
+              "isGenuine",
+              "isUsedPart",
+              "isNewPart",
+              "crueltyFree",
+              "vegan",
+              "organic",
+              "sealed",
+              "negotiation",
+              "swapAccepted",
+              "promo",
+              "verified",
+            ].includes(field)
+          ) {
+            value =
+              toBoolean(value);
+          }
+
+          // ----------------------------------------------
+          // STRINGS
+          // ----------------------------------------------
+
+          else {
+            value =
+              cleanString(value);
+          }
+
+          product[field] =
+            value;
+        }
       }
 
       // ========================================================
-      // EXISTING IMAGES
+      // NEW FILES
       // ========================================================
 
-      const imagesToKeep =
-        parseStringArray(
-          req.body.imagesToKeep
-        );
+      const files =
+        getUploadedFiles(req);
 
-      if (
-        Array.isArray(
-          imagesToKeep
-        )
-      ) {
-        const oldImages =
-          product.images || [];
+      if (files.length > 0) {
+        const {
+          imageUrls,
+          videoUrls,
+        } =
+          await uploadProductFiles(
+            files
+          );
 
-        for (
-          const oldImage of oldImages
+        // ----------------------------------------------------
+        // IMAGES
+        // ----------------------------------------------------
+
+        if (
+          imageUrls.length > 0
         ) {
-          if (
-            !imagesToKeep.includes(
-              oldImage
+          const oldImages =
+            Array.isArray(
+              product.images
             )
+              ? [
+                  ...product.images,
+                ]
+              : [];
+
+          for (
+            const oldImage of oldImages
           ) {
             await deleteFromCloudinary(
               oldImage,
               "image"
             );
           }
+
+          product.images =
+            imageUrls;
+
+          product.image =
+            imageUrls[0];
         }
 
-        product.images =
-          imagesToKeep;
+        // ----------------------------------------------------
+        // VIDEOS
+        // ----------------------------------------------------
 
-        product.image =
-          imagesToKeep[0] || "";
-      }
-
-      // ========================================================
-      // EXISTING VIDEOS
-      // ========================================================
-
-      const videosToKeep =
-        parseStringArray(
-          req.body.videosToKeep
-        );
-
-      if (
-        Array.isArray(
-          videosToKeep
-        )
-      ) {
-        const oldVideos =
-          product.videos || [];
-
-        for (
-          const oldVideo of oldVideos
+        if (
+          videoUrls.length > 0
         ) {
-          if (
-            !videosToKeep.includes(
-              oldVideo
+          const oldVideos =
+            Array.isArray(
+              product.videos
             )
+              ? [
+                  ...product.videos,
+                ]
+              : [];
+
+          for (
+            const oldVideo of oldVideos
           ) {
             await deleteFromCloudinary(
               oldVideo,
               "video"
             );
           }
+
+          product.videos =
+            videoUrls;
         }
 
-        product.videos =
-          videosToKeep;
-      }
+        // ----------------------------------------------------
+        // UPDATE VISUAL EMBEDDING
+        // ----------------------------------------------------
 
-      // ========================================================
-      // NEW MEDIA
-      // ========================================================
-
-      let newImageUploaded =
-        false;
-
-      let firstNewImageBuffer =
-        null;
-
-      if (
-        Array.isArray(req.files) &&
-        req.files.length > 0
-      ) {
-        const {
-          imageUrls,
-          videoUrls,
-        } =
-          await uploadProductFiles(
-            req.files
-          );
-
-        if (
-          imageUrls.length > 0
-        ) {
-          if (
-            !Array.isArray(
-              product.images
-            )
-          ) {
-            product.images = [];
-          }
-
-          product.images.push(
-            ...imageUrls
-          );
-
-          newImageUploaded =
-            true;
-        }
-
-        if (
-          videoUrls.length > 0
-        ) {
-          if (
-            !Array.isArray(
-              product.videos
-            )
-          ) {
-            product.videos = [];
-          }
-
-          product.videos.push(
-            ...videoUrls
-          );
-        }
-
-        product.image =
-          product.images?.[0] ||
-          "";
-
-        const firstNewImage =
-          req.files.find(
+        const firstImage =
+          files.find(
             (file) =>
               file?.mimetype?.startsWith(
                 "image/"
               )
           );
 
-        if (firstNewImage) {
-          firstNewImageBuffer =
-            firstNewImage.buffer;
+        if (firstImage) {
+          const embedding =
+            await createProductVisualEmbedding(
+              firstImage.buffer
+            );
+
+          if (embedding) {
+            product.imageEmbedding =
+              embedding;
+
+            product.imageEmbeddingModel =
+              MODEL_ID;
+
+            product.imageEmbeddingUpdatedAt =
+              new Date();
+          }
         }
       }
-
-      // ========================================================
-      // UPDATE VISUAL EMBEDDING
-      // ========================================================
-
-      if (
-        newImageUploaded &&
-        firstNewImageBuffer
-      ) {
-        const embedding =
-          await createProductVisualEmbedding(
-            firstNewImageBuffer
-          );
-
-        if (embedding) {
-          product.imageEmbedding =
-            embedding;
-
-          product.imageEmbeddingModel =
-            MODEL_ID;
-
-          product.imageEmbeddingUpdatedAt =
-            new Date();
-        }
-      }
-
-      // ========================================================
-      // FINAL VALIDATION
-      // ========================================================
-
-      if (
-        !product.title ||
-        product.title.trim()
-          .length < 2
-      ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Product title is required",
-        });
-      }
-
-      if (
-        product.price === null ||
-        !Number.isFinite(
-          product.price
-        ) ||
-        product.price < 0
-      ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "A valid product price is required",
-        });
-      }
-
-      if (
-        !product.sellerPhone ||
-        !product.sellerPhone.trim()
-      ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Seller phone number is required",
-        });
-      }
-
-      if (
-        !PRODUCT_CATEGORIES.includes(
-          product.category
-        )
-      ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            `Invalid product category: ${product.category}`,
-        });
-      }
-
-      if (
-        !VALID_STATUSES.includes(
-          product.status
-        )
-      ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            `Invalid product status: ${product.status}`,
-        });
-      }
-
-      if (
-        !VALID_CONDITIONS.includes(
-          product.condition
-        )
-      ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            `Invalid product condition: ${product.condition}`,
-        });
-      }
-
-      // ========================================================
-      // SAVE
-      // ========================================================
 
       await product.save();
 
@@ -2966,12 +2654,13 @@ exports.updateProduct =
           success: false,
           message:
             "Product validation failed",
-          errors: Object.values(
-            error.errors || {}
-          ).map(
-            (err) =>
-              err.message
-          ),
+          errors:
+            Object.values(
+              error.errors || {}
+            ).map(
+              (err) =>
+                err.message
+            ),
         });
       }
 
@@ -3015,9 +2704,7 @@ exports.deleteProduct =
       }
 
       const product =
-        await Product.findById(
-          id
-        );
+        await Product.findById(id);
 
       if (!product) {
         return res.status(404).json({
@@ -3049,7 +2736,10 @@ exports.deleteProduct =
         product.sellerId.toString() ===
           userId.toString();
 
-      if (!isAdmin && !isOwner) {
+      if (
+        !isAdmin &&
+        !isOwner
+      ) {
         return res.status(403).json({
           success: false,
           message:
@@ -3061,12 +2751,31 @@ exports.deleteProduct =
       // DELETE IMAGES
       // --------------------------------------------------------
 
-      for (
-        const image of
-          product.images || []
+      if (
+        Array.isArray(
+          product.images
+        )
+      ) {
+        for (
+          const image of
+            product.images
+        ) {
+          await deleteFromCloudinary(
+            image,
+            "image"
+          );
+        }
+      }
+
+      // Legacy image
+      if (
+        product.image &&
+        !product.images?.includes(
+          product.image
+        )
       ) {
         await deleteFromCloudinary(
-          image,
+          product.image,
           "image"
         );
       }
@@ -3075,21 +2784,25 @@ exports.deleteProduct =
       // DELETE VIDEOS
       // --------------------------------------------------------
 
-      for (
-        const video of
-          product.videos || []
+      if (
+        Array.isArray(
+          product.videos
+        )
       ) {
-        await deleteFromCloudinary(
-          video,
-          "video"
-        );
+        for (
+          const video of
+            product.videos
+        ) {
+          await deleteFromCloudinary(
+            video,
+            "video"
+          );
+        }
       }
 
-      // --------------------------------------------------------
-      // DELETE DATABASE RECORD
-      // --------------------------------------------------------
-
-      await product.deleteOne();
+      await Product.findByIdAndDelete(
+        id
+      );
 
       return res.json({
         success: true,
@@ -3114,6 +2827,10 @@ exports.deleteProduct =
 // ============================================================
 // UPDATE STOCK
 // ============================================================
+//
+// Your current Product.js does not have a stock/quantity field.
+// Do not pretend stock exists.
+//
 
 exports.updateStock =
   async (req, res) => {
@@ -3148,7 +2865,10 @@ exports.getSellerProducts =
         })
           .populate(
             "sellerId",
-            SELLER_SELECT
+            "name email phone location avatar isVerified profileImage"
+          )
+          .select(
+            "-imageEmbedding -imageEmbeddingModel -imageEmbeddingUpdatedAt"
           )
           .sort({
             createdAt: -1,
@@ -3208,7 +2928,7 @@ exports.updateProductStatus =
 
       if (
         !VALID_STATUSES.includes(
-          String(status || "")
+          String(status)
             .trim()
             .toLowerCase()
         )
@@ -3216,9 +2936,9 @@ exports.updateProductStatus =
         return res.status(400).json({
           success: false,
           message:
-            "Invalid product status",
-          allowedStatuses:
-            VALID_STATUSES,
+            `Invalid product status. Allowed: ${VALID_STATUSES.join(
+              ", "
+            )}`,
         });
       }
 
@@ -3262,7 +2982,10 @@ exports.updateProductStatus =
         product.sellerId.toString() ===
           userId.toString();
 
-      if (!isAdmin && !isOwner) {
+      if (
+        !isAdmin &&
+        !isOwner
+      ) {
         return res.status(403).json({
           success: false,
           message:
@@ -3291,7 +3014,7 @@ exports.updateProductStatus =
         success: false,
         message:
           error.message ||
-          "Server error updating product status",
+          "Failed to update product status",
       });
     }
   };

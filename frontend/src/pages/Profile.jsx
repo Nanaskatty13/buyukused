@@ -24,7 +24,7 @@ import {
 } from "../services/api";
 
 import { messages } from "../services/messages";
-import VerifiedBadge from "../components/VerifiedBadge"; // NEW
+import VerifiedBadge from "../components/VerifiedBadge";
 
 const Profile = () => {
   const { user, token } = useAuth();
@@ -714,6 +714,9 @@ const Profile = () => {
   const profileEmail =
     user.email || "";
 
+  const profilePhone =
+    user.phone || "";   // <-- phone from user
+
   const profilePhoto =
     user.photoURL ||
     user.photo ||
@@ -729,7 +732,7 @@ const Profile = () => {
     user.role || "buyer";
 
   const isVerified =
-    user.isVerified === true; // NEW
+    user.isVerified === true;
 
   // ================================================================
   // RENDER
@@ -888,7 +891,7 @@ const Profile = () => {
           >
             {profileName}
 
-            {/* ─── VERIFIED BADGE (NEW) ─── */}
+            {/* ─── VERIFIED BADGE ─── */}
             {isVerified && (
               <VerifiedBadge size={24} showLabel />
             )}
@@ -958,6 +961,24 @@ const Profile = () => {
           >
             {profileEmail}
           </p>
+
+          {/* ==========================================================
+              PHONE NUMBER – added right here below email
+          ========================================================== */}
+
+          {profilePhone && (
+            <p
+              style={{
+                color:
+                  "var(--gray-500)",
+                margin:
+                  "0 0 4px",
+              }}
+            >
+              <i className="fas fa-phone"></i>{" "}
+              {profilePhone}
+            </p>
+          )}
 
           <p
             style={{

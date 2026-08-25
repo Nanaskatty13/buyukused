@@ -1,4 +1,3 @@
-
 // backend/middleware/upload.js
 
 const multer = require("multer");
@@ -48,8 +47,15 @@ const upload = multer({
   storage,
   fileFilter,
   limits: {
-    fileSize: 50 * 1024 * 1024,
+    fileSize: 50 * 1024 * 1024, // 50MB
   },
 });
 
+// ---- NEW: middleware for listing fields ----
+const uploadListingImages = upload.fields([
+  { name: "mainImage", maxCount: 1 },
+  { name: "additionalImages", maxCount: 10 },
+]);
+
 module.exports = upload;
+module.exports.uploadListingImages = uploadListingImages;
