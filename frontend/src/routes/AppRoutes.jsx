@@ -1,3 +1,5 @@
+// frontend/src/routes/AppRoutes.jsx
+
 import React from "react";
 import { Routes, Route } from "react-router-dom";
 
@@ -15,29 +17,29 @@ import ProductDetails from "../pages/ProductDetails";
 import Profile from "../pages/Profile";
 import PostFreeAd from "../pages/PostFreeAd";
 
-// ─── NEW INFORMATIONAL PAGES (all directly in /pages) ───
+// Informational Pages
 import About from "../pages/About";
 import HowItWorks from "../pages/HowItWorks";
 import Contact from "../pages/Contact";
-
 import ForSellers from "../pages/ForSellers";
-import ForSellersPostFreeAd from "../pages/PostFreeAd";       // if you have a separate one, else reuse
+import ForSellersPostFreeAd from "../pages/PostFreeAd";
 import Pricing from "../pages/Pricing";
 import Tips from "../pages/Tips";
-
 import ForBuyers from "../pages/ForBuyers";
 import BrowseAds from "../pages/BrowseAds";
 import SafetyTips from "../pages/SafetyTips";
 import ReportAd from "../pages/ReportAd";
-
 import Support from "../pages/Support";
 import CallUs from "../pages/CallUs";
 import Email from "../pages/Email";
 import WhatsApp from "../pages/WhatsApp";
-
 import Terms from "../pages/Terms";
 import Privacy from "../pages/Privacy";
 import Cookies from "../pages/Cookies";
+
+// ✨ New pages – Seller Profile & Feedback
+import SellerPage from "../pages/SellerPage";
+import Feedback from "../pages/Feedback";
 
 // Admin Pages
 import AdminDashboard from "../admin/Dashboard";
@@ -49,7 +51,7 @@ import AdminReports from "../admin/Reports";
 import AdminSettings from "../admin/Settings";
 import Categories from "../admin/Categories";
 
-// Seller Pages
+// Seller Dashboard Pages
 import SellerDashboard from "../seller/Dashboard";
 import SellerProducts from "../seller/Products";
 import AddProduct from "../seller/AddProduct";
@@ -75,7 +77,7 @@ function AppRoutes() {
         <Route path="/profile" element={<Profile />} />
         <Route path="/post-free-ad" element={<PostFreeAd />} />
 
-        {/* ─── NEW ROUTES ──────────────────────────────── */}
+        {/* ─── INFO ROUTES ─── */}
         <Route path="/about" element={<About />} />
         <Route path="/how-it-works" element={<HowItWorks />} />
         <Route path="/contact" element={<Contact />} />
@@ -98,6 +100,10 @@ function AppRoutes() {
         <Route path="/legal/terms" element={<Terms />} />
         <Route path="/legal/privacy" element={<Privacy />} />
         <Route path="/legal/cookies" element={<Cookies />} />
+
+        {/* ─── SELLER PROFILE & FEEDBACK ─── */}
+        <Route path="/seller/:sellerId" element={<SellerPage />} />
+        <Route path="/feedback/:sellerId" element={<Feedback />} />
       </Route>
 
       {/* AUTH */}

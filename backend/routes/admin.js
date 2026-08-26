@@ -1,14 +1,18 @@
+// ============================================================
 // backend/routes/admin.js
+// BuyUKUsed Admin Routes
+// ============================================================
 
 const express = require("express");
 
 const router = express.Router();
 
 // ============================================================
-// CONTROLLER
+// CONTROLLERS
 // ============================================================
 
 const {
+  // Dashboard
   getDashboardStats,
 
   // Users
@@ -33,7 +37,7 @@ const {
   updateRiderStatus,
   updateRiderProfile,
 
-  // ─── NEW: Seller Verification ──────────────────────────────
+  // Sellers
   getUnverifiedSellers,
   verifySeller,
   revokeVerification,
@@ -52,13 +56,14 @@ const {
 // GLOBAL ADMIN PROTECTION
 // ============================================================
 //
-// Every route below requires:
+// Every route in this file requires:
 //
 // 1. Valid JWT
 // 2. Existing user
 // 3. Active account
 // 4. role === "admin"
 //
+// ============================================================
 
 router.use(verifyToken);
 router.use(isAdmin);
@@ -67,6 +72,7 @@ router.use(isAdmin);
 // DASHBOARD
 // ============================================================
 
+// GET /api/admin/dashboard
 router.get(
   "/dashboard",
   getDashboardStats
@@ -76,21 +82,25 @@ router.get(
 // USERS
 // ============================================================
 
+// GET /api/admin/users
 router.get(
   "/users",
   getUsers
 );
 
+// GET /api/admin/users/:id
 router.get(
   "/users/:id",
   getUserById
 );
 
+// PUT /api/admin/users/:id/role
 router.put(
   "/users/:id/role",
   updateUserRole
 );
 
+// DELETE /api/admin/users/:id
 router.delete(
   "/users/:id",
   deleteUser
@@ -100,11 +110,13 @@ router.delete(
 // PRODUCTS
 // ============================================================
 
+// GET /api/admin/products
 router.get(
   "/products",
   getProducts
 );
 
+// DELETE /api/admin/products/:id
 router.delete(
   "/products/:id",
   deleteProduct
@@ -114,11 +126,13 @@ router.delete(
 // ORDERS
 // ============================================================
 
+// GET /api/admin/orders
 router.get(
   "/orders",
   getOrders
 );
 
+// PUT /api/admin/orders/:id/status
 router.put(
   "/orders/:id/status",
   updateOrderStatus
@@ -128,63 +142,94 @@ router.put(
 // RIDERS
 // ============================================================
 
+// GET /api/admin/riders
 router.get(
   "/riders",
   getRiders
 );
 
+// GET /api/admin/riders/:id
 router.get(
   "/riders/:id",
   getRiderById
 );
 
+// PUT /api/admin/riders/:id/approve
 router.put(
   "/riders/:id/approve",
   approveRider
 );
 
+// PUT /api/admin/riders/:id/reject
 router.put(
   "/riders/:id/reject",
   rejectRider
 );
 
+// PUT /api/admin/riders/:id/status
 router.put(
   "/riders/:id/status",
   updateRiderStatus
 );
 
+// PUT /api/admin/riders/:id/profile
 router.put(
   "/riders/:id/profile",
   updateRiderProfile
 );
 
 // ============================================================
-// SELLER VERIFICATION (NEW)
+// SELLER VERIFICATION
+// ============================================================
+//
+// These routes are mounted by server.js:
+//
+// app.use("/api/admin", adminRoutes);
+//
+// Therefore:
+//
+// GET
+// /api/admin/sellers/unverified
+//
+// PUT
+// /api/admin/sellers/:id/verify
+//
+// PUT
+// /api/admin/sellers/:id/revoke-verification
+//
 // ============================================================
 
-// GET /api/admin/unverified-sellers
-// List all sellers with isVerified = false
+// GET /api/admin/sellers/unverified
 router.get(
-  "/unverified-sellers",
+  "/sellers/unverified",
   getUnverifiedSellers
 );
 
-// POST /api/admin/verify-seller/:id
-// Mark a seller as verified
-router.post(
-  "/verify-seller/:id",
+// PUT /api/admin/sellers/:id/verify
+router.put(
+  "/sellers/:id/verify",
   verifySeller
 );
 
-// PUT /api/admin/revoke-verification/:id
-// Revoke verification from a seller
+// POST compatibility endpoint.
+//
+// This is kept temporarily so older frontend builds
+// using POST can still verify sellers.
+//
+// POST /api/admin/sellers/:id/verify
+router.post(
+  "/sellers/:id/verify",
+  verifySeller
+);
+
+// PUT /api/admin/sellers/:id/revoke-verification
 router.put(
-  "/revoke-verification/:id",
+  "/sellers/:id/revoke-verification",
   revokeVerification
 );
 
 // ============================================================
-// EXPORT
+// EXPORT ROUTER
 // ============================================================
 
 module.exports = router;

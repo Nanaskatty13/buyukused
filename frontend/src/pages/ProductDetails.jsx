@@ -1,6 +1,6 @@
 // frontend/src/pages/ProductDetails.jsx
 import React, { useState, useEffect, useRef } from "react";
-import { Link, useParams, useNavigate, useLocation } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 
 import { FaMotorcycle } from "react-icons/fa";
 
@@ -16,7 +16,6 @@ import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
 
 import SoldBadge from "../components/SoldBadge";
-import VerifiedBadge from "../components/VerifiedBadge";
 
 // ── Laptop constants ──────────────────────────────────────────────
 import {
@@ -43,99 +42,6 @@ const TV_BRANDS = ['Samsung', 'LG', 'Sony', 'TCL', 'Hisense', 'Panasonic', 'Phil
 const CONSOLE_BRANDS = ['Sony PlayStation', 'Microsoft Xbox', 'Nintendo', 'Sega', 'Atari', 'Other'];
 const ACCESSORY_BRANDS = ['Apple', 'Samsung', 'Sony', 'Bose', 'Beats', 'JBL', 'Logitech', 'Razer', 'Corsair', 'SteelSeries', 'HyperX', 'Other'];
 
-// ─── 🆕 PHONE BRAND / MODEL DATA (same as PostAd) ──────────────
-const PHONE_BRANDS = [
-  "iPhone",
-  "Samsung",
-  "Huawei",
-  "Google Pixel",
-];
-
-const PHONE_MODELS_BY_BRAND = {
-  iPhone: [
-    "iPhone XR",
-    "iPhone XS",
-    "iPhone XS Max",
-    "iPhone 11",
-    "iPhone 11 Pro",
-    "iPhone 11 Pro Max",
-    "iPhone 12",
-    "iPhone 12 mini",
-    "iPhone 12 Pro",
-    "iPhone 12 Pro Max",
-    "iPhone 13",
-    "iPhone 13 mini",
-    "iPhone 13 Pro",
-    "iPhone 13 Pro Max",
-    "iPhone 14",
-    "iPhone 14 Plus",
-    "iPhone 14 Pro",
-    "iPhone 14 Pro Max",
-    "iPhone 15",
-    "iPhone 15 Plus",
-    "iPhone 15 Pro",
-    "iPhone 15 Pro Max",
-    "iPhone 16",
-    "iPhone 16 Plus",
-    "iPhone 16 Pro",
-    "iPhone 16 Pro Max",
-    "iPhone 17",
-    "iPhone 17 Plus",
-    "iPhone 17 Pro",
-    "iPhone 17 Pro Max",
-    "iPhone SE (2020)",
-    "iPhone SE (2022)",
-  ],
-  Samsung: [
-    "Galaxy S21",
-    "Galaxy S21+",
-    "Galaxy S21 Ultra",
-    "Galaxy S22",
-    "Galaxy S22+",
-    "Galaxy S22 Ultra",
-    "Galaxy S23",
-    "Galaxy S23+",
-    "Galaxy S23 Ultra",
-    "Galaxy S24",
-    "Galaxy S24+",
-    "Galaxy S24 Ultra",
-    "Galaxy Z Fold3",
-    "Galaxy Z Fold4",
-    "Galaxy Z Fold5",
-    "Galaxy Z Flip3",
-    "Galaxy Z Flip4",
-    "Galaxy Z Flip5",
-    "Galaxy A52",
-    "Galaxy A53",
-    "Galaxy A54",
-    "Galaxy A55",
-    "Galaxy A52s",
-  ],
-  Huawei: [
-    "Mate 40 Pro",
-    "Mate 50 Pro",
-    "Mate 60 Pro",
-    "P40 Pro",
-    "P50 Pro",
-    "P60 Pro",
-    "nova 9",
-    "nova 10",
-    "nova 11",
-    "nova 12",
-  ],
-  "Google Pixel": [
-    "Pixel 6",
-    "Pixel 6 Pro",
-    "Pixel 7",
-    "Pixel 7 Pro",
-    "Pixel 8",
-    "Pixel 8 Pro",
-    "Pixel 9",
-    "Pixel 9 Pro",
-    "Pixel 9 Pro XL",
-  ],
-};
-
 // ── Unified colour list (iPhone colours + tablet colours) ──────
 const iphoneColors = [
   "Space Gray", "Orange", "Deep Blue", "Silver", "Gold", "Black", "White",
@@ -150,7 +56,7 @@ const ALL_COLORS = [
   ...new Set([...iphoneColors, ...TABLET_COLORS]),
 ].sort((a, b) => a.localeCompare(b));
 
-// ─── Console‑specific option lists ──────────────────────────────
+// ─── Console‑specific option lists (aligned with GameConsoleForm) ──
 const CONSOLE_TYPES = [
   'Home Console',
   'Handheld Console',
@@ -468,7 +374,6 @@ const RelatedProductCard = ({ product }) => {
 const ProductDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const location = useLocation(); // <-- added for query param detection
 
   const { user, token } = useAuth();
   const { toggleFavorite, isFavorite } = useCart();
@@ -576,19 +481,6 @@ const ProductDetails = () => {
 
   // Polling interval reference
   const pollInterval = useRef(null);
-
-  // ================================================================
-  // AUTO-OPEN CHAT MODAL (from ?openChat=true query param)
-  // ================================================================
-
-  useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    if (params.get('openChat') === 'true') {
-      if (user) {
-        openChat();
-      }
-    }
-  }, [location.search, user]);
 
   // ================================================================
   // FETCH PRODUCT
@@ -777,17 +669,6 @@ const ProductDetails = () => {
           : value,
     }));
   };
-
-  // ─── 🆕 When phone brand changes, clear model ─────────────────
-  useEffect(() => {
-    if (editForm.category === "Phones" && editForm.brand) {
-      // If current model is not in the new brand's list, clear it
-      const available = PHONE_MODELS_BY_BRAND[editForm.brand] || [];
-      if (!available.includes(editForm.model)) {
-        setEditForm((prev) => ({ ...prev, model: "" }));
-      }
-    }
-  }, [editForm.brand, editForm.category]);
 
   // ================================================================
   // REMOVE EXISTING IMAGE
@@ -1682,11 +1563,12 @@ const ProductDetails = () => {
     product?.sellerId?.toString() === user._id?.toString()
   );
 
-  // ─── NEW: Get seller object and verification status ──────────
-  const sellerObj = product.seller || product.sellerId || {};
-  const sellerName = sellerObj.name || product.sellerName || 'Seller';
-  const sellerId = sellerObj._id || product.sellerId?._id || product.sellerId || product.seller?._id || '';
-  const isVerified = sellerObj.isVerified === true;
+  const sellerName = (() => {
+    const seller = product.seller || product.sellerId || {};
+    return seller.name || product.sellerName || 'Seller';
+  })();
+
+  const sellerId = product.sellerId?._id || product.sellerId || product.seller?._id || '';
 
   // ================================================================
   // RENDER
@@ -2060,7 +1942,7 @@ const ProductDetails = () => {
               {product.description || "No description provided."}
             </div>
 
-            {/* SELLER CARD – UPDATED WITH VERIFIED BADGE */}
+            {/* SELLER CARD */}
             <div
               className="seller"
               style={{
@@ -2092,19 +1974,20 @@ const ProductDetails = () => {
                 }}
               >
                 {(() => {
+                  const seller = product.seller || product.sellerId || {};
                   const imageField =
-                    sellerObj.profileImage ||
-                    sellerObj.photo ||
-                    sellerObj.avatar ||
-                    sellerObj.profilePicture ||
-                    sellerObj.profilePic ||
-                    sellerObj.picture ||
-                    sellerObj.image ||
-                    sellerObj.profile_pic ||
-                    sellerObj.profile_picture ||
+                    seller.profileImage ||
+                    seller.photo ||
+                    seller.avatar ||
+                    seller.profilePicture ||
+                    seller.profilePic ||
+                    seller.picture ||
+                    seller.image ||
+                    seller.profile_pic ||
+                    seller.profile_picture ||
                     null;
 
-                  const name = sellerName;
+                  const name = seller.name || product.sellerName || 'KN Seller';
 
                   let avatarUrl = null;
                   if (imageField) {
@@ -2140,10 +2023,11 @@ const ProductDetails = () => {
                 <span
                   className={`seller-status-dot ${
                     (() => {
-                      if (sellerObj.online === true) return 'online';
-                      if (sellerObj.online === false) return 'offline';
-                      if (sellerObj.lastActive) {
-                        const last = new Date(sellerObj.lastActive);
+                      const seller = product.seller || product.sellerId || {};
+                      if (seller.online === true) return 'online';
+                      if (seller.online === false) return 'offline';
+                      if (seller.lastActive) {
+                        const last = new Date(seller.lastActive);
                         const now = new Date();
                         const diffMs = now - last;
                         const diffMin = diffMs / 60000;
@@ -2156,27 +2040,24 @@ const ProductDetails = () => {
               </div>
 
               <div style={{ flex: 1 }}>
-                <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '6px' }}>
-                  <Link
-                    to={`/seller/${sellerId}`}
-                    style={{
-                      fontWeight: 700,
-                      fontSize: '16px',
-                      marginBottom: '2px',
-                      color: 'var(--primary)',
-                      textDecoration: 'underline',
-                      textDecorationColor: 'var(--primary)',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                    }}
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <i className="fas fa-user" />
-                    {sellerName}
-                  </Link>
-                  {isVerified && <VerifiedBadge size={18} />}
-                </div>
+                <Link
+                  to={`/seller/${sellerId}`}
+                  style={{
+                    fontWeight: 700,
+                    fontSize: '16px',
+                    marginBottom: '2px',
+                    color: 'var(--primary)',
+                    textDecoration: 'underline',
+                    textDecorationColor: 'var(--primary)',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <i className="fas fa-user" />
+                  {sellerName}
+                </Link>
 
                 {user ? (
                   product.sellerPhone && (
@@ -2202,12 +2083,18 @@ const ProductDetails = () => {
                   </div>
                 )}
 
-                {sellerObj.createdAt && (
-                  <div style={{ fontSize: '12px', color: 'var(--gray-400)', marginTop: '4px' }}>
-                    <i className="fas fa-calendar-alt" style={{ marginRight: '4px' }} />
-                    Member since {new Date(sellerObj.createdAt).toLocaleDateString()}
-                  </div>
-                )}
+                {(() => {
+                  const seller = product.seller || product.sellerId || {};
+                  if (seller.createdAt) {
+                    return (
+                      <div style={{ fontSize: '12px', color: 'var(--gray-400)', marginTop: '4px' }}>
+                        <i className="fas fa-calendar-alt" style={{ marginRight: '4px' }} />
+                        Member since {new Date(seller.createdAt).toLocaleDateString()}
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
               </div>
             </div>
 
@@ -2488,7 +2375,7 @@ const ProductDetails = () => {
           </div>
         )}
 
-        {/* ─────────── EDIT MODAL ─────────── */}
+        {/* EDIT MODAL */}
         {showEditModal && (
           <div
             style={{
@@ -2681,67 +2568,6 @@ const ProductDetails = () => {
                     }}
                   />
                 </div>
-
-                {/* ─── 🆕 PHONE BRAND & MODEL DROPDOWNS ───────── */}
-                {editForm.category === "Phones" && (
-                  <>
-                    <div className="form-group" style={{ marginBottom: "12px" }}>
-                      <label style={{ display: "block", fontWeight: 600, fontSize: "13px", marginBottom: "4px" }}>
-                        Phone Brand
-                      </label>
-                      <select
-                        name="brand"
-                        value={editForm.brand}
-                        onChange={handleEditChange}
-                        style={{
-                          width: "100%",
-                          padding: "10px 14px",
-                          border: "1.5px solid var(--gray-200)",
-                          borderRadius: "var(--radius-md)",
-                          fontSize: "14px",
-                        }}
-                      >
-                        <option value="">Select brand</option>
-                        {PHONE_BRANDS.map((brand) => (
-                          <option key={brand} value={brand}>
-                            {brand}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="form-group" style={{ marginBottom: "12px" }}>
-                      <label style={{ display: "block", fontWeight: 600, fontSize: "13px", marginBottom: "4px" }}>
-                        Phone Model
-                      </label>
-                      <select
-                        name="model"
-                        value={editForm.model}
-                        onChange={handleEditChange}
-                        disabled={!editForm.brand}
-                        style={{
-                          width: "100%",
-                          padding: "10px 14px",
-                          border: "1.5px solid var(--gray-200)",
-                          borderRadius: "var(--radius-md)",
-                          fontSize: "14px",
-                        }}
-                      >
-                        <option value="">Select model</option>
-                        {(PHONE_MODELS_BY_BRAND[editForm.brand] || []).map((model) => (
-                          <option key={model} value={model}>
-                            {model}
-                          </option>
-                        ))}
-                      </select>
-                      {!editForm.brand && (
-                        <span style={{ fontSize: "12px", color: "var(--gray-400)" }}>
-                          Please select a brand first.
-                        </span>
-                      )}
-                    </div>
-                  </>
-                )}
 
                 {/* Description */}
                 <div className="form-group" style={{ marginBottom: "12px" }}>

@@ -1,8 +1,21 @@
+// ============================================================
 // backend/controllers/adminController.js
+// BuyUKUsed - Admin Controller
+// ============================================================
+
+const mongoose = require("mongoose");
 
 const User = require("../models/User");
 const Product = require("../models/Product");
 const Order = require("../models/Orders");
+
+// ============================================================
+// HELPER - VALIDATE MONGODB OBJECT ID
+// ============================================================
+
+const isValidObjectId = (id) => {
+  return mongoose.Types.ObjectId.isValid(id);
+};
 
 // ============================================================
 // ADMIN DASHBOARD STATISTICS
@@ -18,41 +31,112 @@ exports.getDashboardStats = async (req, res) => {
       approvedRiders,
       pendingRiders,
       availableRiders,
+      sellers,
+      verifiedSellers,
+      unverifiedSellers,
+      buyers,
+      admins,
+      activeUsers,
+      inactiveUsers,
     ] = await Promise.all([
       User.countDocuments(),
+
       Product.countDocuments(),
+
       Order.countDocuments(),
-      User.countDocuments({ role: "rider" }),
+
+      // All riders
+      User.countDocuments({
+        role: "rider",
+      }),
+
+      // Approved riders
       User.countDocuments({
         role: "rider",
         "riderProfile.isApproved": true,
       }),
+
+      // Pending/unapproved riders
       User.countDocuments({
         role: "rider",
         "riderProfile.isApproved": false,
       }),
+
+      // Currently available riders
       User.countDocuments({
         role: "rider",
         "riderProfile.isApproved": true,
         "riderProfile.isAvailable": true,
         isActive: true,
       }),
+
+      // Sellers
+      User.countDocuments({
+        role: "seller",
+      }),
+
+      // Verified sellers
+      User.countDocuments({
+        role: "seller",
+        isVerified: true,
+      }),
+
+      // Unverified sellers
+      User.countDocuments({
+        role: "seller",
+        isVerified: false,
+      }),
+
+      // Buyers
+      User.countDocuments({
+        role: "buyer",
+      }),
+
+      // Admins
+      User.countDocuments({
+        role: "admin",
+      }),
+
+      // Active users
+      User.countDocuments({
+        isActive: true,
+      }),
+
+      // Inactive users
+      User.countDocuments({
+        isActive: false,
+      }),
     ]);
 
     return res.status(200).json({
       success: true,
+
       stats: {
         users,
         products,
         orders,
+
+        buyers,
+        sellers,
+        verifiedSellers,
+        unverifiedSellers,
+        admins,
+
         riders,
         approvedRiders,
         pendingRiders,
         availableRiders,
+
+        activeUsers,
+        inactiveUsers,
       },
     });
   } catch (error) {
-    console.error("❌ Admin dashboard stats error:", error);
+    console.error(
+      "❌ Admin dashboard stats error:",
+      error
+    );
+
     return res.status(500).json({
       success: false,
       message: "Failed to load dashboard statistics",
@@ -66,8 +150,68 @@ exports.getDashboardStats = async (req, res) => {
 
 exports.getUsers = async (req, res) => {
   try {
-    const users = await User.find()
-      .select("-password")
+    const {
+      role,
+      status,
+      search,
+    } = req.query;
+
+    const filter = {};
+
+    // --------------------------------------------------------
+    // ROLE FILTER
+    // --------------------------------------------------------
+
+    if (role) {
+      const allowedRoles = [
+        "buyer",
+        "seller",
+        "rider",
+        "admin",
+      ];
+
+      if (!allowedRoles.includes(role)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid user role filter",
+        });
+      }
+
+      filter.role = role;
+    }
+
+    // --------------------------------------------------------
+    // STATUS FILTER
+    // --------------------------------------------------------
+
+    if (status === "active") {
+      filter.isActive = true;
+    }
+
+    if (status === "inactive") {
+      filter.isActive = false;
+    }
+
+    // --------------------------------------------------------
+    // SEARCH
+    // --------------------------------------------------------
+
+    if (search && String(search).trim()) {
+      const searchRegex = new RegExp(
+        String(search).trim(),
+        "i"
+      );
+
+      filter.$or = [
+        { name: searchRegex },
+        { email: searchRegex },
+        { phone: searchRegex },
+        { shopName: searchRegex },
+      ];
+    }
+
+    const users = await User.find(filter)
+      .select("-password -resetPasswordToken -resetPasswordExpires")
       .sort({ createdAt: -1 })
       .lean();
 
@@ -78,6 +222,7 @@ exports.getUsers = async (req, res) => {
     });
   } catch (error) {
     console.error("❌ Get users error:", error);
+
     return res.status(500).json({
       success: false,
       message: "Failed to fetch users",
@@ -91,8 +236,19 @@ exports.getUsers = async (req, res) => {
 
 exports.getUserById = async (req, res) => {
   try {
-    const user = await User.findById(req.params.id)
-      .select("-password")
+    const { id } = req.params;
+
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid user ID",
+      });
+    }
+
+    const user = await User.findById(id)
+      .select(
+        "-password -resetPasswordToken -resetPasswordExpires"
+      )
       .lean();
 
     if (!user) {
@@ -108,6 +264,7 @@ exports.getUserById = async (req, res) => {
     });
   } catch (error) {
     console.error("❌ Get user error:", error);
+
     return res.status(500).json({
       success: false,
       message: "Failed to fetch user",
@@ -121,8 +278,30 @@ exports.getUserById = async (req, res) => {
 
 exports.updateUserRole = async (req, res) => {
   try {
+    const { id } = req.params;
     const { role } = req.body;
-    const allowedRoles = ["buyer", "seller", "rider", "admin"];
+
+    const allowedRoles = [
+      "buyer",
+      "seller",
+      "rider",
+      "admin",
+    ];
+
+    // --------------------------------------------------------
+    // VALIDATE ID
+    // --------------------------------------------------------
+
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid user ID",
+      });
+    }
+
+    // --------------------------------------------------------
+    // VALIDATE ROLE
+    // --------------------------------------------------------
 
     if (!allowedRoles.includes(role)) {
       return res.status(400).json({
@@ -131,7 +310,7 @@ exports.updateUserRole = async (req, res) => {
       });
     }
 
-    const user = await User.findById(req.params.id);
+    const user = await User.findById(id);
 
     if (!user) {
       return res.status(404).json({
@@ -140,22 +319,47 @@ exports.updateUserRole = async (req, res) => {
       });
     }
 
-    if (req.user && req.user._id.toString() === user._id.toString() && role !== "admin") {
+    // --------------------------------------------------------
+    // PREVENT ADMIN FROM REMOVING OWN ADMIN ROLE
+    // --------------------------------------------------------
+
+    if (
+      req.user &&
+      req.user._id.toString() === user._id.toString() &&
+      role !== "admin"
+    ) {
       return res.status(400).json({
         success: false,
-        message: "You cannot remove your own admin role",
+        message:
+          "You cannot remove your own admin role",
       });
     }
 
+    // --------------------------------------------------------
+    // UPDATE ROLE
+    // --------------------------------------------------------
+
     user.role = role;
 
-    if (role !== "rider" && user.riderProfile) {
-      user.riderProfile.isAvailable = false;
+    // If user stops being a rider, force availability off.
+    if (role !== "rider") {
+      if (user.riderProfile) {
+        user.riderProfile.isAvailable = false;
+      }
+    }
+
+    // If user becomes a rider, make sure rider profile exists.
+    if (role === "rider" && !user.riderProfile) {
+      user.riderProfile = {};
     }
 
     await user.save();
 
-    const safeUser = await User.findById(user._id).select("-password").lean();
+    const safeUser = await User.findById(user._id)
+      .select(
+        "-password -resetPasswordToken -resetPasswordExpires"
+      )
+      .lean();
 
     return res.status(200).json({
       success: true,
@@ -163,10 +367,114 @@ exports.updateUserRole = async (req, res) => {
       user: safeUser,
     });
   } catch (error) {
-    console.error("❌ Update user role error:", error);
+    console.error(
+      "❌ Update user role error:",
+      error
+    );
+
     return res.status(500).json({
       success: false,
       message: "Failed to update user role",
+    });
+  }
+};
+
+// ============================================================
+// UPDATE USER STATUS
+// ============================================================
+
+exports.updateUserStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { isActive } = req.body;
+
+    // --------------------------------------------------------
+    // VALIDATE ID
+    // --------------------------------------------------------
+
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid user ID",
+      });
+    }
+
+    // --------------------------------------------------------
+    // VALIDATE STATUS
+    // --------------------------------------------------------
+
+    if (typeof isActive !== "boolean") {
+      return res.status(400).json({
+        success: false,
+        message:
+          "isActive must be true or false",
+      });
+    }
+
+    const user = await User.findById(id);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    // --------------------------------------------------------
+    // PREVENT ADMIN FROM DEACTIVATING OWN ACCOUNT
+    // --------------------------------------------------------
+
+    if (
+      req.user &&
+      req.user._id.toString() === user._id.toString() &&
+      isActive === false
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "You cannot deactivate your own admin account",
+      });
+    }
+
+    // --------------------------------------------------------
+    // UPDATE STATUS
+    // --------------------------------------------------------
+
+    user.isActive = isActive;
+
+    // If a rider is deactivated, they must become unavailable.
+    if (
+      user.role === "rider" &&
+      user.riderProfile &&
+      isActive === false
+    ) {
+      user.riderProfile.isAvailable = false;
+    }
+
+    await user.save();
+
+    const safeUser = await User.findById(user._id)
+      .select(
+        "-password -resetPasswordToken -resetPasswordExpires"
+      )
+      .lean();
+
+    return res.status(200).json({
+      success: true,
+      message: isActive
+        ? "User activated successfully"
+        : "User deactivated successfully",
+      user: safeUser,
+    });
+  } catch (error) {
+    console.error(
+      "❌ Update user status error:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to update user status",
     });
   }
 };
@@ -177,14 +485,31 @@ exports.updateUserRole = async (req, res) => {
 
 exports.deleteUser = async (req, res) => {
   try {
-    if (req.user && req.user._id.toString() === req.params.id) {
+    const { id } = req.params;
+
+    if (!isValidObjectId(id)) {
       return res.status(400).json({
         success: false,
-        message: "You cannot delete your own admin account",
+        message: "Invalid user ID",
       });
     }
 
-    const user = await User.findByIdAndDelete(req.params.id);
+    // --------------------------------------------------------
+    // PREVENT SELF-DELETION
+    // --------------------------------------------------------
+
+    if (
+      req.user &&
+      req.user._id.toString() === id
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "You cannot delete your own admin account",
+      });
+    }
+
+    const user = await User.findByIdAndDelete(id);
 
     if (!user) {
       return res.status(404).json({
@@ -198,7 +523,11 @@ exports.deleteUser = async (req, res) => {
       message: "User deleted successfully",
     });
   } catch (error) {
-    console.error("❌ Delete user error:", error);
+    console.error(
+      "❌ Delete user error:",
+      error
+    );
+
     return res.status(500).json({
       success: false,
       message: "Failed to delete user",
@@ -213,7 +542,10 @@ exports.deleteUser = async (req, res) => {
 exports.getProducts = async (req, res) => {
   try {
     const products = await Product.find()
-      .populate("sellerId", "name email phone isVerified shopName")
+      .populate(
+        "sellerId",
+        "name email phone isVerified shopName profileImage"
+      )
       .sort({ createdAt: -1 })
       .lean();
 
@@ -223,7 +555,11 @@ exports.getProducts = async (req, res) => {
       products,
     });
   } catch (error) {
-    console.error("❌ Get products error:", error);
+    console.error(
+      "❌ Get products error:",
+      error
+    );
+
     return res.status(500).json({
       success: false,
       message: "Failed to fetch products",
@@ -237,7 +573,17 @@ exports.getProducts = async (req, res) => {
 
 exports.deleteProduct = async (req, res) => {
   try {
-    const product = await Product.findByIdAndDelete(req.params.id);
+    const { id } = req.params;
+
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid product ID",
+      });
+    }
+
+    const product =
+      await Product.findByIdAndDelete(id);
 
     if (!product) {
       return res.status(404).json({
@@ -251,7 +597,11 @@ exports.deleteProduct = async (req, res) => {
       message: "Product deleted successfully",
     });
   } catch (error) {
-    console.error("❌ Delete product error:", error);
+    console.error(
+      "❌ Delete product error:",
+      error
+    );
+
     return res.status(500).json({
       success: false,
       message: "Failed to delete product",
@@ -265,7 +615,9 @@ exports.deleteProduct = async (req, res) => {
 
 exports.getOrders = async (req, res) => {
   try {
-    const orders = await Order.find().sort({ createdAt: -1 }).lean();
+    const orders = await Order.find()
+      .sort({ createdAt: -1 })
+      .lean();
 
     return res.status(200).json({
       success: true,
@@ -273,7 +625,11 @@ exports.getOrders = async (req, res) => {
       orders,
     });
   } catch (error) {
-    console.error("❌ Get orders error:", error);
+    console.error(
+      "❌ Get orders error:",
+      error
+    );
+
     return res.status(500).json({
       success: false,
       message: "Failed to fetch orders",
@@ -287,23 +643,39 @@ exports.getOrders = async (req, res) => {
 
 exports.updateOrderStatus = async (req, res) => {
   try {
+    const { id } = req.params;
     const { status } = req.body;
 
-    if (!status) {
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid order ID",
+      });
+    }
+
+    if (
+      !status ||
+      typeof status !== "string"
+    ) {
       return res.status(400).json({
         success: false,
         message: "Order status is required",
       });
     }
 
-    const order = await Order.findByIdAndUpdate(
-      req.params.id,
-      { status },
-      {
-        new: true,
-        runValidators: true,
-      }
-    );
+    const order =
+      await Order.findByIdAndUpdate(
+        id,
+        {
+          $set: {
+            status: status.trim(),
+          },
+        },
+        {
+          new: true,
+          runValidators: true,
+        }
+      );
 
     if (!order) {
       return res.status(404).json({
@@ -314,11 +686,16 @@ exports.updateOrderStatus = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: "Order status updated successfully",
+      message:
+        "Order status updated successfully",
       order,
     });
   } catch (error) {
-    console.error("❌ Update order status error:", error);
+    console.error(
+      "❌ Update order status error:",
+      error
+    );
+
     return res.status(500).json({
       success: false,
       message: "Failed to update order status",
@@ -332,39 +709,82 @@ exports.updateOrderStatus = async (req, res) => {
 
 exports.getRiders = async (req, res) => {
   try {
-    const { status, availability, search } = req.query;
-    const filter = { role: "rider" };
+    const {
+      status,
+      availability,
+      search,
+    } = req.query;
+
+    const filter = {
+      role: "rider",
+    };
+
+    // --------------------------------------------------------
+    // APPROVAL STATUS
+    // --------------------------------------------------------
 
     if (status === "approved") {
       filter["riderProfile.isApproved"] = true;
     }
+
     if (status === "pending") {
       filter["riderProfile.isApproved"] = false;
     }
 
+    // --------------------------------------------------------
+    // AVAILABILITY
+    // --------------------------------------------------------
+
     if (availability === "available") {
       filter["riderProfile.isAvailable"] = true;
       filter.isActive = true;
+      filter["riderProfile.isApproved"] = true;
     }
+
     if (availability === "unavailable") {
       filter["riderProfile.isAvailable"] = false;
     }
 
-    if (search && String(search).trim()) {
-      const searchRegex = new RegExp(String(search).trim(), "i");
+    // --------------------------------------------------------
+    // SEARCH
+    // --------------------------------------------------------
+
+    if (
+      search &&
+      String(search).trim()
+    ) {
+      const searchRegex = new RegExp(
+        String(search).trim(),
+        "i"
+      );
+
       filter.$or = [
         { name: searchRegex },
         { email: searchRegex },
         { phone: searchRegex },
-        { "riderProfile.bikeNumber": searchRegex },
-        { "riderProfile.bikeType": searchRegex },
-        { "riderProfile.serviceArea": searchRegex },
-        { "riderProfile.identificationNumber": searchRegex },
+        {
+          "riderProfile.bikeNumber":
+            searchRegex,
+        },
+        {
+          "riderProfile.bikeType":
+            searchRegex,
+        },
+        {
+          "riderProfile.serviceArea":
+            searchRegex,
+        },
+        {
+          "riderProfile.identificationNumber":
+            searchRegex,
+        },
       ];
     }
 
     const riders = await User.find(filter)
-      .select("-password")
+      .select(
+        "-password -resetPasswordToken -resetPasswordExpires"
+      )
       .sort({ createdAt: -1 })
       .lean();
 
@@ -374,7 +794,11 @@ exports.getRiders = async (req, res) => {
       riders,
     });
   } catch (error) {
-    console.error("❌ Get riders error:", error);
+    console.error(
+      "❌ Get riders error:",
+      error
+    );
+
     return res.status(500).json({
       success: false,
       message: "Failed to fetch riders",
@@ -388,11 +812,22 @@ exports.getRiders = async (req, res) => {
 
 exports.getRiderById = async (req, res) => {
   try {
+    const { id } = req.params;
+
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid rider ID",
+      });
+    }
+
     const rider = await User.findOne({
-      _id: req.params.id,
+      _id: id,
       role: "rider",
     })
-      .select("-password")
+      .select(
+        "-password -resetPasswordToken -resetPasswordExpires"
+      )
       .lean();
 
     if (!rider) {
@@ -407,7 +842,11 @@ exports.getRiderById = async (req, res) => {
       rider,
     });
   } catch (error) {
-    console.error("❌ Get rider error:", error);
+    console.error(
+      "❌ Get rider error:",
+      error
+    );
+
     return res.status(500).json({
       success: false,
       message: "Failed to fetch rider",
@@ -421,8 +860,17 @@ exports.getRiderById = async (req, res) => {
 
 exports.approveRider = async (req, res) => {
   try {
+    const { id } = req.params;
+
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid rider ID",
+      });
+    }
+
     const rider = await User.findOne({
-      _id: req.params.id,
+      _id: id,
       role: "rider",
     });
 
@@ -438,7 +886,10 @@ exports.approveRider = async (req, res) => {
     }
 
     rider.riderProfile.isApproved = true;
+
+    // Newly approved riders start offline.
     rider.riderProfile.isAvailable = false;
+
     rider.isActive = true;
 
     await rider.save();
@@ -449,7 +900,11 @@ exports.approveRider = async (req, res) => {
       rider: rider.toJSON(),
     });
   } catch (error) {
-    console.error("❌ Approve rider error:", error);
+    console.error(
+      "❌ Approve rider error:",
+      error
+    );
+
     return res.status(500).json({
       success: false,
       message: "Failed to approve rider",
@@ -463,8 +918,17 @@ exports.approveRider = async (req, res) => {
 
 exports.rejectRider = async (req, res) => {
   try {
+    const { id } = req.params;
+
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid rider ID",
+      });
+    }
+
     const rider = await User.findOne({
-      _id: req.params.id,
+      _id: id,
       role: "rider",
     });
 
@@ -490,7 +954,11 @@ exports.rejectRider = async (req, res) => {
       rider: rider.toJSON(),
     });
   } catch (error) {
-    console.error("❌ Reject rider error:", error);
+    console.error(
+      "❌ Reject rider error:",
+      error
+    );
+
     return res.status(500).json({
       success: false,
       message: "Failed to reject rider",
@@ -502,19 +970,31 @@ exports.rejectRider = async (req, res) => {
 // UPDATE RIDER STATUS
 // ============================================================
 
-exports.updateRiderStatus = async (req, res) => {
+exports.updateRiderStatus = async (
+  req,
+  res
+) => {
   try {
+    const { id } = req.params;
     const { isActive } = req.body;
+
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid rider ID",
+      });
+    }
 
     if (typeof isActive !== "boolean") {
       return res.status(400).json({
         success: false,
-        message: "isActive must be true or false",
+        message:
+          "isActive must be true or false",
       });
     }
 
     const rider = await User.findOne({
-      _id: req.params.id,
+      _id: id,
       role: "rider",
     });
 
@@ -531,6 +1011,7 @@ exports.updateRiderStatus = async (req, res) => {
       rider.riderProfile = {};
     }
 
+    // An inactive rider can never remain available.
     if (!isActive) {
       rider.riderProfile.isAvailable = false;
     }
@@ -539,11 +1020,19 @@ exports.updateRiderStatus = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: isActive ? "Rider activated successfully" : "Rider deactivated successfully",
+
+      message: isActive
+        ? "Rider activated successfully"
+        : "Rider deactivated successfully",
+
       rider: rider.toJSON(),
     });
   } catch (error) {
-    console.error("❌ Update rider status error:", error);
+    console.error(
+      "❌ Update rider status error:",
+      error
+    );
+
     return res.status(500).json({
       success: false,
       message: "Failed to update rider status",
@@ -555,8 +1044,13 @@ exports.updateRiderStatus = async (req, res) => {
 // UPDATE RIDER PROFILE
 // ============================================================
 
-exports.updateRiderProfile = async (req, res) => {
+exports.updateRiderProfile = async (
+  req,
+  res
+) => {
   try {
+    const { id } = req.params;
+
     const {
       bikeType,
       bikeNumber,
@@ -566,8 +1060,15 @@ exports.updateRiderProfile = async (req, res) => {
       completedDeliveries,
     } = req.body;
 
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid rider ID",
+      });
+    }
+
     const rider = await User.findOne({
-      _id: req.params.id,
+      _id: id,
       role: "rider",
     });
 
@@ -582,53 +1083,107 @@ exports.updateRiderProfile = async (req, res) => {
       rider.riderProfile = {};
     }
 
+    // --------------------------------------------------------
+    // BIKE TYPE
+    // --------------------------------------------------------
+
     if (bikeType !== undefined) {
-      rider.riderProfile.bikeType = String(bikeType).trim();
+      rider.riderProfile.bikeType =
+        String(bikeType).trim();
     }
+
+    // --------------------------------------------------------
+    // BIKE NUMBER
+    // --------------------------------------------------------
 
     if (bikeNumber !== undefined) {
-      rider.riderProfile.bikeNumber = String(bikeNumber).trim();
+      rider.riderProfile.bikeNumber =
+        String(bikeNumber).trim();
     }
+
+    // --------------------------------------------------------
+    // SERVICE AREA
+    // --------------------------------------------------------
 
     if (serviceArea !== undefined) {
-      rider.riderProfile.serviceArea = String(serviceArea).trim();
+      rider.riderProfile.serviceArea =
+        String(serviceArea).trim();
     }
 
-    if (identificationNumber !== undefined) {
-      rider.riderProfile.identificationNumber = String(identificationNumber).trim();
+    // --------------------------------------------------------
+    // IDENTIFICATION NUMBER
+    // --------------------------------------------------------
+
+    if (
+      identificationNumber !== undefined
+    ) {
+      rider.riderProfile.identificationNumber =
+        String(identificationNumber).trim();
     }
+
+    // --------------------------------------------------------
+    // RATING
+    // --------------------------------------------------------
 
     if (rating !== undefined) {
       const numericRating = Number(rating);
-      if (Number.isNaN(numericRating) || numericRating < 0 || numericRating > 5) {
+
+      if (
+        Number.isNaN(numericRating) ||
+        numericRating < 0 ||
+        numericRating > 5
+      ) {
         return res.status(400).json({
           success: false,
-          message: "Rating must be between 0 and 5",
+          message:
+            "Rating must be between 0 and 5",
         });
       }
-      rider.riderProfile.rating = numericRating;
+
+      rider.riderProfile.rating =
+        numericRating;
     }
 
-    if (completedDeliveries !== undefined) {
-      const deliveries = Number(completedDeliveries);
-      if (Number.isNaN(deliveries) || deliveries < 0) {
+    // --------------------------------------------------------
+    // COMPLETED DELIVERIES
+    // --------------------------------------------------------
+
+    if (
+      completedDeliveries !== undefined
+    ) {
+      const deliveries =
+        Number(completedDeliveries);
+
+      if (
+        Number.isNaN(deliveries) ||
+        deliveries < 0 ||
+        !Number.isInteger(deliveries)
+      ) {
         return res.status(400).json({
           success: false,
-          message: "Completed deliveries cannot be negative",
+          message:
+            "Completed deliveries must be a non-negative whole number",
         });
       }
-      rider.riderProfile.completedDeliveries = deliveries;
+
+      rider.riderProfile.completedDeliveries =
+        deliveries;
     }
 
     await rider.save();
 
     return res.status(200).json({
       success: true,
-      message: "Rider profile updated successfully",
+      message:
+        "Rider profile updated successfully",
       rider: rider.toJSON(),
     });
   } catch (error) {
-    console.error("❌ Update rider profile error:", error);
+    console.error(
+      "❌ Update rider profile error:",
+      error
+    );
+
     return res.status(500).json({
       success: false,
       message: "Failed to update rider profile",
@@ -637,42 +1192,60 @@ exports.updateRiderProfile = async (req, res) => {
 };
 
 // ============================================================
-// SELLER VERIFICATION – GET UNVERIFIED SELLERS
+// GET UNVERIFIED SELLERS
 // ============================================================
 
-exports.getUnverifiedSellers = async (req, res) => {
+exports.getUnverifiedSellers = async (
+  req,
+  res
+) => {
   try {
     const sellers = await User.find({
       role: "seller",
       isVerified: false,
     })
-      .select("_id name email phone shopName createdAt profileImage")
+      .select(
+        "_id name email phone shopName shopDescription profileImage avatar createdAt verificationStatus"
+      )
       .sort({ createdAt: -1 })
       .lean();
 
     return res.status(200).json({
       success: true,
+      count: sellers.length,
       sellers,
     });
   } catch (error) {
-    console.error("❌ Get unverified sellers error:", error);
+    console.error(
+      "❌ Get unverified sellers error:",
+      error
+    );
+
     return res.status(500).json({
       success: false,
-      message: "Failed to fetch unverified sellers",
+      message:
+        "Failed to fetch unverified sellers",
     });
   }
 };
 
 // ============================================================
-// SELLER VERIFICATION – VERIFY A SELLER
+// VERIFY SELLER
 // ============================================================
 
 exports.verifySeller = async (req, res) => {
   try {
-    const sellerId = req.params.id;
+    const { id } = req.params;
+
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid seller ID",
+      });
+    }
 
     const seller = await User.findOne({
-      _id: sellerId,
+      _id: id,
       role: "seller",
     });
 
@@ -690,25 +1263,53 @@ exports.verifySeller = async (req, res) => {
       });
     }
 
+    // --------------------------------------------------------
+    // VERIFY SELLER
+    // --------------------------------------------------------
+
     seller.isVerified = true;
     seller.verifiedAt = new Date();
-    seller.verifiedBy = req.user._id;
-    await seller.save();
+    seller.verifiedBy =
+      req.user?._id || null;
 
-    // Optional: send email notification
-    // await sendVerificationEmail(seller.email, seller.name);
+    // Keep verification application state
+    // synchronized with the actual verification.
+    seller.verificationStatus = "approved";
+    seller.verificationRejectedReason = "";
+
+    // If seller status was empty, activate it.
+    if (!seller.sellerStatus) {
+      seller.sellerStatus = "active";
+    }
+
+    if (!seller.sellerSince) {
+      seller.sellerSince = new Date();
+    }
+
+    await seller.save();
 
     return res.status(200).json({
       success: true,
-      message: "Seller verified successfully",
+      message:
+        "Seller verified successfully",
+
       seller: {
         _id: seller._id,
         name: seller.name,
+        email: seller.email,
         isVerified: seller.isVerified,
+        verifiedAt: seller.verifiedAt,
+        verifiedBy: seller.verifiedBy,
+        verificationStatus:
+          seller.verificationStatus,
       },
     });
   } catch (error) {
-    console.error("❌ Verify seller error:", error);
+    console.error(
+      "❌ Verify seller error:",
+      error
+    );
+
     return res.status(500).json({
       success: false,
       message: "Failed to verify seller",
@@ -717,15 +1318,25 @@ exports.verifySeller = async (req, res) => {
 };
 
 // ============================================================
-// SELLER VERIFICATION – REVOKE VERIFICATION
+// UNVERIFY SELLER
 // ============================================================
 
-exports.revokeVerification = async (req, res) => {
+exports.unverifySeller = async (
+  req,
+  res
+) => {
   try {
-    const sellerId = req.params.id;
+    const { id } = req.params;
+
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid seller ID",
+      });
+    }
 
     const seller = await User.findOne({
-      _id: sellerId,
+      _id: id,
       role: "seller",
     });
 
@@ -736,20 +1347,70 @@ exports.revokeVerification = async (req, res) => {
       });
     }
 
+    if (!seller.isVerified) {
+      return res.status(400).json({
+        success: false,
+        message: "Seller is not verified",
+      });
+    }
+
+    // --------------------------------------------------------
+    // REMOVE VERIFICATION
+    // --------------------------------------------------------
+
     seller.isVerified = false;
     seller.verifiedAt = null;
     seller.verifiedBy = null;
+
+    // A revoked verification should no longer
+    // be considered approved.
+    seller.verificationStatus = "rejected";
+
+    seller.verificationRejectedReason =
+      "Seller verification was revoked by an administrator.";
+
     await seller.save();
 
     return res.status(200).json({
       success: true,
-      message: "Verification revoked successfully",
+      message:
+        "Seller verification revoked successfully",
+
+      seller: {
+        _id: seller._id,
+        name: seller.name,
+        email: seller.email,
+        isVerified: seller.isVerified,
+        verifiedAt: seller.verifiedAt,
+        verifiedBy: seller.verifiedBy,
+        verificationStatus:
+          seller.verificationStatus,
+      },
     });
   } catch (error) {
-    console.error("❌ Revoke verification error:", error);
+    console.error(
+      "❌ Unverify seller error:",
+      error
+    );
+
     return res.status(500).json({
       success: false,
-      message: "Failed to revoke verification",
+      message:
+        "Failed to revoke seller verification",
     });
   }
 };
+
+// ============================================================
+// BACKWARD-COMPATIBILITY ALIAS
+// ============================================================
+
+// If another part of the backend was previously using
+// revokeVerification, keep it working.
+
+exports.revokeVerification =
+  exports.unverifySeller;
+
+// ============================================================
+// EXPORT COMPLETE
+// ============================================================

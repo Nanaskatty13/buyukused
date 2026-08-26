@@ -15,22 +15,27 @@ const {
 const {
   getDashboardStats,
 
+  // Users
   getUsers,
   getUserById,
   updateUserRole,
   updateUserStatus,
+  deleteUser,
 
+  // Seller verification
+  getUnverifiedSellers,
   verifySeller,
   unverifySeller,
 
-  deleteUser,
-
+  // Products
   getProducts,
   deleteProduct,
 
+  // Orders
   getOrders,
   updateOrderStatus,
 
+  // Riders
   getRiders,
   getRiderById,
   approveRider,
@@ -43,59 +48,59 @@ const {
 // ALL ADMIN ROUTES
 // ============================================================
 
+// Every route below requires authentication.
 router.use(authenticate);
+
+// Every route below requires an admin account.
 router.use(requireAdmin);
 
 // ============================================================
 // DASHBOARD
 // ============================================================
 
-router.get(
-  "/stats",
-  getDashboardStats
-);
+router.get("/stats", getDashboardStats);
 
 // ============================================================
 // USERS
 // ============================================================
 
-router.get(
-  "/users",
-  getUsers
-);
+// Get all users
+router.get("/users", getUsers);
 
-router.get(
-  "/users/:id",
-  getUserById
-);
+// Get user by ID
+router.get("/users/:id", getUserById);
 
 // ============================================================
 // USER ROLE
 // ============================================================
 
-router.patch(
-  "/users/:id/role",
-  updateUserRole
-);
+// Update user role
+router.patch("/users/:id/role", updateUserRole);
 
 // ============================================================
 // USER STATUS
 // ============================================================
 
-router.patch(
-  "/users/:id/status",
-  updateUserStatus
-);
+// Activate/deactivate user
+router.patch("/users/:id/status", updateUserStatus);
 
 // ============================================================
 // SELLER VERIFICATION
 // ============================================================
 
+// Get sellers who have not yet been verified
+router.get(
+  "/users/unverified-sellers",
+  getUnverifiedSellers
+);
+
+// Verify seller
 router.patch(
   "/users/:id/verify-seller",
   verifySeller
 );
 
+// Remove seller verification
 router.patch(
   "/users/:id/unverify-seller",
   unverifySeller
@@ -105,34 +110,26 @@ router.patch(
 // DELETE USER
 // ============================================================
 
-router.delete(
-  "/users/:id",
-  deleteUser
-);
+router.delete("/users/:id", deleteUser);
 
 // ============================================================
 // PRODUCTS
 // ============================================================
 
-router.get(
-  "/products",
-  getProducts
-);
+// Get all products
+router.get("/products", getProducts);
 
-router.delete(
-  "/products/:id",
-  deleteProduct
-);
+// Delete product
+router.delete("/products/:id", deleteProduct);
 
 // ============================================================
 // ORDERS
 // ============================================================
 
-router.get(
-  "/orders",
-  getOrders
-);
+// Get all orders
+router.get("/orders", getOrders);
 
+// Update order status
 router.patch(
   "/orders/:id/status",
   updateOrderStatus
@@ -142,31 +139,31 @@ router.patch(
 // RIDERS
 // ============================================================
 
-router.get(
-  "/riders",
-  getRiders
-);
+// Get all riders
+router.get("/riders", getRiders);
 
-router.get(
-  "/riders/:id",
-  getRiderById
-);
+// Get rider by ID
+router.get("/riders/:id", getRiderById);
 
+// Approve rider
 router.patch(
   "/riders/:id/approve",
   approveRider
 );
 
+// Reject rider
 router.patch(
   "/riders/:id/reject",
   rejectRider
 );
 
+// Activate/deactivate rider
 router.patch(
   "/riders/:id/status",
   updateRiderStatus
 );
 
+// Update rider profile
 router.patch(
   "/riders/:id/profile",
   updateRiderProfile

@@ -1,41 +1,47 @@
 // ============================================================
 // backend/routes/messageRoutes.js
-// BuyUKUsed - Message Routes
 // ============================================================
-
-"use strict";
 
 const express = require("express");
 
 const router = express.Router();
 
 const {
-  getUserMessages,
-  getConversation,
+  getMessages,
   sendMessage,
   markMessageAsRead,
-  markConversationAsRead,
-  getUnreadMessageCount,
   deleteMessage,
+  getUnreadMessageCount,
 } = require("../controllers/messageController");
 
-const {
-  protect,
-} = require("../middleware/auth");
+const { protect } = require("../middleware/auth");
 
 // ============================================================
-// UNREAD MESSAGE COUNT
+// AUTHENTICATION
+// ============================================================
+//
+// Every message route requires a valid logged-in user.
+//
+// Expected request header:
+// Authorization: Bearer <JWT_TOKEN>
+//
+
+// ============================================================
+// GET UNREAD MESSAGE COUNT
 // GET /api/messages/unread-count
 // ============================================================
 //
 // IMPORTANT:
-// This route must be BEFORE /:userId.
+// This route MUST appear BEFORE /:userId.
 //
-// Frontend:
-// GET /api/messages/unread-count
+// Otherwise Express may treat:
 //
-// Authentication:
-// Authorization: Bearer <JWT>
+// /unread-count
+//
+// as:
+//
+// /:userId
+//
 // ============================================================
 
 router.get(
@@ -45,36 +51,14 @@ router.get(
 );
 
 // ============================================================
-// BACKWARD COMPATIBILITY
-// GET /api/messages/unread/count
+// GET ALL MESSAGES FOR A USER
+// GET /api/messages/:userId
 // ============================================================
 
 router.get(
-  "/unread/count",
+  "/:userId",
   protect,
-  getUnreadMessageCount
-);
-
-// ============================================================
-// GET CONVERSATION
-// GET /api/messages/conversation/:userId
-// ============================================================
-
-router.get(
-  "/conversation/:userId",
-  protect,
-  getConversation
-);
-
-// ============================================================
-// MARK CONVERSATION AS READ
-// PUT /api/messages/conversation/:userId/read
-// ============================================================
-
-router.put(
-  "/conversation/:userId/read",
-  protect,
-  markConversationAsRead
+  getMessages
 );
 
 // ============================================================
@@ -89,12 +73,8 @@ router.post(
 );
 
 // ============================================================
-// MARK SINGLE MESSAGE AS READ
+// MARK MESSAGE AS READ
 // PUT /api/messages/:id/read
-// ============================================================
-//
-// IMPORTANT:
-// This comes before /:userId.
 // ============================================================
 
 router.put(
@@ -115,21 +95,7 @@ router.delete(
 );
 
 // ============================================================
-// GET ALL MESSAGES FOR A USER
-// GET /api/messages/:userId
-// ============================================================
-//
-// Keep this LAST because :userId is dynamic.
-// ============================================================
-
-router.get(
-  "/:userId",
-  protect,
-  getUserMessages
-);
-
-// ============================================================
-// EXPORT
+// EXPORT ROUTER
 // ============================================================
 
 module.exports = router;

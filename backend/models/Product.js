@@ -144,7 +144,8 @@ const productSchema = new mongoose.Schema(
     //
     // Xenova/clip-vit-base-patch32 produces 512 dimensions.
     //
-    // This field is hidden from normal Product queries.
+    // This field is NOT returned to the frontend in normal
+    // product responses because it is unnecessary there.
     //
     // ========================================================
 
@@ -175,12 +176,14 @@ const productSchema = new mongoose.Schema(
       type: String,
       default: "",
       trim: true,
+      index: true,
     },
 
     model: {
       type: String,
       default: "",
       trim: true,
+      index: true,
     },
 
     color: {
@@ -677,15 +680,6 @@ productSchema.index({
   compatibleWith: 1,
 });
 
-// ============================================================
-// BRAND / MODEL INDEXES
-// ============================================================
-//
-// These are intentionally defined here only.
-// `index: true` was removed from the schema fields above
-// to prevent duplicate Mongoose index warnings.
-//
-
 productSchema.index({
   brand: 1,
 });
@@ -693,10 +687,6 @@ productSchema.index({
 productSchema.index({
   model: 1,
 });
-
-// ============================================================
-// ACCESSORY / CONSOLE / TV / CAR INDEXES
-// ============================================================
 
 productSchema.index({
   wireless: 1,

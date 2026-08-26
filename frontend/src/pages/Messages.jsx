@@ -1,8 +1,7 @@
-// frontend/src/pages/Messages.jsx
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
-import VerifiedBadge from '../components/VerifiedBadge';
-import { getImageUrl } from '../services/api';
+import { messages } from '../services/messages';
+import { API_URL } from '../services/api';
 
 const Messages = () => {
   const { user, token } = useAuth();
@@ -14,35 +13,13 @@ const Messages = () => {
   const [uploading, setUploading] = useState(false);
   const pollInterval = useRef(null);
 
-  // ─── Voice recording states ─────────────────────────────────────
-  const [isRecording, setIsRecording] = useState(false);
-  const [recordingTime, setRecordingTime] = useState(0);
-  const [audioBlob, setAudioBlob] = useState(null);
-  const [audioURL, setAudioURL] = useState(null);
-  const [showAudioPreview, setShowAudioPreview] = useState(false);
-  const mediaRecorderRef = useRef(null);
-  const streamRef = useRef(null);
-  const timerRef = useRef(null);
-
   // ─── Fetch messages ──────────────────────────────────────────────
   useEffect(() => {
     const fetchMessages = async () => {
-      if (!user || !token) {
-        setLoading(false);
-        return;
-      }
+      if (!user || !token) return;
       try {
         setLoading(true);
-        const response = await fetch(`${import.meta.env.VITE_API_URL}/api/messages/${user._id}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        });
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
-        }
-        const data = await response.json();
+        const data = await messages.getForUser(user._id, token);
         const list = Array.isArray(data) ? data : data?.messages || data?.data || [];
         setMessagesList(list);
       } catch (err) {
@@ -73,13 +50,7 @@ const Messages = () => {
     });
     unread.forEach(async msg => {
       try {
-        await fetch(`${import.meta.env.VITE_API_URL}/api/messages/${msg._id}/read`, {
-          method: 'PUT',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        });
+        await messages.markRead(msg._id, token);
         setMessagesList(prev => prev.map(m => (m._id === msg._id ? { ...m, read: true } : m)));
         setSelectedConversation(prev => ({
           ...prev,
@@ -93,8 +64,8 @@ const Messages = () => {
     pollInterval.current = setInterval(async () => {
       if (!selectedConversation) return;
       try {
-        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/messages/${user._id}`, {
-          headers: { 'Authorization': `Bearer ${token}` },
+        const res = await fetch(`${API_URL}/api/messages/${user._id}`, {
+          headers: { Authorization: `Bearer ${token}` },
         });
         const data = await res.json();
         if (data.success) {
@@ -122,8 +93,6 @@ const Messages = () => {
   const closeConversation = () => {
     setSelectedConversation(null);
     if (pollInterval.current) clearInterval(pollInterval.current);
-    // Clean up voice state
-    cancelAudio();
   };
 
   // ─── Send reply ──────────────────────────────────────────────────
@@ -132,11 +101,11 @@ const Messages = () => {
     if (!replyMessage.trim() || !selectedConversation || !token) return;
     setSendingReply(true);
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/messages`, {
+      const res = await fetch(`${API_URL}/api/messages`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           receiver: selectedConversation.userId,
@@ -171,9 +140,9 @@ const Messages = () => {
     try {
       const formData = new FormData();
       formData.append('file', file);
-      const uploadRes = await fetch(`${import.meta.env.VITE_API_URL}/api/upload`, {
+      const uploadRes = await fetch(`${API_URL}/api/upload`, {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${token}` },
         body: formData,
       });
       if (!uploadRes.ok) throw new Error('Upload failed');
@@ -187,11 +156,11 @@ const Messages = () => {
       else if (file.type === 'text/vcard' || file.name?.endsWith('.vcf')) label = '📇 Contact';
       const messageText = `${label}: ${fileUrl}`;
 
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/messages`, {
+      const res = await fetch(`${API_URL}/api/messages`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           receiver: selectedConversation.userId,
@@ -213,134 +182,6 @@ const Messages = () => {
     } finally {
       setUploading(false);
     }
-  };
-
-  // ─── Voice recording helpers ────────────────────────────────────
-  const startRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      streamRef.current = stream;
-      const mediaRecorder = new MediaRecorder(stream);
-      mediaRecorderRef.current = mediaRecorder;
-      const chunks = [];
-
-      mediaRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) chunks.push(e.data);
-      };
-
-      mediaRecorder.onstop = () => {
-        const blob = new Blob(chunks, { type: 'audio/webm' });
-        const url = URL.createObjectURL(blob);
-        setAudioBlob(blob);
-        setAudioURL(url);
-        setShowAudioPreview(true);
-        setIsRecording(false);
-        setRecordingTime(0);
-        if (timerRef.current) clearInterval(timerRef.current);
-        if (streamRef.current) {
-          streamRef.current.getTracks().forEach(track => track.stop());
-          streamRef.current = null;
-        }
-      };
-
-      mediaRecorder.start();
-      setIsRecording(true);
-      setRecordingTime(0);
-      timerRef.current = setInterval(() => {
-        setRecordingTime(prev => prev + 1);
-      }, 1000);
-    } catch (error) {
-      console.error('Error accessing microphone:', error);
-      alert('Could not access microphone. Please check permissions.');
-    }
-  };
-
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
-    }
-  };
-
-  const cancelAudio = () => {
-    if (audioURL) {
-      URL.revokeObjectURL(audioURL);
-    }
-    setAudioBlob(null);
-    setAudioURL(null);
-    setShowAudioPreview(false);
-    setIsRecording(false);
-    setRecordingTime(0);
-    if (timerRef.current) clearInterval(timerRef.current);
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-      streamRef.current = null;
-    }
-  };
-
-  const handleSendAudio = async () => {
-    if (!audioBlob || !selectedConversation || !token) return;
-    setUploading(true);
-    try {
-      const formData = new FormData();
-      formData.append('file', audioBlob, 'voice-message.webm');
-      const uploadRes = await fetch(`${import.meta.env.VITE_API_URL}/api/upload`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` },
-        body: formData,
-      });
-      if (!uploadRes.ok) throw new Error('Upload failed');
-      const uploadData = await uploadRes.json();
-      const fileUrl = uploadData.url || uploadData.secure_url;
-      if (!fileUrl) throw new Error('No URL returned');
-
-      const messageText = `🎤 Voice message: ${fileUrl}`;
-
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/messages`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          receiver: selectedConversation.userId,
-          message: messageText,
-          productId: null,
-        }),
-      });
-      if (!res.ok) throw new Error('Failed to send voice message');
-      const data = await res.json();
-      const newMessage = data.message || data.data || data;
-      if (!newMessage?._id) throw new Error('Invalid response');
-      setMessagesList(prev => [newMessage, ...prev]);
-      setSelectedConversation(prev => ({
-        ...prev,
-        messages: [newMessage, ...prev.messages],
-      }));
-      cancelAudio();
-    } catch (err) {
-      alert(err.message || 'Failed to send voice message.');
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const formatTime = (seconds) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  // ─── Helper: get partner info from message ─────────────────────
-  const getPartnerInfo = (messages) => {
-    if (!messages || messages.length === 0) return { name: 'User', avatar: null, isVerified: false };
-    const first = messages[0];
-    const s = typeof first.sender === 'string' ? first.sender : first.sender?._id;
-    const partner = s === selectedConversation?.userId ? first.sender : first.receiver;
-    return {
-      name: partner?.name || 'User',
-      avatar: partner?.profileImage || partner?.avatar || partner?.photo || null,
-      isVerified: partner?.isVerified === true,
-    };
   };
 
   // ─── Get conversations ──────────────────────────────────────────
@@ -392,37 +233,18 @@ const Messages = () => {
         </div>
       ) : selectedConversation ? (
         <div style={{ background: 'white', borderRadius: 'var(--radius-md)', border: '1px solid var(--gray-200)', overflow: 'hidden' }}>
-          {/* ─── Conversation header ─── */}
           <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--gray-200)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <strong>
               {(() => {
-                const info = getPartnerInfo(selectedConversation.messages);
-                const avatarUrl = info.avatar ? getImageUrl(info.avatar) : null;
-                return (
-                  <>
-                    {avatarUrl ? (
-                      <img
-                        src={avatarUrl}
-                        alt={info.name}
-                        style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }}
-                      />
-                    ) : (
-                      <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: 600, color: '#6b7280' }}>
-                        {info.name.charAt(0).toUpperCase()}
-                      </div>
-                    )}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <strong>{info.name}</strong>
-                      {info.isVerified && <VerifiedBadge size={16} />}
-                    </div>
-                  </>
-                );
+                const first = selectedConversation.messages[0];
+                if (!first) return 'User';
+                const s = typeof first.sender === 'string' ? first.sender : first.sender?._id;
+                const partner = s === selectedConversation.userId ? first.sender : first.receiver;
+                return partner?.name || 'User';
               })()}
-            </div>
+            </strong>
             <button onClick={closeConversation} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer' }}>✕</button>
           </div>
-
-          {/* ─── Messages ─── */}
           <div style={{ maxHeight: '400px', overflowY: 'auto', padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {[...selectedConversation.messages]
               .sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0))
@@ -451,11 +273,9 @@ const Messages = () => {
                 );
               })}
           </div>
-
-          {/* ─── Reply form ─── */}
           <div style={{ borderTop: '1px solid var(--gray-200)', padding: '12px' }}>
             <form onSubmit={handleSendReply} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: '8px' }}>
                 <input
                   type="text"
                   value={replyMessage}
@@ -463,34 +283,6 @@ const Messages = () => {
                   placeholder="Type a reply..."
                   style={{ flex: 1, padding: '8px 14px', border: '1.5px solid var(--gray-200)', borderRadius: 'var(--radius-md)', fontSize: '14px' }}
                 />
-                {!showAudioPreview && (
-                  <button
-                    type="button"
-                    onClick={isRecording ? stopRecording : startRecording}
-                    disabled={uploading}
-                    style={{
-                      padding: '8px 12px',
-                      background: isRecording ? '#e74c3c' : '#0055a5',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: 'var(--radius-full)',
-                      cursor: (uploading) ? 'not-allowed' : 'pointer',
-                      opacity: uploading ? 0.7 : 1,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      minWidth: '40px',
-                    }}
-                  >
-                    {isRecording ? (
-                      <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <i className="fas fa-stop-circle"></i> {formatTime(recordingTime)}
-                      </span>
-                    ) : (
-                      <i className="fas fa-microphone"></i>
-                    )}
-                  </button>
-                )}
                 <button
                   type="submit"
                   disabled={sendingReply || uploading}
@@ -508,45 +300,6 @@ const Messages = () => {
                   {sendingReply ? 'Sending...' : 'Reply'}
                 </button>
               </div>
-
-              {showAudioPreview && audioURL && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '8px', background: '#f8fafc', borderRadius: 'var(--radius-sm)' }}>
-                  <audio controls src={audioURL} style={{ flex: 1, height: '40px' }} />
-                  <button
-                    type="button"
-                    onClick={handleSendAudio}
-                    disabled={uploading}
-                    style={{
-                      padding: '4px 12px',
-                      background: '#2ecc71',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: 'var(--radius-full)',
-                      cursor: uploading ? 'not-allowed' : 'pointer',
-                      opacity: uploading ? 0.7 : 1,
-                    }}
-                  >
-                    {uploading ? 'Sending...' : 'Send'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={cancelAudio}
-                    disabled={uploading}
-                    style={{
-                      padding: '4px 12px',
-                      background: '#e74c3c',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: 'var(--radius-full)',
-                      cursor: uploading ? 'not-allowed' : 'pointer',
-                      opacity: uploading ? 0.7 : 1,
-                    }}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              )}
-
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 <label style={{ cursor: 'pointer', background: '#f1f5f9', padding: '6px 12px', borderRadius: 'var(--radius-sm)', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '4px' }}>
                   <i className="fas fa-image"></i> Image
@@ -590,80 +343,59 @@ const Messages = () => {
           </div>
         </div>
       ) : (
-        // ─── Conversation list ───
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          {getConversations().map(conv => {
-            const partnerName = conv.partner?.name || 'User';
-            const partnerAvatar = conv.partner?.profileImage || conv.partner?.avatar || conv.partner?.photo || null;
-            const isPartnerVerified = conv.partner?.isVerified === true;
-            const avatarUrl = partnerAvatar ? getImageUrl(partnerAvatar) : null;
-            return (
-              <div
-                key={conv.userId}
-                onClick={() => openConversation(conv.userId)}
-                style={{
-                  background: 'white',
-                  padding: '12px 16px',
-                  borderRadius: 'var(--radius-md)',
-                  border: '1px solid var(--gray-200)',
-                  cursor: 'pointer',
-                  transition: 'var(--transition)',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
-                  {avatarUrl ? (
-                    <img
-                      src={avatarUrl}
-                      alt={partnerName}
-                      style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
-                    />
-                  ) : (
-                    <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: 600, color: '#6b7280', flexShrink: 0 }}>
-                      {partnerName.charAt(0).toUpperCase()}
-                    </div>
-                  )}
-                  <div style={{ overflow: 'hidden' }}>
-                    <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <span>{partnerName}</span>
-                      {isPartnerVerified && <VerifiedBadge size={16} />}
-                      {conv.unread > 0 && (
-                        <span
-                          style={{
-                            background: '#e74c3c',
-                            color: 'white',
-                            fontSize: '10px',
-                            padding: '1px 8px',
-                            borderRadius: 'var(--radius-full)',
-                            marginLeft: '4px',
-                          }}
-                        >
-                          {conv.unread}
-                        </span>
-                      )}
-                    </div>
-                    <div
+          {getConversations().map(conv => (
+            <div
+              key={conv.userId}
+              onClick={() => openConversation(conv.userId)}
+              style={{
+                background: 'white',
+                padding: '12px 16px',
+                borderRadius: 'var(--radius-md)',
+                border: '1px solid var(--gray-200)',
+                cursor: 'pointer',
+                transition: 'var(--transition)',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}
+            >
+              <div>
+                <div style={{ fontWeight: 600 }}>
+                  {conv.partner?.name || 'User'}
+                  {conv.unread > 0 && (
+                    <span
                       style={{
-                        fontSize: '13px',
-                        color: 'var(--gray-500)',
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        maxWidth: '200px',
+                        background: '#e74c3c',
+                        color: 'white',
+                        fontSize: '10px',
+                        padding: '1px 8px',
+                        borderRadius: 'var(--radius-full)',
+                        marginLeft: '8px',
                       }}
                     >
-                      {conv.last?.message || 'No messages'}
-                    </div>
-                  </div>
+                      {conv.unread}
+                    </span>
+                  )}
                 </div>
-                <div style={{ fontSize: '11px', color: 'var(--gray-400)', flexShrink: 0 }}>
-                  {conv.last?.createdAt ? new Date(conv.last.createdAt).toLocaleDateString() : ''}
+                <div
+                  style={{
+                    fontSize: '13px',
+                    color: 'var(--gray-500)',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    maxWidth: '150px',
+                  }}
+                >
+                  {conv.last?.message || 'No messages'}
                 </div>
               </div>
-            );
-          })}
+              <div style={{ fontSize: '11px', color: 'var(--gray-400)' }}>
+                {conv.last?.createdAt ? new Date(conv.last.createdAt).toLocaleDateString() : ''}
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>
