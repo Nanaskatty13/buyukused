@@ -1,224 +1,551 @@
+// ================================================================
 // frontend/src/services/sellerService.js
-import { API_URL } from "./api";
-import { getToken } from "../utils/storage";
+// BuyUKUsed - Seller API Service
+// ================================================================
 
-// ─── Helper: build query string ──────────────────────────────
-const buildQuery = (params = {}) => {
-  const searchParams = new URLSearchParams();
-  Object.entries(params).forEach(([key, value]) => {
-    if (value === undefined || value === null || value === "") return;
-    searchParams.set(key, String(value));
-  });
-  const query = searchParams.toString();
-  return query ? `?${query}` : "";
+import {
+  API_URL,
+} from "./api";
+
+import {
+  getToken,
+} from "../utils/storage";
+
+// ================================================================
+// HELPER: BUILD QUERY STRING
+// ================================================================
+
+const buildQuery = (
+  params = {}
+) => {
+  const searchParams =
+    new URLSearchParams();
+
+  Object.entries(params).forEach(
+    ([key, value]) => {
+      if (
+        value === undefined ||
+        value === null ||
+        value === ""
+      ) {
+        return;
+      }
+
+      searchParams.set(
+        key,
+        String(value)
+      );
+    }
+  );
+
+  const query =
+    searchParams.toString();
+
+  return query
+    ? `?${query}`
+    : "";
 };
 
-// ─── Helper: handle response ──────────────────────────────────
-const handleResponse = async (response) => {
-  if (!response.ok) {
-    let errorMessage = `HTTP ${response.status}`;
+// ================================================================
+// HELPER: HANDLE RESPONSE
+// ================================================================
+
+const handleResponse = async (
+  response
+) => {
+  let data = {};
+
+  if (response.status !== 204) {
+    const contentType =
+      response.headers.get(
+        "content-type"
+      ) || "";
+
     try {
-      const data = await response.json();
-      errorMessage = data.message || data.error || errorMessage;
+      if (
+        contentType.includes(
+          "application/json"
+        )
+      ) {
+        data = await response.json();
+      } else {
+        const text =
+          await response.text();
+
+        if (text) {
+          data = {
+            message: text,
+          };
+        }
+      }
     } catch {
-      // ignore
+      data = {};
     }
-    const error = new Error(errorMessage);
-    error.status = response.status;
+  }
+
+  if (!response.ok) {
+    const error = new Error(
+      data?.message ||
+        data?.error ||
+        `HTTP ${response.status}`
+    );
+
+    error.status =
+      response.status;
+
+    error.data = data;
+
+    error.url =
+      response.url;
+
     throw error;
   }
-  return response.json();
+
+  return data;
 };
 
-// ─── Helper: JSON request with token ──────────────────────────
-const request = async (url, options = {}) => {
-  const token = getToken();
+// ================================================================
+// HELPER: JSON REQUEST WITH TOKEN
+// ================================================================
+
+const request = async (
+  url,
+  options = {}
+) => {
+  const token =
+    getToken();
+
   const headers = {
-    "Content-Type": "application/json",
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    "Content-Type":
+      "application/json",
+
+    Accept:
+      "application/json",
+
+    ...(token
+      ? {
+          Authorization:
+            `Bearer ${token}`,
+        }
+      : {}),
+
     ...(options.headers || {}),
   };
 
-  const response = await fetch(`${API_URL}${url}`, {
-    ...options,
-    headers,
-  });
+  const response =
+    await fetch(
+      `${API_URL}${url}`,
+      {
+        ...options,
 
-  return handleResponse(response);
+        credentials:
+          "include",
+
+        headers,
+      }
+    );
+
+  return handleResponse(
+    response
+  );
 };
 
-// ─── Helper: FormData request with token ──────────────────────
-const requestWithFiles = async (url, formData, options = {}) => {
-  const token = getToken();
-  const headers = {
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    ...(options.headers || {}),
+// ================================================================
+// HELPER: FORMDATA REQUEST WITH TOKEN
+// ================================================================
+
+const requestWithFiles =
+  async (
+    url,
+    formData,
+    options = {}
+  ) => {
+    const token =
+      getToken();
+
+    const headers = {
+      ...(token
+        ? {
+            Authorization:
+              `Bearer ${token}`,
+          }
+        : {}),
+
+      ...(options.headers || {}),
+    };
+
+    const response =
+      await fetch(
+        `${API_URL}${url}`,
+        {
+          method:
+            options.method ||
+            "POST",
+
+          credentials:
+            "include",
+
+          headers,
+
+          body: formData,
+        }
+      );
+
+    return handleResponse(
+      response
+    );
   };
-
-  const response = await fetch(`${API_URL}${url}`, {
-    method: options.method || "POST",
-    headers,
-    body: formData,
-  });
-
-  return handleResponse(response);
-};
 
 // ================================================================
 // SELLER SERVICE FUNCTIONS
 // ================================================================
 
-/**
- * Register as a seller (become a seller)
- */
-export const registerSeller = async (data) => {
-  return request("/sellers/register", {
-    method: "POST",
-    body: JSON.stringify(data),
-  });
-};
+// ================================================================
+// 1. REGISTER SELLER
+// ================================================================
 
-/**
- * Get own seller profile
- */
-export const getSellerProfile = async () => {
-  return request("/sellers/profile");
-};
+export const registerSeller =
+  async (data) => {
+    return request(
+      "/sellers/register",
+      {
+        method: "POST",
 
-/**
- * Update own seller profile
- */
-export const updateSellerProfile = async (data) => {
-  return request("/sellers/profile", {
-    method: "PUT",
-    body: JSON.stringify(data),
-  });
-};
+        body:
+          JSON.stringify(data),
+      }
+    );
+  };
+
+// ================================================================
+// 2. GET OWN SELLER PROFILE
+// ================================================================
+
+export const getSellerProfile =
+  async () => {
+    return request(
+      "/sellers/profile"
+    );
+  };
+
+// ================================================================
+// 3. UPDATE OWN SELLER PROFILE
+// ================================================================
+
+export const updateSellerProfile =
+  async (data) => {
+    return request(
+      "/sellers/profile",
+      {
+        method: "PUT",
+
+        body:
+          JSON.stringify(data),
+      }
+    );
+  };
 
 // ================================================================
 // DASHBOARD & ANALYTICS
 // ================================================================
 
-/**
- * Get seller dashboard stats (with optional period filter)
- */
-export const getSellerDashboard = async (period = "all") => {
-  return request(`/sellers/dashboard?period=${period}`);
-};
+// ================================================================
+// 4. SELLER DASHBOARD
+// ================================================================
 
-/**
- * Get seller earnings (with optional period filter)
- */
-export const getSellerEarnings = async (period = "all") => {
-  return request(`/sellers/earnings?period=${period}`);
-};
+export const getSellerDashboard =
+  async (
+    period = "all"
+  ) => {
+    return request(
+      `/sellers/dashboard?period=${encodeURIComponent(
+        period
+      )}`
+    );
+  };
 
-/**
- * Get product analytics (views, clicks, etc.)
- */
-export const getSellerAnalytics = async (period = "today") => {
-  return request(`/sellers/analytics?period=${period}`);
-};
+// ================================================================
+// 5. SELLER EARNINGS
+// ================================================================
+
+export const getSellerEarnings =
+  async (
+    period = "all"
+  ) => {
+    return request(
+      `/sellers/earnings?period=${encodeURIComponent(
+        period
+      )}`
+    );
+  };
+
+// ================================================================
+// 6. SELLER ANALYTICS
+// ================================================================
+
+export const getSellerAnalytics =
+  async (
+    period = "today"
+  ) => {
+    return request(
+      `/sellers/analytics?period=${encodeURIComponent(
+        period
+      )}`
+    );
+  };
 
 // ================================================================
 // PRODUCT MANAGEMENT
 // ================================================================
 
-/**
- * Get seller's own products (with pagination, sorting, filtering)
- */
-export const getMyProducts = async (params = {}) => {
-  const { page = 1, limit = 20, sort = "-createdAt", status } = params;
-  let query = `page=${page}&limit=${limit}&sort=${encodeURIComponent(sort)}`;
-  if (status) query += `&status=${status}`;
-  return request(`/sellers/products?${query}`);
-};
+// ================================================================
+// 7. GET MY PRODUCTS
+// ================================================================
 
-/**
- * Create a new product (seller version)
- * Accepts FormData for files (images)
- */
-export const createProductSeller = async (formData) => {
-  return requestWithFiles("/sellers/products", formData, { method: "POST" });
-};
+export const getMyProducts =
+  async (
+    params = {}
+  ) => {
+    const {
+      page = 1,
+      limit = 20,
+      sort = "-createdAt",
+      status,
+    } = params;
 
-/**
- * Update an existing product (seller version)
- * Accepts FormData for files (images)
- */
-export const updateProductSeller = async (productId, formData) => {
-  return requestWithFiles(`/sellers/products/${productId}`, formData, {
-    method: "PUT",
-  });
-};
+    const query =
+      buildQuery({
+        page,
+        limit,
+        sort,
+        status,
+      });
 
-/**
- * Delete a product
- */
-export const deleteProductSeller = async (productId) => {
-  return request(`/sellers/products/${productId}`, {
-    method: "DELETE",
-  });
-};
+    return request(
+      `/sellers/products${query}`
+    );
+  };
+
+// ================================================================
+// 8. CREATE PRODUCT
+// ================================================================
+
+export const createProductSeller =
+  async (
+    formData
+  ) => {
+    return requestWithFiles(
+      "/sellers/products",
+      formData,
+      {
+        method: "POST",
+      }
+    );
+  };
+
+// ================================================================
+// 9. UPDATE PRODUCT
+// ================================================================
+
+export const updateProductSeller =
+  async (
+    productId,
+    formData
+  ) => {
+    if (!productId) {
+      throw new Error(
+        "Product ID is required"
+      );
+    }
+
+    return requestWithFiles(
+      `/sellers/products/${encodeURIComponent(
+        productId
+      )}`,
+      formData,
+      {
+        method: "PUT",
+      }
+    );
+  };
+
+// ================================================================
+// 10. DELETE PRODUCT
+// ================================================================
+
+export const deleteProductSeller =
+  async (
+    productId
+  ) => {
+    if (!productId) {
+      throw new Error(
+        "Product ID is required"
+      );
+    }
+
+    return request(
+      `/sellers/products/${encodeURIComponent(
+        productId
+      )}`,
+      {
+        method: "DELETE",
+      }
+    );
+  };
 
 // ================================================================
 // ORDER MANAGEMENT
 // ================================================================
 
-/**
- * Get orders containing seller's items (with pagination & status filter)
- */
-export const getSellerOrders = async (params = {}) => {
-  const { page = 1, limit = 20, status } = params;
-  let query = `page=${page}&limit=${limit}`;
-  if (status) query += `&status=${status}`;
-  return request(`/sellers/orders?${query}`);
-};
-
-/**
- * Get a specific order by ID (must contain seller's items)
- */
-export const getSellerOrderById = async (orderId) => {
-  return request(`/sellers/orders/${orderId}`);
-};
-
-/**
- * Update order status (processing, shipped, delivered, cancelled)
- */
-export const updateSellerOrderStatus = async (orderId, status) => {
-  return request(`/sellers/orders/${orderId}/status`, {
-    method: "PUT",
-    body: JSON.stringify({ status }),
-  });
-};
-
 // ================================================================
-// PUBLIC SELLER ROUTES (No authentication required)
+// 11. GET SELLER ORDERS
 // ================================================================
 
-/**
- * Get public seller profile (for SellerPage)
- */
-export const getPublicSellerProfile = async (sellerId) => {
-  return request(`/sellers/${sellerId}`);
-};
+export const getSellerOrders =
+  async (
+    params = {}
+  ) => {
+    const {
+      page = 1,
+      limit = 20,
+      status,
+    } = params;
 
-/**
- * Get public products for a seller (with pagination)
- * 
- * ✅ FIXED: Now uses the existing /api/products endpoint with sellerId query
- * instead of the non-existent /sellers/:sellerId/products
- */
-export const getPublicSellerProducts = async (sellerId, params = {}) => {
-  const { page = 1, limit = 20, sort = "-createdAt" } = params;
-  const query = buildQuery({
+    const query =
+      buildQuery({
+        page,
+        limit,
+        status,
+      });
+
+    return request(
+      `/sellers/orders${query}`
+    );
+  };
+
+// ================================================================
+// 12. GET SELLER ORDER BY ID
+// ================================================================
+
+export const getSellerOrderById =
+  async (
+    orderId
+  ) => {
+    if (!orderId) {
+      throw new Error(
+        "Order ID is required"
+      );
+    }
+
+    return request(
+      `/sellers/orders/${encodeURIComponent(
+        orderId
+      )}`
+    );
+  };
+
+// ================================================================
+// 13. UPDATE SELLER ORDER STATUS
+// ================================================================
+
+export const updateSellerOrderStatus =
+  async (
+    orderId,
+    status
+  ) => {
+    if (!orderId) {
+      throw new Error(
+        "Order ID is required"
+      );
+    }
+
+    if (!status) {
+      throw new Error(
+        "Order status is required"
+      );
+    }
+
+    return request(
+      `/sellers/orders/${encodeURIComponent(
+        orderId
+      )}/status`,
+      {
+        method: "PUT",
+
+        body:
+          JSON.stringify({
+            status,
+          }),
+      }
+    );
+  };
+
+// ================================================================
+// PUBLIC SELLER ROUTES
+// ================================================================
+
+// ================================================================
+// 14. GET PUBLIC SELLER PROFILE
+// ================================================================
+
+export const getPublicSellerProfile =
+  async (
+    sellerId
+  ) => {
+    if (!sellerId) {
+      throw new Error(
+        "Seller ID is required"
+      );
+    }
+
+    return request(
+      `/sellers/${encodeURIComponent(
+        sellerId
+      )}`
+    );
+  };
+
+// ================================================================
+// 15. GET PUBLIC SELLER PRODUCTS
+//
+// IMPORTANT:
+// Backend route:
+// GET /sellers/:sellerId/products
+//
+// Do NOT use:
+// /api/products?sellerId=...
+// ================================================================
+
+export const getPublicSellerProducts =
+  async (
     sellerId,
-    page,
-    limit,
-    sort,
-  });
-  return request(`/api/products${query}`);
-};
+    params = {}
+  ) => {
+    if (!sellerId) {
+      throw new Error(
+        "Seller ID is required"
+      );
+    }
+
+    const {
+      page = 1,
+      limit = 20,
+      sort = "-createdAt",
+    } = params;
+
+    const query =
+      buildQuery({
+        page,
+        limit,
+        sort,
+      });
+
+    return request(
+      `/sellers/${encodeURIComponent(
+        sellerId
+      )}/products${query}`
+    );
+  };
 
 // ================================================================
 // DEFAULT EXPORT
@@ -226,6 +553,7 @@ export const getPublicSellerProducts = async (sellerId, params = {}) => {
 
 const sellerService = {
   registerSeller,
+
   getSellerProfile,
   updateSellerProfile,
 

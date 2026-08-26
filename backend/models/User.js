@@ -1,4 +1,7 @@
+// ============================================================
 // backend/models/User.js
+// BuyUKUsed - User Model
+// ============================================================
 
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
@@ -26,20 +29,25 @@ const userSchema = new mongoose.Schema(
       unique: true,
       lowercase: true,
       trim: true,
+
       validate: {
         validator: function (value) {
           return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
         },
+
         message: "Please enter a valid email address",
       },
     },
 
     password: {
       type: String,
+
       required: function () {
         return this.provider === "local";
       },
+
       minlength: [6, "Password must be at least 6 characters"],
+
       select: true,
     },
 
@@ -123,7 +131,14 @@ const userSchema = new mongoose.Schema(
 
     businessType: {
       type: String,
-      enum: ["individual", "business", "organization", ""],
+
+      enum: [
+        "individual",
+        "business",
+        "organization",
+        "",
+      ],
+
       default: "individual",
     },
 
@@ -135,7 +150,15 @@ const userSchema = new mongoose.Schema(
 
     sellerStatus: {
       type: String,
-      enum: ["pending", "active", "suspended", "inactive", ""],
+
+      enum: [
+        "pending",
+        "active",
+        "suspended",
+        "inactive",
+        "",
+      ],
+
       default: "",
     },
 
@@ -152,12 +175,66 @@ const userSchema = new mongoose.Schema(
     },
 
     // ==========================================================
+    // SELLER VERIFICATION
+    // ==========================================================
+
+    // True only after an admin verifies the seller.
+    isVerified: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+
+    // Date the seller was verified.
+    verifiedAt: {
+      type: Date,
+      default: null,
+    },
+
+    // Admin who verified the seller.
+    verifiedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+
+    // Verification application status.
+    verificationStatus: {
+      type: String,
+
+      enum: [
+        "not_submitted",
+        "pending",
+        "approved",
+        "rejected",
+      ],
+
+      default: "not_submitted",
+
+      index: true,
+    },
+
+    // Reason if rejected.
+    verificationRejectedReason: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 500,
+    },
+
+    // ==========================================================
     // AUTH PROVIDER
     // ==========================================================
 
     provider: {
       type: String,
-      enum: ["local", "google", "facebook"],
+
+      enum: [
+        "local",
+        "google",
+        "facebook",
+      ],
+
       default: "local",
     },
 
@@ -173,7 +250,14 @@ const userSchema = new mongoose.Schema(
 
     role: {
       type: String,
-      enum: ["buyer", "seller", "rider", "admin"],
+
+      enum: [
+        "buyer",
+        "seller",
+        "rider",
+        "admin",
+      ],
+
       default: "buyer",
     },
 
@@ -186,36 +270,43 @@ const userSchema = new mongoose.Schema(
         type: Boolean,
         default: false,
       },
+
       isApproved: {
         type: Boolean,
         default: false,
       },
+
       bikeType: {
         type: String,
         default: "",
         trim: true,
       },
+
       bikeNumber: {
         type: String,
         default: "",
         trim: true,
       },
+
       serviceArea: {
         type: String,
         default: "",
         trim: true,
       },
+
       identificationNumber: {
         type: String,
         default: "",
         trim: true,
       },
+
       rating: {
         type: Number,
         default: 5,
         min: 0,
         max: 5,
       },
+
       completedDeliveries: {
         type: Number,
         default: 0,
@@ -231,22 +322,6 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
-
-    // ─── Verification fields (NEW) ─────────────────────────────
-    isVerified: {
-      type: Boolean,
-      default: false,
-    },
-    verifiedAt: {
-      type: Date,
-      default: null,
-    },
-    verifiedBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-      default: null,
-    },
-    // ────────────────────────────────────────────────────────────
 
     lastLogin: {
       type: Date,
@@ -288,7 +363,11 @@ userSchema.pre("save", async function (next) {
       return next();
     }
 
-    this.password = await bcrypt.hash(this.password, 10);
+    this.password = await bcrypt.hash(
+      this.password,
+      10
+    );
+
     next();
   } catch (error) {
     next(error);
@@ -299,11 +378,17 @@ userSchema.pre("save", async function (next) {
 // COMPARE PASSWORD
 // ============================================================
 
-userSchema.methods.comparePassword = async function (password) {
+userSchema.methods.comparePassword = async function (
+  password
+) {
   if (!this.password) {
     return false;
   }
-  return bcrypt.compare(password, this.password);
+
+  return bcrypt.compare(
+    password,
+    this.password
+  );
 };
 
 // ============================================================
@@ -315,7 +400,10 @@ userSchema.methods.isAdmin = function () {
 };
 
 userSchema.methods.isSeller = function () {
-  return this.role === "seller" || this.role === "admin";
+  return (
+    this.role === "seller" ||
+    this.role === "admin"
+  );
 };
 
 userSchema.methods.isBuyer = function () {
@@ -324,6 +412,18 @@ userSchema.methods.isBuyer = function () {
 
 userSchema.methods.isRider = function () {
   return this.role === "rider";
+};
+
+// ============================================================
+// VERIFIED SELLER HELPER
+// ============================================================
+
+userSchema.methods.isVerifiedSeller = function () {
+  return (
+    this.role === "seller" &&
+    this.isVerified === true &&
+    this.verificationStatus === "approved"
+  );
 };
 
 // ============================================================
@@ -348,7 +448,7 @@ userSchema.set("toJSON", {
     delete ret.password;
     delete ret.resetPasswordToken;
     delete ret.resetPasswordExpires;
-    delete ret.__v;
+
     return ret;
   },
 });
@@ -359,7 +459,9 @@ userSchema.set("toJSON", {
 
 userSchema.statics.findByEmail = function (email) {
   return this.findOne({
-    email: String(email).trim().toLowerCase(),
+    email: String(email)
+      .trim()
+      .toLowerCase(),
   });
 };
 
@@ -367,6 +469,8 @@ userSchema.statics.findByEmail = function (email) {
 // MODEL
 // ============================================================
 
-const User = mongoose.models.User || mongoose.model("User", userSchema);
+const User =
+  mongoose.models.User ||
+  mongoose.model("User", userSchema);
 
 module.exports = User;

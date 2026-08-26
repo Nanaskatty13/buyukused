@@ -1,5 +1,6 @@
 // ================================================================
 // frontend/src/services/api.js
+// BuyUKUsed API Service
 // ================================================================
 
 import {
@@ -15,25 +16,26 @@ const RAW_API_URL =
   import.meta.env.VITE_API_URL ||
   "http://localhost:5000";
 
-export const API_URL = String(RAW_API_URL).replace(
-  /\/+$/,
-  ""
-);
+export const API_URL =
+  RAW_API_URL.replace(/\/+$/, "");
 
 console.log("🔗 API_URL:", API_URL);
 
 // ================================================================
-// REQUEST CONFIG
+// REQUEST CONFIG – IMPROVED FOR RENDER COLD START
 // ================================================================
 
 const REQUEST_TIMEOUT = 30000;
+
 const MAX_RETRIES = 2;
 
 // ================================================================
 // HEADERS
 // ================================================================
 
-const getHeaders = (token = getToken()) => ({
+const getHeaders = (
+  token = getToken()
+) => ({
   "Content-Type": "application/json",
 
   ...(token
@@ -44,8 +46,13 @@ const getHeaders = (token = getToken()) => ({
 });
 
 // IMPORTANT:
-// Never manually set Content-Type for FormData.
-const getFileHeaders = (token = getToken()) => ({
+// Do NOT set Content-Type for FormData.
+// The browser automatically adds:
+// multipart/form-data; boundary=...
+
+const getFileHeaders = (
+  token = getToken()
+) => ({
   ...(token
     ? {
         Authorization: `Bearer ${token}`,
@@ -57,18 +64,27 @@ const getFileHeaders = (token = getToken()) => ({
 // RESPONSE HANDLER
 // ================================================================
 
-const handleResponse = async (response) => {
+const handleResponse = async (
+  response
+) => {
   let data = {};
 
   if (response.status !== 204) {
     const contentType =
-      response.headers.get("content-type") || "";
+      response.headers.get(
+        "content-type"
+      ) || "";
 
     try {
-      if (contentType.includes("application/json")) {
+      if (
+        contentType.includes(
+          "application/json"
+        )
+      ) {
         data = await response.json();
       } else {
-        const text = await response.text();
+        const text =
+          await response.text();
 
         if (text) {
           data = {
@@ -76,12 +92,7 @@ const handleResponse = async (response) => {
           };
         }
       }
-    } catch (parseError) {
-      console.warn(
-        "⚠️ Could not parse API response:",
-        parseError
-      );
-
+    } catch {
       data = {};
     }
   }
@@ -93,8 +104,11 @@ const handleResponse = async (response) => {
         `HTTP ${response.status}`
     );
 
-    error.status = response.status;
+    error.status =
+      response.status;
+
     error.data = data;
+
     error.url = response.url;
 
     throw error;
@@ -108,12 +122,12 @@ const handleResponse = async (response) => {
 // ================================================================
 
 const sleep = (ms) =>
-  new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
+  new Promise((resolve) =>
+    setTimeout(resolve, ms)
+  );
 
 // ================================================================
-// REQUEST HELPER
+// REQUEST HELPER – WITH RETRY ON TIMEOUT
 // ================================================================
 
 const request = async (
@@ -121,49 +135,53 @@ const request = async (
   options = {},
   retries = MAX_RETRIES
 ) => {
-  let controller;
-  let timeoutId;
+  const controller =
+    new AbortController();
 
-  try {
-    controller = new AbortController();
-
-    timeoutId = setTimeout(() => {
+  const timeoutId =
+    setTimeout(() => {
       controller.abort();
     }, REQUEST_TIMEOUT);
 
-    const response = await fetch(url, {
-      credentials: "include",
-      ...options,
+  try {
+    const response = await fetch(
+      url,
+      {
+        credentials: "include",
+        ...options,
 
-      signal:
-        options.signal ||
-        controller.signal,
-    });
+        signal:
+          options.signal ||
+          controller.signal,
+      }
+    );
 
     clearTimeout(timeoutId);
 
-    return await handleResponse(response);
+    return await handleResponse(
+      response
+    );
   } catch (error) {
-    if (timeoutId) {
-      clearTimeout(timeoutId);
-    }
+    clearTimeout(timeoutId);
 
     const isAbortError =
-      error?.name === "AbortError";
+      error?.name ===
+      "AbortError";
 
     const isNetworkError =
-      error?.name === "TypeError" ||
-      error?.message === "Failed to fetch";
+      error?.name ===
+        "TypeError" ||
+      error?.message ===
+        "Failed to fetch";
 
-    // ============================================================
+    // ------------------------------------------------------------
     // TIMEOUT
-    // ============================================================
+    // ------------------------------------------------------------
 
     if (isAbortError) {
       if (retries > 0) {
         console.warn(
-          `⏳ API timeout. Retrying... ${retries} attempt(s) left`,
-          url
+          `⏳ Request timeout (server cold start?) – retrying... ${retries} attempt(s) left`
         );
 
         await sleep(1500);
@@ -175,35 +193,32 @@ const request = async (
         );
       }
 
-      const timeoutError = new Error(
-        "The server took too long to respond."
-      );
+      const timeoutError =
+        new Error(
+          "The server is taking too long to respond. Please try again in a moment."
+        );
 
-      timeoutError.code = "REQUEST_TIMEOUT";
+      timeoutError.code =
+        "REQUEST_TIMEOUT";
+
       timeoutError.url = url;
-
-      console.error(
-        "❌ API timeout:",
-        url
-      );
 
       throw timeoutError;
     }
 
-    // ============================================================
+    // ------------------------------------------------------------
     // NETWORK ERROR
-    // ============================================================
+    // ------------------------------------------------------------
 
     if (
       isNetworkError &&
       retries > 0
     ) {
       console.warn(
-        `🔄 Network error. Retrying... ${retries} attempt(s) left`,
-        url
+        `🔄 Network error – retrying... ${retries} attempt(s) left`
       );
 
-      await sleep(1000);
+      await sleep(800);
 
       return request(
         url,
@@ -211,10 +226,6 @@ const request = async (
         retries - 1
       );
     }
-
-    // ============================================================
-    // FINAL ERROR
-    // ============================================================
 
     console.error(
       "❌ API request failed:",
@@ -230,8 +241,11 @@ const request = async (
 // QUERY BUILDER
 // ================================================================
 
-const buildQuery = (params = {}) => {
-  const searchParams = new URLSearchParams();
+const buildQuery = (
+  params = {}
+) => {
+  const searchParams =
+    new URLSearchParams();
 
   Object.entries(params).forEach(
     ([key, value]) => {
@@ -258,42 +272,57 @@ const buildQuery = (params = {}) => {
     }
   );
 
-  const query = searchParams.toString();
+  const query =
+    searchParams.toString();
 
-  return query ? `?${query}` : "";
+  return query
+    ? `?${query}`
+    : "";
 };
 
 // ================================================================
 // IMAGE URL
 // ================================================================
 
-export const getImageUrl = (path) => {
+export const getImageUrl = (
+  path
+) => {
   if (!path) {
     return "/placeholder.png";
   }
 
-  if (typeof path !== "string") {
+  if (
+    typeof path !== "string"
+  ) {
     return "/placeholder.png";
   }
 
-  const cleanPath = path.trim();
+  const cleanPath =
+    path.trim();
 
   if (!cleanPath) {
     return "/placeholder.png";
   }
 
-  // ==============================================================
-  // EXTERNAL URL
-  // ==============================================================
+  // --------------------------------------------------------------
+  // EXTERNAL URL / CLOUDINARY
+  // --------------------------------------------------------------
 
   if (
-    cleanPath.startsWith("http://") ||
-    cleanPath.startsWith("https://")
+    cleanPath.startsWith(
+      "http://"
+    ) ||
+    cleanPath.startsWith(
+      "https://"
+    )
   ) {
-    // Cloudinary optimization
     if (
-      cleanPath.includes("res.cloudinary.com") &&
-      cleanPath.includes("/image/upload/")
+      cleanPath.includes(
+        "res.cloudinary.com"
+      ) &&
+      cleanPath.includes(
+        "/image/upload/"
+      )
     ) {
       return cleanPath.replace(
         "/image/upload/",
@@ -304,25 +333,33 @@ export const getImageUrl = (path) => {
     return cleanPath;
   }
 
-  // ==============================================================
+  // --------------------------------------------------------------
   // BASE64
-  // ==============================================================
+  // --------------------------------------------------------------
 
-  if (cleanPath.startsWith("data:")) {
+  if (
+    cleanPath.startsWith(
+      "data:"
+    )
+  ) {
     return cleanPath;
   }
 
-  // ==============================================================
+  // --------------------------------------------------------------
   // BLOB
-  // ==============================================================
+  // --------------------------------------------------------------
 
-  if (cleanPath.startsWith("blob:")) {
+  if (
+    cleanPath.startsWith(
+      "blob:"
+    )
+  ) {
     return cleanPath;
   }
 
-  // ==============================================================
-  // BACKEND RELATIVE PATH
-  // ==============================================================
+  // --------------------------------------------------------------
+  // RELATIVE BACKEND PATH
+  // --------------------------------------------------------------
 
   return `${API_URL}${
     cleanPath.startsWith("/")
@@ -332,22 +369,28 @@ export const getImageUrl = (path) => {
 };
 
 // ================================================================
-// HEALTH
+// KEEP ALIVE
 // ================================================================
 
-export const health = {
-  check: async () => {
-    return request(
-      `${API_URL}/health`,
+export const startKeepAlive = (
+  intervalMs =
+    10 * 60 * 1000
+) => {
+  const ping = () => {
+    fetch(
+      `${API_URL}/api/health`,
       {
-        method: "GET",
-
-        headers: {
-          Accept: "application/json",
-        },
+        method: "HEAD",
       }
-    );
-  },
+    ).catch(() => {});
+  };
+
+  ping();
+
+  return setInterval(
+    ping,
+    intervalMs
+  );
 };
 
 // ================================================================
@@ -355,15 +398,14 @@ export const health = {
 // ================================================================
 
 export const auth = {
+  // --------------------------------------------------------------
+  // LOGIN
+  // --------------------------------------------------------------
+
   login: async (
     email,
     password
   ) => {
-    console.log(
-      "🔐 Login request:",
-      `${API_URL}/auth/login`
-    );
-
     return request(
       `${API_URL}/auth/login`,
       {
@@ -375,7 +417,9 @@ export const auth = {
         },
 
         body: JSON.stringify({
-          email: String(email || "")
+          email: String(
+            email || ""
+          )
             .trim()
             .toLowerCase(),
 
@@ -386,6 +430,10 @@ export const auth = {
       }
     );
   },
+
+  // --------------------------------------------------------------
+  // REGISTER
+  // --------------------------------------------------------------
 
   register: async (
     userData = {}
@@ -416,28 +464,6 @@ export const auth = {
         .toLowerCase(),
     };
 
-    console.log(
-      "📝 Registration:",
-      {
-        name:
-          registrationData.name,
-
-        email:
-          registrationData.email,
-
-        phone:
-          registrationData.phone,
-
-        role:
-          registrationData.role,
-
-        passwordProvided:
-          Boolean(
-            registrationData.password
-          ),
-      }
-    );
-
     return request(
       `${API_URL}/auth/register`,
       {
@@ -455,49 +481,34 @@ export const auth = {
     );
   },
 
+  // --------------------------------------------------------------
+  // CURRENT USER
+  // --------------------------------------------------------------
+
   getMe: async (
     token = getToken()
   ) => {
-    if (!token) {
-      const error = new Error(
-        "Authentication token is missing."
-      );
-
-      error.status = 401;
-
-      throw error;
-    }
-
-    console.log(
-      "🔎 Checking:",
-      `${API_URL}/auth/me`
-    );
-
     return request(
       `${API_URL}/auth/me`,
       {
         method: "GET",
-
         headers:
           getHeaders(token),
       }
     );
   },
 
+  // --------------------------------------------------------------
+  // LOGOUT
+  // --------------------------------------------------------------
+
   logout: async (
     token = getToken()
   ) => {
-    if (!token) {
-      return {
-        success: true,
-      };
-    }
-
     return request(
       `${API_URL}/auth/logout`,
       {
         method: "POST",
-
         headers:
           getHeaders(token),
       }
@@ -529,9 +540,7 @@ export const products = {
     );
   },
 
-  getById: async (
-    id
-  ) => {
+  getById: async (id) => {
     if (!id) {
       throw new Error(
         "Product ID is required"
@@ -561,7 +570,6 @@ export const products = {
       `${API_URL}/api/products`,
       {
         method: "POST",
-
         headers:
           getHeaders(token),
 
@@ -580,10 +588,8 @@ export const products = {
       `${API_URL}/api/products`,
       {
         method: "POST",
-
         headers:
           getFileHeaders(token),
-
         body: formData,
       }
     );
@@ -594,19 +600,12 @@ export const products = {
     productData,
     token = getToken()
   ) => {
-    if (!id) {
-      throw new Error(
-        "Product ID is required"
-      );
-    }
-
     return request(
       `${API_URL}/api/products/${encodeURIComponent(
         id
       )}`,
       {
         method: "PUT",
-
         headers:
           getHeaders(token),
 
@@ -622,19 +621,12 @@ export const products = {
     formData,
     token = getToken()
   ) => {
-    if (!id) {
-      throw new Error(
-        "Product ID is required"
-      );
-    }
-
     return request(
       `${API_URL}/api/products/${encodeURIComponent(
         id
       )}`,
       {
         method: "PUT",
-
         headers:
           getFileHeaders(token),
 
@@ -647,19 +639,12 @@ export const products = {
     id,
     token = getToken()
   ) => {
-    if (!id) {
-      throw new Error(
-        "Product ID is required"
-      );
-    }
-
     return request(
       `${API_URL}/api/products/${encodeURIComponent(
         id
       )}`,
       {
         method: "DELETE",
-
         headers:
           getHeaders(token),
       }
@@ -671,12 +656,6 @@ export const products = {
     status,
     token = getToken()
   ) => {
-    if (!productId) {
-      throw new Error(
-        "Product ID is required"
-      );
-    }
-
     return request(
       `${API_URL}/api/products/${encodeURIComponent(
         productId
@@ -711,7 +690,6 @@ export const users = {
       `${API_URL}/api/users${query}`,
       {
         method: "GET",
-
         headers:
           getHeaders(token),
       }
@@ -722,19 +700,12 @@ export const users = {
     id,
     token = getToken()
   ) => {
-    if (!id) {
-      throw new Error(
-        "User ID is required"
-      );
-    }
-
     return request(
       `${API_URL}/api/users/${encodeURIComponent(
         id
       )}`,
       {
         method: "GET",
-
         headers:
           getHeaders(token),
       }
@@ -746,19 +717,12 @@ export const users = {
     userData,
     token = getToken()
   ) => {
-    if (!id) {
-      throw new Error(
-        "User ID is required"
-      );
-    }
-
     return request(
       `${API_URL}/api/users/${encodeURIComponent(
         id
       )}`,
       {
         method: "PUT",
-
         headers:
           getHeaders(token),
 
@@ -774,19 +738,12 @@ export const users = {
     formData,
     token = getToken()
   ) => {
-    if (!id) {
-      throw new Error(
-        "User ID is required"
-      );
-    }
-
     return request(
       `${API_URL}/api/users/${encodeURIComponent(
         id
       )}`,
       {
         method: "PUT",
-
         headers:
           getFileHeaders(token),
 
@@ -799,19 +756,12 @@ export const users = {
     id,
     token = getToken()
   ) => {
-    if (!id) {
-      throw new Error(
-        "User ID is required"
-      );
-    }
-
     return request(
       `${API_URL}/api/users/${encodeURIComponent(
         id
       )}`,
       {
         method: "DELETE",
-
         headers:
           getHeaders(token),
       }
@@ -825,7 +775,6 @@ export const users = {
       `${API_URL}/api/users/stats`,
       {
         method: "GET",
-
         headers:
           getHeaders(token),
       }
@@ -842,19 +791,12 @@ export const notifications = {
     userId,
     token = getToken()
   ) => {
-    if (!userId) {
-      throw new Error(
-        "User ID is required"
-      );
-    }
-
     return request(
       `${API_URL}/api/notifications/${encodeURIComponent(
         userId
       )}`,
       {
         method: "GET",
-
         headers:
           getHeaders(token),
       }
@@ -864,11 +806,16 @@ export const notifications = {
   getForAdmin: async (
     token = getToken()
   ) => {
+    if (!token) {
+      throw new Error(
+        "Authentication token is missing"
+      );
+    }
+
     return request(
       `${API_URL}/api/notifications/admin`,
       {
         method: "GET",
-
         headers:
           getHeaders(token),
       }
@@ -883,7 +830,6 @@ export const notifications = {
       `${API_URL}/api/notifications`,
       {
         method: "POST",
-
         headers:
           getHeaders(token),
 
@@ -898,19 +844,12 @@ export const notifications = {
     id,
     token = getToken()
   ) => {
-    if (!id) {
-      throw new Error(
-        "Notification ID is required"
-      );
-    }
-
     return request(
       `${API_URL}/api/notifications/${encodeURIComponent(
         id
       )}/read`,
       {
         method: "PUT",
-
         headers:
           getHeaders(token),
       }
@@ -921,19 +860,12 @@ export const notifications = {
     id,
     token = getToken()
   ) => {
-    if (!id) {
-      throw new Error(
-        "Notification ID is required"
-      );
-    }
-
     return request(
       `${API_URL}/api/notifications/${encodeURIComponent(
         id
       )}`,
       {
         method: "DELETE",
-
         headers:
           getHeaders(token),
       }
@@ -957,7 +889,6 @@ export const orders = {
       `${API_URL}/api/orders${query}`,
       {
         method: "GET",
-
         headers:
           getHeaders(token),
       }
@@ -968,19 +899,12 @@ export const orders = {
     id,
     token = getToken()
   ) => {
-    if (!id) {
-      throw new Error(
-        "Order ID is required"
-      );
-    }
-
     return request(
       `${API_URL}/api/orders/${encodeURIComponent(
         id
       )}`,
       {
         method: "GET",
-
         headers:
           getHeaders(token),
       }
@@ -995,7 +919,6 @@ export const orders = {
       `${API_URL}/api/orders`,
       {
         method: "POST",
-
         headers:
           getHeaders(token),
 
@@ -1011,19 +934,12 @@ export const orders = {
     updates,
     token = getToken()
   ) => {
-    if (!id) {
-      throw new Error(
-        "Order ID is required"
-      );
-    }
-
     return request(
       `${API_URL}/api/orders/${encodeURIComponent(
         id
       )}`,
       {
         method: "PUT",
-
         headers:
           getHeaders(token),
 
@@ -1038,19 +954,12 @@ export const orders = {
     id,
     token = getToken()
   ) => {
-    if (!id) {
-      throw new Error(
-        "Order ID is required"
-      );
-    }
-
     return request(
       `${API_URL}/api/orders/${encodeURIComponent(
         id
       )}`,
       {
         method: "DELETE",
-
         headers:
           getHeaders(token),
       }
@@ -1067,19 +976,12 @@ export const messages = {
     userId,
     token = getToken()
   ) => {
-    if (!userId) {
-      throw new Error(
-        "User ID is required"
-      );
-    }
-
     return request(
       `${API_URL}/api/messages/${encodeURIComponent(
         userId
       )}`,
       {
         method: "GET",
-
         headers:
           getHeaders(token),
       }
@@ -1093,7 +995,6 @@ export const messages = {
       `${API_URL}/api/messages/conversations`,
       {
         method: "GET",
-
         headers:
           getHeaders(token),
       }
@@ -1104,19 +1005,12 @@ export const messages = {
     otherUserId,
     token = getToken()
   ) => {
-    if (!otherUserId) {
-      throw new Error(
-        "Other user ID is required"
-      );
-    }
-
     return request(
       `${API_URL}/api/messages/conversation/${encodeURIComponent(
         otherUserId
       )}`,
       {
         method: "GET",
-
         headers:
           getHeaders(token),
       }
@@ -1133,7 +1027,6 @@ export const messages = {
       `${API_URL}/api/messages`,
       {
         method: "POST",
-
         headers:
           getHeaders(token),
 
@@ -1150,19 +1043,12 @@ export const messages = {
     messageId,
     token = getToken()
   ) => {
-    if (!messageId) {
-      throw new Error(
-        "Message ID is required"
-      );
-    }
-
     return request(
       `${API_URL}/api/messages/${encodeURIComponent(
         messageId
       )}/read`,
       {
         method: "PUT",
-
         headers:
           getHeaders(token),
       }
@@ -1173,19 +1059,12 @@ export const messages = {
     messageId,
     token = getToken()
   ) => {
-    if (!messageId) {
-      throw new Error(
-        "Message ID is required"
-      );
-    }
-
     return request(
       `${API_URL}/api/messages/${encodeURIComponent(
         messageId
       )}`,
       {
         method: "DELETE",
-
         headers:
           getHeaders(token),
       }
@@ -1205,7 +1084,6 @@ export const favorites = {
       `${API_URL}/api/favorites`,
       {
         method: "GET",
-
         headers:
           getHeaders(token),
       }
@@ -1216,17 +1094,10 @@ export const favorites = {
     productId,
     token = getToken()
   ) => {
-    if (!productId) {
-      throw new Error(
-        "Product ID is required"
-      );
-    }
-
     return request(
       `${API_URL}/api/favorites`,
       {
         method: "POST",
-
         headers:
           getHeaders(token),
 
@@ -1241,710 +1112,12 @@ export const favorites = {
     productId,
     token = getToken()
   ) => {
-    if (!productId) {
-      throw new Error(
-        "Product ID is required"
-      );
-    }
-
     return request(
       `${API_URL}/api/favorites/${encodeURIComponent(
         productId
       )}`,
       {
         method: "DELETE",
-
-        headers:
-          getHeaders(token),
-      }
-    );
-  },
-};
-
-// ================================================================
-// ADMIN
-// ================================================================
-
-export const admin = {
-  getDashboardStats: async (
-    token = getToken()
-  ) => {
-    return request(
-      `${API_URL}/api/admin/dashboard`,
-      {
-        method: "GET",
-
-        headers:
-          getHeaders(token),
-      }
-    );
-  },
-
-  getUsers: async (
-    params = {},
-    token = getToken()
-  ) => {
-    const query =
-      buildQuery(params);
-
-    return request(
-      `${API_URL}/api/admin/users${query}`,
-      {
-        method: "GET",
-
-        headers:
-          getHeaders(token),
-      }
-    );
-  },
-
-  getUserById: async (
-    id,
-    token = getToken()
-  ) => {
-    if (!id) {
-      throw new Error(
-        "User ID is required"
-      );
-    }
-
-    return request(
-      `${API_URL}/api/admin/users/${encodeURIComponent(
-        id
-      )}`,
-      {
-        method: "GET",
-
-        headers:
-          getHeaders(token),
-      }
-    );
-  },
-
-  updateUserRole: async (
-    id,
-    role,
-    token = getToken()
-  ) => {
-    if (!id) {
-      throw new Error(
-        "User ID is required"
-      );
-    }
-
-    return request(
-      `${API_URL}/api/admin/users/${encodeURIComponent(
-        id
-      )}/role`,
-      {
-        method: "PUT",
-
-        headers:
-          getHeaders(token),
-
-        body: JSON.stringify({
-          role,
-        }),
-      }
-    );
-  },
-
-  deleteUser: async (
-    id,
-    token = getToken()
-  ) => {
-    if (!id) {
-      throw new Error(
-        "User ID is required"
-      );
-    }
-
-    return request(
-      `${API_URL}/api/admin/users/${encodeURIComponent(
-        id
-      )}`,
-      {
-        method: "DELETE",
-
-        headers:
-          getHeaders(token),
-      }
-    );
-  },
-
-  getProducts: async (
-    params = {},
-    token = getToken()
-  ) => {
-    const query =
-      buildQuery(params);
-
-    return request(
-      `${API_URL}/api/admin/products${query}`,
-      {
-        method: "GET",
-
-        headers:
-          getHeaders(token),
-      }
-    );
-  },
-
-  deleteProduct: async (
-    id,
-    token = getToken()
-  ) => {
-    if (!id) {
-      throw new Error(
-        "Product ID is required"
-      );
-    }
-
-    return request(
-      `${API_URL}/api/admin/products/${encodeURIComponent(
-        id
-      )}`,
-      {
-        method: "DELETE",
-
-        headers:
-          getHeaders(token),
-      }
-    );
-  },
-
-  getOrders: async (
-    params = {},
-    token = getToken()
-  ) => {
-    const query =
-      buildQuery(params);
-
-    return request(
-      `${API_URL}/api/admin/orders${query}`,
-      {
-        method: "GET",
-
-        headers:
-          getHeaders(token),
-      }
-    );
-  },
-
-  updateOrderStatus: async (
-    id,
-    status,
-    token = getToken()
-  ) => {
-    if (!id) {
-      throw new Error(
-        "Order ID is required"
-      );
-    }
-
-    return request(
-      `${API_URL}/api/admin/orders/${encodeURIComponent(
-        id
-      )}/status`,
-      {
-        method: "PUT",
-
-        headers:
-          getHeaders(token),
-
-        body: JSON.stringify({
-          status,
-        }),
-      }
-    );
-  },
-
-  getRiders: async (
-    params = {},
-    token = getToken()
-  ) => {
-    const query =
-      buildQuery(params);
-
-    return request(
-      `${API_URL}/api/admin/riders${query}`,
-      {
-        method: "GET",
-
-        headers:
-          getHeaders(token),
-      }
-    );
-  },
-
-  getRiderById: async (
-    id,
-    token = getToken()
-  ) => {
-    if (!id) {
-      throw new Error(
-        "Rider ID is required"
-      );
-    }
-
-    return request(
-      `${API_URL}/api/admin/riders/${encodeURIComponent(
-        id
-      )}`,
-      {
-        method: "GET",
-
-        headers:
-          getHeaders(token),
-      }
-    );
-  },
-
-  approveRider: async (
-    id,
-    token = getToken()
-  ) => {
-    return request(
-      `${API_URL}/api/admin/riders/${encodeURIComponent(
-        id
-      )}/approve`,
-      {
-        method: "PUT",
-
-        headers:
-          getHeaders(token),
-      }
-    );
-  },
-
-  rejectRider: async (
-    id,
-    token = getToken()
-  ) => {
-    return request(
-      `${API_URL}/api/admin/riders/${encodeURIComponent(
-        id
-      )}/reject`,
-      {
-        method: "PUT",
-
-        headers:
-          getHeaders(token),
-      }
-    );
-  },
-
-  updateRiderApproval: async (
-    id,
-    isApproved,
-    token = getToken()
-  ) => {
-    return request(
-      `${API_URL}/api/admin/riders/${encodeURIComponent(
-        id
-      )}/approval`,
-      {
-        method: "PUT",
-
-        headers:
-          getHeaders(token),
-
-        body: JSON.stringify({
-          isApproved:
-            Boolean(isApproved),
-        }),
-      }
-    );
-  },
-
-  deleteRider: async (
-    id,
-    token = getToken()
-  ) => {
-    return request(
-      `${API_URL}/api/admin/riders/${encodeURIComponent(
-        id
-      )}`,
-      {
-        method: "DELETE",
-
-        headers:
-          getHeaders(token),
-      }
-    );
-  },
-
-  getDeliveries: async (
-    params = {},
-    token = getToken()
-  ) => {
-    const query =
-      buildQuery(params);
-
-    return request(
-      `${API_URL}/api/admin/deliveries${query}`,
-      {
-        method: "GET",
-
-        headers:
-          getHeaders(token),
-      }
-    );
-  },
-
-  getDeliveryById: async (
-    id,
-    token = getToken()
-  ) => {
-    if (!id) {
-      throw new Error(
-        "Delivery ID is required"
-      );
-    }
-
-    return request(
-      `${API_URL}/api/admin/deliveries/${encodeURIComponent(
-        id
-      )}`,
-      {
-        method: "GET",
-
-        headers:
-          getHeaders(token),
-      }
-    );
-  },
-
-  updateDeliveryStatus: async (
-    id,
-    status,
-    token = getToken()
-  ) => {
-    if (!id) {
-      throw new Error(
-        "Delivery ID is required"
-      );
-    }
-
-    return request(
-      `${API_URL}/api/admin/deliveries/${encodeURIComponent(
-        id
-      )}/status`,
-      {
-        method: "PUT",
-
-        headers:
-          getHeaders(token),
-
-        body: JSON.stringify({
-          status,
-        }),
-      }
-    );
-  },
-
-  // ─── NEW: Seller Verification ──────────────────────────────
-
-  getUnverifiedSellers: async (
-    token = getToken()
-  ) => {
-    return request(
-      `${API_URL}/api/admin/unverified-sellers`,
-      {
-        method: "GET",
-
-        headers:
-          getHeaders(token),
-      }
-    );
-  },
-
-  verifySeller: async (
-    sellerId,
-    token = getToken()
-  ) => {
-    if (!sellerId) {
-      throw new Error(
-        "Seller ID is required"
-      );
-    }
-
-    return request(
-      `${API_URL}/api/admin/verify-seller/${encodeURIComponent(
-        sellerId
-      )}`,
-      {
-        method: "POST",
-
-        headers:
-          getHeaders(token),
-      }
-    );
-  },
-
-  revokeVerification: async (
-    sellerId,
-    token = getToken()
-  ) => {
-    if (!sellerId) {
-      throw new Error(
-        "Seller ID is required"
-      );
-    }
-
-    return request(
-      `${API_URL}/api/admin/revoke-verification/${encodeURIComponent(
-        sellerId
-      )}`,
-      {
-        method: "PUT",
-
-        headers:
-          getHeaders(token),
-      }
-    );
-  },
-};
-
-// ================================================================
-// DELIVERY
-// ================================================================
-
-export const deliveries = {
-  create: async (
-    deliveryData,
-    token = getToken()
-  ) => {
-    return request(
-      `${API_URL}/api/deliveries`,
-      {
-        method: "POST",
-
-        headers:
-          getHeaders(token),
-
-        body: JSON.stringify(
-          deliveryData
-        ),
-      }
-    );
-  },
-
-  getCustomerDeliveries: async (
-    token = getToken()
-  ) => {
-    return request(
-      `${API_URL}/api/deliveries/customer`,
-      {
-        method: "GET",
-
-        headers:
-          getHeaders(token),
-      }
-    );
-  },
-
-  getAvailable: async (
-    token = getToken()
-  ) => {
-    return request(
-      `${API_URL}/api/deliveries/available`,
-      {
-        method: "GET",
-
-        headers:
-          getHeaders(token),
-      }
-    );
-  },
-
-  getMy: async (
-    token = getToken()
-  ) => {
-    return request(
-      `${API_URL}/api/deliveries/my`,
-      {
-        method: "GET",
-
-        headers:
-          getHeaders(token),
-      }
-    );
-  },
-
-  getRiderDeliveries: async (
-    token = getToken()
-  ) => {
-    return request(
-      `${API_URL}/api/deliveries/rider`,
-      {
-        method: "GET",
-
-        headers:
-          getHeaders(token),
-      }
-    );
-  },
-
-  updateAvailability: async (
-    isAvailable,
-    token = getToken()
-  ) => {
-    return request(
-      `${API_URL}/api/deliveries/rider/availability`,
-      {
-        method: "PATCH",
-
-        headers:
-          getHeaders(token),
-
-        body: JSON.stringify({
-          isAvailable:
-            Boolean(isAvailable),
-        }),
-      }
-    );
-  },
-
-  toggleAvailability: async (
-    isAvailable,
-    token = getToken()
-  ) => {
-    return request(
-      `${API_URL}/api/deliveries/rider/availability`,
-      {
-        method: "PATCH",
-
-        headers:
-          getHeaders(token),
-
-        body: JSON.stringify({
-          isAvailable:
-            Boolean(isAvailable),
-        }),
-      }
-    );
-  },
-
-  accept: async (
-    id,
-    token = getToken()
-  ) => {
-    if (!id) {
-      throw new Error(
-        "Delivery ID is required"
-      );
-    }
-
-    return request(
-      `${API_URL}/api/deliveries/${encodeURIComponent(
-        id
-      )}/accept`,
-      {
-        method: "PATCH",
-
-        headers:
-          getHeaders(token),
-      }
-    );
-  },
-
-  updateStatus: async (
-    id,
-    status,
-    token = getToken()
-  ) => {
-    if (!id) {
-      throw new Error(
-        "Delivery ID is required"
-      );
-    }
-
-    return request(
-      `${API_URL}/api/deliveries/${encodeURIComponent(
-        id
-      )}/status`,
-      {
-        method: "PATCH",
-
-        headers:
-          getHeaders(token),
-
-        body: JSON.stringify({
-          status,
-        }),
-      }
-    );
-  },
-
-  updateLocation: async (
-    id,
-    location,
-    token = getToken()
-  ) => {
-    if (!id) {
-      throw new Error(
-        "Delivery ID is required"
-      );
-    }
-
-    return request(
-      `${API_URL}/api/deliveries/${encodeURIComponent(
-        id
-      )}/location`,
-      {
-        method: "PATCH",
-
-        headers:
-          getHeaders(token),
-
-        body: JSON.stringify(
-          location
-        ),
-      }
-    );
-  },
-
-  getById: async (
-    id,
-    token = getToken()
-  ) => {
-    if (!id) {
-      throw new Error(
-        "Delivery ID is required"
-      );
-    }
-
-    return request(
-      `${API_URL}/api/deliveries/${encodeURIComponent(
-        id
-      )}`,
-      {
-        method: "GET",
-
-        headers:
-          getHeaders(token),
-      }
-    );
-  },
-
-  cancel: async (
-    id,
-    token = getToken()
-  ) => {
-    if (!id) {
-      throw new Error(
-        "Delivery ID is required"
-      );
-    }
-
-    return request(
-      `${API_URL}/api/deliveries/${encodeURIComponent(
-        id
-      )}/cancel`,
-      {
-        method: "PATCH",
-
         headers:
           getHeaders(token),
       }
@@ -1956,10 +1129,17 @@ export const deliveries = {
 // NAMED AUTH EXPORTS
 // ================================================================
 
-export const login = auth.login;
-export const register = auth.register;
-export const getMe = auth.getMe;
-export const logout = auth.logout;
+export const login =
+  auth.login;
+
+export const register =
+  auth.register;
+
+export const getMe =
+  auth.getMe;
+
+export const logout =
+  auth.logout;
 
 // ================================================================
 // PRODUCT EXPORTS
@@ -1990,24 +1170,6 @@ export const updateProductStatus =
   products.updateStatus;
 
 // ================================================================
-// SELLER PRODUCTS
-// ================================================================
-
-export const getSellerProducts = async (
-  sellerId
-) => {
-  if (!sellerId) {
-    throw new Error(
-      "Seller ID is required"
-    );
-  }
-
-  return products.getAll({
-    sellerId,
-  });
-};
-
-// ================================================================
 // USER EXPORTS
 // ================================================================
 
@@ -2034,7 +1196,7 @@ export const getUserStats =
 // ================================================================
 
 export const getNotifications =
-  notifications.getForUser;
+  notifications.getForAdmin;
 
 export const getAdminNotifications =
   notifications.getForAdmin;
@@ -2093,7 +1255,7 @@ export const deleteMessage =
   messages.delete;
 
 // ================================================================
-// FAVORITES
+// FAVORITE EXPORTS
 // ================================================================
 
 export const getFavorites =
@@ -2106,292 +1268,70 @@ export const removeFavorite =
   favorites.remove;
 
 // ================================================================
-// ADMIN EXPORTS
-// ================================================================
-
-export const getAdminDashboardStats =
-  admin.getDashboardStats;
-
-export const getAdminUsers =
-  admin.getUsers;
-
-export const getAdminUserById =
-  admin.getUserById;
-
-export const updateAdminUserRole =
-  admin.updateUserRole;
-
-export const deleteAdminUser =
-  admin.deleteUser;
-
-export const getAdminProducts =
-  admin.getProducts;
-
-export const deleteAdminProduct =
-  admin.deleteProduct;
-
-export const getAdminOrders =
-  admin.getOrders;
-
-export const updateAdminOrderStatus =
-  admin.updateOrderStatus;
-
-export const getRiders =
-  admin.getRiders;
-
-export const getRiderById =
-  admin.getRiderById;
-
-export const approveRider =
-  admin.approveRider;
-
-export const rejectRider =
-  admin.rejectRider;
-
-export const updateRiderApproval =
-  admin.updateRiderApproval;
-
-export const deleteRider =
-  admin.deleteRider;
-
-export const getAdminDeliveries =
-  admin.getDeliveries;
-
-export const getAdminDeliveryById =
-  admin.getDeliveryById;
-
-export const updateAdminDeliveryStatus =
-  admin.updateDeliveryStatus;
-
-// ─── NEW: Seller Verification Exports ─────────────────────────
-
-export const getUnverifiedSellers =
-  admin.getUnverifiedSellers;
-
-export const verifySeller =
-  admin.verifySeller;
-
-export const revokeVerification =
-  admin.revokeVerification;
-
-// ================================================================
-// DELIVERY EXPORTS
-// ================================================================
-
-export const createDelivery =
-  deliveries.create;
-
-export const getCustomerDeliveries =
-  deliveries.getCustomerDeliveries;
-
-export const getAvailableDeliveries =
-  deliveries.getAvailable;
-
-export const getMyDeliveries =
-  deliveries.getMy;
-
-export const getRiderDeliveries =
-  deliveries.getRiderDeliveries;
-
-export const updateRiderAvailability =
-  deliveries.updateAvailability;
-
-export const toggleRiderAvailability =
-  deliveries.toggleAvailability;
-
-export const acceptDelivery =
-  deliveries.accept;
-
-export const updateDeliveryStatus =
-  deliveries.updateStatus;
-
-export const updateDeliveryLocation =
-  deliveries.updateLocation;
-
-export const getDelivery =
-  deliveries.getById;
-
-export const cancelDelivery =
-  deliveries.cancel;
-
-// ================================================================
 // DEFAULT API OBJECT
 // ================================================================
 
 const api = {
   API_URL,
 
-  health,
-
   auth,
-
   products,
-
   users,
-
   notifications,
-
   orders,
-
   messages,
-
   favorites,
 
-  admin,
-
-  deliveries,
-
   login,
-
   register,
-
   getMe,
-
   logout,
 
   getProducts,
-
   getProduct,
-
   createProduct,
-
   createProductWithFiles,
-
   updateProduct,
-
   updateProductWithFiles,
-
   deleteProduct,
-
   updateProductStatus,
 
-  getSellerProducts,
-
   getUsers,
-
   getUser,
-
   updateUser,
-
   updateUserWithFiles,
-
   deleteUser,
-
   getUserStats,
 
   getNotifications,
-
-  getAdminNotifications,
-
   getUserNotifications,
-
+  getAdminNotifications,
   createNotification,
-
   markNotificationRead,
-
   deleteNotification,
 
   getOrders,
-
   getOrder,
-
   createOrder,
-
   updateOrder,
-
   deleteOrder,
 
   getMessages,
-
   getConversations,
-
   getConversation,
-
   sendMessage,
-
   markMessageRead,
-
   deleteMessage,
 
   getFavorites,
-
   addFavorite,
-
   removeFavorite,
 
-  getAdminDashboardStats,
-
-  getAdminUsers,
-
-  getAdminUserById,
-
-  updateAdminUserRole,
-
-  deleteAdminUser,
-
-  getAdminProducts,
-
-  deleteAdminProduct,
-
-  getAdminOrders,
-
-  updateAdminOrderStatus,
-
-  getRiders,
-
-  getRiderById,
-
-  approveRider,
-
-  rejectRider,
-
-  updateRiderApproval,
-
-  deleteRider,
-
-  getAdminDeliveries,
-
-  getAdminDeliveryById,
-
-  updateAdminDeliveryStatus,
-
-  // ─── NEW: Verification functions in default object ─────────
-
-  getUnverifiedSellers,
-
-  verifySeller,
-
-  revokeVerification,
-
-  createDelivery,
-
-  getCustomerDeliveries,
-
-  getAvailableDeliveries,
-
-  getMyDeliveries,
-
-  getRiderDeliveries,
-
-  updateRiderAvailability,
-
-  toggleRiderAvailability,
-
-  acceptDelivery,
-
-  updateDeliveryStatus,
-
-  updateDeliveryLocation,
-
-  getDelivery,
-
-  cancelDelivery,
-
   getImageUrl,
-
   getToken,
-
   clearAuthData,
+
+  startKeepAlive,
 };
 
 export default api;

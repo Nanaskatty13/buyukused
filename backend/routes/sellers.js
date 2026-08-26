@@ -1,4 +1,7 @@
+// ============================================================
 // backend/routes/sellers.js
+// BuyUKUsed - Seller Routes
+// ============================================================
 
 const express = require("express");
 
@@ -18,13 +21,21 @@ const {
 
 const {
   registerSeller,
+
   getSellerProfile,
+
   updateSellerProfile,
+
   getSellerDashboard,
+
   getMyProducts,
+
   getSellerOrders,
+
   getSellerEarnings,
+
   getPublicSellerProfile,
+
   getPublicSellerProducts,
 } = require("../controllers/sellerController");
 
@@ -52,13 +63,18 @@ const validate = (
   if (!errors.isEmpty()) {
     return res.status(400).json({
       success: false,
+
       message:
         "Validation failed",
+
       errors:
         errors.array().map(
           (err) => ({
-            field: err.path,
-            message: err.msg,
+            field:
+              err.path,
+
+            message:
+              err.msg,
           })
         ),
     });
@@ -73,17 +89,21 @@ const validate = (
 
 router.post(
   "/register",
+
   verifyToken,
+
   [
     body("termsAccepted")
       .isBoolean()
       .withMessage(
         "Terms must be accepted"
       )
+
       .custom(
         (value) =>
           value === true
       )
+
       .withMessage(
         "You must accept the terms and conditions"
       ),
@@ -136,7 +156,9 @@ router.post(
         "Tax ID must be between 5 and 50 characters"
       ),
   ],
+
   validate,
+
   registerSeller
 );
 
@@ -146,15 +168,21 @@ router.post(
 
 router.get(
   "/profile",
+
   verifyToken,
+
   isSeller,
+
   getSellerProfile
 );
 
 router.put(
   "/profile",
+
   verifyToken,
+
   isSeller,
+
   [
     body("shopName")
       .optional()
@@ -248,7 +276,9 @@ router.put(
         "Invalid photo"
       ),
   ],
+
   validate,
+
   updateSellerProfile
 );
 
@@ -258,8 +288,11 @@ router.put(
 
 router.get(
   "/dashboard",
+
   verifyToken,
+
   isSeller,
+
   [
     query("period")
       .optional()
@@ -276,7 +309,9 @@ router.get(
         "Invalid period"
       ),
   ],
+
   validate,
+
   getSellerDashboard
 );
 
@@ -286,8 +321,11 @@ router.get(
 
 router.get(
   "/earnings",
+
   verifyToken,
+
   isSeller,
+
   [
     query("period")
       .optional()
@@ -303,7 +341,9 @@ router.get(
         "Invalid period"
       ),
   ],
+
   validate,
+
   getSellerEarnings
 );
 
@@ -313,8 +353,11 @@ router.get(
 
 router.get(
   "/products",
+
   verifyToken,
+
   isSeller,
+
   [
     query("page")
       .optional()
@@ -362,7 +405,9 @@ router.get(
         "Invalid status"
       ),
   ],
+
   validate,
+
   getMyProducts
 );
 
@@ -372,8 +417,11 @@ router.get(
 
 router.get(
   "/orders",
+
   verifyToken,
+
   isSeller,
+
   [
     query("page")
       .optional()
@@ -411,18 +459,25 @@ router.get(
         "Invalid order status"
       ),
   ],
+
   validate,
+
   getSellerOrders
 );
 
 // ============================================================
 // 7. PUBLIC SELLER PRODUCTS
+//
 // IMPORTANT:
-// This MUST appear before /:sellerId
+// This route MUST appear before /:sellerId.
+//
+// GET:
+// /sellers/:sellerId/products
 // ============================================================
 
 router.get(
   "/:sellerId/products",
+
   [
     param("sellerId")
       .isMongoId()
@@ -462,16 +517,22 @@ router.get(
         "Invalid sort field"
       ),
   ],
+
   validate,
+
   getPublicSellerProducts
 );
 
 // ============================================================
 // 8. PUBLIC SELLER PROFILE
+//
+// GET:
+// /sellers/:sellerId
 // ============================================================
 
 router.get(
   "/:sellerId",
+
   [
     param("sellerId")
       .isMongoId()
@@ -479,7 +540,9 @@ router.get(
         "Invalid seller ID"
       ),
   ],
+
   validate,
+
   getPublicSellerProfile
 );
 
@@ -487,4 +550,5 @@ router.get(
 // EXPORT
 // ============================================================
 
-module.exports = router;
+module.exports =
+  router;
