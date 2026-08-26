@@ -125,13 +125,18 @@ const isAdmin = (req, res, next) => {
 };
 
 // ============================================================
-// SELLER ONLY
+// SELLER ONLY (UPDATED FOR NEUTRAL)
 // ============================================================
 
 const isSeller = (req, res, next) => {
+  // Allow any authenticated user (except riders) to act as seller.
+  // In a neutral marketplace, all users can buy and sell.
+  // The only role we explicitly restrict is 'rider' (if needed).
   if (
     req.user &&
     (
+      req.user.role === "user" ||
+      req.user.role === "buyer" ||
       req.user.role === "seller" ||
       req.user.role === "admin"
     )
@@ -141,7 +146,7 @@ const isSeller = (req, res, next) => {
 
   return res.status(403).json({
     success: false,
-    message: "Access denied. Seller only.",
+    message: "Access denied. Seller permissions required.",
   });
 };
 
@@ -164,15 +169,17 @@ const isRider = (req, res, next) => {
 };
 
 // ============================================================
-// CUSTOMER ONLY
+// CUSTOMER ONLY (UPDATED FOR NEUTRAL)
 // ============================================================
 
 const isCustomer = (req, res, next) => {
   if (
     req.user &&
     (
+      req.user.role === "user" ||
       req.user.role === "buyer" ||
-      req.user.role === "seller"
+      req.user.role === "seller" ||
+      req.user.role === "admin"
     )
   ) {
     return next();
@@ -187,14 +194,6 @@ const isCustomer = (req, res, next) => {
 // ============================================================
 // BACKWARD-COMPATIBILITY ALIASES
 // ============================================================
-//
-// Your existing routes were using:
-//
-// const { protect } = require("../middleware/auth");
-// const seller = require("../middleware/seller");
-//
-// These aliases prevent undefined middleware errors.
-//
 
 const protect = verifyToken;
 const seller = isSeller;

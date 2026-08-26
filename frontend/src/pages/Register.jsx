@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+// frontend/src/pages/Register.jsx
+
+import React, { useState, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { FcGoogle } from 'react-icons/fc';
@@ -15,8 +17,7 @@ const Register = () => {
     confirmPassword: '',
     phone: '',
     country: '',
-    birthday: '', // 👈 NEW
-    role: 'buyer',
+    birthday: '',
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -25,10 +26,14 @@ const Register = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [profileImage, setProfileImage] = useState(null);
-  const [profileImagePreview, setProfileImagePreview] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  // Slider state
+  const [sliderProgress, setSliderProgress] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const sliderRef = useRef(null);
+  const handleRef = useRef(null);
 
   const from = location.state?.from || '/';
 
@@ -73,40 +78,65 @@ const Register = () => {
     }
   };
 
-  const handleProfileImageChange = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith('image/')) {
-      alert('Please select a valid image file.');
-      e.target.value = '';
-      return;
-    }
-
-    if (file.size > 2 * 1024 * 1024) {
-      alert('Image size must be less than 2MB.');
-      e.target.value = '';
-      return;
-    }
-
-    setProfileImage(file);
-
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setProfileImagePreview(reader.result);
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const removeProfileImage = () => {
-    setProfileImage(null);
-    setProfileImagePreview(null);
-    const fileInput = document.getElementById('profileImageInput');
-    if (fileInput) fileInput.value = '';
-  };
-
-  const handleSubmit = async (e) => {
+  // ---- SLIDER LOGIC ----
+  const startDrag = (e) => {
+    if (loading) return;
+    setIsDragging(true);
     e.preventDefault();
+  };
+
+  const onDrag = (e) => {
+    if (!isDragging) return;
+    const container = sliderRef.current;
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    let x = clientX - rect.left;
+    const maxX = rect.width - 56;
+    x = Math.max(0, Math.min(x, maxX));
+    const progress = (x / maxX) * 100;
+    setSliderProgress(progress);
+    e.preventDefault();
+  };
+
+  const endDrag = () => {
+    if (!isDragging) return;
+    setIsDragging(false);
+    if (sliderProgress >= 95) {
+      handleSubmit(new Event('submit'));
+      setSliderProgress(0);
+    } else {
+      setSliderProgress(0);
+    }
+  };
+
+  React.useEffect(() => {
+    const handleMouseMove = (e) => onDrag(e);
+    const handleTouchMove = (e) => onDrag(e);
+    const handleEnd = () => endDrag();
+
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('touchmove', handleTouchMove);
+      document.addEventListener('mouseup', handleEnd);
+      document.addEventListener('touchend', handleEnd);
+    } else {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('touchmove', handleTouchMove);
+      document.removeEventListener('mouseup', handleEnd);
+      document.removeEventListener('touchend', handleEnd);
+    }
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('touchmove', handleTouchMove);
+      document.removeEventListener('mouseup', handleEnd);
+      document.removeEventListener('touchend', handleEnd);
+    };
+  }, [isDragging, sliderProgress]);
+
+  // ---- FORM SUBMIT ----
+  const handleSubmit = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
     setError('');
 
     if (formData.name.trim().length < 2) {
@@ -119,7 +149,6 @@ const Register = () => {
       return;
     }
 
-    // 👇 Optional: check if user is at least 18
     if (formData.birthday) {
       const birthDate = new Date(formData.birthday);
       const today = new Date();
@@ -139,10 +168,10 @@ const Register = () => {
     try {
       const { confirmPassword, ...registrationData } = formData;
 
-      const payload = { ...registrationData };
-      if (profileImagePreview) {
-        payload.profilePicture = profileImagePreview;
-      }
+      const payload = {
+        ...registrationData,
+        role: 'user', // NEUTRAL – no buyer/seller selection
+      };
 
       const result = await register(payload);
       if (result.success) {
@@ -154,98 +183,350 @@ const Register = () => {
       setError(err.message || 'Something went wrong');
     } finally {
       setLoading(false);
+      setSliderProgress(0);
     }
   };
 
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '20px',
-        backgroundImage:
-          "linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.55)), url('https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=1600&q=80')",
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat',
-      }}
-    >
-      <div className="container" style={{ maxWidth: '440px', width: '100%', padding: '0', margin: '0 auto' }}>
-        <div className="card" style={{ padding: '32px', backgroundColor: '#ffffff', boxShadow: '0 8px 32px rgba(0,0,0,0.2)' }}>
-          <h2 style={{ fontSize: '24px', fontWeight: 800, textAlign: 'center', marginBottom: '8px' }}>
-            Join BuyUk Used 🚀
-          </h2>
-          <p style={{ textAlign: 'center', color: 'var(--gray-500)', marginBottom: '24px' }}>
-            {from !== '/' ? 'Create an account to post your ad' : 'Start posting and replying today'}
+    <>
+      <style>{`
+        .register-wrapper {
+          min-height: 100vh;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 12px;
+          background-image: linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.55)), url('https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=1600&q=80');
+          background-size: cover;
+          background-position: center;
+          background-repeat: no-repeat;
+        }
+
+        .register-card {
+          max-width: 400px;
+          width: 100%;
+          padding: 16px 20px;
+          background: #ffffff;
+          border-radius: 14px;
+          box-shadow: 0 8px 28px rgba(0,0,0,0.18);
+          overflow: hidden;
+        }
+
+        .register-card h2 {
+          font-size: 20px;
+          margin-bottom: 2px;
+          text-align: center;
+          font-weight: 800;
+        }
+
+        .register-card .subtitle {
+          font-size: 13px;
+          margin-bottom: 14px;
+          text-align: center;
+          color: var(--gray-500);
+        }
+
+        .form-group {
+          margin-bottom: 8px;
+        }
+
+        .form-group label {
+          display: block;
+          font-weight: 600;
+          font-size: 12px;
+          margin-bottom: 2px;
+        }
+
+        .form-group input,
+        .form-group select {
+          width: 100%;
+          padding: 7px 12px;
+          border: 1.5px solid var(--gray-200);
+          border-radius: var(--radius-md);
+          font-size: 13px;
+          font-family: inherit;
+          transition: var(--transition);
+          background: white;
+        }
+
+        .form-group small {
+          font-size: 10px;
+          color: var(--gray-400);
+          display: block;
+          margin-top: 1px;
+        }
+
+        .social-btn {
+          width: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          padding: 9px 12px;
+          border: 1px solid #ddd;
+          border-radius: 50px;
+          background: #fff;
+          cursor: pointer;
+          font-weight: 600;
+          font-size: 13px;
+          margin-bottom: 8px;
+        }
+
+        .social-btn.fb {
+          border: none;
+          background: #1877F2;
+          color: #fff;
+        }
+
+        .divider {
+          display: flex;
+          align-items: center;
+          margin: 8px 0 12px;
+        }
+        .divider hr {
+          flex: 1;
+          border: none;
+          border-top: 1px solid #e5e7eb;
+        }
+        .divider span {
+          margin: 0 10px;
+          color: #777;
+          font-size: 12px;
+        }
+
+        /* ---- SLIDER STYLES (full‑width) ---- */
+        .slider-container {
+          position: relative;
+          width: calc(100% + 40px);
+          margin-left: -20px;
+          margin-right: -20px;
+          height: 56px;
+          background: #e5e7eb;
+          border-radius: 0;
+          overflow: hidden;
+          margin-top: 4px;
+          touch-action: none;
+          user-select: none;
+          box-shadow: inset 0 2px 4px rgba(0,0,0,0.06);
+        }
+
+        .slider-track {
+          position: absolute;
+          left: 0;
+          top: 0;
+          height: 100%;
+          background: var(--secondary);
+          border-radius: 0;
+          transition: width 0.05s ease;
+          width: ${sliderProgress}%;
+          pointer-events: none;
+        }
+
+        .slider-text {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 100%;
+          height: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-weight: 700;
+          font-size: 15px;
+          color: #6b7280;
+          pointer-events: none;
+          transition: color 0.2s;
+        }
+
+        .slider-text.active {
+          color: white;
+        }
+
+        .slider-handle {
+          position: absolute;
+          top: 4px;
+          left: 4px;
+          width: 48px;
+          height: 48px;
+          background: white;
+          border-radius: 50%;
+          box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+          cursor: grab;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: left 0.05s ease;
+          left: calc(${sliderProgress}% - 24px);
+          transform: translateX(0);
+          touch-action: none;
+          z-index: 2;
+        }
+
+        .slider-handle:active {
+          cursor: grabbing;
+          transform: scale(1.04);
+        }
+
+        .slider-handle svg {
+          width: 28px;
+          height: 28px;
+          color: var(--secondary);
+          transition: transform 0.2s;
+          stroke-width: 2.5;
+        }
+
+        .slider-handle.done svg {
+          color: #22c55e;
+        }
+
+        .slider-handle.disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
+        .slider-container.loading .slider-track {
+          background: #9ca3af;
+        }
+
+        /* ---- END SLIDER ---- */
+
+        .auth-footer {
+          text-align: center;
+          margin-top: 10px;
+          font-size: 12px;
+          color: var(--gray-500);
+        }
+        .auth-footer a {
+          color: var(--primary);
+          font-weight: 700;
+          margin-left: 4px;
+          text-decoration: none;
+        }
+
+        .back-link {
+          text-align: center;
+          margin-top: 6px;
+          font-size: 12px;
+          color: var(--gray-400);
+        }
+
+        /* Mobile */
+        @media (max-width: 480px) {
+          .register-wrapper {
+            padding: 8px;
+            align-items: flex-start;
+            padding-top: 16px;
+          }
+          .register-card {
+            padding: 12px 12px;
+            border-radius: 10px;
+          }
+          .register-card h2 {
+            font-size: 18px;
+          }
+          .register-card .subtitle {
+            font-size: 12px;
+            margin-bottom: 10px;
+          }
+          .form-group {
+            margin-bottom: 6px;
+          }
+          .form-group label {
+            font-size: 11px;
+          }
+          .form-group input,
+          .form-group select {
+            padding: 6px 10px;
+            font-size: 14px !important;
+          }
+          .form-group small {
+            font-size: 10px;
+          }
+          .social-btn {
+            padding: 8px 10px;
+            font-size: 12px;
+            margin-bottom: 6px;
+          }
+          .divider {
+            margin: 6px 0 10px;
+          }
+          .divider span {
+            font-size: 11px;
+          }
+          .slider-container {
+            height: 48px;
+            width: calc(100% + 24px);
+            margin-left: -12px;
+            margin-right: -12px;
+          }
+          .slider-handle {
+            width: 40px;
+            height: 40px;
+            top: 4px;
+            left: 4px;
+          }
+          .slider-handle svg {
+            width: 24px;
+            height: 24px;
+          }
+          .slider-text {
+            font-size: 13px;
+          }
+          .auth-footer {
+            font-size: 11px;
+            margin-top: 8px;
+          }
+          .back-link {
+            font-size: 11px;
+            margin-top: 4px;
+          }
+        }
+      `}</style>
+
+      <div className="register-wrapper">
+        <div className="register-card">
+          <h2>Join BuyUk Used 🚀</h2>
+          <p className="subtitle">
+            {from !== '/' ? 'Create an account to post your ad' : 'Start buying and selling today'}
           </p>
 
           {error && (
-            <div style={{ background: '#fee2e2', color: '#dc2626', padding: '10px 14px', borderRadius: 'var(--radius-sm)', marginBottom: '16px' }}>
+            <div style={{ background: '#fee2e2', color: '#dc2626', padding: '6px 10px', borderRadius: 'var(--radius-sm)', marginBottom: '10px', fontSize: '12px' }}>
               {error}
             </div>
           )}
 
           {/* SOCIAL LOGIN BUTTONS */}
-          <div style={{ marginBottom: '24px' }}>
+          <div>
             <button
               type="button"
+              className="social-btn"
               onClick={() => window.location.href = `${API_URL}/auth/google`}
-              style={{
-                width: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '12px',
-                padding: '14px',
-                border: '1px solid #ddd',
-                borderRadius: '50px',
-                background: '#fff',
-                cursor: 'pointer',
-                fontWeight: 600,
-                fontSize: '15px',
-                marginBottom: '12px',
-              }}
             >
-              <FcGoogle size={22} />
+              <FcGoogle size={18} />
               Continue with Google
             </button>
 
             <button
               type="button"
+              className="social-btn fb"
               onClick={() => window.location.href = `${API_URL}/auth/facebook`}
-              style={{
-                width: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '12px',
-                padding: '14px',
-                border: 'none',
-                borderRadius: '50px',
-                background: '#1877F2',
-                color: '#fff',
-                cursor: 'pointer',
-                fontWeight: 600,
-                fontSize: '15px',
-              }}
             >
-              <FaFacebookF size={20} />
+              <FaFacebookF size={16} />
               Continue with Facebook
             </button>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', margin: '20px 0' }}>
-            <hr style={{ flex: 1, border: 'none', borderTop: '1px solid #e5e7eb' }} />
-            <span style={{ margin: '0 12px', color: '#777', fontSize: '14px' }}>OR</span>
-            <hr style={{ flex: 1, border: 'none', borderTop: '1px solid #e5e7eb' }} />
+          <div className="divider">
+            <hr />
+            <span>OR</span>
+            <hr />
           </div>
 
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} id="register-form">
             {/* FULL NAME */}
-            <div className="form-group" style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', fontWeight: 600, fontSize: '13px', marginBottom: '4px' }}>Full Name</label>
+            <div className="form-group">
+              <label>Full Name</label>
               <input
                 type="text"
                 name="name"
@@ -254,25 +535,13 @@ const Register = () => {
                 placeholder="John Doe"
                 required
                 minLength="2"
-                style={{
-                  width: '100%',
-                  padding: '12px 16px',
-                  border: '1.5px solid var(--gray-200)',
-                  borderRadius: 'var(--radius-md)',
-                  fontSize: '14px',
-                  fontFamily: 'inherit',
-                  transition: 'var(--transition)',
-                  background: 'white',
-                }}
               />
-              <small style={{ color: 'var(--gray-400)', display: 'block', marginTop: '4px' }}>
-                Minimum 2 characters
-              </small>
+              <small>Minimum 2 characters</small>
             </div>
 
             {/* EMAIL */}
-            <div className="form-group" style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', fontWeight: 600, fontSize: '13px', marginBottom: '4px' }}>Email</label>
+            <div className="form-group">
+              <label>Email</label>
               <input
                 type="email"
                 name="email"
@@ -280,22 +549,12 @@ const Register = () => {
                 onChange={handleChange}
                 placeholder="your@email.com"
                 required
-                style={{
-                  width: '100%',
-                  padding: '12px 16px',
-                  border: '1.5px solid var(--gray-200)',
-                  borderRadius: 'var(--radius-md)',
-                  fontSize: '14px',
-                  fontFamily: 'inherit',
-                  transition: 'var(--transition)',
-                  background: 'white',
-                }}
               />
             </div>
 
             {/* PASSWORD WITH TOGGLE */}
-            <div className="form-group" style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', fontWeight: 600, fontSize: '13px', marginBottom: '4px' }}>Password</label>
+            <div className="form-group">
+              <label>Password</label>
               <div style={{ position: 'relative' }}>
                 <input
                   type={showPassword ? 'text' : 'password'}
@@ -305,32 +564,22 @@ const Register = () => {
                   placeholder="Min 6 characters"
                   required
                   minLength="6"
-                  style={{
-                    width: '100%',
-                    padding: '12px 16px',
-                    paddingRight: '44px',
-                    border: '1.5px solid var(--gray-200)',
-                    borderRadius: 'var(--radius-md)',
-                    fontSize: '14px',
-                    fontFamily: 'inherit',
-                    transition: 'var(--transition)',
-                    background: 'white',
-                  }}
+                  style={{ paddingRight: '36px' }}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   style={{
                     position: 'absolute',
-                    right: '12px',
+                    right: '8px',
                     top: '50%',
                     transform: 'translateY(-50%)',
                     background: 'none',
                     border: 'none',
                     cursor: 'pointer',
                     color: '#64748b',
-                    fontSize: '20px',
-                    padding: '4px',
+                    fontSize: '16px',
+                    padding: '2px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -341,10 +590,10 @@ const Register = () => {
                 </button>
               </div>
               {formData.password && (
-                <div style={{ marginTop: '6px' }}>
+                <div style={{ marginTop: '3px' }}>
                   <div style={{
                     width: '100%',
-                    height: '6px',
+                    height: '3px',
                     background: '#e5e7eb',
                     borderRadius: '4px',
                     overflow: 'hidden',
@@ -357,7 +606,7 @@ const Register = () => {
                       borderRadius: '4px',
                     }} />
                   </div>
-                  <span style={{ fontSize: '12px', color: passwordStrength.color, fontWeight: 600 }}>
+                  <span style={{ fontSize: '10px', color: passwordStrength.color, fontWeight: 600 }}>
                     {passwordStrength.label}
                   </span>
                 </div>
@@ -365,8 +614,8 @@ const Register = () => {
             </div>
 
             {/* CONFIRM PASSWORD WITH TOGGLE */}
-            <div className="form-group" style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', fontWeight: 600, fontSize: '13px', marginBottom: '4px' }}>Confirm Password</label>
+            <div className="form-group">
+              <label>Confirm Password</label>
               <div style={{ position: 'relative' }}>
                 <input
                   type={showConfirmPassword ? 'text' : 'password'}
@@ -376,32 +625,22 @@ const Register = () => {
                   placeholder="Re‑enter your password"
                   required
                   minLength="6"
-                  style={{
-                    width: '100%',
-                    padding: '12px 16px',
-                    paddingRight: '44px',
-                    border: '1.5px solid var(--gray-200)',
-                    borderRadius: 'var(--radius-md)',
-                    fontSize: '14px',
-                    fontFamily: 'inherit',
-                    transition: 'var(--transition)',
-                    background: 'white',
-                  }}
+                  style={{ paddingRight: '36px' }}
                 />
                 <button
                   type="button"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   style={{
                     position: 'absolute',
-                    right: '12px',
+                    right: '8px',
                     top: '50%',
                     transform: 'translateY(-50%)',
                     background: 'none',
                     border: 'none',
                     cursor: 'pointer',
                     color: '#64748b',
-                    fontSize: '20px',
-                    padding: '4px',
+                    fontSize: '16px',
+                    padding: '2px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -412,56 +651,32 @@ const Register = () => {
                 </button>
               </div>
               {formData.confirmPassword && formData.password && formData.password !== formData.confirmPassword && (
-                <small style={{ color: '#dc2626', display: 'block', marginTop: '4px' }}>
+                <small style={{ color: '#dc2626', display: 'block', marginTop: '2px' }}>
                   ⚠️ Passwords do not match
                 </small>
               )}
             </div>
 
             {/* PHONE */}
-            <div className="form-group" style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', fontWeight: 600, fontSize: '13px', marginBottom: '4px' }}>Phone</label>
+            <div className="form-group">
+              <label>Phone</label>
               <input
                 type="tel"
                 name="phone"
                 value={formData.phone}
                 onChange={handleChange}
                 placeholder="Phone number (optional)"
-                style={{
-                  width: '100%',
-                  padding: '12px 16px',
-                  border: '1.5px solid var(--gray-200)',
-                  borderRadius: 'var(--radius-md)',
-                  fontSize: '14px',
-                  fontFamily: 'inherit',
-                  transition: 'var(--transition)',
-                  background: 'white',
-                }}
               />
             </div>
 
             {/* COUNTRY DROPDOWN */}
-            <div className="form-group" style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', fontWeight: 600, fontSize: '13px', marginBottom: '4px' }}>
-                Country <span style={{ color: '#dc2626' }}>*</span>
-              </label>
+            <div className="form-group">
+              <label>Country <span style={{ color: '#dc2626' }}>*</span></label>
               <select
                 name="country"
                 value={formData.country}
                 onChange={handleChange}
                 required
-                style={{
-                  width: '100%',
-                  padding: '12px 16px',
-                  border: '1.5px solid var(--gray-200)',
-                  borderRadius: 'var(--radius-md)',
-                  fontSize: '14px',
-                  fontFamily: 'inherit',
-                  transition: 'var(--transition)',
-                  background: 'white',
-                  outline: 'none',
-                  cursor: 'pointer',
-                }}
               >
                 <option value="" disabled>Select your country</option>
                 <option value="Ghana">Ghana</option>
@@ -485,161 +700,68 @@ const Register = () => {
                 <option value="United Arab Emirates">United Arab Emirates</option>
                 <option value="Other">Other</option>
               </select>
-              <small style={{ color: 'var(--gray-400)', display: 'block', marginTop: '4px' }}>
-                Select the country you are based in.
-              </small>
+              <small>Select your country</small>
             </div>
 
-            {/* 👇 NEW BIRTHDAY FIELD */}
-            <div className="form-group" style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', fontWeight: 600, fontSize: '13px', marginBottom: '4px' }}>
-                Date of Birth <span style={{ fontWeight: 400, color: 'var(--gray-400)' }}>(optional)</span>
-              </label>
+            {/* BIRTHDAY */}
+            <div className="form-group">
+              <label>Date of Birth <span style={{ fontWeight: 400, color: 'var(--gray-400)' }}>(optional)</span></label>
               <input
                 type="date"
                 name="birthday"
                 value={formData.birthday}
                 onChange={handleChange}
-                max={new Date().toISOString().split('T')[0]} // prevents future dates
-                style={{
-                  width: '100%',
-                  padding: '12px 16px',
-                  border: '1.5px solid var(--gray-200)',
-                  borderRadius: 'var(--radius-md)',
-                  fontSize: '14px',
-                  fontFamily: 'inherit',
-                  transition: 'var(--transition)',
-                  background: 'white',
-                }}
+                max={new Date().toISOString().split('T')[0]}
               />
-              <small style={{ color: 'var(--gray-400)', display: 'block', marginTop: '4px' }}>
-                You must be at least 18 years old to register.
-              </small>
+              <small>You must be at least 18 years old</small>
             </div>
 
-            {/* PROFILE PICTURE UPLOAD */}
-            <div className="form-group" style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', fontWeight: 600, fontSize: '13px', marginBottom: '4px' }}>
-                Profile Picture <span style={{ fontWeight: 400, color: 'var(--gray-400)' }}>(optional)</span>
-              </label>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-                {profileImagePreview && (
-                  <div style={{ position: 'relative', width: '64px', height: '64px', borderRadius: '50%', overflow: 'hidden', border: '2px solid var(--gray-200)' }}>
-                    <img src={profileImagePreview} alt="Profile preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    <button
-                      type="button"
-                      onClick={removeProfileImage}
-                      style={{
-                        position: 'absolute',
-                        top: '-4px',
-                        right: '-4px',
-                        background: '#dc2626',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '50%',
-                        width: '20px',
-                        height: '20px',
-                        fontSize: '12px',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                    >
-                      ✕
-                    </button>
-                  </div>
-                )}
-                <input
-                  id="profileImageInput"
-                  type="file"
-                  accept="image/jpeg,image/png,image/gif,image/webp"
-                  onChange={handleProfileImageChange}
-                  style={{
-                    flex: 1,
-                    padding: '8px 12px',
-                    border: '1.5px solid var(--gray-200)',
-                    borderRadius: 'var(--radius-md)',
-                    fontSize: '14px',
-                    fontFamily: 'inherit',
-                    background: 'white',
-                  }}
-                />
-              </div>
-              <small style={{ color: 'var(--gray-400)', display: 'block', marginTop: '4px' }}>
-                Max size 2MB. Supported: JPG, PNG, GIF, WebP
-              </small>
-            </div>
-
-            {/* ROLE SELECTION */}
-            <div className="form-group" style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', fontWeight: 600, fontSize: '13px', marginBottom: '6px' }}>
-                I want to register as:
-              </label>
-              <div style={{ display: 'flex', gap: '24px', alignItems: 'center' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
-                  <input
-                    type="radio"
-                    name="role"
-                    value="buyer"
-                    checked={formData.role === 'buyer'}
-                    onChange={handleChange}
-                  />
-                  Buyer
-                </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
-                  <input
-                    type="radio"
-                    name="role"
-                    value="seller"
-                    checked={formData.role === 'seller'}
-                    onChange={handleChange}
-                  />
-                  Seller
-                </label>
-              </div>
-              <small style={{ color: 'var(--gray-400)', display: 'block', marginTop: '4px' }}>
-                Sellers can post ads; Buyers can browse and contact sellers.
-              </small>
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="btn-primary"
-              style={{
-                width: '100%',
-                padding: '14px',
-                border: 'none',
-                borderRadius: 'var(--radius-full)',
-                background: 'var(--secondary)',
-                color: 'white',
-                fontWeight: 700,
-                fontSize: '16px',
-                transition: 'var(--transition)',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                opacity: loading ? 0.7 : 1,
-              }}
+            {/* SLIDER BUTTON */}
+            <div
+              className={`slider-container ${loading ? 'loading' : ''}`}
+              ref={sliderRef}
             >
-              {loading ? 'Creating account...' : 'Create Account →'}
-            </button>
+              <div
+                className="slider-track"
+                style={{ width: `${sliderProgress}%` }}
+              />
+              <div
+                className={`slider-text ${sliderProgress >= 10 ? 'active' : ''}`}
+              >
+                {loading ? 'Creating account...' : 'Slide to create account →'}
+              </div>
+              <div
+                className={`slider-handle ${loading ? 'disabled' : ''} ${sliderProgress >= 95 ? 'done' : ''}`}
+                ref={handleRef}
+                onMouseDown={startDrag}
+                onTouchStart={startDrag}
+                style={{
+                  left: `calc(${sliderProgress}% - 24px)`,
+                }}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M5 12h14" />
+                  <path d="M12 5l7 7-7 7" />
+                </svg>
+              </div>
+            </div>
+            {/* End slider */}
+
           </form>
 
-          <div className="auth-footer" style={{ textAlign: 'center', marginTop: '16px', fontSize: '14px', color: 'var(--gray-500)' }}>
+          <div className="auth-footer">
             Already have account?
-            <Link to="/login" state={{ from }} style={{ color: 'var(--primary)', fontWeight: 700, marginLeft: '4px' }}>
-              Sign in
-            </Link>
+            <Link to="/login" state={{ from }}>Sign in</Link>
           </div>
 
           {from !== '/' && (
-            <div style={{ textAlign: 'center', marginTop: '12px', fontSize: '13px', color: 'var(--gray-400)' }}>
-              <Link to="/" style={{ color: 'var(--gray-500)' }}>← Back to home</Link>
+            <div className="back-link">
+              <Link to="/" style={{ color: 'var(--gray-500)', textDecoration: 'none' }}>← Back to home</Link>
             </div>
           )}
         </div>
       </div>
-    </div>
+    </>
   );
 };
 

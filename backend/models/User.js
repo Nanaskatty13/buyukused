@@ -1,6 +1,6 @@
 // ============================================================
 // backend/models/User.js
-// BuyUKUsed - User Model
+// BuyUKUsed - User Model (Neutral Role)
 // ============================================================
 
 const mongoose = require("mongoose");
@@ -29,25 +29,20 @@ const userSchema = new mongoose.Schema(
       unique: true,
       lowercase: true,
       trim: true,
-
       validate: {
         validator: function (value) {
           return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
         },
-
         message: "Please enter a valid email address",
       },
     },
 
     password: {
       type: String,
-
       required: function () {
         return this.provider === "local";
       },
-
       minlength: [6, "Password must be at least 6 characters"],
-
       select: true,
     },
 
@@ -131,14 +126,12 @@ const userSchema = new mongoose.Schema(
 
     businessType: {
       type: String,
-
       enum: [
         "individual",
         "business",
         "organization",
         "",
       ],
-
       default: "individual",
     },
 
@@ -150,7 +143,6 @@ const userSchema = new mongoose.Schema(
 
     sellerStatus: {
       type: String,
-
       enum: [
         "pending",
         "active",
@@ -158,7 +150,6 @@ const userSchema = new mongoose.Schema(
         "inactive",
         "",
       ],
-
       default: "",
     },
 
@@ -178,43 +169,35 @@ const userSchema = new mongoose.Schema(
     // SELLER VERIFICATION
     // ==========================================================
 
-    // True only after an admin verifies the seller.
     isVerified: {
       type: Boolean,
       default: false,
       index: true,
     },
 
-    // Date the seller was verified.
     verifiedAt: {
       type: Date,
       default: null,
     },
 
-    // Admin who verified the seller.
     verifiedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       default: null,
     },
 
-    // Verification application status.
     verificationStatus: {
       type: String,
-
       enum: [
         "not_submitted",
         "pending",
         "approved",
         "rejected",
       ],
-
       default: "not_submitted",
-
       index: true,
     },
 
-    // Reason if rejected.
     verificationRejectedReason: {
       type: String,
       default: "",
@@ -228,13 +211,11 @@ const userSchema = new mongoose.Schema(
 
     provider: {
       type: String,
-
       enum: [
         "local",
         "google",
         "facebook",
       ],
-
       default: "local",
     },
 
@@ -245,20 +226,20 @@ const userSchema = new mongoose.Schema(
     },
 
     // ==========================================================
-    // USER ROLE
+    // USER ROLE (NEUTRAL)
     // ==========================================================
 
     role: {
       type: String,
-
+      // Added "user" as the neutral role; kept others for backward compatibility
       enum: [
-        "buyer",
-        "seller",
+        "user",          // ← neutral: can buy and sell
+        "buyer",         // legacy (will be phased out)
+        "seller",        // legacy (will be phased out)
         "rider",
         "admin",
       ],
-
-      default: "buyer",
+      default: "user",   // ← neutral default
     },
 
     // ==========================================================
@@ -270,43 +251,36 @@ const userSchema = new mongoose.Schema(
         type: Boolean,
         default: false,
       },
-
       isApproved: {
         type: Boolean,
         default: false,
       },
-
       bikeType: {
         type: String,
         default: "",
         trim: true,
       },
-
       bikeNumber: {
         type: String,
         default: "",
         trim: true,
       },
-
       serviceArea: {
         type: String,
         default: "",
         trim: true,
       },
-
       identificationNumber: {
         type: String,
         default: "",
         trim: true,
       },
-
       rating: {
         type: Number,
         default: 5,
         min: 0,
         max: 5,
       },
-
       completedDeliveries: {
         type: Number,
         default: 0,
@@ -358,16 +332,13 @@ userSchema.pre("save", async function (next) {
     if (!this.isModified("password")) {
       return next();
     }
-
     if (!this.password) {
       return next();
     }
-
     this.password = await bcrypt.hash(
       this.password,
       10
     );
-
     next();
   } catch (error) {
     next(error);
@@ -384,7 +355,6 @@ userSchema.methods.comparePassword = async function (
   if (!this.password) {
     return false;
   }
-
   return bcrypt.compare(
     password,
     this.password
@@ -392,7 +362,7 @@ userSchema.methods.comparePassword = async function (
 };
 
 // ============================================================
-// ROLE HELPERS
+// ROLE HELPERS (UPDATED FOR NEUTRAL ROLE)
 // ============================================================
 
 userSchema.methods.isAdmin = function () {
@@ -400,14 +370,21 @@ userSchema.methods.isAdmin = function () {
 };
 
 userSchema.methods.isSeller = function () {
+  // Neutral role 'user' can also sell, as well as 'seller' and 'admin'
   return (
     this.role === "seller" ||
-    this.role === "admin"
+    this.role === "admin" ||
+    this.role === "user"
   );
 };
 
 userSchema.methods.isBuyer = function () {
-  return this.role === "buyer";
+  // Neutral role 'user' can also buy, as well as 'buyer' and 'admin'
+  return (
+    this.role === "buyer" ||
+    this.role === "admin" ||
+    this.role === "user"
+  );
 };
 
 userSchema.methods.isRider = function () {
@@ -415,12 +392,12 @@ userSchema.methods.isRider = function () {
 };
 
 // ============================================================
-// VERIFIED SELLER HELPER
+// VERIFIED SELLER HELPER (UPDATED)
 // ============================================================
 
 userSchema.methods.isVerifiedSeller = function () {
   return (
-    this.role === "seller" &&
+    (this.role === "seller" || this.role === "user") &&
     this.isVerified === true &&
     this.verificationStatus === "approved"
   );
@@ -448,7 +425,6 @@ userSchema.set("toJSON", {
     delete ret.password;
     delete ret.resetPasswordToken;
     delete ret.resetPasswordExpires;
-
     return ret;
   },
 });

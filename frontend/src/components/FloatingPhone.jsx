@@ -1,20 +1,117 @@
-import React, { useEffect, useRef } from 'react';
+// frontend/src/components/FloatingPhone.jsx
+
+import React, { useEffect, useRef, useState } from 'react';
 
 const FloatingPhone = () => {
   const phoneRef = useRef(null);
+  // Store absolute top and left positions
+  const [position, setPosition] = useState({ left: 20, top: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const dragRef = useRef({
+    offsetX: 0,
+    offsetY: 0,
+    isDragging: false,
+  });
 
-  // Subtle parallax on mouse move
+  // Set initial position: bottom:80px, left:20px
   useEffect(() => {
-    const handleMouseMove = (e) => {
-      if (!phoneRef.current) return;
-      const x = (e.clientX / window.innerWidth - 0.5) * 12;
-      const y = (e.clientY / window.innerHeight - 0.5) * 12;
-      phoneRef.current.style.transform = `translate(${x}px, ${y}px) scale(1)`;
-    };
-
-    window.addEventListener('mousemove', handleMouseMove);
-    return () => window.removeEventListener('mousemove', handleMouseMove);
+    const initialTop = window.innerHeight - 160 - 80; // height=160, bottom=80
+    setPosition({ left: 20, top: initialTop });
   }, []);
+
+  // Clamp position to viewport on resize
+  useEffect(() => {
+    const clampPosition = () => {
+      const el = phoneRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const maxX = window.innerWidth - rect.width;
+      const maxY = window.innerHeight - rect.height;
+      setPosition((prev) => ({
+        left: Math.max(0, Math.min(prev.left, maxX)),
+        top: Math.max(0, Math.min(prev.top, maxY)),
+      }));
+    };
+    window.addEventListener('resize', clampPosition);
+    return () => window.removeEventListener('resize', clampPosition);
+  }, []);
+
+  // Start drag
+  const handleStart = (e) => {
+    const touch = e.touches ? e.touches[0] : e;
+    const el = phoneRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    // Store offset from the touch point to the element's top-left corner
+    dragRef.current = {
+      offsetX: touch.clientX - rect.left,
+      offsetY: touch.clientY - rect.top,
+      isDragging: true,
+    };
+    setIsDragging(true);
+    e.preventDefault();
+  };
+
+  // Move drag
+  const handleMove = (e) => {
+    if (!dragRef.current.isDragging) return;
+    const touch = e.touches ? e.touches[0] : e;
+    const { offsetX, offsetY } = dragRef.current;
+
+    let newLeft = touch.clientX - offsetX;
+    let newTop = touch.clientY - offsetY;
+
+    // Clamp to viewport
+    const el = phoneRef.current;
+    if (el) {
+      const rect = el.getBoundingClientRect();
+      const maxX = window.innerWidth - rect.width;
+      const maxY = window.innerHeight - rect.height;
+      newLeft = Math.max(0, Math.min(newLeft, maxX));
+      newTop = Math.max(0, Math.min(newTop, maxY));
+    }
+
+    setPosition({ left: newLeft, top: newTop });
+    e.preventDefault();
+  };
+
+  // End drag
+  const handleEnd = () => {
+    dragRef.current.isDragging = false;
+    setIsDragging(false);
+  };
+
+  // Global listeners
+  useEffect(() => {
+    if (isDragging) {
+      const onMove = (e) => handleMove(e);
+      const onEnd = () => handleEnd();
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onEnd);
+      document.addEventListener('touchmove', onMove, { passive: false });
+      document.addEventListener('touchend', onEnd);
+      return () => {
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onEnd);
+        document.removeEventListener('touchmove', onMove);
+        document.removeEventListener('touchend', onEnd);
+      };
+    }
+  }, [isDragging]);
+
+  // Click only if not dragging
+  const handleClick = (e) => {
+    if (dragRef.current.isDragging) return;
+    window.open('https://wa.me/233542928081', '_blank');
+  };
+
+  // If position.top is 0 (not initialised yet), don't render until set
+  if (position.top === 0 && position.left === 20) {
+    // still allow render but may flash; better to wait for initialisation.
+    // We'll render with a default top that will be overwritten.
+  }
+
+  const { left, top } = position;
 
   return (
     <div
@@ -22,18 +119,23 @@ const FloatingPhone = () => {
       className="floating-phone"
       style={{
         position: 'fixed',
-        bottom: '80px',
-        left: '20px',
+        top: `${top}px`,
+        left: `${left}px`,
         zIndex: 999,
         width: '80px',
         height: '160px',
         transformOrigin: 'bottom center',
-        animation: 'phoneDance 1s ease-in-out infinite',
+        animation: isDragging ? 'none' : 'phoneDance 1s ease-in-out infinite',
         transition: 'transform 0.1s ease-in-out',
-        cursor: 'pointer',
+        cursor: isDragging ? 'grabbing' : 'grab',
         filter: 'drop-shadow(0 12px 24px rgba(0, 0, 0, 0.3))',
+        touchAction: 'none',
+        userSelect: 'none',
+        WebkitUserSelect: 'none',
       }}
-      onClick={() => window.open('https://wa.me/233542928081', '_blank')}
+      onMouseDown={handleStart}
+      onTouchStart={handleStart}
+      onClick={handleClick}
       title="Chat with us on WhatsApp"
     >
       {/* Phone Frame */}
@@ -47,6 +149,7 @@ const FloatingPhone = () => {
           padding: '6px',
           boxShadow: 'inset 0 0 0 2px #2d2d44, 0 8px 24px rgba(0,0,0,0.4)',
           border: '1.5px solid #333366',
+          pointerEvents: 'none',
         }}
       >
         {/* Screen */}
@@ -129,7 +232,7 @@ const FloatingPhone = () => {
             }}
           />
 
-          {/* Bottom bar (like iOS home indicator) */}
+          {/* Bottom bar */}
           <div
             style={{
               position: 'absolute',

@@ -64,7 +64,8 @@ import SellerSettings from "../seller/Settings";
 // Protection
 import PrivateRoute from "./PrivateRoute";
 import AdminRoute from "./AdminRoute";
-import SellerRoute from "./SellerRoute";
+// SellerRoute is no longer needed – all authenticated users can access seller dashboard
+// import SellerRoute from "./SellerRoute";
 
 function AppRoutes() {
   return (
@@ -117,7 +118,7 @@ function AppRoutes() {
         <Route path="/dashboard" element={<DashboardLayout />} />
       </Route>
 
-      {/* ADMIN DASHBOARD */}
+      {/* ADMIN DASHBOARD – admin only */}
       <Route element={<AdminRoute />}>
         <Route path="/admin" element={<DashboardLayout />}>
           <Route index element={<AdminDashboard />} />
@@ -131,8 +132,8 @@ function AppRoutes() {
         </Route>
       </Route>
 
-      {/* SELLER DASHBOARD */}
-      <Route element={<SellerRoute />}>
+      {/* SELLER DASHBOARD – accessible by any authenticated user (neutral) */}
+      <Route element={<PrivateRoute />}>
         <Route path="/seller" element={<DashboardLayout />}>
           <Route index element={<SellerDashboard />} />
           <Route path="products" element={<SellerProducts />} />

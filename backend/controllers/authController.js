@@ -42,7 +42,7 @@ const getSafeUser = (user) => {
 
     phone: user.phone || "",
 
-    role: user.role || "buyer",
+    role: user.role || "user",     // ← neutral default
 
     location:
       user.location || "Ghana",
@@ -123,7 +123,7 @@ const getSafeUser = (user) => {
 };
 
 // ============================================================
-// REGISTER
+// REGISTER (NEUTRAL – role optional, default to 'user')
 // ============================================================
 
 exports.register = async (
@@ -142,14 +142,13 @@ exports.register = async (
     if (
       !name ||
       !email ||
-      !password ||
-      !role
+      !password
     ) {
       return res.status(400).json({
         success: false,
 
         message:
-          "Name, email, password, and role are required",
+          "Name, email, and password are required",
       });
     }
 
@@ -167,22 +166,21 @@ exports.register = async (
         ? String(phone).trim()
         : "";
 
-    const selectedRole =
-      String(role)
-        .trim()
-        .toLowerCase();
+    // Determine the role – default to 'user' if not provided or invalid
+    let selectedRole = 'user';
+    if (role) {
+      const providedRole =
+        String(role)
+          .trim()
+          .toLowerCase();
 
-    if (
-      !["buyer", "seller"].includes(
-        selectedRole
-      )
-    ) {
-      return res.status(400).json({
-        success: false,
-
-        message:
-          "Role must be either buyer or seller",
-      });
+      // Allowed roles: 'user', 'buyer', 'seller' (others like 'admin', 'rider' are not allowed via registration)
+      const allowedRoles = ['user', 'buyer', 'seller'];
+      if (allowedRoles.includes(providedRole)) {
+        selectedRole = providedRole;
+      }
+      // if provided role is not allowed, we default to 'user' without error.
+      // If you prefer to reject, you can return an error, but we'll silently default.
     }
 
     if (
@@ -248,7 +246,7 @@ exports.register = async (
 
         phone: trimmedPhone,
 
-        role: selectedRole,
+        role: selectedRole,   // ← neutral
 
         provider: "local",
 
@@ -317,7 +315,7 @@ exports.register = async (
 };
 
 // ============================================================
-// LOGIN
+// LOGIN (unchanged)
 // ============================================================
 
 exports.login = async (
@@ -423,7 +421,7 @@ exports.login = async (
 };
 
 // ============================================================
-// GET CURRENT USER
+// GET CURRENT USER (unchanged)
 // ============================================================
 
 exports.getMe = async (
@@ -490,7 +488,7 @@ exports.getMe = async (
 };
 
 // ============================================================
-// UPDATE PROFILE
+// UPDATE PROFILE (unchanged)
 // ============================================================
 
 exports.updateProfile =
@@ -664,7 +662,7 @@ exports.updateProfile =
   };
 
 // ============================================================
-// LOGOUT
+// LOGOUT (unchanged)
 // ============================================================
 
 exports.logout = async (

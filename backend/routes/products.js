@@ -8,7 +8,7 @@ const streamifier = require("streamifier");
 
 const {
   verifyToken,
-  isSeller,
+  isSeller,          // ← now allows 'user', 'buyer', 'seller', 'admin'
 } = require("../middleware/auth");
 
 const Product = require("../models/Product");
@@ -1032,7 +1032,7 @@ router.get(
 router.post(
   "/",
   verifyToken,
-  isSeller,
+  isSeller,   // ← now allows neutral roles (user, buyer, seller, admin)
   upload.array(
     "files",
     MAX_UPLOAD_FILES
