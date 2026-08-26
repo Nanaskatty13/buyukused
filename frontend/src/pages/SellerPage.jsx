@@ -1,7 +1,4 @@
-// ============================================================
 // frontend/src/pages/SellerPage.jsx
-// BuyUKUsed - Public Seller Page
-// ============================================================
 
 import React, {
   useState,
@@ -17,9 +14,7 @@ import {
 import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
 
-import {
-  getImageUrl,
-} from "../services/api";
+import { getImageUrl } from "../services/api";
 
 import {
   getPublicSellerProfile,
@@ -27,7 +22,6 @@ import {
 } from "../services/sellerService";
 
 import ProductCard from "../components/ProductCard";
-import VerifiedBadge from "../components/VerifiedBadge";
 
 // ============================================================
 // TIME AGO
@@ -138,40 +132,36 @@ const timeAgo = (
 // IMAGE URL HELPER
 // ============================================================
 
-const getSellerImageUrl =
-  (image) => {
-    if (!image) {
-      return null;
-    }
+const getSellerImageUrl = (
+  image
+) => {
+  if (!image) {
+    return null;
+  }
 
-    const value =
-      String(image).trim();
+  const value =
+    String(image).trim();
 
-    if (!value) {
-      return null;
-    }
+  if (!value) {
+    return null;
+  }
 
-    if (
-      value.startsWith(
-        "http://"
-      ) ||
-      value.startsWith(
-        "https://"
-      ) ||
-      value.startsWith(
-        "data:image/"
-      ) ||
-      value.startsWith(
-        "blob:"
-      )
-    ) {
-      return value;
-    }
+  if (
+    value.startsWith(
+      "http://"
+    ) ||
+    value.startsWith(
+      "https://"
+    ) ||
+    value.startsWith(
+      "data:image/"
+    )
+  ) {
+    return value;
+  }
 
-    return getImageUrl(
-      value
-    );
-  };
+  return getImageUrl(value);
+};
 
 // ============================================================
 // COMPONENT
@@ -224,11 +214,6 @@ const SellerPage = () => {
     setImageError,
   ] = useState(false);
 
-  const [
-    loadingMore,
-    setLoadingMore,
-  ] = useState(false);
-
   // ==========================================================
   // FETCH SELLER
   // ==========================================================
@@ -246,23 +231,15 @@ const SellerPage = () => {
           return;
         }
 
-        // ------------------------------------------------------
-        // Your existing application requires login to view
-        // seller pages.
-        // ------------------------------------------------------
-
         if (!user) {
           setLoading(false);
+
           return;
         }
 
         try {
           setLoading(true);
           setError("");
-
-          // ----------------------------------------------------
-          // SELLER PROFILE
-          // ----------------------------------------------------
 
           const profileData =
             await getPublicSellerProfile(
@@ -287,17 +264,6 @@ const SellerPage = () => {
           const sellerData =
             profileData.seller;
 
-          console.log(
-            "✅ Seller verification:",
-            {
-              isVerified:
-                sellerData.isVerified,
-
-              verificationStatus:
-                sellerData.verificationStatus,
-            }
-          );
-
           setSeller({
             _id:
               sellerData._id ||
@@ -311,10 +277,6 @@ const SellerPage = () => {
               sellerData.shopName ||
               sellerData.name ||
               "Seller",
-
-            shopDescription:
-              sellerData.shopDescription ||
-              "",
 
             phone:
               sellerData.phone ||
@@ -386,19 +348,7 @@ const SellerPage = () => {
                 sellerData.productsCount ||
                   0
               ),
-
-            isVerified:
-              sellerData.isVerified ===
-              true,
-
-            verificationStatus:
-              sellerData.verificationStatus ||
-              "not_submitted",
           });
-
-          // ----------------------------------------------------
-          // SELLER PRODUCTS
-          // ----------------------------------------------------
 
           const productsData =
             await getPublicSellerProducts(
@@ -440,8 +390,9 @@ const SellerPage = () => {
           );
 
           if (
-            err?.status === 401 ||
-            err?.response?.status === 401
+            err?.response?.status ===
+              401 ||
+            err?.status === 401
           ) {
             navigate(
               "/login",
@@ -472,78 +423,6 @@ const SellerPage = () => {
   ]);
 
   // ==========================================================
-  // LOAD MORE PRODUCTS
-  // ==========================================================
-
-  const handleLoadMore =
-    async () => {
-      if (
-        !pagination ||
-        loadingMore
-      ) {
-        return;
-      }
-
-      if (
-        pagination.page >=
-        pagination.totalPages
-      ) {
-        return;
-      }
-
-      try {
-        setLoadingMore(
-          true
-        );
-
-        const nextPage =
-          pagination.page + 1;
-
-        const productsData =
-          await getPublicSellerProducts(
-            sellerId,
-            {
-              page: nextPage,
-              limit:
-                pagination.limit ||
-                20,
-
-              sort: "-createdAt",
-            }
-          );
-
-        if (
-          productsData?.success
-        ) {
-          setProducts(
-            (previous) => [
-              ...previous,
-              ...(productsData.products ||
-                []),
-            ]
-          );
-
-          if (
-            productsData.pagination
-          ) {
-            setPagination(
-              productsData.pagination
-            );
-          }
-        }
-      } catch (err) {
-        console.error(
-          "❌ Failed to load more seller products:",
-          err
-        );
-      } finally {
-        setLoadingMore(
-          false
-        );
-      }
-    };
-
-  // ==========================================================
   // REQUIRE LOGIN
   // ==========================================================
 
@@ -552,10 +431,12 @@ const SellerPage = () => {
       <div
         className="container"
         style={{
-          minHeight: "60vh",
+          minHeight:
+            "60vh",
           padding:
             "80px 20px",
-          display: "flex",
+          display:
+            "flex",
           alignItems:
             "center",
           justifyContent:
@@ -564,7 +445,8 @@ const SellerPage = () => {
       >
         <div
           style={{
-            maxWidth: "520px",
+            maxWidth:
+              "520px",
             width: "100%",
             background:
               "white",
@@ -594,7 +476,8 @@ const SellerPage = () => {
             style={{
               fontSize:
                 "28px",
-              fontWeight: 800,
+              fontWeight:
+                800,
               marginBottom:
                 "12px",
             }}
@@ -606,13 +489,15 @@ const SellerPage = () => {
             style={{
               color:
                 "var(--gray-500)",
-              lineHeight: 1.6,
+              lineHeight:
+                1.6,
               marginBottom:
                 "25px",
             }}
           >
-            Please sign in or create a BuyUKUsed account before
-            viewing seller profiles and their products.
+            Please sign in or create a
+            BuyUKUsed account before viewing
+            seller profiles and their products.
           </p>
 
           <div
@@ -648,7 +533,8 @@ const SellerPage = () => {
                     "none",
                   borderRadius:
                     "var(--radius-full)",
-                  fontWeight: 700,
+                  fontWeight:
+                    700,
                   cursor:
                     "pointer",
                 }}
@@ -679,7 +565,8 @@ const SellerPage = () => {
                     "1px solid var(--gray-300)",
                   borderRadius:
                     "var(--radius-full)",
-                  fontWeight: 700,
+                  fontWeight:
+                    700,
                   cursor:
                     "pointer",
                 }}
@@ -735,10 +622,6 @@ const SellerPage = () => {
     );
   }
 
-  // ==========================================================
-  // SELLER NOT FOUND
-  // ==========================================================
-
   if (!seller) {
     return (
       <div
@@ -779,14 +662,9 @@ const SellerPage = () => {
       ? memberDate.toLocaleDateString(
           undefined,
           {
-            year:
-              "numeric",
-
-            month:
-              "long",
-
-            day:
-              "numeric",
+            year: "numeric",
+            month: "long",
+            day: "numeric",
           }
         )
       : "N/A";
@@ -820,10 +698,6 @@ const SellerPage = () => {
       seller.avatar
     );
 
-  const isVerified =
-    seller.isVerified ===
-    true;
-
   // ==========================================================
   // WHATSAPP
   // ==========================================================
@@ -831,7 +705,8 @@ const SellerPage = () => {
   const handleWhatsApp =
     () => {
       const rawPhone =
-        seller.phone || "";
+        seller.phone ||
+        "";
 
       let phone =
         String(
@@ -841,10 +716,12 @@ const SellerPage = () => {
           ""
         );
 
-      // Ghana local number.
       if (
-        phone.startsWith("0") &&
-        phone.length === 10
+        phone.startsWith(
+          "0"
+        ) &&
+        phone.length ===
+          10
       ) {
         phone =
           "233" +
@@ -855,7 +732,8 @@ const SellerPage = () => {
 
       if (
         !phone ||
-        phone.length < 10
+        phone.length <
+          10
       ) {
         alert(
           "This seller has not provided a valid phone number."
@@ -950,135 +828,73 @@ const SellerPage = () => {
 
           <div
             style={{
-              position:
-                "relative",
               width:
                 "120px",
               height:
                 "120px",
+              borderRadius:
+                "50%",
+              overflow:
+                "hidden",
+              background:
+                "var(--gray-200)",
+              display:
+                "flex",
+              alignItems:
+                "center",
+              justifyContent:
+                "center",
               flexShrink:
                 0,
+              border:
+                "3px solid var(--gray-100)",
             }}
           >
-            <div
-              style={{
-                width:
-                  "100%",
-                height:
-                  "100%",
-                borderRadius:
-                  "50%",
-                overflow:
-                  "hidden",
-                background:
-                  "var(--gray-200)",
-                display:
-                  "flex",
-                alignItems:
-                  "center",
-                justifyContent:
-                  "center",
-                border:
-                  "3px solid var(--gray-100)",
-              }}
-            >
-              {sellerImage &&
-              !imageError ? (
-                <img
-                  src={
-                    sellerImage
-                  }
-                  alt={
-                    sellerName
-                  }
-                  style={{
-                    width:
-                      "100%",
-                    height:
-                      "100%",
-                    objectFit:
-                      "cover",
-                    display:
-                      "block",
-                  }}
-                  onError={(
-                    event
-                  ) => {
-                    console.error(
-                      "❌ Seller profile image failed:",
-                      sellerImage
-                    );
-
-                    setImageError(
-                      true
-                    );
-
-                    event.currentTarget.style.display =
-                      "none";
-                  }}
-                />
-              ) : (
-                <i
-                  className="fas fa-user-circle"
-                  style={{
-                    fontSize:
-                      "64px",
-                    color:
-                      "var(--gray-400)",
-                  }}
-                />
-              )}
-            </div>
-
-            {/* ==================================================
-                VERIFIED AVATAR BADGE
-            ================================================== */}
-
-            {isVerified && (
-              <div
+            {sellerImage &&
+            !imageError ? (
+              <img
+                src={
+                  sellerImage
+                }
+                alt={
+                  sellerName
+                }
                 style={{
-                  position:
-                    "absolute",
-                  bottom:
-                    0,
-                  right:
-                    0,
                   width:
-                    "36px",
+                    "100%",
                   height:
-                    "36px",
-                  background:
-                    "#1DA1F2",
-                  borderRadius:
-                    "50%",
+                    "100%",
+                  objectFit:
+                    "cover",
                   display:
-                    "flex",
-                  alignItems:
-                    "center",
-                  justifyContent:
-                    "center",
-                  border:
-                    "3px solid white",
-                  boxShadow:
-                    "0 2px 6px rgba(0,0,0,0.25)",
+                    "block",
                 }}
-              >
-                <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 20 20"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    d="M7.5 10.5L9.5 12.5L14 8"
-                    stroke="white"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </div>
+                onError={(
+                  event
+                ) => {
+                  console.error(
+                    "❌ Seller profile image failed:",
+                    sellerImage
+                  );
+
+                  setImageError(
+                    true
+                  );
+
+                  event.currentTarget.style.display =
+                    "none";
+                }}
+              />
+            ) : (
+              <i
+                className="fas fa-user-circle"
+                style={{
+                  fontSize:
+                    "64px",
+                  color:
+                    "var(--gray-400)",
+                }}
+              />
             )}
           </div>
 
@@ -1094,60 +910,18 @@ const SellerPage = () => {
                 "250px",
             }}
           >
-            {/* Name + Badge */}
-
-            <div
+            <h1
               style={{
-                display:
-                  "flex",
-                alignItems:
-                  "center",
-                flexWrap:
-                  "wrap",
-                gap:
-                  "10px",
+                fontSize:
+                  "28px",
+                fontWeight:
+                  800,
                 marginBottom:
-                  "4px",
+                  "8px",
               }}
             >
-              <h1
-                style={{
-                  fontSize:
-                    "28px",
-                  fontWeight:
-                    800,
-                  margin: 0,
-                }}
-              >
-                {sellerName}
-              </h1>
-
-              {isVerified && (
-                <VerifiedBadge
-                  size={28}
-                  showLabel
-                />
-              )}
-            </div>
-
-            {/* Shop Description */}
-
-            {seller.shopDescription && (
-              <p
-                style={{
-                  color:
-                    "var(--gray-600)",
-                  margin:
-                    "8px 0 12px",
-                  lineHeight:
-                    1.6,
-                }}
-              >
-                {
-                  seller.shopDescription
-                }
-              </p>
-            )}
+              {sellerName}
+            </h1>
 
             {/* Location */}
 
@@ -1168,9 +942,7 @@ const SellerPage = () => {
                   }}
                 />
 
-                {
-                  seller.location
-                }
+                {seller.location}
               </div>
             )}
 
@@ -1193,9 +965,7 @@ const SellerPage = () => {
                   }}
                 />
 
-                {
-                  seller.phone
-                }
+                {seller.phone}
               </div>
             )}
 
@@ -1219,9 +989,7 @@ const SellerPage = () => {
                 />
 
                 {seller.role
-                  .charAt(
-                    0
-                  )
+                  .charAt(0)
                   .toUpperCase() +
                   seller.role.slice(
                     1
@@ -1288,9 +1056,7 @@ const SellerPage = () => {
               </div>
             )}
 
-            {/* ==================================================
-                STATS
-            ================================================== */}
+            {/* Stats */}
 
             <div
               className="seller-profile-details"
@@ -1350,7 +1116,7 @@ const SellerPage = () => {
             </div>
 
             {/* ==================================================
-                CONTACT
+                CONTACT & FEEDBACK
             ================================================== */}
 
             <button
@@ -1395,6 +1161,40 @@ const SellerPage = () => {
                 ? "Contact Seller"
                 : "No Phone Number"}
             </button>
+
+            {/* ==================================================
+                FEEDBACK BUTTON (UPDATED)
+            ================================================== */}
+
+            <Link
+              to={`/feedback/${seller._id}`}
+              style={{ textDecoration: "none", marginLeft: "12px" }}
+            >
+              <button
+                style={{
+                  padding: "10px 24px",
+                  background: "var(--gray-100)",
+                  color: "var(--gray-800)",
+                  border: "1px solid var(--gray-300)",
+                  borderRadius: "var(--radius-full)",
+                  fontWeight: 700,
+                  fontSize: "15px",
+                  cursor: "pointer",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  transition: "background 0.2s",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "var(--gray-200)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "var(--gray-100)";
+                }}
+              >
+                💬 Feedback
+              </button>
+            </Link>
           </div>
         </div>
 
@@ -1417,7 +1217,7 @@ const SellerPage = () => {
         </h2>
 
         {productCount ===
-          0 ? (
+        0 ? (
           <div
             style={{
               color:
@@ -1440,9 +1240,9 @@ const SellerPage = () => {
               }}
             />
 
-            This seller has not
-            listed any products
-            yet.
+            This seller has
+            not listed any
+            products yet.
           </div>
         ) : (
           <>
@@ -1485,37 +1285,27 @@ const SellerPage = () => {
               )}
             </div>
 
-            {/* ==================================================
-                LOAD MORE
-            ================================================== */}
-
             {pagination &&
               pagination.totalPages >
-                pagination.page && (
+                1 && (
                 <div
                   style={{
                     display:
                       "flex",
                     justifyContent:
                       "center",
+                    gap:
+                      "10px",
                     marginTop:
                       "30px",
                   }}
                 >
                   <button
-                    onClick={
-                      handleLoadMore
-                    }
-                    disabled={
-                      loadingMore
-                    }
                     style={{
                       padding:
-                        "10px 24px",
+                        "8px 16px",
                       background:
-                        loadingMore
-                          ? "var(--gray-300)"
-                          : "var(--primary)",
+                        "var(--primary)",
                       color:
                         "white",
                       border:
@@ -1523,16 +1313,10 @@ const SellerPage = () => {
                       borderRadius:
                         "var(--radius-md)",
                       cursor:
-                        loadingMore
-                          ? "not-allowed"
-                          : "pointer",
-                      fontWeight:
-                        700,
+                        "pointer",
                     }}
                   >
-                    {loadingMore
-                      ? "Loading..."
-                      : "Load More"}
+                    Load More
                   </button>
                 </div>
               )}

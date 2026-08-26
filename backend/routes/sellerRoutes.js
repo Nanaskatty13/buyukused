@@ -1,4 +1,3 @@
-
 // ============================================================
 // backend/routes/sellerRoutes.js
 // BuyUKUsed Seller Routes
@@ -14,7 +13,6 @@ const router = express.Router();
 
 const {
   registerSeller,
-
   getSellerProfile,
   updateSellerProfile,
 
@@ -23,6 +21,9 @@ const {
   getSellerAnalytics,
 
   getMyProducts,
+  createProductSeller,
+  updateProductSeller,
+  deleteProductSeller,
 
   getSellerOrders,
   getSellerOrderById,
@@ -39,205 +40,195 @@ const {
 const { protect } = require("../middleware/auth");
 
 // ============================================================
-// PUBLIC SELLER ROUTES
-// ============================================================
-//
-// IMPORTANT:
-//
-// These routes MUST NOT use protect.
-//
-// They allow visitors to view a seller profile and
-// the seller's active products without logging in.
-//
-
-
-// ------------------------------------------------------------
-// GET PUBLIC SELLER PRODUCTS
-// GET /api/sellers/:sellerId/products
-// ------------------------------------------------------------
-
-router.get(
-  "/:sellerId/products",
-  getPublicSellerProducts
-);
-
-
-// ------------------------------------------------------------
-// GET PUBLIC SELLER PROFILE
-// GET /api/sellers/:sellerId
-// ------------------------------------------------------------
-
-router.get(
-  "/:sellerId",
-  getPublicSellerProfile
-);
-
-
-// ============================================================
 // SELLER REGISTRATION
 // ============================================================
-//
-// POST /api/sellers/register
-//
 
+/**
+ * POST /api/sellers/register
+ *
+ * Register the authenticated user as a seller.
+ */
 router.post(
   "/register",
   protect,
   registerSeller
 );
 
-
 // ============================================================
-// PRIVATE SELLER PROFILE
+// OWN SELLER PROFILE
 // ============================================================
 
-
-// ------------------------------------------------------------
-// GET MY SELLER PROFILE
-// GET /api/sellers/profile
-// ------------------------------------------------------------
-
+/**
+ * GET /api/sellers/profile
+ *
+ * Get authenticated seller profile.
+ */
 router.get(
   "/profile",
   protect,
   getSellerProfile
 );
 
-
-// ------------------------------------------------------------
-// UPDATE MY SELLER PROFILE
-// PUT /api/sellers/profile
-// ------------------------------------------------------------
-
+/**
+ * PUT /api/sellers/profile
+ *
+ * Update authenticated seller profile.
+ */
 router.put(
   "/profile",
   protect,
   updateSellerProfile
 );
 
-
 // ============================================================
 // SELLER DASHBOARD
 // ============================================================
 
-
-// ------------------------------------------------------------
-// GET SELLER DASHBOARD
-// GET /api/sellers/dashboard
-//
-// Optional:
-//
-// ?period=today
-// ?period=week
-// ?period=month
-// ?period=year
-// ?period=all
-// ------------------------------------------------------------
-
+/**
+ * GET /api/sellers/dashboard
+ */
 router.get(
   "/dashboard",
   protect,
   getSellerDashboard
 );
 
-
 // ============================================================
 // SELLER EARNINGS
 // ============================================================
 
-
-// ------------------------------------------------------------
-// GET SELLER EARNINGS
-// GET /api/sellers/earnings
-// ------------------------------------------------------------
-
+/**
+ * GET /api/sellers/earnings
+ */
 router.get(
   "/earnings",
   protect,
   getSellerEarnings
 );
 
-
 // ============================================================
 // SELLER ANALYTICS
 // ============================================================
 
-
-// ------------------------------------------------------------
-// GET SELLER ANALYTICS
-// GET /api/sellers/analytics
-// ------------------------------------------------------------
-
+/**
+ * GET /api/sellers/analytics
+ */
 router.get(
   "/analytics",
   protect,
   getSellerAnalytics
 );
 
-
 // ============================================================
 // SELLER PRODUCTS
 // ============================================================
 
-
-// ------------------------------------------------------------
-// GET MY PRODUCTS
-// GET /api/sellers/products
-//
-// Example:
-//
-// /api/sellers/products?page=1&limit=20
-// /api/sellers/products?status=active
-// /api/sellers/products?sort=-createdAt
-// ------------------------------------------------------------
-
+/**
+ * GET /api/sellers/products
+ *
+ * Get authenticated seller's products.
+ */
 router.get(
   "/products",
   protect,
   getMyProducts
 );
 
+/**
+ * POST /api/sellers/products
+ *
+ * Create seller product.
+ */
+router.post(
+  "/products",
+  protect,
+  createProductSeller
+);
+
+/**
+ * PUT /api/sellers/products/:productId
+ *
+ * Update seller product.
+ */
+router.put(
+  "/products/:productId",
+  protect,
+  updateProductSeller
+);
+
+/**
+ * DELETE /api/sellers/products/:productId
+ *
+ * Delete seller product.
+ */
+router.delete(
+  "/products/:productId",
+  protect,
+  deleteProductSeller
+);
 
 // ============================================================
 // SELLER ORDERS
 // ============================================================
 
-
-// ------------------------------------------------------------
-// GET MY SELLER ORDERS
-// GET /api/sellers/orders
-// ------------------------------------------------------------
-
+/**
+ * GET /api/sellers/orders
+ */
 router.get(
   "/orders",
   protect,
   getSellerOrders
 );
 
-
-// ------------------------------------------------------------
-// GET SELLER ORDER
-// GET /api/sellers/orders/:orderId
-// ------------------------------------------------------------
-
+/**
+ * GET /api/sellers/orders/:orderId
+ */
 router.get(
   "/orders/:orderId",
   protect,
   getSellerOrderById
 );
 
-
-// ------------------------------------------------------------
-// UPDATE SELLER ORDER STATUS
-// PUT /api/sellers/orders/:orderId/status
-// ------------------------------------------------------------
-
+/**
+ * PUT /api/sellers/orders/:orderId/status
+ */
 router.put(
   "/orders/:orderId/status",
   protect,
   updateSellerOrderStatus
 );
 
+// ============================================================
+// PUBLIC SELLER PROFILE
+// ============================================================
+
+/**
+ * GET /api/sellers/:sellerId
+ *
+ * Public seller profile.
+ *
+ * NO protect middleware.
+ */
+router.get(
+  "/:sellerId",
+  getPublicSellerProfile
+);
+
+// ============================================================
+// PUBLIC SELLER PRODUCTS
+// ============================================================
+
+/**
+ * GET /api/sellers/:sellerId/products
+ *
+ * Public products belonging to seller.
+ *
+ * NO protect middleware.
+ */
+router.get(
+  "/:sellerId/products",
+  getPublicSellerProducts
+);
 
 // ============================================================
 // EXPORT

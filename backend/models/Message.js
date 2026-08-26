@@ -1,7 +1,4 @@
-// ============================================================
 // backend/models/Message.js
-// BuyUKUsed - Message Model
-// ============================================================
 
 const mongoose = require("mongoose");
 
@@ -32,7 +29,6 @@ const attachmentSchema = new mongoose.Schema(
     size: {
       type: Number,
       default: 0,
-      min: 0,
     },
   },
   {
@@ -80,14 +76,13 @@ const messageSchema = new mongoose.Schema(
     },
 
     // ==========================================================
-    // TEXT
+    // TEXT MESSAGE
     // ==========================================================
 
     message: {
       type: String,
       trim: true,
       default: "",
-      maxlength: 5000,
     },
 
     // ==========================================================
@@ -109,6 +104,7 @@ const messageSchema = new mongoose.Schema(
       index: true,
     },
   },
+
   {
     timestamps: true,
     versionKey: false,
@@ -118,6 +114,17 @@ const messageSchema = new mongoose.Schema(
 // ============================================================
 // VALIDATION
 // ============================================================
+//
+// A message must contain either text OR an attachment.
+//
+// This allows:
+//   - Text messages
+//   - Image messages
+//   - Video messages
+//   - File messages
+//   - Text + image
+//   - Text + video
+// ============================================================
 
 messageSchema.pre("validate", function (next) {
   const hasText =
@@ -126,8 +133,7 @@ messageSchema.pre("validate", function (next) {
 
   const hasAttachment =
     this.attachment &&
-    typeof this.attachment.url === "string" &&
-    this.attachment.url.trim().length > 0;
+    this.attachment.url;
 
   if (!hasText && !hasAttachment) {
     return next(
@@ -144,27 +150,17 @@ messageSchema.pre("validate", function (next) {
 // INDEXES
 // ============================================================
 
-// Conversation lookup
 messageSchema.index({
   sender: 1,
   receiver: 1,
   createdAt: 1,
 });
 
-// Reverse conversation lookup
-messageSchema.index({
-  receiver: 1,
-  sender: 1,
-  createdAt: 1,
-});
-
-// Unread messages
 messageSchema.index({
   receiver: 1,
   read: 1,
 });
 
-// Product conversations
 messageSchema.index({
   productId: 1,
   createdAt: -1,
@@ -176,4 +172,7 @@ messageSchema.index({
 
 module.exports =
   mongoose.models.Message ||
-  mongoose.model("Message", messageSchema);
+  mongoose.model(
+    "Message",
+    messageSchema
+  );

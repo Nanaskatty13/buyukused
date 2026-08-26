@@ -1,4 +1,7 @@
+// ============================================================
 // backend/routes/listings.js
+// BuyUKUsed Spare Parts Listing Routes
+// ============================================================
 
 const express = require("express");
 const router = express.Router();
@@ -20,8 +23,9 @@ const { uploadListingImages } = require("../middleware/upload");
 router.get("/", getListings);
 router.get("/:id", getListingById);
 
-// ---- Private routes (authentication required) ----
+// ---- Private routes (require authentication) ----
 router.use(protect);
+
 router.get("/my", getMyListings);
 router.post("/", uploadListingImages, createListing);
 router.put("/:id", uploadListingImages, updateListing);
