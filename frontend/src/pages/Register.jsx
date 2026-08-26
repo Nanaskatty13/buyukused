@@ -92,7 +92,7 @@ const Register = () => {
     const rect = container.getBoundingClientRect();
     const clientX = e.touches ? e.touches[0].clientX : e.clientX;
     let x = clientX - rect.left;
-    const maxX = rect.width - 56;
+    const maxX = rect.width - 64;
     x = Math.max(0, Math.min(x, maxX));
     const progress = (x / maxX) * 100;
     setSliderProgress(progress);
@@ -170,7 +170,7 @@ const Register = () => {
 
       const payload = {
         ...registrationData,
-        role: 'user', // NEUTRAL – no buyer/seller selection
+        role: 'user',
       };
 
       const result = await register(payload);
@@ -219,11 +219,13 @@ const Register = () => {
           font-weight: 800;
         }
 
+        /* Bolden the main subtitle – now 900 */
         .register-card .subtitle {
           font-size: 13px;
           margin-bottom: 14px;
           text-align: center;
           color: var(--gray-500);
+          font-weight: 900;
         }
 
         .form-group {
@@ -249,11 +251,13 @@ const Register = () => {
           background: white;
         }
 
+        /* Bolden all helper texts – now 900 and slightly larger */
         .form-group small {
-          font-size: 10px;
+          font-size: 11px;
           color: var(--gray-400);
           display: block;
           margin-top: 1px;
+          font-weight: 900;
         }
 
         .social-btn {
@@ -288,19 +292,21 @@ const Register = () => {
           border: none;
           border-top: 1px solid #e5e7eb;
         }
+        /* Bolden the OR text – now 900 */
         .divider span {
           margin: 0 10px;
           color: #777;
-          font-size: 12px;
+          font-size: 13px;
+          font-weight: 900;
         }
 
-        /* ---- SLIDER STYLES (full‑width) ---- */
+        /* ---- SLIDER STYLES (desktop) ---- */
         .slider-container {
           position: relative;
           width: calc(100% + 40px);
           margin-left: -20px;
           margin-right: -20px;
-          height: 56px;
+          height: 64px;
           background: #e5e7eb;
           border-radius: 0;
           overflow: hidden;
@@ -332,7 +338,7 @@ const Register = () => {
           align-items: center;
           justify-content: center;
           font-weight: 700;
-          font-size: 15px;
+          font-size: 18px;
           color: #6b7280;
           pointer-events: none;
           transition: color 0.2s;
@@ -346,17 +352,17 @@ const Register = () => {
           position: absolute;
           top: 4px;
           left: 4px;
-          width: 48px;
-          height: 48px;
+          width: 56px;
+          height: 56px;
           background: white;
           border-radius: 50%;
-          box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+          box-shadow: 0 6px 20px rgba(0,0,0,0.3);
           cursor: grab;
           display: flex;
           align-items: center;
           justify-content: center;
           transition: left 0.05s ease;
-          left: calc(${sliderProgress}% - 24px);
+          left: calc(${sliderProgress}% - 28px);
           transform: translateX(0);
           touch-action: none;
           z-index: 2;
@@ -368,8 +374,8 @@ const Register = () => {
         }
 
         .slider-handle svg {
-          width: 28px;
-          height: 28px;
+          width: 32px;
+          height: 32px;
           color: var(--secondary);
           transition: transform 0.2s;
           stroke-width: 2.5;
@@ -410,75 +416,88 @@ const Register = () => {
           color: var(--gray-400);
         }
 
-        /* Mobile */
+        /* ---- MOBILE: reduced card height, massive slider ---- */
         @media (max-width: 480px) {
           .register-wrapper {
-            padding: 8px;
+            padding: 4px;
             align-items: flex-start;
-            padding-top: 16px;
+            padding-top: 12px;
           }
           .register-card {
-            padding: 12px 12px;
+            padding: 8px 10px;
             border-radius: 10px;
           }
           .register-card h2 {
-            font-size: 18px;
+            font-size: 16px;
+            margin-bottom: 0;
           }
           .register-card .subtitle {
             font-size: 12px;
-            margin-bottom: 10px;
+            margin-bottom: 6px;
+            font-weight: 900;
           }
           .form-group {
-            margin-bottom: 6px;
+            margin-bottom: 4px;
           }
           .form-group label {
-            font-size: 11px;
+            font-size: 10px;
+            margin-bottom: 1px;
           }
           .form-group input,
           .form-group select {
-            padding: 6px 10px;
-            font-size: 14px !important;
+            padding: 5px 8px;
+            font-size: 13px !important;
+            border-radius: 6px;
           }
           .form-group small {
             font-size: 10px;
+            margin-top: 0;
+            font-weight: 900;
           }
           .social-btn {
-            padding: 8px 10px;
-            font-size: 12px;
-            margin-bottom: 6px;
+            padding: 6px 10px;
+            font-size: 11px;
+            margin-bottom: 4px;
           }
           .divider {
-            margin: 6px 0 10px;
+            margin: 4px 0 8px;
           }
           .divider span {
             font-size: 11px;
+            font-weight: 900;
           }
+          /* ---- MASSIVE SLIDER ON MOBILE ---- */
           .slider-container {
-            height: 48px;
-            width: calc(100% + 24px);
-            margin-left: -12px;
-            margin-right: -12px;
+            height: 120px;
+            width: calc(100% + 20px);
+            margin-left: -10px;
+            margin-right: -10px;
+            margin-top: 6px;
           }
           .slider-handle {
-            width: 40px;
-            height: 40px;
-            top: 4px;
-            left: 4px;
+            width: 90px;
+            height: 90px;
+            top: 15px;
+            left: 15px;
           }
           .slider-handle svg {
-            width: 24px;
-            height: 24px;
+            width: 48px;
+            height: 48px;
           }
           .slider-text {
-            font-size: 13px;
+            font-size: 24px;
+            font-weight: 800;
+          }
+          .slider-handle {
+            left: calc(${sliderProgress}% - 45px);
           }
           .auth-footer {
-            font-size: 11px;
-            margin-top: 8px;
+            font-size: 10px;
+            margin-top: 6px;
           }
           .back-link {
-            font-size: 11px;
-            margin-top: 4px;
+            font-size: 10px;
+            margin-top: 2px;
           }
         }
       `}</style>
@@ -736,7 +755,7 @@ const Register = () => {
                 onMouseDown={startDrag}
                 onTouchStart={startDrag}
                 style={{
-                  left: `calc(${sliderProgress}% - 24px)`,
+                  left: `calc(${sliderProgress}% - 28px)`,
                 }}
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">

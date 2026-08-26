@@ -67,7 +67,7 @@ const Login = () => {
       );
     } finally {
       setLoading(false);
-      setSliderProgress(0); // reset slider after attempt
+      setSliderProgress(0);
     }
   };
 
@@ -85,7 +85,7 @@ const Login = () => {
     const rect = container.getBoundingClientRect();
     const clientX = e.touches ? e.touches[0].clientX : e.clientX;
     let x = clientX - rect.left;
-    const maxX = rect.width - 56; // handle width + margin
+    const maxX = rect.width - 62; // handle width (58px) + margin
     x = Math.max(0, Math.min(x, maxX));
     const progress = (x / maxX) * 100;
     setSliderProgress(progress);
@@ -103,7 +103,6 @@ const Login = () => {
     }
   };
 
-  // Attach global move/up listeners
   React.useEffect(() => {
     const handleMouseMove = (e) => onDrag(e);
     const handleTouchMove = (e) => onDrag(e);
@@ -171,11 +170,13 @@ const Login = () => {
           font-weight: 800;
         }
 
+        /* Bolden the main subtitle – now 900 */
         .login-card .subtitle {
           font-size: 13px;
           margin-bottom: 14px;
           text-align: center;
           color: var(--gray-500);
+          font-weight: 900;
         }
 
         .form-group {
@@ -201,11 +202,13 @@ const Login = () => {
           box-sizing: border-box;
         }
 
+        /* Bolden helper text if any (kept for consistency) */
         .form-group small {
           font-size: 10px;
           color: var(--gray-400);
           display: block;
           margin-top: 1px;
+          font-weight: 900;
         }
 
         .social-btn {
@@ -243,7 +246,8 @@ const Login = () => {
         .divider span {
           margin: 0 10px;
           color: #777;
-          font-size: 12px;
+          font-size: 13px;
+          font-weight: 900;
         }
 
         /* ---- SLIDER STYLES (same as Register) ---- */
@@ -252,7 +256,7 @@ const Login = () => {
           width: calc(100% + 40px);
           margin-left: -20px;
           margin-right: -20px;
-          height: 56px;
+          height: 64px; /* increased from 56px */
           background: #e5e7eb;
           border-radius: 0;
           overflow: hidden;
@@ -284,7 +288,7 @@ const Login = () => {
           align-items: center;
           justify-content: center;
           font-weight: 700;
-          font-size: 15px;
+          font-size: 18px; /* increased from 15px */
           color: #6b7280;
           pointer-events: none;
           transition: color 0.2s;
@@ -296,19 +300,19 @@ const Login = () => {
 
         .slider-handle {
           position: absolute;
-          top: 4px;
-          left: 4px;
-          width: 48px;
-          height: 48px;
+          top: 3px;
+          left: 3px;
+          width: 58px; /* increased from 48px */
+          height: 58px;
           background: white;
           border-radius: 50%;
-          box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+          box-shadow: 0 6px 20px rgba(0,0,0,0.3);
           cursor: grab;
           display: flex;
           align-items: center;
           justify-content: center;
           transition: left 0.05s ease;
-          left: calc(${sliderProgress}% - 24px);
+          left: calc(${sliderProgress}% - 29px);
           transform: translateX(0);
           touch-action: none;
           z-index: 2;
@@ -320,8 +324,8 @@ const Login = () => {
         }
 
         .slider-handle svg {
-          width: 28px;
-          height: 28px;
+          width: 38px; /* increased from 28px */
+          height: 38px;
           color: var(--primary);
           transition: transform 0.2s;
           stroke-width: 2.5;
@@ -364,68 +368,84 @@ const Login = () => {
         /* Mobile */
         @media (max-width: 480px) {
           .login-wrapper {
-            padding: 8px;
+            padding: 4px;
             align-items: flex-start;
-            padding-top: 16px;
+            padding-top: 12px;
           }
           .login-card {
-            padding: 12px 12px;
+            padding: 8px 10px;
             border-radius: 10px;
           }
           .login-card h2 {
-            font-size: 18px;
+            font-size: 16px;
+            margin-bottom: 0;
           }
           .login-card .subtitle {
             font-size: 12px;
-            margin-bottom: 10px;
+            margin-bottom: 6px;
+            font-weight: 900;
           }
           .form-group {
-            margin-bottom: 6px;
+            margin-bottom: 4px;
           }
           .form-group label {
-            font-size: 11px;
+            font-size: 10px;
+            margin-bottom: 1px;
           }
           .form-group input {
-            padding: 6px 10px;
-            font-size: 14px !important;
+            padding: 5px 8px;
+            font-size: 13px !important;
+            border-radius: 6px;
+          }
+          .form-group small {
+            font-size: 10px;
+            margin-top: 0;
+            font-weight: 900;
           }
           .social-btn {
-            padding: 8px 10px;
-            font-size: 12px;
-            margin-bottom: 6px;
+            padding: 6px 10px;
+            font-size: 11px;
+            margin-bottom: 4px;
           }
           .divider {
-            margin: 6px 0 10px;
+            margin: 4px 0 8px;
           }
           .divider span {
             font-size: 11px;
+            font-weight: 900;
           }
+          /* ---- MASSIVE SLIDER ON MOBILE ---- */
           .slider-container {
-            height: 48px;
-            width: calc(100% + 24px);
-            margin-left: -12px;
-            margin-right: -12px;
+            height: 120px;
+            width: calc(100% + 20px);
+            margin-left: -10px;
+            margin-right: -10px;
+            margin-top: 6px;
           }
           .slider-handle {
-            width: 40px;
-            height: 40px;
-            top: 4px;
-            left: 4px;
+            width: 96px;
+            height: 96px;
+            top: 12px;
+            left: 12px;
           }
           .slider-handle svg {
-            width: 24px;
-            height: 24px;
+            width: 58px;
+            height: 58px;
           }
           .slider-text {
-            font-size: 13px;
+            font-size: 24px;
+            font-weight: 800;
+          }
+          .slider-handle {
+            left: calc(${sliderProgress}% - 48px);
           }
           .auth-footer {
-            font-size: 11px;
-            margin-top: 8px;
+            font-size: 10px;
+            margin-top: 6px;
           }
           .back-link {
-            font-size: 11px;
-            margin-top: 4px;
+            font-size: 10px;
+            margin-top: 2px;
           }
         }
       `}</style>
@@ -548,7 +568,7 @@ const Login = () => {
                 style={{
                   color: "var(--primary)",
                   fontSize: "13px",
-                  fontWeight: 700,
+                  fontWeight: 900,
                   textDecoration: "none",
                 }}
               >
@@ -576,7 +596,7 @@ const Login = () => {
                 onMouseDown={startDrag}
                 onTouchStart={startDrag}
                 style={{
-                  left: `calc(${sliderProgress}% - 24px)`,
+                  left: `calc(${sliderProgress}% - 29px)`,
                 }}
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
