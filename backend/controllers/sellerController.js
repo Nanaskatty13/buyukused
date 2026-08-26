@@ -18,11 +18,11 @@ const Order = require("../models/Orders");
 // ------------------------------------------------------------
 
 const sanitizeSeller = (user) => {
+  if (!user) return null;
+
   const obj = user?.toObject
     ? user.toObject()
-    : {
-        ...(user || {}),
-      };
+    : { ...user };
 
   delete obj.password;
   delete obj.__v;
@@ -38,6 +38,14 @@ const sanitizeSeller = (user) => {
 
 const getUserId = (req) => {
   return req.user?._id || req.user?.id;
+};
+
+// ------------------------------------------------------------
+// Validate ObjectId
+// ------------------------------------------------------------
+
+const isValidObjectId = (id) => {
+  return mongoose.Types.ObjectId.isValid(id);
 };
 
 // ------------------------------------------------------------
@@ -62,18 +70,15 @@ const getPagination = (
     maxLimit
   );
 
-  const skip =
-    (pageNum - 1) * limitNum;
-
   return {
     page: pageNum,
     limit: limitNum,
-    skip,
+    skip: (pageNum - 1) * limitNum,
   };
 };
 
 // ------------------------------------------------------------
-// Sort
+// Safe Mongo sort
 // ------------------------------------------------------------
 
 const parseSort = (sortStr) => {
@@ -83,34 +88,29 @@ const parseSort = (sortStr) => {
     };
   }
 
-  const fields =
-    String(sortStr).split(",");
-
   const sortObj = {};
 
-  fields.forEach((field) => {
-    const cleanField =
-      String(field).trim();
+  String(sortStr)
+    .split(",")
+    .forEach((field) => {
+      const cleanField = String(field).trim();
 
-    const isDesc =
-      cleanField.startsWith("-");
+      if (!cleanField) return;
 
-    const key = isDesc
-      ? cleanField.slice(1)
-      : cleanField;
+      const isDesc = cleanField.startsWith("-");
 
-    if (!key) {
-      return;
-    }
+      const key = isDesc
+        ? cleanField.slice(1)
+        : cleanField;
 
-    // Only allow normal MongoDB field names.
-    if (!/^[a-zA-Z0-9_]+$/.test(key)) {
-      return;
-    }
+      if (!key) return;
 
-    sortObj[key] =
-      isDesc ? -1 : 1;
-  });
+      if (!/^[a-zA-Z0-9_]+$/.test(key)) {
+        return;
+      }
+
+      sortObj[key] = isDesc ? -1 : 1;
+    });
 
   return Object.keys(sortObj).length
     ? sortObj
@@ -129,10 +129,9 @@ const getDateFilter = (period = "all") => {
   }
 
   const now = new Date();
+  let startDate;
 
-  let startDate = null;
-
-  switch (period) {
+  switch (String(period).toLowerCase()) {
     case "today":
       startDate = new Date(now);
       startDate.setHours(0, 0, 0, 0);
@@ -170,11 +169,62 @@ const getDateFilter = (period = "all") => {
   };
 };
 
+// ------------------------------------------------------------
+// Calculate seller items from an order
+// ------------------------------------------------------------
+
+const getSellerItems = (
+  order,
+  sellerId
+) => {
+  const sellerIdString =
+    sellerId?.toString();
+
+  return (order?.items || []).filter(
+    (item) => {
+      if (!item?.sellerId) {
+        return false;
+      }
+
+      return (
+        item.sellerId.toString() ===
+        sellerIdString
+      );
+    }
+  );
+};
+
+// ------------------------------------------------------------
+// Calculate seller total
+// ------------------------------------------------------------
+
+const calculateSellerTotal = (
+  items = []
+) => {
+  return items.reduce(
+    (total, item) => {
+      const price = Number(
+        item?.price || 0
+      );
+
+      const quantity = Number(
+        item?.quantity || 0
+      );
+
+      return (
+        total +
+        price * quantity
+      );
+    },
+    0
+  );
+};
+
 // ============================================================
 // 1. REGISTER SELLER
 // ============================================================
 
-exports.registerSeller = async (
+const registerSeller = async (
   req,
   res
 ) => {
@@ -184,7 +234,8 @@ exports.registerSeller = async (
     if (!userId) {
       return res.status(401).json({
         success: false,
-        message: "Authentication required.",
+        message:
+          "Authentication required.",
       });
     }
 
@@ -197,7 +248,7 @@ exports.registerSeller = async (
       termsAccepted,
       businessType,
       taxId,
-    } = req.body;
+    } = req.body || {};
 
     if (termsAccepted !== true) {
       return res.status(400).json({
@@ -283,22 +334,14 @@ exports.registerSeller = async (
       ).trim();
 
     user.role = "seller";
+    user.sellerStatus = "active";
 
-    user.sellerStatus =
-      "active";
-
-    // Only set sellerSince when
-    // the user actually becomes a seller.
     if (!user.sellerSince) {
-      user.sellerSince =
-        new Date();
+      user.sellerSince = new Date();
     }
 
-    user.lastActive =
-      new Date();
-
-    user.lastSeen =
-      new Date();
+    user.lastActive = new Date();
+    user.lastSeen = new Date();
 
     await user.save();
 
@@ -328,13 +371,12 @@ exports.registerSeller = async (
 // 2. PRIVATE SELLER PROFILE
 // ============================================================
 
-exports.getSellerProfile = async (
+const getSellerProfile = async (
   req,
   res
 ) => {
   try {
-    const userId =
-      getUserId(req);
+    const userId = getUserId(req);
 
     if (!userId) {
       return res.status(401).json({
@@ -394,696 +436,563 @@ exports.getSellerProfile = async (
 // 3. UPDATE SELLER PROFILE
 // ============================================================
 
-exports.updateSellerProfile =
-  async (
-    req,
-    res
-  ) => {
-    try {
-      const userId =
-        getUserId(req);
+const updateSellerProfile = async (
+  req,
+  res
+) => {
+  try {
+    const userId = getUserId(req);
 
-      if (!userId) {
-        return res.status(401).json({
-          success: false,
-          message:
-            "Authentication required.",
-        });
-      }
-
-      const {
-        shopName,
-        shopDescription,
-        description,
-        phone,
-        location,
-        avatar,
-        profileImage,
-        photo,
-        photoURL,
-        businessType,
-        taxId,
-      } = req.body;
-
-      const updates = {};
-
-      if (
-        shopName !== undefined
-      ) {
-        updates.shopName =
-          String(
-            shopName
-          ).trim();
-      }
-
-      if (
-        shopDescription !==
-        undefined
-      ) {
-        updates.shopDescription =
-          String(
-            shopDescription
-          ).trim();
-      } else if (
-        description !==
-        undefined
-      ) {
-        updates.shopDescription =
-          String(
-            description
-          ).trim();
-      }
-
-      if (
-        phone !== undefined
-      ) {
-        updates.phone =
-          String(
-            phone
-          ).trim();
-      }
-
-      if (
-        location !== undefined
-      ) {
-        updates.location =
-          String(
-            location
-          ).trim();
-      }
-
-      if (
-        avatar !== undefined
-      ) {
-        updates.avatar =
-          String(
-            avatar
-          ).trim();
-      }
-
-      if (
-        profileImage !==
-        undefined
-      ) {
-        updates.profileImage =
-          String(
-            profileImage
-          ).trim();
-      }
-
-      if (
-        photo !== undefined
-      ) {
-        updates.photo =
-          String(
-            photo
-          ).trim();
-      }
-
-      if (
-        photoURL !== undefined
-      ) {
-        updates.photoURL =
-          String(
-            photoURL
-          ).trim();
-      }
-
-      if (
-        businessType !==
-        undefined
-      ) {
-        updates.businessType =
-          businessType;
-      }
-
-      if (
-        taxId !== undefined
-      ) {
-        updates.taxId =
-          String(
-            taxId
-          ).trim();
-      }
-
-      // Activity
-      updates.lastActive =
-        new Date();
-
-      updates.lastSeen =
-        new Date();
-
-      // Never allow profile update
-      // to change the user's role.
-      delete updates.role;
-
-      const seller =
-        await User.findByIdAndUpdate(
-          userId,
-          {
-            $set: updates,
-          },
-          {
-            new: true,
-            runValidators: true,
-          }
-        )
-          .select(
-            "-password -__v -resetPasswordToken -resetPasswordExpires"
-          )
-          .lean();
-
-      if (!seller) {
-        return res.status(404).json({
-          success: false,
-          message:
-            "Seller not found.",
-        });
-      }
-
-      return res.json({
-        success: true,
-        message:
-          "Seller profile updated successfully.",
-        seller,
-      });
-    } catch (error) {
-      console.error(
-        "❌ Update seller profile error:",
-        error
-      );
-
-      return res.status(500).json({
+    if (!userId) {
+      return res.status(401).json({
         success: false,
         message:
-          error.message ||
-          "Failed to update seller profile.",
+          "Authentication required.",
       });
     }
-  };
+
+    const {
+      shopName,
+      shopDescription,
+      description,
+      phone,
+      location,
+      avatar,
+      profileImage,
+      photo,
+      photoURL,
+      businessType,
+      taxId,
+    } = req.body || {};
+
+    const updates = {};
+
+    if (shopName !== undefined) {
+      updates.shopName =
+        String(shopName).trim();
+    }
+
+    if (
+      shopDescription !==
+      undefined
+    ) {
+      updates.shopDescription =
+        String(
+          shopDescription
+        ).trim();
+    } else if (
+      description !== undefined
+    ) {
+      updates.shopDescription =
+        String(
+          description
+        ).trim();
+    }
+
+    if (phone !== undefined) {
+      updates.phone =
+        String(phone).trim();
+    }
+
+    if (location !== undefined) {
+      updates.location =
+        String(location).trim();
+    }
+
+    if (avatar !== undefined) {
+      updates.avatar =
+        String(avatar).trim();
+    }
+
+    if (
+      profileImage !==
+      undefined
+    ) {
+      updates.profileImage =
+        String(
+          profileImage
+        ).trim();
+    }
+
+    if (photo !== undefined) {
+      updates.photo =
+        String(photo).trim();
+    }
+
+    if (photoURL !== undefined) {
+      updates.photoURL =
+        String(photoURL).trim();
+    }
+
+    if (
+      businessType !==
+      undefined
+    ) {
+      updates.businessType =
+        businessType;
+    }
+
+    if (taxId !== undefined) {
+      updates.taxId =
+        String(taxId).trim();
+    }
+
+    updates.lastActive = new Date();
+    updates.lastSeen = new Date();
+
+    // Never allow profile updates
+    // to change authentication role.
+    delete updates.role;
+
+    const seller =
+      await User.findByIdAndUpdate(
+        userId,
+        {
+          $set: updates,
+        },
+        {
+          new: true,
+          runValidators: true,
+        }
+      )
+        .select(
+          "-password -__v -resetPasswordToken -resetPasswordExpires"
+        )
+        .lean();
+
+    if (!seller) {
+      return res.status(404).json({
+        success: false,
+        message:
+          "Seller not found.",
+      });
+    }
+
+    return res.json({
+      success: true,
+      message:
+        "Seller profile updated successfully.",
+      seller,
+    });
+  } catch (error) {
+    console.error(
+      "❌ Update seller profile error:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message:
+        error.message ||
+        "Failed to update seller profile.",
+    });
+  }
+};
 
 // ============================================================
 // 4. SELLER DASHBOARD
 // ============================================================
 
-exports.getSellerDashboard =
-  async (
-    req,
-    res
-  ) => {
-    try {
-      const userId =
-        getUserId(req);
+const getSellerDashboard = async (
+  req,
+  res
+) => {
+  try {
+    const userId = getUserId(req);
 
-      if (!userId) {
-        return res.status(401).json({
-          success: false,
-          message:
-            "Authentication required.",
-        });
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message:
+          "Authentication required.",
+      });
+    }
+
+    const period =
+      req.query.period || "all";
+
+    const dateFilter =
+      getDateFilter(period);
+
+    const [
+      productsCount,
+      orders,
+    ] = await Promise.all([
+      Product.countDocuments({
+        sellerId: userId,
+        ...dateFilter,
+      }),
+
+      Order.find({
+        "items.sellerId": userId,
+        ...dateFilter,
+      }).lean(),
+    ]);
+
+    let totalSales = 0;
+    let totalItemsSold = 0;
+
+    const orderIds = new Set();
+
+    orders.forEach((order) => {
+      const sellerItems =
+        getSellerItems(
+          order,
+          userId
+        );
+
+      if (!sellerItems.length) {
+        return;
       }
 
-      const userIdString =
-        userId.toString();
-
-      const period =
-        req.query.period ||
-        "all";
-
-      const dateFilter =
-        getDateFilter(period);
-
-      const productsCount =
-        await Product.countDocuments({
-          sellerId: userId,
-          ...dateFilter,
-        });
-
-      const orders =
-        await Order.find({
-          "items.sellerId":
-            userId,
-          ...dateFilter,
-        }).lean();
-
-      let totalSales = 0;
-      let totalItemsSold = 0;
-
-      const orderIds =
-        new Set();
-
-      orders.forEach(
-        (order) => {
-          (
-            order.items || []
-          ).forEach(
-            (item) => {
-              if (
-                item.sellerId &&
-                item.sellerId.toString() ===
-                  userIdString
-              ) {
-                const price =
-                  Number(
-                    item.price || 0
-                  );
-
-                const quantity =
-                  Number(
-                    item.quantity || 0
-                  );
-
-                totalSales +=
-                  price *
-                  quantity;
-
-                totalItemsSold +=
-                  quantity;
-
-                orderIds.add(
-                  order._id.toString()
-                );
-              }
-            }
+      sellerItems.forEach(
+        (item) => {
+          const price = Number(
+            item.price || 0
           );
+
+          const quantity =
+            Number(
+              item.quantity || 0
+            );
+
+          totalSales +=
+            price * quantity;
+
+          totalItemsSold +=
+            quantity;
         }
       );
 
-      const pendingOrders =
-        await Order.countDocuments({
-          "items.sellerId":
-            userId,
-          status: "pending",
-        });
-
-      return res.json({
-        success: true,
-
-        stats: {
-          products:
-            productsCount,
-
-          orders:
-            orderIds.size,
-
-          totalSales,
-
-          totalItemsSold,
-
-          pendingOrders,
-
-          period,
-        },
-      });
-    } catch (error) {
-      console.error(
-        "❌ Get dashboard stats error:",
-        error
+      orderIds.add(
+        order._id.toString()
       );
+    });
 
-      return res.status(500).json({
-        success: false,
-        message:
-          error.message ||
-          "Failed to fetch dashboard stats.",
+    const pendingOrders =
+      await Order.countDocuments({
+        "items.sellerId": userId,
+        status: "pending",
       });
-    }
-  };
+
+    return res.json({
+      success: true,
+      stats: {
+        products: productsCount,
+        orders: orderIds.size,
+        totalSales,
+        totalItemsSold,
+        pendingOrders,
+        period,
+      },
+    });
+  } catch (error) {
+    console.error(
+      "❌ Get dashboard stats error:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message:
+        error.message ||
+        "Failed to fetch dashboard stats.",
+    });
+  }
+};
 
 // ============================================================
 // 5. GET MY PRODUCTS
 // ============================================================
 
-exports.getMyProducts =
-  async (
-    req,
-    res
-  ) => {
-    try {
-      const userId =
-        getUserId(req);
+const getMyProducts = async (
+  req,
+  res
+) => {
+  try {
+    const userId = getUserId(req);
 
-      if (!userId) {
-        return res.status(401).json({
-          success: false,
-          message:
-            "Authentication required.",
-        });
-      }
-
-      const {
-        page,
-        limit,
-        skip,
-      } = getPagination(
-        req.query.page,
-        req.query.limit
-      );
-
-      const sort =
-        parseSort(
-          req.query.sort ||
-            "-createdAt"
-        );
-
-      const filter = {
-        sellerId: userId,
-      };
-
-      if (
-        req.query.status
-      ) {
-        filter.status =
-          req.query.status;
-      }
-
-      const [
-        products,
-        total,
-      ] = await Promise.all([
-        Product.find(filter)
-          .sort(sort)
-          .skip(skip)
-          .limit(limit)
-          .lean(),
-
-        Product.countDocuments(
-          filter
-        ),
-      ]);
-
-      return res.json({
-        success: true,
-
-        products,
-
-        pagination: {
-          page,
-          limit,
-          total,
-
-          totalPages:
-            Math.ceil(
-              total / limit
-            ),
-        },
-      });
-    } catch (error) {
-      console.error(
-        "❌ Get my products error:",
-        error
-      );
-
-      return res.status(500).json({
+    if (!userId) {
+      return res.status(401).json({
         success: false,
         message:
-          error.message ||
-          "Failed to fetch products.",
+          "Authentication required.",
       });
     }
-  };
 
-// ============================================================
-// 6. SELLER ORDERS
-// ============================================================
+    const {
+      page,
+      limit,
+      skip,
+    } = getPagination(
+      req.query.page,
+      req.query.limit
+    );
 
-exports.getSellerOrders =
-  async (
-    req,
-    res
-  ) => {
-    try {
-      const userId =
-        getUserId(req);
+    const sort = parseSort(
+      req.query.sort ||
+        "-createdAt"
+    );
 
-      if (!userId) {
-        return res.status(401).json({
-          success: false,
-          message:
-            "Authentication required.",
-        });
-      }
+    const filter = {
+      sellerId: userId,
+    };
 
-      const userIdString =
-        userId.toString();
+    if (req.query.status) {
+      filter.status =
+        req.query.status;
+    }
 
-      const {
+    const [
+      products,
+      total,
+    ] = await Promise.all([
+      Product.find(filter)
+        .sort(sort)
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+
+      Product.countDocuments(
+        filter
+      ),
+    ]);
+
+    return res.json({
+      success: true,
+      products,
+      pagination: {
         page,
         limit,
-        skip,
-      } = getPagination(
-        req.query.page,
-        req.query.limit
-      );
-
-      const sort =
-        parseSort(
-          req.query.sort ||
-            "-createdAt"
-        );
-
-      const filter = {
-        "items.sellerId":
-          userId,
-      };
-
-      if (
-        req.query.status
-      ) {
-        filter.status =
-          req.query.status;
-      }
-
-      const [
-        orders,
         total,
-      ] = await Promise.all([
-        Order.find(filter)
-          .populate(
-            "user",
-            "name email phone"
-          )
-          .populate(
-            "items.productId",
-            "title price images"
-          )
-          .sort(sort)
-          .skip(skip)
-          .limit(limit)
-          .lean(),
+        totalPages:
+          Math.ceil(
+            total / limit
+          ),
+      },
+    });
+  } catch (error) {
+    console.error(
+      "❌ Get my products error:",
+      error
+    );
 
-        Order.countDocuments(
-          filter
-        ),
-      ]);
+    return res.status(500).json({
+      success: false,
+      message:
+        error.message ||
+        "Failed to fetch products.",
+    });
+  }
+};
 
-      const processedOrders =
-        orders.map(
-          (order) => {
-            const sellerItems =
-              (
-                order.items ||
-                []
-              ).filter(
-                (item) =>
-                  item.sellerId &&
-                  item.sellerId.toString() ===
-                    userIdString
-              );
+// ============================================================
+// 6. GET SELLER ORDERS
+// ============================================================
 
-            const sellerTotal =
-              sellerItems.reduce(
-                (
-                  sum,
-                  item
-                ) => {
-                  const price =
-                    Number(
-                      item.price || 0
-                    );
+const getSellerOrders = async (
+  req,
+  res
+) => {
+  try {
+    const userId = getUserId(req);
 
-                  const quantity =
-                    Number(
-                      item.quantity || 0
-                    );
-
-                  return (
-                    sum +
-                    price *
-                      quantity
-                  );
-                },
-                0
-              );
-
-            return {
-              ...order,
-
-              sellerItems,
-
-              totalSellerItems:
-                sellerItems.length,
-
-              sellerTotal,
-            };
-          }
-        );
-
-      return res.json({
-        success: true,
-
-        orders:
-          processedOrders,
-
-        pagination: {
-          page,
-          limit,
-          total,
-
-          totalPages:
-            Math.ceil(
-              total / limit
-            ),
-        },
-      });
-    } catch (error) {
-      console.error(
-        "❌ Get seller orders error:",
-        error
-      );
-
-      return res.status(500).json({
+    if (!userId) {
+      return res.status(401).json({
         success: false,
         message:
-          error.message ||
-          "Failed to fetch seller orders.",
+          "Authentication required.",
       });
     }
-  };
 
-// ============================================================
-// 7. SELLER ORDER BY ID
-// ============================================================
+    const {
+      page,
+      limit,
+      skip,
+    } = getPagination(
+      req.query.page,
+      req.query.limit
+    );
 
-exports.getSellerOrderById =
-  async (
-    req,
-    res
-  ) => {
-    try {
-      const userId =
-        getUserId(req);
+    const sort = parseSort(
+      req.query.sort ||
+        "-createdAt"
+    );
 
-      const { orderId } =
-        req.params;
+    const filter = {
+      "items.sellerId": userId,
+    };
 
-      if (!userId) {
-        return res.status(401).json({
-          success: false,
-          message:
-            "Authentication required.",
-        });
-      }
+    if (req.query.status) {
+      filter.status =
+        req.query.status;
+    }
 
-      if (
-        !mongoose.Types.ObjectId.isValid(
-          orderId
+    const [
+      orders,
+      total,
+    ] = await Promise.all([
+      Order.find(filter)
+        .populate(
+          "user",
+          "name email phone"
         )
-      ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Invalid order ID.",
-        });
-      }
+        .populate(
+          "items.productId",
+          "title price images"
+        )
+        .sort(sort)
+        .skip(skip)
+        .limit(limit)
+        .lean(),
 
-      const order =
-        await Order.findOne({
-          _id: orderId,
-          "items.sellerId":
-            userId,
-        })
-          .populate(
-            "user",
-            "name email phone"
-          )
-          .populate(
-            "items.productId",
-            "title price images"
-          )
-          .lean();
+      Order.countDocuments(
+        filter
+      ),
+    ]);
 
-      if (!order) {
-        return res.status(404).json({
-          success: false,
-          message:
-            "Order not found.",
-        });
-      }
+    const processedOrders =
+      orders.map((order) => {
+        const sellerItems =
+          getSellerItems(
+            order,
+            userId
+          );
 
-      const userIdString =
-        userId.toString();
+        const sellerTotal =
+          calculateSellerTotal(
+            sellerItems
+          );
 
-      const sellerItems =
-        (
-          order.items || []
-        ).filter(
-          (item) =>
-            item.sellerId &&
-            item.sellerId.toString() ===
-              userIdString
-        );
-
-      const sellerTotal =
-        sellerItems.reduce(
-          (
-            sum,
-            item
-          ) =>
-            sum +
-            Number(
-              item.price || 0
-            ) *
-              Number(
-                item.quantity || 0
-              ),
-          0
-        );
-
-      return res.json({
-        success: true,
-
-        order: {
+        return {
           ...order,
-
           sellerItems,
-
           totalSellerItems:
             sellerItems.length,
-
           sellerTotal,
-        },
+        };
       });
-    } catch (error) {
-      console.error(
-        "❌ Get seller order by ID error:",
-        error
-      );
 
-      return res.status(500).json({
+    return res.json({
+      success: true,
+      orders: processedOrders,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages:
+          Math.ceil(
+            total / limit
+          ),
+      },
+    });
+  } catch (error) {
+    console.error(
+      "❌ Get seller orders error:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message:
+        error.message ||
+        "Failed to fetch seller orders.",
+    });
+  }
+};
+
+// ============================================================
+// 7. GET SELLER ORDER BY ID
+// ============================================================
+
+const getSellerOrderById = async (
+  req,
+  res
+) => {
+  try {
+    const userId = getUserId(req);
+    const { orderId } = req.params;
+
+    if (!userId) {
+      return res.status(401).json({
         success: false,
         message:
-          error.message ||
-          "Failed to fetch seller order.",
+          "Authentication required.",
       });
     }
-  };
+
+    if (!isValidObjectId(orderId)) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Invalid order ID.",
+      });
+    }
+
+    const order =
+      await Order.findOne({
+        _id: orderId,
+        "items.sellerId": userId,
+      })
+        .populate(
+          "user",
+          "name email phone"
+        )
+        .populate(
+          "items.productId",
+          "title price images"
+        )
+        .lean();
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message:
+          "Order not found.",
+      });
+    }
+
+    const sellerItems =
+      getSellerItems(
+        order,
+        userId
+      );
+
+    const sellerTotal =
+      calculateSellerTotal(
+        sellerItems
+      );
+
+    return res.json({
+      success: true,
+      order: {
+        ...order,
+        sellerItems,
+        totalSellerItems:
+          sellerItems.length,
+        sellerTotal,
+      },
+    });
+  } catch (error) {
+    console.error(
+      "❌ Get seller order by ID error:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message:
+        error.message ||
+        "Failed to fetch seller order.",
+    });
+  }
+};
 
 // ============================================================
 // 8. UPDATE SELLER ORDER STATUS
 // ============================================================
 
-exports.updateSellerOrderStatus =
+const updateSellerOrderStatus =
   async (
     req,
     res
@@ -1096,7 +1005,7 @@ exports.updateSellerOrderStatus =
         req.params;
 
       const { status } =
-        req.body;
+        req.body || {};
 
       if (!userId) {
         return res.status(401).json({
@@ -1106,11 +1015,7 @@ exports.updateSellerOrderStatus =
         });
       }
 
-      if (
-        !mongoose.Types.ObjectId.isValid(
-          orderId
-        )
-      ) {
+      if (!isValidObjectId(orderId)) {
         return res.status(400).json({
           success: false,
           message:
@@ -1141,8 +1046,7 @@ exports.updateSellerOrderStatus =
       const order =
         await Order.findOne({
           _id: orderId,
-          "items.sellerId":
-            userId,
+          "items.sellerId": userId,
         });
 
       if (!order) {
@@ -1152,16 +1056,6 @@ exports.updateSellerOrderStatus =
             "Order not found or does not contain your products.",
         });
       }
-
-      /*
-       * IMPORTANT:
-       *
-       * If your Orders model has one global order status,
-       * changing it here changes the entire order status.
-       *
-       * This is kept compatible with your current Order
-       * structure.
-       */
 
       order.status = status;
 
@@ -1192,267 +1086,216 @@ exports.updateSellerOrderStatus =
 // 9. SELLER EARNINGS
 // ============================================================
 
-exports.getSellerEarnings =
-  async (
-    req,
-    res
-  ) => {
-    try {
-      const userId =
-        getUserId(req);
+const getSellerEarnings = async (
+  req,
+  res
+) => {
+  try {
+    const userId = getUserId(req);
 
-      if (!userId) {
-        return res.status(401).json({
-          success: false,
-          message:
-            "Authentication required.",
-        });
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message:
+          "Authentication required.",
+      });
+    }
+
+    const period =
+      req.query.period || "all";
+
+    const dateFilter =
+      getDateFilter(period);
+
+    const orders =
+      await Order.find({
+        "items.sellerId": userId,
+        ...dateFilter,
+      }).lean();
+
+    let totalEarnings = 0;
+    let itemsSold = 0;
+
+    const uniqueOrders = new Set();
+
+    orders.forEach((order) => {
+      const sellerItems =
+        getSellerItems(
+          order,
+          userId
+        );
+
+      if (!sellerItems.length) {
+        return;
       }
 
-      const userIdString =
-        userId.toString();
-
-      const period =
-        req.query.period ||
-        "all";
-
-      const dateFilter =
-        getDateFilter(period);
-
-      const orders =
-        await Order.find({
-          "items.sellerId":
-            userId,
-          ...dateFilter,
-        }).lean();
-
-      let totalEarnings = 0;
-      let itemsSold = 0;
-
-      const uniqueOrders =
-        new Set();
-
-      orders.forEach(
-        (order) => {
-          let hasSellerItem =
-            false;
-
-          (
-            order.items || []
-          ).forEach(
-            (item) => {
-              if (
-                item.sellerId &&
-                item.sellerId.toString() ===
-                  userIdString
-              ) {
-                const price =
-                  Number(
-                    item.price || 0
-                  );
-
-                const quantity =
-                  Number(
-                    item.quantity || 0
-                  );
-
-                totalEarnings +=
-                  price *
-                  quantity;
-
-                itemsSold +=
-                  quantity;
-
-                hasSellerItem =
-                  true;
-              }
-            }
-          );
-
-          if (
-            hasSellerItem
-          ) {
-            uniqueOrders.add(
-              order._id.toString()
+      sellerItems.forEach(
+        (item) => {
+          const price =
+            Number(
+              item.price || 0
             );
-          }
+
+          const quantity =
+            Number(
+              item.quantity || 0
+            );
+
+          totalEarnings +=
+            price * quantity;
+
+          itemsSold += quantity;
         }
       );
 
-      return res.json({
-        success: true,
-
-        earnings:
-          totalEarnings,
-
-        itemsSold,
-
-        orders:
-          uniqueOrders.size,
-
-        period,
-      });
-    } catch (error) {
-      console.error(
-        "❌ Get seller earnings error:",
-        error
+      uniqueOrders.add(
+        order._id.toString()
       );
+    });
 
-      return res.status(500).json({
-        success: false,
-        message:
-          error.message ||
-          "Failed to calculate earnings.",
-      });
-    }
-  };
+    return res.json({
+      success: true,
+      earnings: totalEarnings,
+      itemsSold,
+      orders:
+        uniqueOrders.size,
+      period,
+    });
+  } catch (error) {
+    console.error(
+      "❌ Get seller earnings error:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message:
+        error.message ||
+        "Failed to calculate earnings.",
+    });
+  }
+};
 
 // ============================================================
 // 10. SELLER ANALYTICS
 // ============================================================
 
-exports.getSellerAnalytics =
-  async (
-    req,
-    res
-  ) => {
-    try {
-      const userId =
-        getUserId(req);
+const getSellerAnalytics = async (
+  req,
+  res
+) => {
+  try {
+    const userId = getUserId(req);
 
-      if (!userId) {
-        return res.status(401).json({
-          success: false,
-          message:
-            "Authentication required.",
-        });
-      }
-
-      const period =
-        req.query.period ||
-        "today";
-
-      const dateFilter =
-        getDateFilter(period);
-
-      const filter = {
-        sellerId: userId,
-        ...dateFilter,
-      };
-
-      const [
-        totalProducts,
-        activeProducts,
-        soldProducts,
-      ] = await Promise.all([
-        Product.countDocuments(
-          filter
-        ),
-
-        Product.countDocuments({
-          ...filter,
-          status: "active",
-        }),
-
-        Product.countDocuments({
-          ...filter,
-          status: "sold",
-        }),
-      ]);
-
-      /*
-       * These fields depend on what your Product model
-       * actually stores. We safely calculate them only
-       * when the fields exist.
-       */
-
-      const products =
-        await Product.find(filter)
-          .select(
-            "views clicks favorites"
-          )
-          .lean();
-
-      let totalViews = 0;
-      let totalClicks = 0;
-      let totalFavorites = 0;
-
-      products.forEach(
-        (product) => {
-          totalViews +=
-            Number(
-              product.views || 0
-            );
-
-          totalClicks +=
-            Number(
-              product.clicks || 0
-            );
-
-          totalFavorites +=
-            Number(
-              product.favorites || 0
-            );
-        }
-      );
-
-      return res.json({
-        success: true,
-
-        analytics: {
-          period,
-
-          products:
-            totalProducts,
-
-          activeProducts,
-
-          soldProducts,
-
-          views:
-            totalViews,
-
-          clicks:
-            totalClicks,
-
-          favorites:
-            totalFavorites,
-        },
-      });
-    } catch (error) {
-      console.error(
-        "❌ Get seller analytics error:",
-        error
-      );
-
-      return res.status(500).json({
+    if (!userId) {
+      return res.status(401).json({
         success: false,
         message:
-          error.message ||
-          "Failed to fetch seller analytics.",
+          "Authentication required.",
       });
     }
-  };
+
+    const period =
+      req.query.period || "today";
+
+    const dateFilter =
+      getDateFilter(period);
+
+    const filter = {
+      sellerId: userId,
+      ...dateFilter,
+    };
+
+    const [
+      totalProducts,
+      activeProducts,
+      soldProducts,
+    ] = await Promise.all([
+      Product.countDocuments(
+        filter
+      ),
+
+      Product.countDocuments({
+        ...filter,
+        status: "active",
+      }),
+
+      Product.countDocuments({
+        ...filter,
+        status: "sold",
+      }),
+    ]);
+
+    const products =
+      await Product.find(filter)
+        .select(
+          "views clicks favorites"
+        )
+        .lean();
+
+    let totalViews = 0;
+    let totalClicks = 0;
+    let totalFavorites = 0;
+
+    products.forEach(
+      (product) => {
+        totalViews += Number(
+          product.views || 0
+        );
+
+        totalClicks += Number(
+          product.clicks || 0
+        );
+
+        totalFavorites += Number(
+          product.favorites || 0
+        );
+      }
+    );
+
+    return res.json({
+      success: true,
+      analytics: {
+        period,
+        products:
+          totalProducts,
+        activeProducts,
+        soldProducts,
+        views: totalViews,
+        clicks: totalClicks,
+        favorites:
+          totalFavorites,
+      },
+    });
+  } catch (error) {
+    console.error(
+      "❌ Get seller analytics error:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message:
+        error.message ||
+        "Failed to fetch seller analytics.",
+    });
+  }
+};
 
 // ============================================================
 // 11. PUBLIC SELLER PROFILE
 // ============================================================
 
-exports.getPublicSellerProfile =
+const getPublicSellerProfile =
   async (
     req,
     res
   ) => {
     try {
-      const {
-        sellerId,
-      } = req.params;
+      const { sellerId } =
+        req.params;
 
-      if (
-        !mongoose.Types.ObjectId.isValid(
-          sellerId
-        )
-      ) {
+      if (!isValidObjectId(sellerId)) {
         return res.status(400).json({
           success: false,
           message:
@@ -1518,20 +1361,11 @@ exports.getPublicSellerProfile =
         });
       }
 
-      // --------------------------------------------------------
-      // Count active products
-      // --------------------------------------------------------
-
       const productsCount =
         await Product.countDocuments({
-          sellerId:
-            seller._id,
+          sellerId: seller._id,
           status: "active",
         });
-
-      // --------------------------------------------------------
-      // Profile image
-      // --------------------------------------------------------
 
       const avatar =
         seller.avatar ||
@@ -1540,18 +1374,10 @@ exports.getPublicSellerProfile =
         seller.photoURL ||
         null;
 
-      // --------------------------------------------------------
-      // Member since
-      // --------------------------------------------------------
-
       const memberSince =
         seller.sellerSince ||
         seller.createdAt ||
         null;
-
-      // --------------------------------------------------------
-      // Activity
-      // --------------------------------------------------------
 
       const activityDate =
         seller.lastActive ||
@@ -1566,23 +1392,24 @@ exports.getPublicSellerProfile =
             activityDate
           ).getTime();
 
-        const difference =
-          Date.now() -
-          activityTime;
+        if (
+          Number.isFinite(
+            activityTime
+          )
+        ) {
+          const difference =
+            Date.now() -
+            activityTime;
 
-        isOnline =
-          difference >= 0 &&
-          difference <=
-            5 * 60 * 1000;
+          isOnline =
+            difference >= 0 &&
+            difference <=
+              5 * 60 * 1000;
+        }
       }
 
-      // --------------------------------------------------------
-      // Public seller profile
-      // --------------------------------------------------------
-
       const publicProfile = {
-        _id:
-          seller._id,
+        _id: seller._id,
 
         name:
           seller.name ||
@@ -1621,16 +1448,8 @@ exports.getPublicSellerProfile =
           seller.sellerStatus ||
           "",
 
-        // ------------------------------------------------------
-        // Verification
-        // ------------------------------------------------------
-
         isVerified:
           seller.isVerified === true,
-
-        // ------------------------------------------------------
-        // Images
-        // ------------------------------------------------------
 
         avatar,
 
@@ -1646,10 +1465,6 @@ exports.getPublicSellerProfile =
           seller.photoURL ||
           null,
 
-        // ------------------------------------------------------
-        // Dates
-        // ------------------------------------------------------
-
         createdAt:
           seller.createdAt ||
           null,
@@ -1659,10 +1474,6 @@ exports.getPublicSellerProfile =
           null,
 
         memberSince,
-
-        // ------------------------------------------------------
-        // Activity
-        // ------------------------------------------------------
 
         lastActive:
           seller.lastActive ||
@@ -1678,62 +1489,16 @@ exports.getPublicSellerProfile =
 
         isOnline,
 
-        // ------------------------------------------------------
-        // Stats
-        // ------------------------------------------------------
-
-        rating:
-          Number(
-            seller.rating || 0
-          ),
+        rating: Number(
+          seller.rating || 0
+        ),
 
         productsCount,
       };
 
-      console.log(
-        "👤 Public seller profile:",
-        {
-          sellerId,
-
-          name:
-            publicProfile.name,
-
-          shopName:
-            publicProfile.shopName,
-
-          avatar:
-            publicProfile.avatar,
-
-          phone:
-            publicProfile.phone,
-
-          location:
-            publicProfile.location,
-
-          memberSince:
-            publicProfile.memberSince,
-
-          lastActive:
-            publicProfile.lastActive,
-
-          lastSeen:
-            publicProfile.lastSeen,
-
-          isOnline:
-            publicProfile.isOnline,
-
-          isVerified:
-            publicProfile.isVerified,
-
-          productsCount:
-            publicProfile.productsCount,
-        }
-      );
-
       return res.json({
         success: true,
-        seller:
-          publicProfile,
+        seller: publicProfile,
       });
     } catch (error) {
       console.error(
@@ -1754,15 +1519,14 @@ exports.getPublicSellerProfile =
 // 12. PUBLIC SELLER PRODUCTS
 // ============================================================
 
-exports.getPublicSellerProducts =
+const getPublicSellerProducts =
   async (
     req,
     res
   ) => {
     try {
-      const {
-        sellerId,
-      } = req.params;
+      const { sellerId } =
+        req.params;
 
       const {
         page = 1,
@@ -1770,21 +1534,13 @@ exports.getPublicSellerProducts =
         sort = "-createdAt",
       } = req.query;
 
-      if (
-        !mongoose.Types.ObjectId.isValid(
-          sellerId
-        )
-      ) {
+      if (!isValidObjectId(sellerId)) {
         return res.status(400).json({
           success: false,
           message:
             "Invalid seller ID.",
         });
       }
-
-      // --------------------------------------------------------
-      // Make sure seller exists
-      // --------------------------------------------------------
 
       const sellerExists =
         await User.exists({
@@ -1805,41 +1561,18 @@ exports.getPublicSellerProducts =
         });
       }
 
-      // --------------------------------------------------------
-      // Pagination
-      // --------------------------------------------------------
-
-      const pageNum =
-        Math.max(
-          1,
-          parseInt(
-            page,
-            10
-          ) || 1
-        );
-
-      const limitNum =
-        Math.min(
-          Math.max(
-            1,
-            parseInt(
-              limit,
-              10
-            ) || 20
-          ),
-          50
-        );
-
-      const skip =
-        (pageNum - 1) *
-        limitNum;
+      const {
+        page: pageNum,
+        limit: limitNum,
+        skip,
+      } = getPagination(
+        page,
+        limit,
+        50
+      );
 
       const sortObj =
         parseSort(sort);
-
-      // --------------------------------------------------------
-      // ONLY ACTIVE PRODUCTS
-      // --------------------------------------------------------
 
       const filter = {
         sellerId,
@@ -1863,20 +1596,14 @@ exports.getPublicSellerProducts =
 
       return res.json({
         success: true,
-
         products,
-
         pagination: {
           page: pageNum,
-
           limit: limitNum,
-
           total,
-
           totalPages:
             Math.ceil(
-              total /
-                limitNum
+              total / limitNum
             ),
         },
       });
@@ -1900,39 +1627,20 @@ exports.getPublicSellerProducts =
 // ============================================================
 
 module.exports = {
-  registerSeller:
-    exports.registerSeller,
+  registerSeller,
+  getSellerProfile,
+  updateSellerProfile,
 
-  getSellerProfile:
-    exports.getSellerProfile,
+  getSellerDashboard,
+  getMyProducts,
 
-  updateSellerProfile:
-    exports.updateSellerProfile,
+  getSellerOrders,
+  getSellerOrderById,
+  updateSellerOrderStatus,
 
-  getSellerDashboard:
-    exports.getSellerDashboard,
+  getSellerEarnings,
+  getSellerAnalytics,
 
-  getMyProducts:
-    exports.getMyProducts,
-
-  getSellerOrders:
-    exports.getSellerOrders,
-
-  getSellerOrderById:
-    exports.getSellerOrderById,
-
-  updateSellerOrderStatus:
-    exports.updateSellerOrderStatus,
-
-  getSellerEarnings:
-    exports.getSellerEarnings,
-
-  getSellerAnalytics:
-    exports.getSellerAnalytics,
-
-  getPublicSellerProfile:
-    exports.getPublicSellerProfile,
-
-  getPublicSellerProducts:
-    exports.getPublicSellerProducts,
+  getPublicSellerProfile,
+  getPublicSellerProducts,
 };
