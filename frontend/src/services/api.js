@@ -1,5 +1,6 @@
 // ================================================================
 // frontend/src/services/api.js
+// BuyUKUsed API Service
 // ================================================================
 
 import {
@@ -1266,6 +1267,10 @@ export const favorites = {
 // ================================================================
 
 export const admin = {
+  // ============================================================
+  // DASHBOARD
+  // ============================================================
+
   getDashboardStats: async (
     token = getToken()
   ) => {
@@ -1279,6 +1284,10 @@ export const admin = {
       }
     );
   },
+
+  // ============================================================
+  // USERS
+  // ============================================================
 
   getUsers: async (
     params = {},
@@ -1372,6 +1381,10 @@ export const admin = {
     );
   },
 
+  // ============================================================
+  // PRODUCTS
+  // ============================================================
+
   getProducts: async (
     params = {},
     token = getToken()
@@ -1412,6 +1425,10 @@ export const admin = {
       }
     );
   },
+
+  // ============================================================
+  // ORDERS
+  // ============================================================
 
   getOrders: async (
     params = {},
@@ -1459,6 +1476,10 @@ export const admin = {
     );
   },
 
+  // ============================================================
+  // RIDERS
+  // ============================================================
+
   getRiders: async (
     params = {},
     token = getToken()
@@ -1504,6 +1525,12 @@ export const admin = {
     id,
     token = getToken()
   ) => {
+    if (!id) {
+      throw new Error(
+        "Rider ID is required"
+      );
+    }
+
     return request(
       `${API_URL}/api/admin/riders/${encodeURIComponent(
         id
@@ -1521,6 +1548,12 @@ export const admin = {
     id,
     token = getToken()
   ) => {
+    if (!id) {
+      throw new Error(
+        "Rider ID is required"
+      );
+    }
+
     return request(
       `${API_URL}/api/admin/riders/${encodeURIComponent(
         id
@@ -1539,6 +1572,12 @@ export const admin = {
     isApproved,
     token = getToken()
   ) => {
+    if (!id) {
+      throw new Error(
+        "Rider ID is required"
+      );
+    }
+
     return request(
       `${API_URL}/api/admin/riders/${encodeURIComponent(
         id
@@ -1561,6 +1600,12 @@ export const admin = {
     id,
     token = getToken()
   ) => {
+    if (!id) {
+      throw new Error(
+        "Rider ID is required"
+      );
+    }
+
     return request(
       `${API_URL}/api/admin/riders/${encodeURIComponent(
         id
@@ -1573,6 +1618,10 @@ export const admin = {
       }
     );
   },
+
+  // ============================================================
+  // DELIVERIES
+  // ============================================================
 
   getDeliveries: async (
     params = {},
@@ -1639,6 +1688,47 @@ export const admin = {
         body: JSON.stringify({
           status,
         }),
+      }
+    );
+  },
+
+  // ============================================================
+  // SELLER VERIFICATION
+  // ============================================================
+
+  getUnverifiedSellers: async (
+    token = getToken()
+  ) => {
+    return request(
+      `${API_URL}/api/admin/sellers/unverified`,
+      {
+        method: "GET",
+
+        headers:
+          getHeaders(token),
+      }
+    );
+  },
+
+  verifySeller: async (
+    sellerId,
+    token = getToken()
+  ) => {
+    if (!sellerId) {
+      throw new Error(
+        "Seller ID is required"
+      );
+    }
+
+    return request(
+      `${API_URL}/api/admin/sellers/${encodeURIComponent(
+        sellerId
+      )}/verify`,
+      {
+        method: "PUT",
+
+        headers:
+          getHeaders(token),
       }
     );
   },
@@ -2074,6 +2164,10 @@ export const getAdminOrders =
 export const updateAdminOrderStatus =
   admin.updateOrderStatus;
 
+// ================================================================
+// RIDER ADMIN EXPORTS
+// ================================================================
+
 export const getRiders =
   admin.getRiders;
 
@@ -2092,6 +2186,10 @@ export const updateRiderApproval =
 export const deleteRider =
   admin.deleteRider;
 
+// ================================================================
+// ADMIN DELIVERY EXPORTS
+// ================================================================
+
 export const getAdminDeliveries =
   admin.getDeliveries;
 
@@ -2100,6 +2198,16 @@ export const getAdminDeliveryById =
 
 export const updateAdminDeliveryStatus =
   admin.updateDeliveryStatus;
+
+// ================================================================
+// SELLER VERIFICATION EXPORTS
+// ================================================================
+
+export const getUnverifiedSellers =
+  admin.getUnverifiedSellers;
+
+export const verifySeller =
+  admin.verifySeller;
 
 // ================================================================
 // DELIVERY EXPORTS
@@ -2168,148 +2276,104 @@ const api = {
 
   deliveries,
 
+  // Auth
   login,
-
   register,
-
   getMe,
-
   logout,
 
+  // Products
   getProducts,
-
   getProduct,
-
   createProduct,
-
   createProductWithFiles,
-
   updateProduct,
-
   updateProductWithFiles,
-
   deleteProduct,
-
   updateProductStatus,
-
   getSellerProducts,
 
+  // Users
   getUsers,
-
   getUser,
-
   updateUser,
-
   updateUserWithFiles,
-
   deleteUser,
-
   getUserStats,
 
+  // Notifications
   getNotifications,
-
   getAdminNotifications,
-
   getUserNotifications,
-
   createNotification,
-
   markNotificationRead,
-
   deleteNotification,
 
+  // Orders
   getOrders,
-
   getOrder,
-
   createOrder,
-
   updateOrder,
-
   deleteOrder,
 
+  // Messages
   getMessages,
-
   getConversations,
-
   getConversation,
-
   sendMessage,
-
   markMessageRead,
-
   deleteMessage,
 
+  // Favorites
   getFavorites,
-
   addFavorite,
-
   removeFavorite,
 
+  // Admin
   getAdminDashboardStats,
-
   getAdminUsers,
-
   getAdminUserById,
-
   updateAdminUserRole,
-
   deleteAdminUser,
-
   getAdminProducts,
-
   deleteAdminProduct,
-
   getAdminOrders,
-
   updateAdminOrderStatus,
 
+  // Riders
   getRiders,
-
   getRiderById,
-
   approveRider,
-
   rejectRider,
-
   updateRiderApproval,
-
   deleteRider,
 
+  // Admin deliveries
   getAdminDeliveries,
-
   getAdminDeliveryById,
-
   updateAdminDeliveryStatus,
 
+  // Seller verification
+  getUnverifiedSellers,
+  verifySeller,
+
+  // Deliveries
   createDelivery,
-
   getCustomerDeliveries,
-
   getAvailableDeliveries,
-
   getMyDeliveries,
-
   getRiderDeliveries,
-
   updateRiderAvailability,
-
   toggleRiderAvailability,
-
   acceptDelivery,
-
   updateDeliveryStatus,
-
   updateDeliveryLocation,
-
   getDelivery,
-
   cancelDelivery,
 
+  // Utilities
   getImageUrl,
-
   getToken,
-
   clearAuthData,
 };
 
