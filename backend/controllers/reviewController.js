@@ -2,24 +2,6 @@
 // backend/controllers/reviewController.js
 // BuyUKUsed - Reviews & Ratings Controller
 // ============================================================
-//
-// Handles:
-//
-// GET    /api/reviews
-// POST   /api/reviews
-// PUT    /api/reviews/:id
-// DELETE /api/reviews/:id
-//
-// POST   /api/reviews/:id/helpful
-// POST   /api/reviews/:id/report
-//
-// POST   /api/reviews/:id/reply
-// DELETE /api/reviews/:id/reply
-//
-// GET    /api/reviews/seller/:sellerId/summary
-// GET    /api/reviews/product/:productId/summary
-//
-// ============================================================
 
 const mongoose = require("mongoose");
 
@@ -32,29 +14,141 @@ const Product = require("../models/Product");
 // ============================================================
 
 const isValidObjectId = (id) => {
-  return mongoose.Types.ObjectId.isValid(String(id));
+  return (
+    id !== null &&
+    id !== undefined &&
+    mongoose.Types.ObjectId.isValid(String(id))
+  );
 };
+
+// ------------------------------------------------------------
+// Get authenticated user ID
+// ------------------------------------------------------------
 
 const getUserId = (req) => {
-  if (req.userId) {
-    return String(req.userId);
-  }
-
-  if (req.user?._id) {
-    return String(req.user._id);
-  }
-
-  return null;
+  return (
+    req.user?._id ||
+    req.user?.id ||
+    req.user?.userId ||
+    null
+  );
 };
 
-const sendError = (
-  res,
-  status,
-  message
-) => {
-  return res.status(status).json({
+// ------------------------------------------------------------
+// Normalize ID
+// ------------------------------------------------------------
+
+const normalizeId = (value) => {
+  if (
+    value === undefined ||
+    value === null ||
+    value === ""
+  ) {
+    return null;
+  }
+
+  if (
+    typeof value === "object" &&
+    value !== null &&
+    value._id
+  ) {
+    return value._id;
+  }
+
+  return value;
+};
+
+// ------------------------------------------------------------
+// Convert ObjectId safely
+// ------------------------------------------------------------
+
+const toObjectId = (id) => {
+  if (!isValidObjectId(id)) {
+    return null;
+  }
+
+  return new mongoose.Types.ObjectId(String(id));
+};
+
+// ------------------------------------------------------------
+// Send Mongoose / Mongo errors
+// ------------------------------------------------------------
+
+const handleDatabaseError = (res, error, operation) => {
+  console.error(
+    `\n❌ ${operation} DATABASE ERROR`
+  );
+
+  console.error("Name:", error?.name);
+  console.error("Message:", error?.message);
+  console.error("Code:", error?.code);
+  console.error("KeyPattern:", error?.keyPattern);
+  console.error("KeyValue:", error?.keyValue);
+  console.error("Errors:", error?.errors);
+  console.error("Stack:", error?.stack);
+
+  // ----------------------------------------------------------
+  // Duplicate key
+  // ----------------------------------------------------------
+
+  if (error?.code === 11000) {
+    return res.status(409).json({
+      success: false,
+      message:
+        "A review with these details already exists.",
+      error: "DUPLICATE_KEY",
+      details: error.keyValue || null,
+    });
+  }
+
+  // ----------------------------------------------------------
+  // Mongoose validation
+  // ----------------------------------------------------------
+
+  if (error?.name === "ValidationError") {
+    const validationErrors = {};
+
+    Object.keys(error.errors || {}).forEach(
+      (field) => {
+        validationErrors[field] =
+          error.errors[field]?.message ||
+          "Invalid value.";
+      }
+    );
+
+    return res.status(400).json({
+      success: false,
+      message: "Review validation failed.",
+      error: "VALIDATION_ERROR",
+      errors: validationErrors,
+    });
+  }
+
+  // ----------------------------------------------------------
+  // Cast error
+  // ----------------------------------------------------------
+
+  if (error?.name === "CastError") {
+    return res.status(400).json({
+      success: false,
+      message: `Invalid ${error.path || "ID"} value.`,
+      error: "CAST_ERROR",
+    });
+  }
+
+  // ----------------------------------------------------------
+  // Generic database error
+  // ----------------------------------------------------------
+
+  return res.status(500).json({
     success: false,
-    message,
+    message:
+      error?.message ||
+      `Failed to ${operation.toLowerCase()}.`,
+    error:
+      process.env.NODE_ENV === "production"
+        ? "DATABASE_ERROR"
+        : error?.name || "DATABASE_ERROR",
   });
 };
 
@@ -62,23 +156,12 @@ const sendError = (
 // GET REVIEWS
 // ============================================================
 //
-// Examples:
-//
-// GET /api/reviews?sellerId=xxx
-// GET /api/reviews?productId=xxx
-//
-// Optional:
-//
-// ?page=1
-// ?limit=10
-// ?rating=5
+// GET /api/reviews?sellerId=...
+// GET /api/reviews?productId=...
 //
 // ============================================================
 
-const getReviews = async (
-  req,
-  res
-) => {
+const getReviews = async (req, res, next) => {
   try {
     const {
       sellerId,
@@ -88,266 +171,288 @@ const getReviews = async (
       limit = 10,
     } = req.query;
 
-    const currentPage =
-      Math.max(
-        Number(page) || 1,
-        1
-      );
+    // --------------------------------------------------------
+    // Require sellerId or productId
+    // --------------------------------------------------------
+
+    if (!sellerId && !productId) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "sellerId or productId is required.",
+      });
+    }
+
+    // --------------------------------------------------------
+    // Validate seller
+    // --------------------------------------------------------
+
+    if (
+      sellerId &&
+      !isValidObjectId(sellerId)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid seller ID.",
+      });
+    }
+
+    // --------------------------------------------------------
+    // Validate product
+    // --------------------------------------------------------
+
+    if (
+      productId &&
+      !isValidObjectId(productId)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid product ID.",
+      });
+    }
+
+    // --------------------------------------------------------
+    // Validate rating
+    // --------------------------------------------------------
+
+    let numericRating = null;
+
+    if (rating !== undefined) {
+      numericRating = Number(rating);
+
+      if (
+        !Number.isInteger(numericRating) ||
+        numericRating < 1 ||
+        numericRating > 5
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Rating must be a whole number from 1 to 5.",
+        });
+      }
+    }
+
+    // --------------------------------------------------------
+    // Pagination
+    // --------------------------------------------------------
+
+    const currentPage = Math.max(
+      Number.parseInt(page, 10) || 1,
+      1
+    );
 
     const perPage = Math.min(
       Math.max(
-        Number(limit) || 10,
+        Number.parseInt(limit, 10) || 10,
         1
       ),
       100
     );
 
-    const filter = {
+    const skip =
+      (currentPage - 1) * perPage;
+
+    // --------------------------------------------------------
+    // Query
+    // --------------------------------------------------------
+
+    const query = {
       status: "published",
     };
 
-    // --------------------------------------------------------
-    // SELLER FILTER
-    // --------------------------------------------------------
-
     if (sellerId) {
-      if (
-        !isValidObjectId(
-          sellerId
-        )
-      ) {
-        return sendError(
-          res,
-          400,
-          "Invalid seller ID."
+      query.sellerId =
+        new mongoose.Types.ObjectId(
+          String(sellerId)
         );
-      }
-
-      filter.sellerId =
-        sellerId;
     }
-
-    // --------------------------------------------------------
-    // PRODUCT FILTER
-    // --------------------------------------------------------
 
     if (productId) {
-      if (
-        !isValidObjectId(
-          productId
-        )
-      ) {
-        return sendError(
-          res,
-          400,
-          "Invalid product ID."
+      query.productId =
+        new mongoose.Types.ObjectId(
+          String(productId)
         );
-      }
+    }
 
-      filter.productId =
-        productId;
+    if (numericRating !== null) {
+      query.rating = numericRating;
     }
 
     // --------------------------------------------------------
-    // RATING FILTER
+    // Get reviews + count
     // --------------------------------------------------------
 
-    if (rating !== undefined) {
-      const numericRating =
-        Number(rating);
+    const [reviews, total] =
+      await Promise.all([
+        Review.find(query)
+          .populate(
+            "reviewer",
+            "name email avatar profileImage"
+          )
+          .populate(
+            "sellerId",
+            "name email avatar profileImage"
+          )
+          .populate(
+            "productId",
+            "title image images price"
+          )
+          .sort({
+            createdAt: -1,
+          })
+          .skip(skip)
+          .limit(perPage)
+          .lean(),
 
-      if (
-        !Number.isInteger(
-          numericRating
-        ) ||
-        numericRating < 1 ||
-        numericRating > 5
-      ) {
-        return sendError(
-          res,
-          400,
-          "Rating must be a whole number from 1 to 5."
-        );
-      }
-
-      filter.rating =
-        numericRating;
-    }
-
-    // --------------------------------------------------------
-    // COUNT
-    // --------------------------------------------------------
-
-    const total =
-      await Review.countDocuments(
-        filter
-      );
+        Review.countDocuments(query),
+      ]);
 
     // --------------------------------------------------------
-    // REVIEWS
+    // Summary
     // --------------------------------------------------------
 
-    const reviews =
-      await Review.find(filter)
-        .populate(
-          "reviewer",
-          "name email avatar profileImage"
-        )
-        .sort({
-          createdAt: -1,
-        })
-        .skip(
-          (currentPage - 1) *
-            perPage
-        )
-        .limit(perPage)
-        .lean();
-
-    // --------------------------------------------------------
-    // NORMALIZE REVIEW DATA
-    // --------------------------------------------------------
-
-    const normalizedReviews =
-      reviews.map(
-        (review) => ({
-          ...review,
-
-          reviewerName:
-            review.reviewerName ||
-            review.reviewer?.name ||
-            "",
-
-          reviewerAvatar:
-            review.reviewerAvatar ||
-            review.reviewer?.avatar ||
-            review.reviewer?.profileImage ||
-            "",
-
-          helpfulCount:
-            Array.isArray(
-              review.helpfulBy
-            )
-              ? review.helpfulBy.length
-              : Number(
-                  review.helpfulCount || 0
-                ),
-
-          reportCount:
-            Array.isArray(
-              review.reportedBy
-            )
-              ? review.reportedBy.length
-              : Number(
-                  review.reportCount || 0
-                ),
-
-          sellerReply:
-            review.sellerReply || {
-              text: "",
-              repliedAt: null,
-            },
-        })
-      );
-
-    // --------------------------------------------------------
-    // SUMMARY
-    // --------------------------------------------------------
-
-    const summaryFilter = {
-      ...filter,
+    const summaryMatch = {
+      ...query,
     };
 
-    delete summaryFilter.rating;
+    delete summaryMatch.rating;
 
-    const summaryRows =
+    const summaryResult =
       await Review.aggregate([
         {
-          $match:
-            summaryFilter,
+          $match: summaryMatch,
         },
+
         {
           $group: {
-            _id: "$rating",
-            count: {
+            _id: null,
+
+            averageRating: {
+              $avg: "$rating",
+            },
+
+            totalReviews: {
               $sum: 1,
+            },
+
+            fiveStars: {
+              $sum: {
+                $cond: [
+                  {
+                    $eq: ["$rating", 5],
+                  },
+                  1,
+                  0,
+                ],
+              },
+            },
+
+            fourStars: {
+              $sum: {
+                $cond: [
+                  {
+                    $eq: ["$rating", 4],
+                  },
+                  1,
+                  0,
+                ],
+              },
+            },
+
+            threeStars: {
+              $sum: {
+                $cond: [
+                  {
+                    $eq: ["$rating", 3],
+                  },
+                  1,
+                  0,
+                ],
+              },
+            },
+
+            twoStars: {
+              $sum: {
+                $cond: [
+                  {
+                    $eq: ["$rating", 2],
+                  },
+                  1,
+                  0,
+                ],
+              },
+            },
+
+            oneStars: {
+              $sum: {
+                $cond: [
+                  {
+                    $eq: ["$rating", 1],
+                  },
+                  1,
+                  0,
+                ],
+              },
             },
           },
         },
       ]);
 
-    const ratingBreakdown = {
-      1: 0,
-      2: 0,
-      3: 0,
-      4: 0,
-      5: 0,
-    };
+    const summary =
+      summaryResult[0] || {
+        averageRating: 0,
+        totalReviews: 0,
+        fiveStars: 0,
+        fourStars: 0,
+        threeStars: 0,
+        twoStars: 0,
+        oneStars: 0,
+      };
 
-    summaryRows.forEach(
-      (row) => {
-        ratingBreakdown[
-          row._id
-        ] = row.count;
-      }
-    );
-
-    const summaryCount =
-      Object.values(
-        ratingBreakdown
-      ).reduce(
-        (sum, value) =>
-          sum + value,
-        0
-      );
-
-    const weightedTotal =
-      Object.entries(
-        ratingBreakdown
-      ).reduce(
-        (sum, [star, count]) =>
-          sum +
-          Number(star) *
-            count,
-        0
-      );
-
-    const averageRating =
-      summaryCount > 0
-        ? Number(
-            (
-              weightedTotal /
-              summaryCount
-            ).toFixed(1)
-          )
-        : 0;
+    const totalPages =
+      total === 0
+        ? 0
+        : Math.ceil(total / perPage);
 
     return res.status(200).json({
       success: true,
 
-      reviews:
-        normalizedReviews,
+      reviews,
 
       summary: {
-        averageRating,
-        totalReviews:
-          summaryCount,
+        averageRating: Number(
+          summary.averageRating || 0
+        ).toFixed(1),
 
-        ratingBreakdown,
+        totalReviews:
+          summary.totalReviews || 0,
+
+        fiveStars:
+          summary.fiveStars || 0,
+
+        fourStars:
+          summary.fourStars || 0,
+
+        threeStars:
+          summary.threeStars || 0,
+
+        twoStars:
+          summary.twoStars || 0,
+
+        oneStars:
+          summary.oneStars || 0,
       },
 
       pagination: {
         page: currentPage,
         limit: perPage,
         total,
-        totalPages:
-          Math.ceil(
-            total /
-              perPage
-          ),
+        totalPages,
+
         hasNextPage:
-          currentPage *
-            perPage <
-          total,
+          currentPage < totalPages,
+
         hasPreviousPage:
           currentPage > 1,
       },
@@ -358,387 +463,764 @@ const getReviews = async (
       error
     );
 
-    return sendError(
-      res,
-      500,
-      "Failed to load reviews."
-    );
+    next(error);
   }
 };
 
 // ============================================================
 // CREATE REVIEW
 // ============================================================
+//
+// POST /api/reviews
+//
+// Seller review:
+//
+// {
+//   sellerId: "...",
+//   rating: 5,
+//   comment: "Great seller"
+// }
+//
+// Product review:
+//
+// {
+//   sellerId: "...",
+//   productId: "...",
+//   rating: 5,
+//   comment: "Great product"
+// }
+//
+// ============================================================
 
 const createReview = async (
   req,
-  res
+  res,
+  next
 ) => {
   try {
+    console.log(
+      "\n============================================================"
+    );
+
+    console.log(
+      "⭐ CREATE REVIEW START"
+    );
+
     // --------------------------------------------------------
-    // AUTHENTICATION
+    // Authentication
     // --------------------------------------------------------
 
-    const reviewerId =
+    const authenticatedUserId =
       getUserId(req);
 
-    if (!reviewerId) {
-      return sendError(
-        res,
-        401,
-        "Authentication required."
-      );
+    console.log(
+      "⭐ Authenticated user:",
+      authenticatedUserId
+        ? String(authenticatedUserId)
+        : "NONE"
+    );
+
+    if (!authenticatedUserId) {
+      return res.status(401).json({
+        success: false,
+        message:
+          "Authentication required.",
+      });
     }
 
     if (
       !isValidObjectId(
-        reviewerId
+        authenticatedUserId
       )
     ) {
-      return sendError(
-        res,
-        401,
-        "Invalid user account."
-      );
+      return res.status(401).json({
+        success: false,
+        message:
+          "Invalid authenticated user ID.",
+      });
     }
 
-    // --------------------------------------------------------
-    // INPUT
-    // --------------------------------------------------------
-
-    const {
-      sellerId,
-      productId,
-      orderId,
-      rating,
-      comment,
-    } = req.body || {};
+    const reviewerId = toObjectId(
+      authenticatedUserId
+    );
 
     // --------------------------------------------------------
-    // SELLER ID
+    // Body
+    // --------------------------------------------------------
+
+    const sellerId =
+      normalizeId(req.body?.sellerId);
+
+    const productId =
+      normalizeId(req.body?.productId);
+
+    const orderId =
+      normalizeId(req.body?.orderId);
+
+    const rating = Number(
+      req.body?.rating
+    );
+
+    const comment =
+      typeof req.body?.comment ===
+      "string"
+        ? req.body.comment.trim()
+        : "";
+
+    console.log(
+      "⭐ Seller ID:",
+      sellerId
+        ? String(sellerId)
+        : "NONE"
+    );
+
+    console.log(
+      "⭐ Product ID:",
+      productId
+        ? String(productId)
+        : "NONE"
+    );
+
+    console.log(
+      "⭐ Order ID:",
+      orderId
+        ? String(orderId)
+        : "NONE"
+    );
+
+    console.log(
+      "⭐ Rating:",
+      rating
+    );
+
+    console.log(
+      "⭐ Comment:",
+      comment
+    );
+
+    // --------------------------------------------------------
+    // Validate sellerId
     // --------------------------------------------------------
 
     if (!sellerId) {
-      return sendError(
-        res,
-        400,
-        "Seller ID is required."
-      );
+      return res.status(400).json({
+        success: false,
+        message:
+          "sellerId is required.",
+      });
     }
 
     if (
-      !isValidObjectId(
-        sellerId
-      )
+      !isValidObjectId(sellerId)
     ) {
-      return sendError(
-        res,
-        400,
-        "Invalid seller ID."
-      );
+      return res.status(400).json({
+        success: false,
+        message:
+          "Invalid seller ID.",
+      });
     }
 
-    // --------------------------------------------------------
-    // PREVENT SELF REVIEW
-    // --------------------------------------------------------
-
-    if (
-      String(sellerId) ===
-      String(reviewerId)
-    ) {
-      return sendError(
-        res,
-        400,
-        "You cannot review yourself."
-      );
-    }
+    const sellerObjectId =
+      toObjectId(sellerId);
 
     // --------------------------------------------------------
-    // RATING
+    // Validate productId
     // --------------------------------------------------------
 
-    const numericRating =
-      Number(rating);
-
-    if (
-      !Number.isInteger(
-        numericRating
-      ) ||
-      numericRating < 1 ||
-      numericRating > 5
-    ) {
-      return sendError(
-        res,
-        400,
-        "Rating must be a whole number from 1 to 5."
-      );
-    }
-
-    // --------------------------------------------------------
-    // COMMENT
-    // --------------------------------------------------------
-
-    const cleanComment =
-      String(
-        comment || ""
-      ).trim();
-
-    if (
-      cleanComment.length <
-      3
-    ) {
-      return sendError(
-        res,
-        400,
-        "Review must be at least 3 characters."
-      );
-    }
-
-    if (
-      cleanComment.length >
-      2000
-    ) {
-      return sendError(
-        res,
-        400,
-        "Review cannot exceed 2000 characters."
-      );
-    }
-
-    // --------------------------------------------------------
-    // SELLER
-    // --------------------------------------------------------
-
-    const seller =
-      await User.findById(
-        sellerId
-      ).select(
-        "name avatar profileImage"
-      );
-
-    if (!seller) {
-      return sendError(
-        res,
-        404,
-        "Seller not found."
-      );
-    }
-
-    // --------------------------------------------------------
-    // PRODUCT
-    // --------------------------------------------------------
-
-    let product = null;
+    let productObjectId = null;
 
     if (productId) {
       if (
-        !isValidObjectId(
-          productId
-        )
+        !isValidObjectId(productId)
       ) {
-        return sendError(
-          res,
-          400,
-          "Invalid product ID."
-        );
+        return res.status(400).json({
+          success: false,
+          message:
+            "Invalid product ID.",
+        });
       }
 
-      product =
-        await Product.findById(
-          productId
-        ).select(
-          "title sellerId sellerName"
-        );
-
-      if (!product) {
-        return sendError(
-          res,
-          404,
-          "Product not found."
-        );
-      }
-
-      // ------------------------------------------------------
-      // MAKE SURE PRODUCT BELONGS TO SELLER
-      // ------------------------------------------------------
-
-      if (
-        product.sellerId &&
-        String(
-          product.sellerId
-        ) !==
-          String(sellerId)
-      ) {
-        return sendError(
-          res,
-          400,
-          "This product does not belong to the selected seller."
-        );
-      }
+      productObjectId =
+        toObjectId(productId);
     }
 
     // --------------------------------------------------------
-    // REVIEWER
+    // Validate orderId
     // --------------------------------------------------------
+
+    let orderObjectId = null;
+
+    if (orderId) {
+      if (
+        !isValidObjectId(orderId)
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Invalid order ID.",
+        });
+      }
+
+      orderObjectId =
+        toObjectId(orderId);
+    }
+
+    // --------------------------------------------------------
+    // Prevent self review
+    // --------------------------------------------------------
+
+    if (
+      String(reviewerId) ===
+      String(sellerObjectId)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "You cannot review yourself.",
+      });
+    }
+
+    // --------------------------------------------------------
+    // Validate rating
+    // --------------------------------------------------------
+
+    if (
+      !Number.isInteger(rating) ||
+      rating < 1 ||
+      rating > 5
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Rating must be a whole number from 1 to 5.",
+      });
+    }
+
+    // --------------------------------------------------------
+    // Validate comment
+    // --------------------------------------------------------
+
+    if (comment.length < 3) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Review must be at least 3 characters.",
+      });
+    }
+
+    if (comment.length > 2000) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Review cannot exceed 2000 characters.",
+      });
+    }
+
+    // ========================================================
+    // FIND REVIEWER
+    // ========================================================
 
     const reviewer =
       await User.findById(
         reviewerId
       ).select(
-        "name avatar profileImage"
+        "name avatar profileImage email isActive role"
       );
+
+    console.log(
+      "⭐ Reviewer found:",
+      !!reviewer
+    );
 
     if (!reviewer) {
-      return sendError(
-        res,
-        401,
-        "User account no longer exists."
-      );
+      return res.status(404).json({
+        success: false,
+        message:
+          "Reviewer account not found.",
+      });
     }
 
-    // --------------------------------------------------------
-    // PREVENT DUPLICATE REVIEW
-    // --------------------------------------------------------
-    //
-    // One review per reviewer/product.
-    //
-    // Seller-only reviews can have one review per seller.
-    //
-    // --------------------------------------------------------
-
-    const duplicateFilter = {
-      reviewer: reviewerId,
-      sellerId,
-    };
-
-    if (productId) {
-      duplicateFilter.productId =
-        productId;
-    } else {
-      duplicateFilter.productId =
-        null;
+    if (
+      reviewer.isActive === false
+    ) {
+      return res.status(403).json({
+        success: false,
+        message:
+          "Your account is inactive.",
+      });
     }
 
-    const existingReview =
-      await Review.findOne(
-        duplicateFilter
+    // ========================================================
+    // FIND SELLER
+    // ========================================================
+
+    const seller =
+      await User.findById(
+        sellerObjectId
+      ).select(
+        "name email avatar profileImage isActive role"
       );
 
-    if (existingReview) {
-      return sendError(
-        res,
-        409,
-        "You have already reviewed this seller."
-      );
+    console.log(
+      "⭐ Seller found:",
+      !!seller
+    );
+
+    if (!seller) {
+      return res.status(404).json({
+        success: false,
+        message:
+          "Seller not found.",
+      });
     }
 
-    // --------------------------------------------------------
-    // VERIFIED PURCHASE
-    // --------------------------------------------------------
-    //
-    // Do not trust the frontend for this value.
-    //
-    // A supplied orderId is stored only when valid.
-    // Actual purchase verification can be added when the
-    // Order model/structure is available.
-    //
-    // --------------------------------------------------------
+    if (
+      seller.isActive === false
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "This seller account is inactive.",
+      });
+    }
 
-    let verifiedPurchase =
-      false;
+    // ========================================================
+    // CHECK PRODUCT
+    // ========================================================
 
-    let validOrderId =
-      null;
+    let product = null;
 
-    if (orderId) {
+    if (productObjectId) {
+      product =
+        await Product.findById(
+          productObjectId
+        ).select(
+          "title sellerId sellerName image images price"
+        );
+
+      console.log(
+        "⭐ Product found:",
+        !!product
+      );
+
+      if (!product) {
+        return res.status(404).json({
+          success: false,
+          message:
+            "Product not found.",
+        });
+      }
+
+      // ------------------------------------------------------
+      // Ensure product belongs to seller
+      // ------------------------------------------------------
+
       if (
-        isValidObjectId(
-          orderId
-        )
+        product.sellerId &&
+        String(product.sellerId) !==
+          String(sellerObjectId)
       ) {
-        validOrderId =
-          orderId;
+        return res.status(400).json({
+          success: false,
+          message:
+            "The selected product does not belong to this seller.",
+        });
       }
     }
 
+    // ========================================================
+    // CHECK DUPLICATE REVIEW
+    // ========================================================
+
+    const duplicateQuery = {
+      reviewer: reviewerId,
+
+      sellerId: sellerObjectId,
+
+      status: {
+        $ne: "removed",
+      },
+    };
+
+    // Seller review
+    if (!productObjectId) {
+      duplicateQuery.productId = null;
+    }
+
+    // Product review
+    if (productObjectId) {
+      duplicateQuery.productId =
+        productObjectId;
+    }
+
+    console.log(
+      "⭐ Duplicate query:",
+      duplicateQuery
+    );
+
+    const existingReview =
+      await Review.findOne(
+        duplicateQuery
+      ).lean();
+
+    if (existingReview) {
+      console.log(
+        "⚠️ Existing review found:",
+        existingReview._id
+      );
+
+      return res.status(409).json({
+        success: false,
+        message:
+          productObjectId
+            ? "You have already reviewed this product."
+            : "You have already reviewed this seller.",
+
+        review: existingReview,
+      });
+    }
+
+    // ========================================================
+    // VERIFIED PURCHASE
+    // ========================================================
+
+    let verifiedPurchase = false;
+
     // --------------------------------------------------------
-    // CREATE REVIEW
+    // Order verification is optional.
+    //
+    // A seller review without orderId is allowed.
     // --------------------------------------------------------
 
-    const review =
-      await Review.create({
-        reviewer:
-          reviewerId,
+    if (orderObjectId) {
+      try {
+        const Order =
+          require("../models/Order");
 
-        reviewerName:
-          reviewer.name ||
-          "",
+        const order =
+          await Order.findById(
+            orderObjectId
+          ).lean();
 
-        reviewerAvatar:
-          reviewer.avatar ||
-          reviewer.profileImage ||
-          "",
+        if (order) {
+          const buyerIds = [
+            order.userId,
+            order.buyerId,
+            order.customerId,
+            order.customer,
+            order.user,
+          ].filter(Boolean);
 
-        sellerId,
+          const sellerIds = [
+            order.sellerId,
+            order.seller,
+          ].filter(Boolean);
 
-        sellerName:
-          seller.name ||
-          "",
+          const buyerMatches =
+            buyerIds.some(
+              (id) =>
+                String(id) ===
+                String(reviewerId)
+            );
 
-        productId:
-          productId || null,
+          const sellerMatches =
+            sellerIds.some(
+              (id) =>
+                String(id) ===
+                String(sellerObjectId)
+            );
 
-        productTitle:
-          product?.title ||
-          "",
+          if (
+            buyerMatches &&
+            sellerMatches
+          ) {
+            verifiedPurchase = true;
+          }
+        }
+      } catch (orderError) {
+        console.warn(
+          "⚠️ Order verification skipped:",
+          orderError.message
+        );
 
-        orderId:
-          validOrderId,
+        verifiedPurchase = false;
+      }
+    }
 
-        rating:
-          numericRating,
+    // ========================================================
+    // BUILD REVIEW
+    // ========================================================
 
-        comment:
-          cleanComment,
+    const reviewerName =
+      typeof reviewer.name ===
+      "string"
+        ? reviewer.name.trim()
+        : "";
 
+    const reviewerAvatar =
+      reviewer.avatar ||
+      reviewer.profileImage ||
+      "";
+
+    const sellerName =
+      typeof seller.name ===
+      "string"
+        ? seller.name.trim()
+        : "";
+
+    const reviewData = {
+      reviewer:
+        reviewerId,
+
+      reviewerName:
+        reviewerName,
+
+      reviewerAvatar:
+        reviewerAvatar,
+
+      sellerId:
+        sellerObjectId,
+
+      sellerName:
+        sellerName,
+
+      rating:
+        rating,
+
+      comment:
+        comment,
+
+      verifiedPurchase:
         verifiedPurchase,
 
-        helpfulBy: [],
+      helpfulBy:
+        [],
 
-        helpfulCount: 0,
+      helpfulCount:
+        0,
 
-        reportedBy: [],
+      reportedBy:
+        [],
 
-        reportCount: 0,
+      reportCount:
+        0,
 
-        sellerReply: {
-          text: "",
-          repliedAt: null,
+      sellerReply: {
+        text: "",
+        repliedAt: null,
+      },
+
+      status:
+        "published",
+    };
+
+    // --------------------------------------------------------
+    // Product
+    // --------------------------------------------------------
+
+    if (productObjectId) {
+      reviewData.productId =
+        productObjectId;
+
+      reviewData.productTitle =
+        product?.title || "";
+    } else {
+      // Explicitly store null for seller-only review.
+      reviewData.productId = null;
+
+      reviewData.productTitle = "";
+    }
+
+    // --------------------------------------------------------
+    // Order
+    // --------------------------------------------------------
+
+    if (orderObjectId) {
+      reviewData.orderId =
+        orderObjectId;
+    } else {
+      reviewData.orderId = null;
+    }
+
+    console.log(
+      "⭐ FINAL REVIEW DATA:"
+    );
+
+    console.log(
+      JSON.stringify(
+        {
+          reviewer:
+            String(reviewData.reviewer),
+
+          reviewerName:
+            reviewData.reviewerName,
+
+          sellerId:
+            String(reviewData.sellerId),
+
+          sellerName:
+            reviewData.sellerName,
+
+          productId:
+            reviewData.productId
+              ? String(
+                  reviewData.productId
+                )
+              : null,
+
+          productTitle:
+            reviewData.productTitle,
+
+          orderId:
+            reviewData.orderId
+              ? String(
+                  reviewData.orderId
+                )
+              : null,
+
+          rating:
+            reviewData.rating,
+
+          comment:
+            reviewData.comment,
+
+          verifiedPurchase:
+            reviewData.verifiedPurchase,
         },
+        null,
+        2
+      )
+    );
 
-        status: "published",
-      });
+    // ========================================================
+    // CREATE REVIEW
+    // ========================================================
 
-    // --------------------------------------------------------
-    // RESPONSE
-    // --------------------------------------------------------
+    let review;
+
+    try {
+      review =
+        await Review.create(
+          reviewData
+        );
+    } catch (createError) {
+      return handleDatabaseError(
+        res,
+        createError,
+        "CREATE REVIEW"
+      );
+    }
+
+    console.log(
+      "✅ REVIEW CREATED:",
+      String(review._id)
+    );
+
+    // ========================================================
+    // POPULATE CREATED REVIEW
+    // ========================================================
+
+    let populatedReview;
+
+    try {
+      populatedReview =
+        await Review.findById(
+          review._id
+        )
+          .populate(
+            "reviewer",
+            "name email avatar profileImage"
+          )
+          .populate(
+            "sellerId",
+            "name email avatar profileImage"
+          )
+          .populate(
+            "productId",
+            "title image images price"
+          )
+          .lean();
+    } catch (populateError) {
+      console.error(
+        "⚠️ Review population error:",
+        populateError
+      );
+
+      // The review was successfully created,
+      // so return the unpopulated document.
+      populatedReview =
+        review.toObject();
+    }
+
+    console.log(
+      "✅ REVIEW COMPLETE"
+    );
+
+    console.log(
+      "============================================================\n"
+    );
 
     return res.status(201).json({
       success: true,
+
       message:
         "Review created successfully.",
-      review,
+
+      review:
+        populatedReview,
     });
   } catch (error) {
     console.error(
-      "❌ createReview error:",
-      error
+      "\n❌ ============================================================"
     );
 
-    return sendError(
+    console.error(
+      "❌ CREATE REVIEW UNEXPECTED ERROR"
+    );
+
+    console.error(
+      "Name:",
+      error?.name
+    );
+
+    console.error(
+      "Message:",
+      error?.message
+    );
+
+    console.error(
+      "Code:",
+      error?.code
+    );
+
+    console.error(
+      "KeyPattern:",
+      error?.keyPattern
+    );
+
+    console.error(
+      "KeyValue:",
+      error?.keyValue
+    );
+
+    console.error(
+      "Errors:",
+      error?.errors
+    );
+
+    console.error(
+      "Stack:",
+      error?.stack
+    );
+
+    console.error(
+      "❌ ============================================================\n"
+    );
+
+    return handleDatabaseError(
       res,
-      500,
-      "Failed to create review."
+      error,
+      "CREATE REVIEW"
     );
   }
 };
@@ -749,131 +1231,173 @@ const createReview = async (
 
 const updateReview = async (
   req,
-  res
+  res,
+  next
 ) => {
   try {
-    const userId =
+    const reviewerId =
       getUserId(req);
 
-    if (!userId) {
-      return sendError(
-        res,
-        401,
-        "Authentication required."
-      );
+    if (!reviewerId) {
+      return res.status(401).json({
+        success: false,
+        message:
+          "Authentication required.",
+      });
     }
 
-    const {
-      id,
-    } = req.params;
+    const reviewId =
+      req.params.id;
 
     if (
-      !isValidObjectId(id)
+      !isValidObjectId(reviewId)
     ) {
-      return sendError(
-        res,
-        400,
-        "Invalid review ID."
-      );
+      return res.status(400).json({
+        success: false,
+        message:
+          "Invalid review ID.",
+      });
     }
 
     const review =
-      await Review.findById(id);
+      await Review.findById(
+        reviewId
+      );
 
     if (!review) {
-      return sendError(
-        res,
-        404,
-        "Review not found."
-      );
+      return res.status(404).json({
+        success: false,
+        message:
+          "Review not found.",
+      });
+    }
+
+    if (
+      String(review.reviewer) !==
+      String(reviewerId)
+    ) {
+      return res.status(403).json({
+        success: false,
+        message:
+          "You can only edit your own review.",
+      });
+    }
+
+    if (
+      review.status === "removed"
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "This review has been removed.",
+      });
     }
 
     // --------------------------------------------------------
-    // OWNER CHECK
+    // Rating
     // --------------------------------------------------------
 
     if (
-      String(
-        review.reviewer
-      ) !== String(userId)
+      req.body.rating !==
+      undefined
     ) {
-      return sendError(
-        res,
-        403,
-        "You can only edit your own review."
+      const rating = Number(
+        req.body.rating
       );
+
+      if (
+        !Number.isInteger(rating) ||
+        rating < 1 ||
+        rating > 5
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Rating must be a whole number from 1 to 5.",
+        });
+      }
+
+      review.rating = rating;
     }
 
     // --------------------------------------------------------
-    // INPUT
+    // Comment
     // --------------------------------------------------------
 
-    const {
-      rating,
-      comment,
-    } = req.body || {};
-
-    if (rating !== undefined) {
-      const numericRating =
-        Number(rating);
-
+    if (
+      req.body.comment !==
+      undefined
+    ) {
       if (
-        !Number.isInteger(
-          numericRating
-        ) ||
-        numericRating < 1 ||
-        numericRating > 5
+        typeof req.body.comment !==
+        "string"
       ) {
-        return sendError(
-          res,
-          400,
-          "Rating must be a whole number from 1 to 5."
-        );
+        return res.status(400).json({
+          success: false,
+          message:
+            "Comment must be text.",
+        });
       }
 
-      review.rating =
-        numericRating;
-    }
+      const comment =
+        req.body.comment.trim();
 
-    if (comment !== undefined) {
-      const cleanComment =
-        String(
-          comment
-        ).trim();
-
-      if (
-        cleanComment.length <
-        3
-      ) {
-        return sendError(
-          res,
-          400,
-          "Review must be at least 3 characters."
-        );
+      if (comment.length < 3) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Review must be at least 3 characters.",
+        });
       }
 
-      if (
-        cleanComment.length >
-        2000
-      ) {
-        return sendError(
-          res,
-          400,
-          "Review cannot exceed 2000 characters."
-        );
+      if (comment.length > 2000) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Review cannot exceed 2000 characters.",
+        });
       }
 
       review.comment =
-        cleanComment;
+        comment;
     }
 
-    await review.save();
+    try {
+      await review.save();
+    } catch (saveError) {
+      return handleDatabaseError(
+        res,
+        saveError,
+        "UPDATE REVIEW"
+      );
+    }
+
+    const updatedReview =
+      await Review.findById(
+        review._id
+      )
+        .populate(
+          "reviewer",
+          "name email avatar profileImage"
+        )
+        .populate(
+          "sellerId",
+          "name email avatar profileImage"
+        )
+        .populate(
+          "productId",
+          "title image images price"
+        )
+        .lean();
 
     return res.status(200).json({
       success: true,
+
       message:
         "Review updated successfully.",
-      review,
+
+      review:
+        updatedReview,
     });
   } catch (error) {
     console.error(
@@ -881,11 +1405,7 @@ const updateReview = async (
       error
     );
 
-    return sendError(
-      res,
-      500,
-      "Failed to update review."
-    );
+    next(error);
   }
 };
 
@@ -895,71 +1415,66 @@ const updateReview = async (
 
 const deleteReview = async (
   req,
-  res
+  res,
+  next
 ) => {
   try {
-    const userId =
+    const reviewerId =
       getUserId(req);
 
-    if (!userId) {
-      return sendError(
-        res,
-        401,
-        "Authentication required."
-      );
+    if (!reviewerId) {
+      return res.status(401).json({
+        success: false,
+        message:
+          "Authentication required.",
+      });
     }
 
-    const {
-      id,
-    } = req.params;
+    const reviewId =
+      req.params.id;
 
     if (
-      !isValidObjectId(id)
+      !isValidObjectId(reviewId)
     ) {
-      return sendError(
-        res,
-        400,
-        "Invalid review ID."
-      );
+      return res.status(400).json({
+        success: false,
+        message:
+          "Invalid review ID.",
+      });
     }
 
     const review =
-      await Review.findById(id);
+      await Review.findById(
+        reviewId
+      );
 
     if (!review) {
-      return sendError(
-        res,
-        404,
-        "Review not found."
-      );
+      return res.status(404).json({
+        success: false,
+        message:
+          "Review not found.",
+      });
     }
-
-    const isOwner =
-      String(
-        review.reviewer
-      ) === String(userId);
-
-    const isAdmin =
-      req.user?.role ===
-      "admin";
 
     if (
-      !isOwner &&
-      !isAdmin
+      String(review.reviewer) !==
+      String(reviewerId)
     ) {
-      return sendError(
-        res,
-        403,
-        "You do not have permission to delete this review."
-      );
+      return res.status(403).json({
+        success: false,
+        message:
+          "You can only delete your own review.",
+      });
     }
 
-    await Review.findByIdAndDelete(
-      id
-    );
+    review.status =
+      "removed";
+
+    await review.save();
 
     return res.status(200).json({
       success: true,
+
       message:
         "Review deleted successfully.",
     });
@@ -969,11 +1484,7 @@ const deleteReview = async (
       error
     );
 
-    return sendError(
-      res,
-      500,
-      "Failed to delete review."
-    );
+    next(error);
   }
 };
 
@@ -983,57 +1494,68 @@ const deleteReview = async (
 
 const toggleHelpful = async (
   req,
-  res
+  res,
+  next
 ) => {
   try {
     const userId =
       getUserId(req);
 
     if (!userId) {
-      return sendError(
-        res,
-        401,
-        "Authentication required."
-      );
+      return res.status(401).json({
+        success: false,
+        message:
+          "Authentication required.",
+      });
     }
 
-    const {
-      id,
-    } = req.params;
+    const reviewId =
+      req.params.id;
 
     if (
-      !isValidObjectId(id)
+      !isValidObjectId(reviewId)
     ) {
-      return sendError(
-        res,
-        400,
-        "Invalid review ID."
-      );
+      return res.status(400).json({
+        success: false,
+        message:
+          "Invalid review ID.",
+      });
     }
 
     const review =
-      await Review.findById(id);
+      await Review.findById(
+        reviewId
+      );
 
     if (!review) {
-      return sendError(
-        res,
-        404,
-        "Review not found."
-      );
+      return res.status(404).json({
+        success: false,
+        message:
+          "Review not found.",
+      });
+    }
+
+    if (
+      review.status !==
+      "published"
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "This review is not available.",
+      });
     }
 
     const existingIndex =
       review.helpfulBy.findIndex(
-        (value) =>
-          String(value) ===
+        (id) =>
+          String(id) ===
           String(userId)
       );
 
     let helpful = false;
 
-    if (
-      existingIndex >= 0
-    ) {
+    if (existingIndex >= 0) {
       review.helpfulBy.splice(
         existingIndex,
         1
@@ -1055,7 +1577,9 @@ const toggleHelpful = async (
 
     return res.status(200).json({
       success: true,
+
       helpful,
+
       helpfulCount:
         review.helpfulCount,
     });
@@ -1065,11 +1589,7 @@ const toggleHelpful = async (
       error
     );
 
-    return sendError(
-      res,
-      500,
-      "Failed to update helpful vote."
-    );
+    next(error);
   }
 };
 
@@ -1079,89 +1599,72 @@ const toggleHelpful = async (
 
 const reportReview = async (
   req,
-  res
+  res,
+  next
 ) => {
   try {
     const userId =
       getUserId(req);
 
     if (!userId) {
-      return sendError(
-        res,
-        401,
-        "Authentication required."
-      );
+      return res.status(401).json({
+        success: false,
+        message:
+          "Authentication required.",
+      });
     }
 
-    const {
-      id,
-    } = req.params;
+    const reviewId =
+      req.params.id;
 
     if (
-      !isValidObjectId(id)
+      !isValidObjectId(reviewId)
     ) {
-      return sendError(
-        res,
-        400,
-        "Invalid review ID."
-      );
+      return res.status(400).json({
+        success: false,
+        message:
+          "Invalid review ID.",
+      });
     }
 
     const review =
-      await Review.findById(id);
+      await Review.findById(
+        reviewId
+      );
 
     if (!review) {
-      return sendError(
-        res,
-        404,
-        "Review not found."
-      );
-    }
-
-    const {
-      reason = "Other",
-    } = req.body || {};
-
-    const cleanReason =
-      String(
-        reason
-      ).trim();
-
-    if (
-      cleanReason.length >
-      500
-    ) {
-      return sendError(
-        res,
-        400,
-        "Report reason cannot exceed 500 characters."
-      );
+      return res.status(404).json({
+        success: false,
+        message:
+          "Review not found.",
+      });
     }
 
     const alreadyReported =
       review.reportedBy.some(
-        (report) =>
-          String(
-            report.userId
-          ) ===
-          String(userId)
+        (item) =>
+          item.userId &&
+          String(item.userId) ===
+            String(userId)
       );
 
-    if (
-      alreadyReported
-    ) {
-      return sendError(
-        res,
-        409,
-        "You have already reported this review."
-      );
+    if (alreadyReported) {
+      return res.status(409).json({
+        success: false,
+        message:
+          "You have already reported this review.",
+      });
     }
+
+    const reason =
+      typeof req.body?.reason ===
+      "string"
+        ? req.body.reason.trim()
+        : "No reason provided";
 
     review.reportedBy.push({
       userId,
-      reason:
-        cleanReason ||
-        "Other",
+      reason,
       reportedAt:
         new Date(),
     });
@@ -1173,8 +1676,10 @@ const reportReview = async (
 
     return res.status(200).json({
       success: true,
+
       message:
         "Review reported successfully.",
+
       reportCount:
         review.reportCount,
     });
@@ -1184,11 +1689,7 @@ const reportReview = async (
       error
     );
 
-    return sendError(
-      res,
-      500,
-      "Failed to report review."
-    );
+    next(error);
   }
 };
 
@@ -1198,95 +1699,93 @@ const reportReview = async (
 
 const replyToReview = async (
   req,
-  res
+  res,
+  next
 ) => {
   try {
-    const userId =
+    const sellerUserId =
       getUserId(req);
 
-    if (!userId) {
-      return sendError(
-        res,
-        401,
-        "Authentication required."
-      );
+    if (!sellerUserId) {
+      return res.status(401).json({
+        success: false,
+        message:
+          "Authentication required.",
+      });
     }
 
-    const {
-      id,
-    } = req.params;
+    const reviewId =
+      req.params.id;
 
     if (
-      !isValidObjectId(id)
+      !isValidObjectId(reviewId)
     ) {
-      return sendError(
-        res,
-        400,
-        "Invalid review ID."
-      );
+      return res.status(400).json({
+        success: false,
+        message:
+          "Invalid review ID.",
+      });
     }
 
-    const {
-      text,
-    } = req.body || {};
+    const text =
+      typeof req.body?.text ===
+      "string"
+        ? req.body.text.trim()
+        : "";
 
-    const cleanText =
-      String(
-        text || ""
-      ).trim();
-
-    if (
-      cleanText.length <
-      1
-    ) {
-      return sendError(
-        res,
-        400,
-        "Reply text is required."
-      );
+    if (text.length < 1) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Reply cannot be empty.",
+      });
     }
 
-    if (
-      cleanText.length >
-      2000
-    ) {
-      return sendError(
-        res,
-        400,
-        "Reply cannot exceed 2000 characters."
-      );
+    if (text.length > 2000) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Reply cannot exceed 2000 characters.",
+      });
     }
 
     const review =
-      await Review.findById(id);
+      await Review.findById(
+        reviewId
+      );
 
     if (!review) {
-      return sendError(
-        res,
-        404,
-        "Review not found."
-      );
+      return res.status(404).json({
+        success: false,
+        message:
+          "Review not found.",
+      });
     }
 
-    // --------------------------------------------------------
-    // ONLY THE SELLER CAN REPLY
-    // --------------------------------------------------------
+    if (
+      String(review.sellerId) !==
+      String(sellerUserId)
+    ) {
+      return res.status(403).json({
+        success: false,
+        message:
+          "Only the seller can reply to this review.",
+      });
+    }
 
     if (
-      String(
-        review.sellerId
-      ) !== String(userId)
+      review.status !==
+      "published"
     ) {
-      return sendError(
-        res,
-        403,
-        "Only the seller can reply to this review."
-      );
+      return res.status(400).json({
+        success: false,
+        message:
+          "Cannot reply to this review.",
+      });
     }
 
     review.sellerReply = {
-      text:
-        cleanText,
+      text,
       repliedAt:
         new Date(),
     };
@@ -1295,9 +1794,12 @@ const replyToReview = async (
 
     return res.status(200).json({
       success: true,
+
       message:
-        "Seller reply saved successfully.",
-      review,
+        "Seller reply added successfully.",
+
+      sellerReply:
+        review.sellerReply,
     });
   } catch (error) {
     console.error(
@@ -1305,11 +1807,7 @@ const replyToReview = async (
       error
     );
 
-    return sendError(
-      res,
-      500,
-      "Failed to save seller reply."
-    );
+    next(error);
   }
 };
 
@@ -1319,55 +1817,56 @@ const replyToReview = async (
 
 const deleteReply = async (
   req,
-  res
+  res,
+  next
 ) => {
   try {
-    const userId =
+    const sellerUserId =
       getUserId(req);
 
-    if (!userId) {
-      return sendError(
-        res,
-        401,
-        "Authentication required."
-      );
+    if (!sellerUserId) {
+      return res.status(401).json({
+        success: false,
+        message:
+          "Authentication required.",
+      });
     }
 
-    const {
-      id,
-    } = req.params;
+    const reviewId =
+      req.params.id;
 
     if (
-      !isValidObjectId(id)
+      !isValidObjectId(reviewId)
     ) {
-      return sendError(
-        res,
-        400,
-        "Invalid review ID."
-      );
+      return res.status(400).json({
+        success: false,
+        message:
+          "Invalid review ID.",
+      });
     }
 
     const review =
-      await Review.findById(id);
+      await Review.findById(
+        reviewId
+      );
 
     if (!review) {
-      return sendError(
-        res,
-        404,
-        "Review not found."
-      );
+      return res.status(404).json({
+        success: false,
+        message:
+          "Review not found.",
+      });
     }
 
     if (
-      String(
-        review.sellerId
-      ) !== String(userId)
+      String(review.sellerId) !==
+      String(sellerUserId)
     ) {
-      return sendError(
-        res,
-        403,
-        "Only the seller can delete this reply."
-      );
+      return res.status(403).json({
+        success: false,
+        message:
+          "Only the seller can delete this reply.",
+      });
     }
 
     review.sellerReply = {
@@ -1379,9 +1878,9 @@ const deleteReply = async (
 
     return res.status(200).json({
       success: true,
+
       message:
         "Seller reply deleted successfully.",
-      review,
     });
   } catch (error) {
     console.error(
@@ -1389,37 +1888,31 @@ const deleteReply = async (
       error
     );
 
-    return sendError(
-      res,
-      500,
-      "Failed to delete seller reply."
-    );
+    next(error);
   }
 };
 
 // ============================================================
-// SELLER SUMMARY
+// GET SELLER SUMMARY
 // ============================================================
 
 const getSellerSummary = async (
   req,
-  res
+  res,
+  next
 ) => {
   try {
-    const {
-      sellerId,
-    } = req.params;
+    const sellerId =
+      req.params.sellerId;
 
     if (
-      !isValidObjectId(
-        sellerId
-      )
+      !isValidObjectId(sellerId)
     ) {
-      return sendError(
-        res,
-        400,
-        "Invalid seller ID."
-      );
+      return res.status(400).json({
+        success: false,
+        message:
+          "Invalid seller ID.",
+      });
     }
 
     const result =
@@ -1430,30 +1923,29 @@ const getSellerSummary = async (
               new mongoose.Types.ObjectId(
                 sellerId
               ),
+
             status:
               "published",
           },
         },
+
         {
           $group: {
             _id: null,
 
-            totalReviews: {
-              $sum: 1,
-            },
-
             averageRating: {
               $avg: "$rating",
+            },
+
+            totalReviews: {
+              $sum: 1,
             },
 
             fiveStars: {
               $sum: {
                 $cond: [
                   {
-                    $eq: [
-                      "$rating",
-                      5,
-                    ],
+                    $eq: ["$rating", 5],
                   },
                   1,
                   0,
@@ -1465,10 +1957,7 @@ const getSellerSummary = async (
               $sum: {
                 $cond: [
                   {
-                    $eq: [
-                      "$rating",
-                      4,
-                    ],
+                    $eq: ["$rating", 4],
                   },
                   1,
                   0,
@@ -1480,10 +1969,7 @@ const getSellerSummary = async (
               $sum: {
                 $cond: [
                   {
-                    $eq: [
-                      "$rating",
-                      3,
-                    ],
+                    $eq: ["$rating", 3],
                   },
                   1,
                   0,
@@ -1495,10 +1981,7 @@ const getSellerSummary = async (
               $sum: {
                 $cond: [
                   {
-                    $eq: [
-                      "$rating",
-                      2,
-                    ],
+                    $eq: ["$rating", 2],
                   },
                   1,
                   0,
@@ -1510,10 +1993,7 @@ const getSellerSummary = async (
               $sum: {
                 $cond: [
                   {
-                    $eq: [
-                      "$rating",
-                      1,
-                    ],
+                    $eq: ["$rating", 1],
                   },
                   1,
                   0,
@@ -1526,8 +2006,8 @@ const getSellerSummary = async (
 
     const summary =
       result[0] || {
-        totalReviews: 0,
         averageRating: 0,
+        totalReviews: 0,
         fiveStars: 0,
         fourStars: 0,
         threeStars: 0,
@@ -1539,39 +2019,27 @@ const getSellerSummary = async (
       success: true,
 
       summary: {
+        averageRating: Number(
+          summary.averageRating || 0
+        ).toFixed(1),
+
         totalReviews:
-          summary.totalReviews,
+          summary.totalReviews || 0,
 
-        averageRating:
-          summary.averageRating
-            ? Number(
-                Number(
-                  summary.averageRating
-                ).toFixed(1)
-              )
-            : 0,
+        fiveStars:
+          summary.fiveStars || 0,
 
-        ratingBreakdown: {
-          5:
-            summary.fiveStars ||
-            0,
+        fourStars:
+          summary.fourStars || 0,
 
-          4:
-            summary.fourStars ||
-            0,
+        threeStars:
+          summary.threeStars || 0,
 
-          3:
-            summary.threeStars ||
-            0,
+        twoStars:
+          summary.twoStars || 0,
 
-          2:
-            summary.twoStars ||
-            0,
-
-          1:
-            summary.oneStars ||
-            0,
-        },
+        oneStars:
+          summary.oneStars || 0,
       },
     });
   } catch (error) {
@@ -1580,37 +2048,31 @@ const getSellerSummary = async (
       error
     );
 
-    return sendError(
-      res,
-      500,
-      "Failed to load seller review summary."
-    );
+    next(error);
   }
 };
 
 // ============================================================
-// PRODUCT SUMMARY
+// GET PRODUCT SUMMARY
 // ============================================================
 
 const getProductSummary = async (
   req,
-  res
+  res,
+  next
 ) => {
   try {
-    const {
-      productId,
-    } = req.params;
+    const productId =
+      req.params.productId;
 
     if (
-      !isValidObjectId(
-        productId
-      )
+      !isValidObjectId(productId)
     ) {
-      return sendError(
-        res,
-        400,
-        "Invalid product ID."
-      );
+      return res.status(400).json({
+        success: false,
+        message:
+          "Invalid product ID.",
+      });
     }
 
     const result =
@@ -1621,30 +2083,29 @@ const getProductSummary = async (
               new mongoose.Types.ObjectId(
                 productId
               ),
+
             status:
               "published",
           },
         },
+
         {
           $group: {
             _id: null,
 
-            totalReviews: {
-              $sum: 1,
-            },
-
             averageRating: {
               $avg: "$rating",
+            },
+
+            totalReviews: {
+              $sum: 1,
             },
 
             fiveStars: {
               $sum: {
                 $cond: [
                   {
-                    $eq: [
-                      "$rating",
-                      5,
-                    ],
+                    $eq: ["$rating", 5],
                   },
                   1,
                   0,
@@ -1656,10 +2117,7 @@ const getProductSummary = async (
               $sum: {
                 $cond: [
                   {
-                    $eq: [
-                      "$rating",
-                      4,
-                    ],
+                    $eq: ["$rating", 4],
                   },
                   1,
                   0,
@@ -1671,10 +2129,7 @@ const getProductSummary = async (
               $sum: {
                 $cond: [
                   {
-                    $eq: [
-                      "$rating",
-                      3,
-                    ],
+                    $eq: ["$rating", 3],
                   },
                   1,
                   0,
@@ -1686,10 +2141,7 @@ const getProductSummary = async (
               $sum: {
                 $cond: [
                   {
-                    $eq: [
-                      "$rating",
-                      2,
-                    ],
+                    $eq: ["$rating", 2],
                   },
                   1,
                   0,
@@ -1701,10 +2153,7 @@ const getProductSummary = async (
               $sum: {
                 $cond: [
                   {
-                    $eq: [
-                      "$rating",
-                      1,
-                    ],
+                    $eq: ["$rating", 1],
                   },
                   1,
                   0,
@@ -1717,8 +2166,8 @@ const getProductSummary = async (
 
     const summary =
       result[0] || {
-        totalReviews: 0,
         averageRating: 0,
+        totalReviews: 0,
         fiveStars: 0,
         fourStars: 0,
         threeStars: 0,
@@ -1730,39 +2179,27 @@ const getProductSummary = async (
       success: true,
 
       summary: {
+        averageRating: Number(
+          summary.averageRating || 0
+        ).toFixed(1),
+
         totalReviews:
-          summary.totalReviews,
+          summary.totalReviews || 0,
 
-        averageRating:
-          summary.averageRating
-            ? Number(
-                Number(
-                  summary.averageRating
-                ).toFixed(1)
-              )
-            : 0,
+        fiveStars:
+          summary.fiveStars || 0,
 
-        ratingBreakdown: {
-          5:
-            summary.fiveStars ||
-            0,
+        fourStars:
+          summary.fourStars || 0,
 
-          4:
-            summary.fourStars ||
-            0,
+        threeStars:
+          summary.threeStars || 0,
 
-          3:
-            summary.threeStars ||
-            0,
+        twoStars:
+          summary.twoStars || 0,
 
-          2:
-            summary.twoStars ||
-            0,
-
-          1:
-            summary.oneStars ||
-            0,
-        },
+        oneStars:
+          summary.oneStars || 0,
       },
     });
   } catch (error) {
@@ -1771,11 +2208,7 @@ const getProductSummary = async (
       error
     );
 
-    return sendError(
-      res,
-      500,
-      "Failed to load product review summary."
-    );
+    next(error);
   }
 };
 

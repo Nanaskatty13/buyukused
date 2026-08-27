@@ -1,9 +1,11 @@
+
 // ============================================================
 // backend/routes/listings.js
-// BuyUKUsed Spare Parts Listing Routes
+// BuyUKUsed - Spare Parts Listing Routes
 // ============================================================
 
 const express = require("express");
+
 const router = express.Router();
 
 const {
@@ -19,17 +21,56 @@ const {
 const { protect } = require("../middleware/auth");
 const { uploadListingImages } = require("../middleware/upload");
 
-// ---- Public routes ----
+// ============================================================
+// PUBLIC ROUTES
+// ============================================================
+
+// GET /api/listings
 router.get("/", getListings);
+
+// IMPORTANT:
+// Keep /my BEFORE /:id so "my" is not treated as a listing ID.
+router.get("/my", protect, getMyListings);
+
+// GET /api/listings/:id
 router.get("/:id", getListingById);
 
-// ---- Private routes (require authentication) ----
-router.use(protect);
+// ============================================================
+// PRIVATE ROUTES
+// ============================================================
 
-router.get("/my", getMyListings);
-router.post("/", uploadListingImages, createListing);
-router.put("/:id", uploadListingImages, updateListing);
-router.patch("/:id/status", updateListingStatus);
-router.delete("/:id", deleteListing);
+// CREATE
+// POST /api/listings
+router.post(
+  "/",
+  protect,
+  uploadListingImages,
+  createListing
+);
+
+// UPDATE
+// PUT /api/listings/:id
+router.put(
+  "/:id",
+  protect,
+  uploadListingImages,
+  updateListing
+);
+
+// STATUS
+// PATCH /api/listings/:id/status
+router.patch(
+  "/:id/status",
+  protect,
+  updateListingStatus
+);
+
+// DELETE
+// DELETE /api/listings/:id
+router.delete(
+  "/:id",
+  protect,
+  deleteListing
+);
 
 module.exports = router;
