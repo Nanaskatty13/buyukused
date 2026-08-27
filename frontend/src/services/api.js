@@ -1263,6 +1263,458 @@ export const favorites = {
 };
 
 // ================================================================
+// REVIEWS
+// ================================================================
+//
+// Backend:
+// /api/reviews
+//
+// Supported:
+// GET    /api/reviews
+// POST   /api/reviews
+// PUT    /api/reviews/:id
+// DELETE /api/reviews/:id
+// POST   /api/reviews/:id/helpful
+// POST   /api/reviews/:id/report
+// POST   /api/reviews/:id/reply
+// DELETE /api/reviews/:id/reply
+//
+// Seller summary:
+// GET /api/reviews/seller/:sellerId/summary
+//
+// Product summary:
+// GET /api/reviews/product/:productId/summary
+// ================================================================
+
+export const reviews = {
+  // ==============================================================
+  // GET REVIEWS
+  // ==============================================================
+
+  getAll: async (
+    params = {},
+    token = getToken()
+  ) => {
+    const query =
+      buildQuery(params);
+
+    return request(
+      `${API_URL}/api/reviews${query}`,
+      {
+        method: "GET",
+
+        headers:
+          getHeaders(token),
+      }
+    );
+  },
+
+  // ==============================================================
+  // GET SELLER REVIEWS
+  // ==============================================================
+
+  getSellerReviews: async (
+    sellerId,
+    params = {},
+    token = getToken()
+  ) => {
+    if (!sellerId) {
+      throw new Error(
+        "Seller ID is required"
+      );
+    }
+
+    const query =
+      buildQuery({
+        sellerId,
+        ...params,
+      });
+
+    return request(
+      `${API_URL}/api/reviews${query}`,
+      {
+        method: "GET",
+
+        headers:
+          getHeaders(token),
+      }
+    );
+  },
+
+  // ==============================================================
+  // GET PRODUCT REVIEWS
+  // ==============================================================
+
+  getProductReviews: async (
+    productId,
+    params = {},
+    token = getToken()
+  ) => {
+    if (!productId) {
+      throw new Error(
+        "Product ID is required"
+      );
+    }
+
+    const query =
+      buildQuery({
+        productId,
+        ...params,
+      });
+
+    return request(
+      `${API_URL}/api/reviews${query}`,
+      {
+        method: "GET",
+
+        headers:
+          getHeaders(token),
+      }
+    );
+  },
+
+  // ==============================================================
+  // CREATE REVIEW
+  // ==============================================================
+
+  create: async (
+    reviewData,
+    token = getToken()
+  ) => {
+    if (!token) {
+      const error = new Error(
+        "Authentication token is missing."
+      );
+
+      error.status = 401;
+
+      throw error;
+    }
+
+    if (!reviewData?.sellerId) {
+      throw new Error(
+        "Seller ID is required"
+      );
+    }
+
+    if (
+      reviewData?.rating === undefined ||
+      reviewData?.rating === null
+    ) {
+      throw new Error(
+        "Rating is required"
+      );
+    }
+
+    if (
+      !reviewData?.comment ||
+      !String(
+        reviewData.comment
+      ).trim()
+    ) {
+      throw new Error(
+        "Review comment is required"
+      );
+    }
+
+    return request(
+      `${API_URL}/api/reviews`,
+      {
+        method: "POST",
+
+        headers:
+          getHeaders(token),
+
+        body: JSON.stringify({
+          sellerId:
+            reviewData.sellerId,
+
+          productId:
+            reviewData.productId ||
+            undefined,
+
+          orderId:
+            reviewData.orderId ||
+            undefined,
+
+          rating:
+            Number(
+              reviewData.rating
+            ),
+
+          comment:
+            String(
+              reviewData.comment
+            ).trim(),
+        }),
+      }
+    );
+  },
+
+  // ==============================================================
+  // UPDATE REVIEW
+  // ==============================================================
+
+  update: async (
+    id,
+    reviewData,
+    token = getToken()
+  ) => {
+    if (!id) {
+      throw new Error(
+        "Review ID is required"
+      );
+    }
+
+    return request(
+      `${API_URL}/api/reviews/${encodeURIComponent(
+        id
+      )}`,
+      {
+        method: "PUT",
+
+        headers:
+          getHeaders(token),
+
+        body: JSON.stringify({
+          ...(reviewData?.rating !==
+          undefined
+            ? {
+                rating:
+                  Number(
+                    reviewData.rating
+                  ),
+              }
+            : {}),
+
+          ...(reviewData?.comment !==
+          undefined
+            ? {
+                comment:
+                  String(
+                    reviewData.comment
+                  ).trim(),
+              }
+            : {}),
+        }),
+      }
+    );
+  },
+
+  // ==============================================================
+  // DELETE REVIEW
+  // ==============================================================
+
+  delete: async (
+    id,
+    token = getToken()
+  ) => {
+    if (!id) {
+      throw new Error(
+        "Review ID is required"
+      );
+    }
+
+    return request(
+      `${API_URL}/api/reviews/${encodeURIComponent(
+        id
+      )}`,
+      {
+        method: "DELETE",
+
+        headers:
+          getHeaders(token),
+      }
+    );
+  },
+
+  // ==============================================================
+  // HELPFUL TOGGLE
+  // ==============================================================
+
+  toggleHelpful: async (
+    id,
+    token = getToken()
+  ) => {
+    if (!id) {
+      throw new Error(
+        "Review ID is required"
+      );
+    }
+
+    return request(
+      `${API_URL}/api/reviews/${encodeURIComponent(
+        id
+      )}/helpful`,
+      {
+        method: "POST",
+
+        headers:
+          getHeaders(token),
+      }
+    );
+  },
+
+  // ==============================================================
+  // REPORT REVIEW
+  // ==============================================================
+
+  report: async (
+    id,
+    reason = "Inappropriate content",
+    token = getToken()
+  ) => {
+    if (!id) {
+      throw new Error(
+        "Review ID is required"
+      );
+    }
+
+    return request(
+      `${API_URL}/api/reviews/${encodeURIComponent(
+        id
+      )}/report`,
+      {
+        method: "POST",
+
+        headers:
+          getHeaders(token),
+
+        body: JSON.stringify({
+          reason:
+            String(
+              reason ||
+                "Inappropriate content"
+            ).trim(),
+        }),
+      }
+    );
+  },
+
+  // ==============================================================
+  // SELLER REPLY
+  // ==============================================================
+
+  reply: async (
+    id,
+    text,
+    token = getToken()
+  ) => {
+    if (!id) {
+      throw new Error(
+        "Review ID is required"
+      );
+    }
+
+    const cleanText =
+      String(text || "").trim();
+
+    if (!cleanText) {
+      throw new Error(
+        "Reply is required"
+      );
+    }
+
+    return request(
+      `${API_URL}/api/reviews/${encodeURIComponent(
+        id
+      )}/reply`,
+      {
+        method: "POST",
+
+        headers:
+          getHeaders(token),
+
+        body: JSON.stringify({
+          text: cleanText,
+        }),
+      }
+    );
+  },
+
+  // ==============================================================
+  // DELETE SELLER REPLY
+  // ==============================================================
+
+  deleteReply: async (
+    id,
+    token = getToken()
+  ) => {
+    if (!id) {
+      throw new Error(
+        "Review ID is required"
+      );
+    }
+
+    return request(
+      `${API_URL}/api/reviews/${encodeURIComponent(
+        id
+      )}/reply`,
+      {
+        method: "DELETE",
+
+        headers:
+          getHeaders(token),
+      }
+    );
+  },
+
+  // ==============================================================
+  // GET SELLER RATING SUMMARY
+  // ==============================================================
+
+  getSellerSummary: async (
+    sellerId,
+    token = getToken()
+  ) => {
+    if (!sellerId) {
+      throw new Error(
+        "Seller ID is required"
+      );
+    }
+
+    return request(
+      `${API_URL}/api/reviews/seller/${encodeURIComponent(
+        sellerId
+      )}/summary`,
+      {
+        method: "GET",
+
+        headers:
+          getHeaders(token),
+      }
+    );
+  },
+
+  // ==============================================================
+  // GET PRODUCT RATING SUMMARY
+  // ==============================================================
+
+  getProductSummary: async (
+    productId,
+    token = getToken()
+  ) => {
+    if (!productId) {
+      throw new Error(
+        "Product ID is required"
+      );
+    }
+
+    return request(
+      `${API_URL}/api/reviews/product/${encodeURIComponent(
+        productId
+      )}/summary`,
+      {
+        method: "GET",
+
+        headers:
+          getHeaders(token),
+      }
+    );
+  },
+};
+
+// ================================================================
 // ADMIN
 // ================================================================
 
@@ -2134,6 +2586,46 @@ export const removeFavorite =
   favorites.remove;
 
 // ================================================================
+// REVIEW EXPORTS
+// ================================================================
+
+export const getReviews =
+  reviews.getAll;
+
+export const getSellerReviews =
+  reviews.getSellerReviews;
+
+export const getProductReviews =
+  reviews.getProductReviews;
+
+export const createReview =
+  reviews.create;
+
+export const updateReview =
+  reviews.update;
+
+export const deleteReview =
+  reviews.delete;
+
+export const toggleReviewHelpful =
+  reviews.toggleHelpful;
+
+export const reportReview =
+  reviews.report;
+
+export const replyToReview =
+  reviews.reply;
+
+export const deleteReviewReply =
+  reviews.deleteReply;
+
+export const getSellerReviewSummary =
+  reviews.getSellerSummary;
+
+export const getProductReviewSummary =
+  reviews.getProductSummary;
+
+// ================================================================
 // ADMIN EXPORTS
 // ================================================================
 
@@ -2272,6 +2764,8 @@ const api = {
 
   favorites,
 
+  reviews,
+
   admin,
 
   deliveries,
@@ -2328,6 +2822,20 @@ const api = {
   getFavorites,
   addFavorite,
   removeFavorite,
+
+  // Reviews
+  getReviews,
+  getSellerReviews,
+  getProductReviews,
+  createReview,
+  updateReview,
+  deleteReview,
+  toggleReviewHelpful,
+  reportReview,
+  replyToReview,
+  deleteReviewReply,
+  getSellerReviewSummary,
+  getProductReviewSummary,
 
   // Admin
   getAdminDashboardStats,

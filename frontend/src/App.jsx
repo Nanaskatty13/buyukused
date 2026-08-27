@@ -1,4 +1,3 @@
-
 // ============================================================
 // frontend/src/App.jsx
 // BuyUKUsed Application Routes

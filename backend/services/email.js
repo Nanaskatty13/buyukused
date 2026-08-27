@@ -1,60 +1,129 @@
 // ============================================================
 // backend/services/email.js
-// BuyUKUsed / KN Classifieds Email Service
-// Resend
+// BuyUKUsed - Resend Email Service
 // ============================================================
 
 const { Resend } = require("resend");
 
 // ============================================================
-// ENVIRONMENT CONFIGURATION
+// CONFIGURATION
 // ============================================================
 
 const RESEND_API_KEY = String(
   process.env.RESEND_API_KEY || ""
 ).trim();
 
-const EMAIL_FROM = String(
-  process.env.EMAIL_FROM ||
-    "buyukused <onboarding@resend.dev>"
-).trim();
+const NODE_ENV =
+  process.env.NODE_ENV || "development";
+
+// ------------------------------------------------------------
+// Sender
+// ------------------------------------------------------------
+//
+// DEVELOPMENT / TESTING:
+//
+//   onboarding@resend.dev
+//
+// PRODUCTION:
+//
+//   Use an email address from a domain you verified
+//   inside Resend.
+//
+// Example:
+//
+//   BuyUKUsed <noreply@buyukused.com>
+//
+// Set this in Render:
+//
+//   EMAIL_FROM=BuyUKUsed <noreply@buyukused.com>
+//
+// ============================================================
+
+const EMAIL_FROM =
+  String(
+    process.env.EMAIL_FROM ||
+      "BuyUKUsed <onboarding@resend.dev>"
+  ).trim();
 
 // ============================================================
-// RESEND CLIENT
+// FRONTEND URL
 // ============================================================
 
-const resend = RESEND_API_KEY
-  ? new Resend(RESEND_API_KEY)
-  : null;
+const FRONTEND_URL = String(
+  process.env.FRONTEND_URL ||
+    "https://buyukused.vercel.app"
+)
+  .trim()
+  .replace(/\/+$/, "");
 
 // ============================================================
-// STARTUP LOGGING
+// INITIALIZE RESEND
 // ============================================================
 
-console.log("============================================================");
-console.log("📧 EMAIL SERVICE");
-console.log("============================================================");
+let resend = null;
 
 if (RESEND_API_KEY) {
-  console.log("✅ RESEND_API_KEY configured");
+  resend = new Resend(RESEND_API_KEY);
+
+  console.log(
+    "============================================================"
+  );
+
+  console.log(
+    "📧 EMAIL SERVICE"
+  );
+
+  console.log(
+    "============================================================"
+  );
+
+  console.log(
+    "✅ RESEND_API_KEY configured"
+  );
+
+  console.log(
+    "📤 Email sender:",
+    EMAIL_FROM
+  );
+
+  console.log(
+    "🌐 Frontend URL:",
+    FRONTEND_URL
+  );
+
+  console.log(
+    "🌍 Environment:",
+    NODE_ENV
+  );
+
+  console.log(
+    "============================================================"
+  );
 } else {
-  console.error("❌ RESEND_API_KEY NOT configured");
+  console.error(
+    "============================================================"
+  );
+
+  console.error(
+    "❌ RESEND_API_KEY IS NOT CONFIGURED"
+  );
+
+  console.error(
+    "============================================================"
+  );
 }
-
-console.log("📤 Email sender:", EMAIL_FROM);
-
-console.log("============================================================");
 
 // ============================================================
 // VALIDATE EMAIL
 // ============================================================
 
 const isValidEmail = (email) => {
-  const emailRegex =
-    /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const value = String(email || "")
+    .trim()
+    .toLowerCase();
 
-  return emailRegex.test(
-    String(email || "").trim()
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
+    value
   );
 };
 
@@ -72,443 +141,483 @@ const escapeHtml = (value) => {
 };
 
 // ============================================================
-// SEND PASSWORD RESET EMAIL
+// PASSWORD RESET EMAIL
 // ============================================================
 
-async function sendPasswordResetEmail(
-  to,
+const sendPasswordResetEmail = async (
+  recipientEmail,
   resetUrl,
-  name
-) {
-  // ==========================================================
-  // CHECK RESEND CLIENT
-  // ==========================================================
+  recipientName = "there"
+) => {
+  // ----------------------------------------------------------
+  // VALIDATE RESEND
+  // ----------------------------------------------------------
 
   if (!resend) {
-    const error = new Error(
-      "RESEND_API_KEY is not configured."
-    );
+    const error =
+      new Error(
+        "RESEND_API_KEY is not configured."
+      );
 
-    error.code = "RESEND_API_KEY_MISSING";
+    error.code =
+      "RESEND_API_KEY_MISSING";
 
     throw error;
   }
 
-  // ==========================================================
-  // NORMALIZE RECIPIENT
-  // ==========================================================
+  // ----------------------------------------------------------
+  // VALIDATE RECIPIENT
+  // ----------------------------------------------------------
 
-  const recipient = String(to || "")
+  const email = String(
+    recipientEmail || ""
+  )
     .trim()
     .toLowerCase();
 
-  if (!recipient) {
-    const error = new Error(
-      "Recipient email is missing."
-    );
+  if (!isValidEmail(email)) {
+    const error =
+      new Error(
+        "Invalid recipient email address."
+      );
 
-    error.code = "RECIPIENT_MISSING";
-
-    throw error;
-  }
-
-  // ==========================================================
-  // VALIDATE RECIPIENT
-  // ==========================================================
-
-  if (!isValidEmail(recipient)) {
-    const error = new Error(
-      `Invalid recipient email address: ${recipient}`
-    );
-
-    error.code = "INVALID_RECIPIENT";
+    error.code =
+      "INVALID_RECIPIENT_EMAIL";
 
     throw error;
   }
 
-  // ==========================================================
-  // CHECK RESET URL
-  // ==========================================================
+  // ----------------------------------------------------------
+  // VALIDATE RESET URL
+  // ----------------------------------------------------------
 
-  const passwordResetUrl =
-    String(resetUrl || "").trim();
+  if (!resetUrl) {
+    const error =
+      new Error(
+        "Password reset URL is missing."
+      );
 
-  if (!passwordResetUrl) {
-    const error = new Error(
-      "Password reset URL is missing."
-    );
-
-    error.code = "RESET_URL_MISSING";
+    error.code =
+      "RESET_URL_MISSING";
 
     throw error;
   }
 
-  // ==========================================================
-  // DISPLAY NAME
-  // ==========================================================
+  // ----------------------------------------------------------
+  // NAME
+  // ----------------------------------------------------------
 
-  const displayName = String(
-    name || "there"
-  ).trim();
+  const safeName = escapeHtml(
+    recipientName || "there"
+  );
 
-  const safeDisplayName =
-    escapeHtml(displayName);
-
-  // ==========================================================
-  // TEXT EMAIL
-  // ==========================================================
-
-  const text = `
-Hello ${displayName},
-
-We received a request to reset your BuyUKUsed account password.
-
-Click the link below to create a new password:
-
-${passwordResetUrl}
-
-This password reset link will expire in 1 hour.
-
-If you did not request this password reset, you can safely ignore this email.
-
-BuyUKUsed
-  `.trim();
-
-  // ==========================================================
+  // ----------------------------------------------------------
   // HTML EMAIL
-  // ==========================================================
+  // ----------------------------------------------------------
 
   const html = `
 <!DOCTYPE html>
-
 <html lang="en">
-
 <head>
+  <meta charset="UTF-8" />
 
-<meta charset="UTF-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
 
-<meta
-  name="viewport"
-  content="width=device-width, initial-scale=1.0"
-/>
-
-<title>Reset Your Password</title>
-
+  <title>Reset your BuyUKUsed password</title>
 </head>
 
 <body
-style="
-margin:0;
-padding:0;
-background:#f5f7fa;
-font-family:Arial,Helvetica,sans-serif;
-"
+  style="
+    margin:0;
+    padding:0;
+    background:#f5f5f5;
+    font-family:Arial,Helvetica,sans-serif;
+    color:#111827;
+  "
 >
 
-<table
-width="100%"
-cellpadding="0"
-cellspacing="0"
-border="0"
-style="
-background:#f5f7fa;
-padding:40px 20px;
-"
->
+  <table
+    width="100%"
+    cellpadding="0"
+    cellspacing="0"
+    border="0"
+    style="background:#f5f5f5;padding:40px 15px;"
+  >
 
-<tr>
+    <tr>
+      <td align="center">
 
-<td align="center">
+        <table
+          width="100%"
+          cellpadding="0"
+          cellspacing="0"
+          border="0"
+          style="
+            max-width:600px;
+            background:#ffffff;
+            border-radius:14px;
+            overflow:hidden;
+            box-shadow:0 4px 20px rgba(0,0,0,0.08);
+          "
+        >
 
-<table
-width="100%"
-cellpadding="0"
-cellspacing="0"
-border="0"
-style="
-max-width:600px;
-background:#ffffff;
-border-radius:14px;
-overflow:hidden;
-"
->
+          <!-- HEADER -->
 
-<!-- HEADER -->
+          <tr>
+            <td
+              style="
+                background:#111827;
+                padding:28px 30px;
+                text-align:center;
+              "
+            >
 
-<tr>
+              <div
+                style="
+                  color:#ffffff;
+                  font-size:25px;
+                  font-weight:800;
+                "
+              >
+                BuyUKUsed
+              </div>
 
-<td
-style="
-background:#111827;
-padding:28px 35px;
-text-align:center;
-"
->
+              <div
+                style="
+                  color:#d1d5db;
+                  font-size:13px;
+                  margin-top:6px;
+                "
+              >
+                Your trusted marketplace
+              </div>
 
-<h1
-style="
-margin:0;
-color:#ffffff;
-font-size:24px;
-font-weight:800;
-"
->
-BuyUKUsed
-</h1>
+            </td>
+          </tr>
 
-</td>
+          <!-- BODY -->
 
-</tr>
+          <tr>
+            <td
+              style="
+                padding:40px 35px;
+              "
+            >
 
-<!-- CONTENT -->
+              <h1
+                style="
+                  margin:0 0 18px;
+                  font-size:26px;
+                  line-height:1.3;
+                  color:#111827;
+                "
+              >
+                Reset your password
+              </h1>
 
-<tr>
+              <p
+                style="
+                  margin:0 0 18px;
+                  font-size:16px;
+                  line-height:1.7;
+                  color:#374151;
+                "
+              >
+                Hello ${safeName},
+              </p>
 
-<td
-style="
-padding:35px;
-"
->
+              <p
+                style="
+                  margin:0 0 22px;
+                  font-size:15px;
+                  line-height:1.7;
+                  color:#4b5563;
+                "
+              >
+                We received a request to reset the
+                password for your BuyUKUsed account.
+              </p>
 
-<h2
-style="
-margin:0 0 18px;
-color:#111827;
-font-size:24px;
-font-weight:800;
-"
->
-Reset Your Password
-</h2>
+              <p
+                style="
+                  margin:0 0 28px;
+                  font-size:15px;
+                  line-height:1.7;
+                  color:#4b5563;
+                "
+              >
+                Click the button below to create a
+                new password.
+              </p>
 
-<p
-style="
-margin:0 0 16px;
-color:#374151;
-font-size:15px;
-line-height:1.6;
-"
->
-Hello ${safeDisplayName},
-</p>
+              <!-- BUTTON -->
 
-<p
-style="
-margin:0 0 16px;
-color:#374151;
-font-size:15px;
-line-height:1.6;
-"
->
-We received a request to reset your
-BuyUKUsed account password.
-</p>
+              <table
+                cellpadding="0"
+                cellspacing="0"
+                border="0"
+                style="margin:0 auto 30px;"
+              >
 
-<p
-style="
-margin:0 0 25px;
-color:#374151;
-font-size:15px;
-line-height:1.6;
-"
->
-Click the button below to create a new password:
-</p>
+                <tr>
+                  <td
+                    align="center"
+                    style="
+                      border-radius:8px;
+                      background:#111827;
+                    "
+                  >
 
-<div
-style="
-text-align:center;
-margin:30px 0;
-"
->
+                    <a
+                      href="${resetUrl}"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style="
+                        display:inline-block;
+                        padding:14px 28px;
+                        color:#ffffff;
+                        text-decoration:none;
+                        font-size:15px;
+                        font-weight:700;
+                        border-radius:8px;
+                      "
+                    >
+                      Reset My Password
+                    </a>
 
-<a
-href="${passwordResetUrl}"
-style="
-display:inline-block;
-padding:14px 28px;
-background:#111827;
-color:#ffffff;
-text-decoration:none;
-border-radius:8px;
-font-weight:700;
-font-size:15px;
-"
->
-Reset Password
-</a>
+                  </td>
+                </tr>
 
-</div>
+              </table>
 
-<p
-style="
-margin:0 0 15px;
-color:#4b5563;
-font-size:14px;
-line-height:1.6;
-"
->
-This password reset link will expire in
-<strong>1 hour</strong>.
-</p>
+              <p
+                style="
+                  margin:0 0 12px;
+                  font-size:13px;
+                  line-height:1.6;
+                  color:#6b7280;
+                "
+              >
+                This password reset link expires
+                in <strong>1 hour</strong>.
+              </p>
 
-<p
-style="
-margin:0;
-color:#4b5563;
-font-size:14px;
-line-height:1.6;
-"
->
-If you did not request this password reset,
-you can safely ignore this email.
-</p>
+              <p
+                style="
+                  margin:0 0 20px;
+                  font-size:13px;
+                  line-height:1.6;
+                  color:#6b7280;
+                "
+              >
+                If you did not request a password
+                reset, you can safely ignore this
+                email.
+              </p>
 
-<hr
-style="
-border:0;
-border-top:1px solid #e5e7eb;
-margin:30px 0;
-"
-/>
+              <!-- FALLBACK URL -->
 
-<p
-style="
-margin:0;
-color:#9ca3af;
-font-size:12px;
-line-height:1.5;
-"
->
-This is an automated message from BuyUKUsed.
-</p>
+              <div
+                style="
+                  margin-top:25px;
+                  padding:15px;
+                  background:#f9fafb;
+                  border:1px solid #e5e7eb;
+                  border-radius:8px;
+                "
+              >
 
-</td>
+                <p
+                  style="
+                    margin:0 0 8px;
+                    font-size:12px;
+                    color:#6b7280;
+                  "
+                >
+                  If the button does not work,
+                  copy and paste this link into
+                  your browser:
+                </p>
 
-</tr>
+                <a
+                  href="${resetUrl}"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style="
+                    word-break:break-all;
+                    font-size:12px;
+                    color:#2563eb;
+                  "
+                >
+                  ${resetUrl}
+                </a>
 
-<!-- FOOTER -->
+              </div>
 
-<tr>
+            </td>
+          </tr>
 
-<td
-style="
-padding:20px 35px;
-background:#f9fafb;
-text-align:center;
-"
->
+          <!-- FOOTER -->
 
-<p
-style="
-margin:0;
-color:#9ca3af;
-font-size:12px;
-"
->
-© ${new Date().getFullYear()} BuyUKUsed
-</p>
+          <tr>
+            <td
+              style="
+                padding:22px 30px;
+                background:#f9fafb;
+                border-top:1px solid #e5e7eb;
+                text-align:center;
+              "
+            >
 
-</td>
+              <p
+                style="
+                  margin:0;
+                  font-size:12px;
+                  color:#9ca3af;
+                  line-height:1.6;
+                "
+              >
+                © ${new Date().getFullYear()}
+                BuyUKUsed. All rights reserved.
+              </p>
 
-</tr>
+              <p
+                style="
+                  margin:6px 0 0;
+                  font-size:12px;
+                  color:#9ca3af;
+                "
+              >
+                ${FRONTEND_URL}
+              </p>
 
-</table>
+            </td>
+          </tr>
 
-</td>
+        </table>
 
-</tr>
+      </td>
+    </tr>
 
-</table>
+  </table>
 
 </body>
-
 </html>
-  `.trim();
+`;
 
-  // ==========================================================
-  // SEND WITH RESEND
-  // ==========================================================
+  // ----------------------------------------------------------
+  // PLAIN TEXT VERSION
+  // ----------------------------------------------------------
+
+  const text = `
+Hello ${recipientName || "there"},
+
+We received a request to reset the password
+for your BuyUKUsed account.
+
+Reset your password here:
+
+${resetUrl}
+
+This password reset link expires in 1 hour.
+
+If you did not request a password reset,
+you can safely ignore this email.
+
+BuyUKUsed
+${FRONTEND_URL}
+`.trim();
+
+  // ----------------------------------------------------------
+  // SEND
+  // ----------------------------------------------------------
+
+  console.log(
+    "============================================================"
+  );
+
+  console.log(
+    "📨 RESEND EMAIL REQUEST"
+  );
+
+  console.log(
+    "============================================================"
+  );
+
+  console.log(
+    "📤 From:",
+    EMAIL_FROM
+  );
+
+  console.log(
+    "📬 To:",
+    email
+  );
+
+  console.log(
+    "📝 Subject:",
+    "Reset your BuyUKUsed password"
+  );
 
   try {
-    console.log("============================================================");
-    console.log("📨 PASSWORD RESET EMAIL");
-    console.log("============================================================");
-
-    console.log("📬 Recipient:", recipient);
-    console.log("📤 From:", EMAIL_FROM);
-    console.log("🔗 Reset URL generated: YES");
-    console.log("🔐 Reset token: NOT LOGGED");
-
-    // --------------------------------------------------------
-    // RESEND REQUEST
-    // --------------------------------------------------------
-
     const result =
       await resend.emails.send({
         from: EMAIL_FROM,
-        to: [recipient],
+
+        to: [email],
+
         subject:
-          "Reset Your BuyUKUsed Password",
-        text,
+          "Reset your BuyUKUsed password",
+
         html,
+
+        text,
+
+        replyTo:
+          process.env.EMAIL_REPLY_TO ||
+          undefined,
       });
 
     // --------------------------------------------------------
-    // RESEND API ERROR
+    // RESEND SDK ERROR
     // --------------------------------------------------------
 
     if (result?.error) {
-      console.error(
-        "============================================================"
-      );
+      const resendError =
+        new Error(
+          result.error.message ||
+            "Resend failed to send email."
+        );
 
-      console.error(
-        "❌ RESEND API ERROR"
-      );
-
-      console.error(
-        "============================================================"
-      );
-
-      console.error(
-        "Name:",
-        result.error.name || "N/A"
-      );
-
-      console.error(
-        "Message:",
-        result.error.message || "N/A"
-      );
-
-      console.error(
-        "Status:",
-        result.error.statusCode ||
-          result.error.status ||
-          "N/A"
-      );
-
-      console.error(
-        "Full error:",
-        result.error
-      );
-
-      const error = new Error(
-        result.error.message ||
-          "Resend failed to send the email."
-      );
-
-      error.code =
+      // Preserve useful Resend information.
+      resendError.code =
         result.error.name ||
         "RESEND_API_ERROR";
 
-      error.statusCode =
+      resendError.statusCode =
         result.error.statusCode ||
-        result.error.status;
+        result.error.status ||
+        null;
 
-      error.data = result.error;
+      resendError.resendError =
+        result.error;
 
-      throw error;
+      console.error(
+        "❌ Resend returned an error:"
+      );
+
+      console.error(
+        JSON.stringify(
+          result.error,
+          null,
+          2
+        )
+      );
+
+      throw resendError;
     }
 
     // --------------------------------------------------------
@@ -516,35 +625,36 @@ font-size:12px;
     // --------------------------------------------------------
 
     console.log(
+      "✅ Password reset email sent."
+    );
+
+    console.log(
+      "📬 Recipient:",
+      email
+    );
+
+    console.log(
+      "🆔 Resend ID:",
+      result?.data?.id ||
+        "unknown"
+    );
+
+    console.log(
       "============================================================"
     );
 
-    console.log(
-      "✅ PASSWORD RESET EMAIL SENT"
-    );
-
-    console.log(
-      "============================================================"
-    );
-
-    console.log(
-      "📨 Resend ID:",
-      result?.data?.id || "N/A"
-    );
-
-    return result?.data;
-
+    return result;
   } catch (error) {
-    // ========================================================
-    // EMAIL ERROR
-    // ========================================================
+    // --------------------------------------------------------
+    // ERROR LOGGING
+    // --------------------------------------------------------
 
     console.error(
       "============================================================"
     );
 
     console.error(
-      "❌ PASSWORD RESET EMAIL FAILED"
+      "❌ RESEND EMAIL FAILED"
     );
 
     console.error(
@@ -553,29 +663,44 @@ font-size:12px;
 
     console.error(
       "Message:",
-      error?.message || error
+      error?.message ||
+        "Unknown error"
+    );
+
+    console.error(
+      "Name:",
+      error?.name ||
+        "Unknown"
     );
 
     console.error(
       "Code:",
-      error?.code || "N/A"
+      error?.code ||
+        "Unknown"
     );
 
     console.error(
       "Status:",
-      error?.statusCode ||
-        error?.status ||
-        "N/A"
+      error?.statusCode ??
+        error?.status ??
+        "Unknown"
     );
 
-    console.error(
-      "Data:",
-      error?.data || "N/A"
-    );
+    if (error?.resendError) {
+      console.error(
+        "Resend error:",
+        JSON.stringify(
+          error.resendError,
+          null,
+          2
+        )
+      );
+    }
 
     console.error(
       "Stack:",
-      error?.stack || "N/A"
+      error?.stack ||
+        "No stack"
     );
 
     console.error(
@@ -584,56 +709,91 @@ font-size:12px;
 
     throw error;
   }
-}
+};
 
 // ============================================================
-// VERIFY EMAIL CONFIGURATION
+// GENERIC EMAIL FUNCTION
 // ============================================================
 
-async function verifyEmailConfiguration() {
-  try {
-    if (!RESEND_API_KEY) {
-      console.error(
-        "❌ Email verification failed: RESEND_API_KEY missing."
-      );
-
-      return false;
-    }
-
-    if (!resend) {
-      console.error(
-        "❌ Email verification failed: Resend client unavailable."
-      );
-
-      return false;
-    }
-
-    console.log(
-      "✅ Resend email service is configured."
+const sendEmail = async ({
+  to,
+  subject,
+  html,
+  text,
+  replyTo,
+}) => {
+  if (!resend) {
+    throw new Error(
+      "RESEND_API_KEY is not configured."
     );
-
-    console.log(
-      "📤 Configured sender:",
-      EMAIL_FROM
-    );
-
-    return true;
-
-  } catch (error) {
-    console.error(
-      "❌ Email configuration verification failed:",
-      error
-    );
-
-    return false;
   }
-}
+
+  const recipient = String(
+    to || ""
+  )
+    .trim()
+    .toLowerCase();
+
+  if (!isValidEmail(recipient)) {
+    throw new Error(
+      "Invalid recipient email address."
+    );
+  }
+
+  const result =
+    await resend.emails.send({
+      from: EMAIL_FROM,
+
+      to: [recipient],
+
+      subject:
+        String(subject || "").trim() ||
+        "BuyUKUsed",
+
+      html:
+        html ||
+        "<p>BuyUKUsed</p>",
+
+      text:
+        text ||
+        undefined,
+
+      replyTo:
+        replyTo ||
+        process.env.EMAIL_REPLY_TO ||
+        undefined,
+    });
+
+  if (result?.error) {
+    const error =
+      new Error(
+        result.error.message ||
+          "Unable to send email."
+      );
+
+    error.code =
+      result.error.name ||
+      "RESEND_API_ERROR";
+
+    error.statusCode =
+      result.error.statusCode ||
+      result.error.status ||
+      null;
+
+    error.resendError =
+      result.error;
+
+    throw error;
+  }
+
+  return result;
+};
 
 // ============================================================
 // EXPORTS
 // ============================================================
 
 module.exports = {
+  sendEmail,
   sendPasswordResetEmail,
-  verifyEmailConfiguration,
 };

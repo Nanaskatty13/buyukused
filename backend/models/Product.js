@@ -110,12 +110,14 @@ const productSchema = new mongoose.Schema(
       type: String,
       default: "",
       trim: true,
+      maxlength: 150,
     },
 
     sellerPhone: {
       type: String,
       default: "",
       trim: true,
+      maxlength: 50,
     },
 
     // ========================================================
@@ -174,6 +176,7 @@ const productSchema = new mongoose.Schema(
       default: "",
       trim: true,
       index: true,
+      maxlength: 150,
     },
 
     model: {
@@ -181,12 +184,14 @@ const productSchema = new mongoose.Schema(
       default: "",
       trim: true,
       index: true,
+      maxlength: 150,
     },
 
     color: {
       type: String,
       default: "",
       trim: true,
+      maxlength: 100,
     },
 
     condition: {
@@ -200,6 +205,7 @@ const productSchema = new mongoose.Schema(
       type: String,
       default: "",
       trim: true,
+      maxlength: 500,
     },
 
     // ========================================================
@@ -210,60 +216,70 @@ const productSchema = new mongoose.Schema(
       type: String,
       default: "",
       trim: true,
+      maxlength: 100,
     },
 
     ram: {
       type: String,
       default: "",
       trim: true,
+      maxlength: 100,
     },
 
     processor: {
       type: String,
       default: "",
       trim: true,
+      maxlength: 200,
     },
 
     graphics: {
       type: String,
       default: "",
       trim: true,
+      maxlength: 200,
     },
 
     screenSize: {
       type: String,
       default: "",
       trim: true,
+      maxlength: 100,
     },
 
     year: {
       type: String,
       default: "",
       trim: true,
+      maxlength: 50,
     },
 
     connectivity: {
       type: String,
       default: "",
       trim: true,
+      maxlength: 300,
     },
 
     operatingSystem: {
       type: String,
       default: "",
       trim: true,
+      maxlength: 150,
     },
 
     battery: {
       type: String,
       default: "",
       trim: true,
+      maxlength: 150,
     },
 
     resolution: {
       type: String,
       default: "",
       trim: true,
+      maxlength: 150,
     },
 
     // ========================================================
@@ -311,36 +327,42 @@ const productSchema = new mongoose.Schema(
       type: String,
       default: "",
       trim: true,
+      maxlength: 200,
     },
 
     region: {
       type: String,
       default: "",
       trim: true,
+      maxlength: 100,
     },
 
     consoleType: {
       type: String,
       default: "",
       trim: true,
+      maxlength: 150,
     },
 
     edition: {
       type: String,
       default: "",
       trim: true,
+      maxlength: 150,
     },
 
     discDrive: {
       type: String,
       default: "",
       trim: true,
+      maxlength: 100,
     },
 
     controllersIncluded: {
       type: String,
       default: "",
       trim: true,
+      maxlength: 200,
     },
 
     // ========================================================
@@ -351,6 +373,7 @@ const productSchema = new mongoose.Schema(
       type: String,
       default: "",
       trim: true,
+      maxlength: 100,
     },
 
     // ========================================================
@@ -361,36 +384,42 @@ const productSchema = new mongoose.Schema(
       type: String,
       default: "",
       trim: true,
+      maxlength: 150,
     },
 
     displayTechnology: {
       type: String,
       default: "",
       trim: true,
+      maxlength: 150,
     },
 
     refreshRate: {
       type: String,
       default: "",
       trim: true,
+      maxlength: 100,
     },
 
     hdr: {
       type: String,
       default: "",
       trim: true,
+      maxlength: 100,
     },
 
     hdmiPorts: {
       type: String,
       default: "",
       trim: true,
+      maxlength: 50,
     },
 
     usbPorts: {
       type: String,
       default: "",
       trim: true,
+      maxlength: 50,
     },
 
     smartTV: {
@@ -422,30 +451,35 @@ const productSchema = new mongoose.Schema(
       type: String,
       default: "",
       trim: true,
+      maxlength: 100,
     },
 
     fuelType: {
       type: String,
       default: "",
       trim: true,
+      maxlength: 100,
     },
 
     transmission: {
       type: String,
       default: "",
       trim: true,
+      maxlength: 100,
     },
 
     driveType: {
       type: String,
       default: "",
       trim: true,
+      maxlength: 100,
     },
 
     engineSize: {
       type: String,
       default: "",
       trim: true,
+      maxlength: 100,
     },
 
     seatingCapacity: {
@@ -458,12 +492,14 @@ const productSchema = new mongoose.Schema(
       type: String,
       default: "",
       trim: true,
+      maxlength: 100,
     },
 
     interiorColor: {
       type: String,
       default: "",
       trim: true,
+      maxlength: 100,
     },
 
     // ========================================================
@@ -474,12 +510,14 @@ const productSchema = new mongoose.Schema(
       type: String,
       default: "",
       trim: true,
+      maxlength: 150,
     },
 
     compatibleWith: {
       type: String,
       default: "",
       trim: true,
+      maxlength: 500,
     },
 
     compatibility: {
@@ -493,36 +531,42 @@ const productSchema = new mongoose.Schema(
       type: String,
       default: "",
       trim: true,
+      maxlength: 150,
     },
 
     cableType: {
       type: String,
       default: "",
       trim: true,
+      maxlength: 100,
     },
 
     connectorType: {
       type: String,
       default: "",
       trim: true,
+      maxlength: 100,
     },
 
     powerOutput: {
       type: String,
       default: "",
       trim: true,
+      maxlength: 100,
     },
 
     capacity: {
       type: String,
       default: "",
       trim: true,
+      maxlength: 100,
     },
 
     batteryCapacity: {
       type: String,
       default: "",
       trim: true,
+      maxlength: 100,
     },
 
     wireless: {
@@ -543,90 +587,105 @@ const productSchema = new mongoose.Schema(
       type: String,
       default: "",
       trim: true,
+      maxlength: 150,
     },
 
     partNumber: {
       type: String,
       default: "",
       trim: true,
+      maxlength: 150,
     },
 
     oemNumber: {
       type: String,
       default: "",
       trim: true,
+      maxlength: 150,
     },
 
     partBrand: {
       type: String,
       default: "",
       trim: true,
+      maxlength: 150,
     },
 
     vehicleMake: {
       type: String,
       default: "",
       trim: true,
+      maxlength: 150,
     },
 
     vehicleModel: {
       type: String,
       default: "",
       trim: true,
+      maxlength: 150,
     },
 
     vehicleYear: {
       type: String,
       default: "",
       trim: true,
+      maxlength: 100,
     },
 
     vehicleGeneration: {
       type: String,
       default: "",
       trim: true,
+      maxlength: 150,
     },
 
     vehicleEngine: {
       type: String,
       default: "",
       trim: true,
+      maxlength: 150,
     },
 
     vehicleTrim: {
       type: String,
       default: "",
       trim: true,
+      maxlength: 150,
     },
 
     partPosition: {
       type: String,
       default: "",
       trim: true,
+      maxlength: 100,
     },
 
     partSide: {
       type: String,
       default: "",
       trim: true,
+      maxlength: 100,
     },
 
     partMaterial: {
       type: String,
       default: "",
       trim: true,
+      maxlength: 150,
     },
 
     partColor: {
       type: String,
       default: "",
       trim: true,
+      maxlength: 100,
     },
 
     partCondition: {
       type: String,
       default: "",
       trim: true,
+      maxlength: 100,
     },
 
     isOEM: {
@@ -662,66 +721,77 @@ const productSchema = new mongoose.Schema(
       type: String,
       default: "",
       trim: true,
+      maxlength: 150,
     },
 
     cosmeticBrand: {
       type: String,
       default: "",
       trim: true,
+      maxlength: 150,
     },
 
     productSize: {
       type: String,
       default: "",
       trim: true,
+      maxlength: 100,
     },
 
     volume: {
       type: String,
       default: "",
       trim: true,
+      maxlength: 100,
     },
 
     skinType: {
       type: String,
       default: "",
       trim: true,
+      maxlength: 150,
     },
 
     hairType: {
       type: String,
       default: "",
       trim: true,
+      maxlength: 150,
     },
 
     shade: {
       type: String,
       default: "",
       trim: true,
+      maxlength: 100,
     },
 
     scent: {
       type: String,
       default: "",
       trim: true,
+      maxlength: 150,
     },
 
     gender: {
       type: String,
       default: "",
       trim: true,
+      maxlength: 100,
     },
 
     ageGroup: {
       type: String,
       default: "",
       trim: true,
+      maxlength: 100,
     },
 
     expiryDate: {
       type: String,
       default: "",
       trim: true,
+      maxlength: 100,
     },
 
     ingredients: {
@@ -749,6 +819,7 @@ const productSchema = new mongoose.Schema(
       type: String,
       default: "",
       trim: true,
+      maxlength: 150,
     },
 
     crueltyFree: {
@@ -836,6 +907,7 @@ const productSchema = new mongoose.Schema(
       sparse: true,
       trim: true,
       index: true,
+      maxlength: 300,
     },
   },
   {
@@ -852,6 +924,8 @@ productSchema.pre("save", function (next) {
   if (!this.slug && this.title) {
     const baseSlug = this.title
       .toLowerCase()
+      .normalize("NFKD")
+      .replace(/[\u0300-\u036f]/g, "")
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-+|-+$/g, "");
 
@@ -915,11 +989,6 @@ productSchema.index({
 productSchema.index({
   price: 1,
 });
-
-// NOTE:
-// brand and model already have index: true in their fields.
-// Do NOT create productSchema.index({ brand: 1 })
-// or productSchema.index({ model: 1 }) again.
 
 // ============================================================
 // PHONE INDEXES

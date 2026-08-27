@@ -1,258 +1,357 @@
+// ============================================================
+// backend/models/Orders.js
+// BuyUKUsed Order Model
+// ============================================================
+
+"use strict";
+
 const mongoose = require("mongoose");
 
-
-
-const orderSchema = new mongoose.Schema(
-
-    {
-
-
-        // Customer who placed order
-        user: {
-
-            type: mongoose.Schema.Types.ObjectId,
-
-            ref: "User",
-
-            required: true
-
-        },
-
-
-        // Products inside order
-        items: [
-
-            {
-
-                product: {
-
-                    type: mongoose.Schema.Types.ObjectId,
-
-                    ref: "Product",
-
-                    required: true
-
-                },
-
-
-                seller: {
-
-                    type: mongoose.Schema.Types.ObjectId,
-
-                    ref: "User"
-
-                },
-
-
-                name: {
-
-                    type: String,
-
-                    required: true
-
-                },
-
-
-                image: {
-
-                    type: String,
-
-                    default: ""
-
-                },
-
-
-                quantity: {
-
-                    type: Number,
-
-                    required: true,
-
-                    default: 1
-
-                },
-
-
-                price: {
-
-                    type: Number,
-
-                    required: true
-
-                }
-
-
-            }
-
-        ],
-
-
-
-        // Total amount
-        totalAmount: {
-
-            type: Number,
-
-            required: true
-
-        },
-
-
-
-        // Payment information
-        payment: {
-
-
-            method: {
-
-                type: String,
-
-                enum: [
-
-                    "cash",
-
-                    "paystack",
-
-                    "mobile_money",
-
-                    "card"
-
-                ],
-
-                default: "paystack"
-
-            },
-
-
-            reference: {
-
-                type: String,
-
-                default: ""
-
-            },
-
-
-            status: {
-
-                type: String,
-
-                enum: [
-
-                    "pending",
-
-                    "paid",
-
-                    "failed",
-
-                    "refunded"
-
-                ],
-
-                default: "pending"
-
-            }
-
-
-        },
-
-
-
-        // Delivery details
-        shippingAddress: {
-
-
-            fullName: {
-
-                type: String,
-
-                required: true
-
-            },
-
-
-            phone: {
-
-                type: String,
-
-                required: true
-
-            },
-
-
-            location: {
-
-                type: String,
-
-                required: true
-
-            },
-
-
-            address: {
-
-                type: String,
-
-                default: ""
-
-            }
-
-
-        },
-
-
-
-        // Order status
-        status: {
-
-            type: String,
-
-            enum: [
-
-                "pending",
-
-                "processing",
-
-                "shipped",
-
-                "delivered",
-
-                "cancelled"
-
-            ],
-
-            default: "pending"
-
-        }
-
-
-
+// ============================================================
+// CONSTANTS
+// ============================================================
+
+const PAYMENT_METHODS = [
+  "cash",
+  "paystack",
+  "mobile_money",
+  "card",
+];
+
+const PAYMENT_STATUSES = [
+  "pending",
+  "paid",
+  "failed",
+  "refunded",
+];
+
+const ORDER_STATUSES = [
+  "pending",
+  "processing",
+  "shipped",
+  "delivered",
+  "cancelled",
+];
+
+// ============================================================
+// ORDER ITEM SCHEMA
+// ============================================================
+
+const orderItemSchema = new mongoose.Schema(
+  {
+    // Product purchased
+    product: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Product",
+      required: true,
     },
 
-    {
+    // Seller of the product
+    seller: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
 
-        timestamps:true
+    // Snapshot of product name at time of purchase
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+    },
 
-    }
+    // Snapshot of product image at time of purchase
+    image: {
+      type: String,
+      default: "",
+      trim: true,
+    },
 
+    // Quantity purchased
+    quantity: {
+      type: Number,
+      required: true,
+      min: 1,
+      default: 1,
+    },
+
+    // Price at time of purchase
+    price: {
+      type: Number,
+      required: true,
+      min: 0,
+    },
+  },
+  {
+    _id: false,
+  }
 );
 
+// ============================================================
+// SHIPPING ADDRESS SCHEMA
+// ============================================================
 
+const shippingAddressSchema = new mongoose.Schema(
+  {
+    fullName: {
+      type: String,
+      required: true,
+      trim: true,
+      maxlength: 150,
+    },
 
-// Search optimization
+    phone: {
+      type: String,
+      required: true,
+      trim: true,
+      maxlength: 50,
+    },
+
+    location: {
+      type: String,
+      required: true,
+      trim: true,
+      maxlength: 300,
+    },
+
+    address: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 1000,
+    },
+  },
+  {
+    _id: false,
+  }
+);
+
+// ============================================================
+// PAYMENT SCHEMA
+// ============================================================
+
+const paymentSchema = new mongoose.Schema(
+  {
+    method: {
+      type: String,
+      enum: PAYMENT_METHODS,
+      default: "paystack",
+    },
+
+    // Paystack/payment transaction reference
+    reference: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    status: {
+      type: String,
+      enum: PAYMENT_STATUSES,
+      default: "pending",
+    },
+
+    paidAt: {
+      type: Date,
+      default: null,
+    },
+  },
+  {
+    _id: false,
+  }
+);
+
+// ============================================================
+// ORDER SCHEMA
+// ============================================================
+
+const orderSchema = new mongoose.Schema(
+  {
+    // ========================================================
+    // CUSTOMER
+    // ========================================================
+
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
+    },
+
+    // ========================================================
+    // PRODUCTS
+    // ========================================================
+
+    items: {
+      type: [orderItemSchema],
+      required: true,
+      validate: {
+        validator: function (items) {
+          return Array.isArray(items) && items.length > 0;
+        },
+        message: "Order must contain at least one item.",
+      },
+    },
+
+    // ========================================================
+    // TOTAL
+    // ========================================================
+
+    totalAmount: {
+      type: Number,
+      required: true,
+      min: 0,
+    },
+
+    // ========================================================
+    // PAYMENT
+    // ========================================================
+
+    payment: {
+      type: paymentSchema,
+      default: () => ({}),
+    },
+
+    // ========================================================
+    // DELIVERY / SHIPPING
+    // ========================================================
+
+    shippingAddress: {
+      type: shippingAddressSchema,
+      required: true,
+    },
+
+    // ========================================================
+    // ORDER STATUS
+    // ========================================================
+
+    status: {
+      type: String,
+      enum: ORDER_STATUSES,
+      default: "pending",
+      index: true,
+    },
+
+    // ========================================================
+    // DELIVERY DATES
+    // ========================================================
+
+    processedAt: {
+      type: Date,
+      default: null,
+    },
+
+    shippedAt: {
+      type: Date,
+      default: null,
+    },
+
+    deliveredAt: {
+      type: Date,
+      default: null,
+    },
+
+    cancelledAt: {
+      type: Date,
+      default: null,
+    },
+  },
+  {
+    timestamps: true,
+    versionKey: false,
+  }
+);
+
+// ============================================================
+// INDEXES
+// ============================================================
+
+// User's orders
 orderSchema.index({
-
-    user:1,
-
-    createdAt:-1
-
+  user: 1,
+  createdAt: -1,
 });
 
+// Status + date
+orderSchema.index({
+  status: 1,
+  createdAt: -1,
+});
 
-module.exports = mongoose.model(
+// Payment reference
+//
+// IMPORTANT:
+// This is intentionally NOT unique because:
+// - old orders may have empty references
+// - different payment providers may use different references
+// - we don't want duplicate-index warnings
+//
+orderSchema.index({
+  "payment.reference": 1,
+});
 
-    "Order",
+// Seller lookup
+orderSchema.index({
+  "items.seller": 1,
+  createdAt: -1,
+});
 
-    orderSchema
+// ============================================================
+// PRE-SAVE STATUS TIMESTAMPS
+// ============================================================
 
-);
+orderSchema.pre("save", function (next) {
+  const now = new Date();
+
+  if (
+    this.isModified("status") &&
+    this.status === "processing" &&
+    !this.processedAt
+  ) {
+    this.processedAt = now;
+  }
+
+  if (
+    this.isModified("status") &&
+    this.status === "shipped" &&
+    !this.shippedAt
+  ) {
+    this.shippedAt = now;
+  }
+
+  if (
+    this.isModified("status") &&
+    this.status === "delivered" &&
+    !this.deliveredAt
+  ) {
+    this.deliveredAt = now;
+  }
+
+  if (
+    this.isModified("status") &&
+    this.status === "cancelled" &&
+    !this.cancelledAt
+  ) {
+    this.cancelledAt = now;
+  }
+
+  if (
+    this.isModified("payment.status") &&
+    this.payment?.status === "paid" &&
+    !this.payment.paidAt
+  ) {
+    this.payment.paidAt = now;
+  }
+
+  next();
+});
+
+// ============================================================
+// MODEL
+// ============================================================
+
+const Order =
+  mongoose.models.Order ||
+  mongoose.model("Order", orderSchema);
+
+module.exports = Order;
