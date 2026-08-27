@@ -2,10 +2,7 @@
 // frontend/src/pages/SellerPage.jsx
 // ============================================================
 
-import React, {
-  useState,
-  useEffect,
-} from "react";
+import React, { useState, useEffect } from "react";
 
 import {
   useParams,
@@ -47,63 +44,33 @@ const timeAgo = (dateString) => {
 
   const now = new Date();
 
-  const diffMs = Math.max(
-    0,
-    now.getTime() - past.getTime()
-  );
+  const diffMs = Math.max(0, now.getTime() - past.getTime());
 
-  const diffSec = Math.floor(
-    diffMs / 1000
-  );
-
-  const diffMin = Math.floor(
-    diffSec / 60
-  );
-
-  const diffHr = Math.floor(
-    diffMin / 60
-  );
-
-  const diffDays = Math.floor(
-    diffHr / 24
-  );
-
-  const diffMonths = Math.floor(
-    diffDays / 30
-  );
-
-  const diffYears = Math.floor(
-    diffDays / 365
-  );
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffSec / 60);
+  const diffHr = Math.floor(diffMin / 60);
+  const diffDays = Math.floor(diffHr / 24);
+  const diffMonths = Math.floor(diffDays / 30);
+  const diffYears = Math.floor(diffDays / 365);
 
   if (diffYears > 0) {
-    return `${diffYears} year${
-      diffYears > 1 ? "s" : ""
-    } ago`;
+    return `${diffYears} year${diffYears > 1 ? "s" : ""} ago`;
   }
 
   if (diffMonths > 0) {
-    return `${diffMonths} month${
-      diffMonths > 1 ? "s" : ""
-    } ago`;
+    return `${diffMonths} month${diffMonths > 1 ? "s" : ""} ago`;
   }
 
   if (diffDays > 0) {
-    return `${diffDays} day${
-      diffDays > 1 ? "s" : ""
-    } ago`;
+    return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
   }
 
   if (diffHr > 0) {
-    return `${diffHr} hour${
-      diffHr > 1 ? "s" : ""
-    } ago`;
+    return `${diffHr} hour${diffHr > 1 ? "s" : ""} ago`;
   }
 
   if (diffMin > 0) {
-    return `${diffMin} minute${
-      diffMin > 1 ? "s" : ""
-    } ago`;
+    return `${diffMin} minute${diffMin > 1 ? "s" : ""} ago`;
   }
 
   return "Just now";
@@ -139,12 +106,10 @@ const getSellerImageUrl = (image) => {
 // STAR COMPONENT
 // ============================================================
 
-const Stars = ({
-  rating = 0,
-  size = "16px",
-}) => {
-  const numericRating = Number(
-    rating || 0
+const Stars = ({ rating = 0, size = "16px" }) => {
+  const numericRating = Math.max(
+    0,
+    Math.min(5, Number(rating) || 0)
   );
 
   return (
@@ -156,22 +121,20 @@ const Stars = ({
       }}
       aria-label={`${numericRating} out of 5 stars`}
     >
-      {[1, 2, 3, 4, 5].map(
-        (star) => (
-          <i
-            key={star}
-            className={
-              star <= numericRating
-                ? "fas fa-star"
-                : "far fa-star"
-            }
-            style={{
-              color: "#f59e0b",
-              fontSize: size,
-            }}
-          />
-        )
-      )}
+      {[1, 2, 3, 4, 5].map((star) => (
+        <i
+          key={star}
+          className={
+            star <= numericRating
+              ? "fas fa-star"
+              : "far fa-star"
+          }
+          style={{
+            color: "#f59e0b",
+            fontSize: size,
+          }}
+        />
+      ))}
     </span>
   );
 };
@@ -181,15 +144,10 @@ const Stars = ({
 // ============================================================
 
 const SellerPage = () => {
-  const {
-    sellerId,
-  } = useParams();
+  const { sellerId } = useParams();
+  const navigate = useNavigate();
 
-  const navigate =
-    useNavigate();
-
-  const { user } =
-    useAuth();
+  const { user } = useAuth();
 
   const {
     toggleFavorite,
@@ -200,53 +158,25 @@ const SellerPage = () => {
   // SELLER
   // ==========================================================
 
-  const [
-    seller,
-    setSeller,
-  ] = useState(null);
+  const [seller, setSeller] = useState(null);
 
   // ==========================================================
   // PRODUCTS
   // ==========================================================
 
-  const [
-    products,
-    setProducts,
-  ] = useState([]);
-
-  const [
-    loading,
-    setLoading,
-  ] = useState(true);
-
-  const [
-    error,
-    setError,
-  ] = useState("");
-
-  const [
-    pagination,
-    setPagination,
-  ] = useState(null);
-
-  const [
-    imageError,
-    setImageError,
-  ] = useState(false);
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [pagination, setPagination] = useState(null);
+  const [imageError, setImageError] = useState(false);
 
   // ==========================================================
   // REVIEWS
   // ==========================================================
 
-  const [
-    reviews,
-    setReviews,
-  ] = useState([]);
+  const [reviews, setReviews] = useState([]);
 
-  const [
-    reviewSummary,
-    setReviewSummary,
-  ] = useState({
+  const [reviewSummary, setReviewSummary] = useState({
     averageRating: 0,
     totalReviews: 0,
     breakdown: {
@@ -258,266 +188,226 @@ const SellerPage = () => {
     },
   });
 
-  const [
-    reviewsPagination,
-    setReviewsPagination,
-  ] = useState(null);
-
-  const [
-    reviewsLoading,
-    setReviewsLoading,
-  ] = useState(false);
-
-  const [
-    reviewError,
-    setReviewError,
-  ] = useState("");
+  const [reviewsPagination, setReviewsPagination] = useState(null);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [reviewError, setReviewError] = useState("");
 
   // ==========================================================
   // REVIEW FORM
   // ==========================================================
 
-  const [
-    selectedRating,
-    setSelectedRating,
-  ] = useState(0);
-
-  const [
-    reviewComment,
-    setReviewComment,
-  ] = useState("");
-
-  const [
-    submittingReview,
-    setSubmittingReview,
-  ] = useState(false);
-
-  const [
-    reviewSuccess,
-    setReviewSuccess,
-  ] = useState("");
+  const [selectedRating, setSelectedRating] = useState(0);
+  const [reviewComment, setReviewComment] = useState("");
+  const [submittingReview, setSubmittingReview] = useState(false);
+  const [reviewSuccess, setReviewSuccess] = useState("");
 
   // ==========================================================
   // FETCH SELLER
   // ==========================================================
 
   useEffect(() => {
-    const fetchSellerData =
-      async () => {
-        if (!sellerId) {
-          setError(
-            "No seller ID provided."
+    let cancelled = false;
+
+    const fetchSellerData = async () => {
+      if (!sellerId) {
+        setError("No seller ID provided.");
+        setLoading(false);
+        return;
+      }
+
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        setError("");
+        setImageError(false);
+
+        // ==================================================
+        // PROFILE
+        // ==================================================
+
+        const profileData =
+          await getPublicSellerProfile(sellerId);
+
+        console.log("👤 Seller profile:", profileData);
+
+        if (
+          !profileData?.success ||
+          !profileData?.seller
+        ) {
+          throw new Error(
+            profileData?.message ||
+              "Failed to load seller profile."
+          );
+        }
+
+        const sellerData = profileData.seller;
+
+        const normalizedSeller = {
+          _id: sellerData._id || sellerId,
+
+          name:
+            sellerData.name ||
+            "Seller",
+
+          shopName:
+            sellerData.shopName ||
+            sellerData.name ||
+            "Seller",
+
+          phone:
+            sellerData.phone ||
+            "",
+
+          email:
+            sellerData.email ||
+            "",
+
+          location:
+            sellerData.location ||
+            "",
+
+          avatar:
+            sellerData.avatar ||
+            sellerData.profileImage ||
+            sellerData.photo ||
+            sellerData.photoURL ||
+            null,
+
+          profileImage:
+            sellerData.profileImage ||
+            "",
+
+          photo:
+            sellerData.photo ||
+            "",
+
+          photoURL:
+            sellerData.photoURL ||
+            "",
+
+          createdAt:
+            sellerData.createdAt ||
+            "",
+
+          sellerSince:
+            sellerData.sellerSince ||
+            "",
+
+          memberSince:
+            sellerData.memberSince ||
+            sellerData.sellerSince ||
+            sellerData.createdAt ||
+            "",
+
+          lastActive:
+            sellerData.lastActive ||
+            sellerData.lastSeen ||
+            "",
+
+          lastSeen:
+            sellerData.lastSeen ||
+            sellerData.lastActive ||
+            "",
+
+          role:
+            sellerData.role ||
+            "seller",
+
+          rating:
+            Number(sellerData.rating || 0),
+
+          reviewCount:
+            Number(sellerData.reviewCount || 0),
+
+          productsCount:
+            Number(sellerData.productsCount || 0),
+        };
+
+        if (!cancelled) {
+          setSeller(normalizedSeller);
+        }
+
+        // ==================================================
+        // PRODUCTS
+        // ==================================================
+
+        const productsData =
+          await getPublicSellerProducts(
+            sellerId,
+            {
+              page: 1,
+              limit: 20,
+              sort: "-createdAt",
+            }
           );
 
-          setLoading(false);
+        console.log(
+          "📦 Seller products:",
+          productsData
+        );
 
+        if (cancelled) {
           return;
         }
 
-        if (!user) {
-          setLoading(false);
+        if (productsData?.success) {
+          setProducts(
+            Array.isArray(productsData.products)
+              ? productsData.products
+              : []
+          );
 
+          setPagination(
+            productsData.pagination || null
+          );
+        } else {
+          setProducts([]);
+          setPagination(null);
+        }
+      } catch (err) {
+        console.error(
+          "❌ Error fetching seller data:",
+          err
+        );
+
+        if (cancelled) {
           return;
         }
 
-        try {
-          setLoading(true);
-          setError("");
-
-          // ==================================================
-          // PROFILE
-          // ==================================================
-
-          const profileData =
-            await getPublicSellerProfile(
-              sellerId
-            );
-
-          console.log(
-            "👤 Seller profile:",
-            profileData
-          );
-
-          if (
-            !profileData?.success ||
-            !profileData?.seller
-          ) {
-            throw new Error(
-              profileData?.message ||
-                "Failed to load seller profile."
-            );
-          }
-
-          const sellerData =
-            profileData.seller;
-
-          setSeller({
-            _id:
-              sellerData._id ||
-              sellerId,
-
-            name:
-              sellerData.name ||
-              "Seller",
-
-            shopName:
-              sellerData.shopName ||
-              sellerData.name ||
-              "Seller",
-
-            phone:
-              sellerData.phone ||
-              "",
-
-            email:
-              sellerData.email ||
-              "",
-
-            location:
-              sellerData.location ||
-              "",
-
-            avatar:
-              sellerData.avatar ||
-              sellerData.profileImage ||
-              sellerData.photo ||
-              sellerData.photoURL ||
-              null,
-
-            profileImage:
-              sellerData.profileImage ||
-              "",
-
-            photo:
-              sellerData.photo ||
-              "",
-
-            photoURL:
-              sellerData.photoURL ||
-              "",
-
-            createdAt:
-              sellerData.createdAt ||
-              "",
-
-            sellerSince:
-              sellerData.sellerSince ||
-              "",
-
-            memberSince:
-              sellerData.memberSince ||
-              sellerData.sellerSince ||
-              sellerData.createdAt ||
-              "",
-
-            lastActive:
-              sellerData.lastActive ||
-              sellerData.lastSeen ||
-              "",
-
-            lastSeen:
-              sellerData.lastSeen ||
-              sellerData.lastActive ||
-              "",
-
-            role:
-              sellerData.role ||
-              "seller",
-
-            rating:
-              Number(
-                sellerData.rating ||
-                  0
-              ),
-
-            reviewCount:
-              Number(
-                sellerData.reviewCount ||
-                  0
-              ),
-
-            productsCount:
-              Number(
-                sellerData.productsCount ||
-                  0
-              ),
+        if (
+          err?.response?.status === 401 ||
+          err?.status === 401
+        ) {
+          navigate("/login", {
+            state: {
+              from: `/seller/${sellerId}`,
+            },
           });
 
-          // ==================================================
-          // PRODUCTS
-          // ==================================================
+          return;
+        }
 
-          const productsData =
-            await getPublicSellerProducts(
-              sellerId,
-              {
-                page: 1,
-                limit: 20,
-                sort: "-createdAt",
-              }
-            );
-
-          console.log(
-            "📦 Seller products:",
-            productsData
-          );
-
-          if (
-            productsData?.success
-          ) {
-            setProducts(
-              productsData.products ||
-                []
-            );
-
-            if (
-              productsData.pagination
-            ) {
-              setPagination(
-                productsData.pagination
-              );
-            }
-          } else {
-            setProducts([]);
-          }
-        } catch (err) {
-          console.error(
-            "❌ Error fetching seller data:",
-            err
-          );
-
-          if (
-            err?.response?.status ===
-              401 ||
-            err?.status === 401
-          ) {
-            navigate(
-              "/login",
-              {
-                state: {
-                  from: `/seller/${sellerId}`,
-                },
-              }
-            );
-
-            return;
-          }
-
-          setError(
-            err?.message ||
-              "An error occurred while loading seller profile."
-          );
-        } finally {
+        setError(
+          err?.message ||
+            "An error occurred while loading seller profile."
+        );
+      } finally {
+        if (!cancelled) {
           setLoading(false);
         }
-      };
+      }
+    };
 
     fetchSellerData();
-  }, [
-    sellerId,
-    user,
-    navigate,
-  ]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [sellerId, user, navigate]);
 
   // ==========================================================
   // FETCH REVIEWS
@@ -557,11 +447,13 @@ const SellerPage = () => {
       }
 
       const incomingReviews =
-        response.reviews || [];
+        Array.isArray(response.reviews)
+          ? response.reviews
+          : [];
 
-      setReviews(
+      setReviews((previous) =>
         append
-          ? (previous) => [
+          ? [
               ...previous,
               ...incomingReviews,
             ]
@@ -569,14 +461,38 @@ const SellerPage = () => {
       );
 
       if (response.summary) {
-        setReviewSummary(
-          response.summary
-        );
+        setReviewSummary({
+          averageRating:
+            Number(
+              response.summary.averageRating || 0
+            ),
+
+          totalReviews:
+            Number(
+              response.summary.totalReviews || 0
+            ),
+
+          breakdown: {
+            5: Number(
+              response.summary.breakdown?.[5] || 0
+            ),
+            4: Number(
+              response.summary.breakdown?.[4] || 0
+            ),
+            3: Number(
+              response.summary.breakdown?.[3] || 0
+            ),
+            2: Number(
+              response.summary.breakdown?.[2] || 0
+            ),
+            1: Number(
+              response.summary.breakdown?.[1] || 0
+            ),
+          },
+        });
       }
 
-      if (
-        response.pagination
-      ) {
+      if (response.pagination) {
         setReviewsPagination(
           response.pagination
         );
@@ -601,227 +517,194 @@ const SellerPage = () => {
   // ==========================================================
 
   useEffect(() => {
-    if (
-      user &&
-      sellerId
-    ) {
+    if (user && sellerId) {
       fetchReviews(1, false);
+    } else {
+      setReviews([]);
+      setReviewsPagination(null);
     }
-  }, [
-    sellerId,
-    user,
-  ]);
+  }, [sellerId, user]);
 
   // ==========================================================
   // SUBMIT REVIEW
   // ==========================================================
 
-  const handleSubmitReview =
-    async (event) => {
-      event.preventDefault();
+  const handleSubmitReview = async (event) => {
+    event.preventDefault();
 
-      setReviewError("");
-      setReviewSuccess("");
+    setReviewError("");
+    setReviewSuccess("");
 
-      // ------------------------------------------------------
-      // Rating
-      // ------------------------------------------------------
+    // ------------------------------------------------------
+    // Rating
+    // ------------------------------------------------------
 
-      if (
-        selectedRating < 1 ||
-        selectedRating > 5
-      ) {
-        setReviewError(
-          "Please select a rating from 1 to 5 stars."
+    if (
+      selectedRating < 1 ||
+      selectedRating > 5
+    ) {
+      setReviewError(
+        "Please select a rating from 1 to 5 stars."
+      );
+
+      return;
+    }
+
+    // ------------------------------------------------------
+    // Comment
+    // ------------------------------------------------------
+
+    const cleanComment =
+      reviewComment.trim();
+
+    if (cleanComment.length < 3) {
+      setReviewError(
+        "Please write at least 3 characters."
+      );
+
+      return;
+    }
+
+    if (cleanComment.length > 2000) {
+      setReviewError(
+        "Your review cannot exceed 2000 characters."
+      );
+
+      return;
+    }
+
+    // ------------------------------------------------------
+    // Cannot review yourself
+    // ------------------------------------------------------
+
+    const currentUserId =
+      user?._id ||
+      user?.id;
+
+    if (
+      currentUserId &&
+      String(currentUserId) ===
+        String(sellerId)
+    ) {
+      setReviewError(
+        "You cannot review yourself."
+      );
+
+      return;
+    }
+
+    try {
+      setSubmittingReview(true);
+
+      const response =
+        await createReview({
+          sellerId,
+          rating: selectedRating,
+          comment: cleanComment,
+        });
+
+      console.log(
+        "⭐ Review created:",
+        response
+      );
+
+      if (!response?.success) {
+        throw new Error(
+          response?.message ||
+            "Unable to post review."
         );
-
-        return;
       }
 
-      // ------------------------------------------------------
-      // Comment
-      // ------------------------------------------------------
+      setSelectedRating(0);
+      setReviewComment("");
 
-      const cleanComment =
-        reviewComment.trim();
+      setReviewSuccess(
+        "Your review has been posted successfully."
+      );
 
-      if (
-        cleanComment.length < 3
-      ) {
-        setReviewError(
-          "Please write at least 3 characters."
-        );
+      await fetchReviews(1, false);
 
-        return;
-      }
-
-      if (
-        cleanComment.length > 2000
-      ) {
-        setReviewError(
-          "Your review cannot exceed 2000 characters."
-        );
-
-        return;
-      }
-
-      // ------------------------------------------------------
-      // Cannot review yourself
-      // ------------------------------------------------------
-
-      const currentUserId =
-        user?._id ||
-        user?.id;
-
-      if (
-        currentUserId &&
-        String(
-          currentUserId
-        ) ===
-          String(sellerId)
-      ) {
-        setReviewError(
-          "You cannot review yourself."
-        );
-
-        return;
-      }
-
-      try {
-        setSubmittingReview(
-          true
-        );
-
-        const response =
-          await createReview({
-            sellerId,
-
-            rating:
-              selectedRating,
-
-            comment:
-              cleanComment,
-          });
-
+      if (response?.review) {
         console.log(
-          "⭐ Review created:",
-          response
-        );
-
-        if (
-          !response?.success
-        ) {
-          throw new Error(
-            response?.message ||
-              "Unable to post review."
-          );
-        }
-
-        setSelectedRating(0);
-        setReviewComment("");
-
-        setReviewSuccess(
-          "Your review has been posted successfully."
-        );
-
-        // Refresh reviews + summary
-        await fetchReviews(
-          1,
-          false
-        );
-
-        // Update seller rating immediately
-        if (
-          response?.review
-        ) {
-          const updatedRating =
-            response.review.rating;
-
-          // Don't calculate the final average
-          // ourselves. The backend summary
-          // remains the source of truth.
-          console.log(
-            "New review rating:",
-            updatedRating
-          );
-        }
-      } catch (err) {
-        console.error(
-          "❌ Create review error:",
-          err
-        );
-
-        setReviewError(
-          err?.message ||
-            "Unable to post your review."
-        );
-      } finally {
-        setSubmittingReview(
-          false
+          "New review rating:",
+          response.review.rating
         );
       }
-    };
+    } catch (err) {
+      console.error(
+        "❌ Create review error:",
+        err
+      );
+
+      setReviewError(
+        err?.message ||
+          "Unable to post your review."
+      );
+    } finally {
+      setSubmittingReview(false);
+    }
+  };
 
   // ==========================================================
   // HELPFUL
   // ==========================================================
 
-  const handleHelpful =
-    async (reviewId) => {
-      if (!reviewId) {
-        return;
-      }
+  const handleHelpful = async (reviewId) => {
+    if (!reviewId) {
+      return;
+    }
 
-      try {
-        const response =
-          await toggleReviewHelpful(
-            reviewId
-          );
+    if (!user) {
+      navigate("/login", {
+        state: {
+          from: `/seller/${sellerId}`,
+        },
+      });
 
-        if (
-          response?.success
-        ) {
-          setReviews(
-            (previous) =>
-              previous.map(
-                (review) => {
-                  if (
-                    String(
-                      review._id
-                    ) !==
-                    String(
-                      reviewId
-                    )
-                  ) {
-                    return review;
-                  }
+      return;
+    }
 
-                  return {
-                    ...review,
+    try {
+      const response =
+        await toggleReviewHelpful(
+          reviewId
+        );
 
-                    helpfulCount:
-                      Number(
-                        response.helpfulCount ??
-                          review.helpfulCount ??
-                          0
-                      ),
+      if (response?.success) {
+        setReviews((previous) =>
+          previous.map((review) => {
+            if (
+              String(review._id) !==
+              String(reviewId)
+            ) {
+              return review;
+            }
 
-                    hasHelpful:
-                      Boolean(
-                        response.hasHelpful
-                      ),
-                  };
-                }
-              )
-          );
-        }
-      } catch (err) {
-        console.error(
-          "❌ Helpful action failed:",
-          err
+            return {
+              ...review,
+
+              helpfulCount:
+                Number(
+                  response.helpfulCount ??
+                    review.helpfulCount ??
+                    0
+                ),
+
+              hasHelpful:
+                Boolean(
+                  response.hasHelpful
+                ),
+            };
+          })
         );
       }
-    };
+    } catch (err) {
+      console.error(
+        "❌ Helpful action failed:",
+        err
+      );
+    }
+  };
 
   // ==========================================================
   // REQUIRE LOGIN
@@ -856,8 +739,7 @@ const SellerPage = () => {
             className="fas fa-user-lock"
             style={{
               fontSize: "56px",
-              color:
-                "var(--primary)",
+              color: "var(--primary)",
               marginBottom: "20px",
             }}
           />
@@ -874,8 +756,7 @@ const SellerPage = () => {
 
           <p
             style={{
-              color:
-                "var(--gray-500)",
+              color: "var(--gray-500)",
               lineHeight: 1.6,
               marginBottom: "25px",
             }}
@@ -889,8 +770,7 @@ const SellerPage = () => {
             style={{
               display: "flex",
               gap: "12px",
-              justifyContent:
-                "center",
+              justifyContent: "center",
               flexWrap: "wrap",
             }}
           >
@@ -900,16 +780,14 @@ const SellerPage = () => {
                 from: `/seller/${sellerId}`,
               }}
               style={{
-                textDecoration:
-                  "none",
+                textDecoration: "none",
               }}
             >
               <button
+                type="button"
                 style={{
-                  padding:
-                    "12px 26px",
-                  background:
-                    "var(--primary)",
+                  padding: "12px 26px",
+                  background: "var(--primary)",
                   color: "white",
                   border: "none",
                   borderRadius:
@@ -928,18 +806,15 @@ const SellerPage = () => {
                 from: `/seller/${sellerId}`,
               }}
               style={{
-                textDecoration:
-                  "none",
+                textDecoration: "none",
               }}
             >
               <button
+                type="button"
                 style={{
-                  padding:
-                    "12px 26px",
-                  background:
-                    "var(--gray-100)",
-                  color:
-                    "var(--gray-800)",
+                  padding: "12px 26px",
+                  background: "var(--gray-100)",
+                  color: "var(--gray-800)",
                   border:
                     "1px solid var(--gray-300)",
                   borderRadius:
@@ -970,6 +845,13 @@ const SellerPage = () => {
           textAlign: "center",
         }}
       >
+        <i
+          className="fas fa-spinner fa-spin"
+          style={{
+            marginRight: "8px",
+          }}
+        />
+
         Loading seller profile...
       </div>
     );
@@ -1019,16 +901,12 @@ const SellerPage = () => {
 
   const memberDate =
     seller.memberSince
-      ? new Date(
-          seller.memberSince
-        )
+      ? new Date(seller.memberSince)
       : null;
 
   const memberSince =
     memberDate &&
-    !Number.isNaN(
-      memberDate.getTime()
-    )
+    !Number.isNaN(memberDate.getTime())
       ? memberDate.toLocaleDateString(
           undefined,
           {
@@ -1041,9 +919,7 @@ const SellerPage = () => {
 
   const memberDuration =
     seller.memberSince
-      ? timeAgo(
-          seller.memberSince
-        )
+      ? timeAgo(seller.memberSince)
       : "N/A";
 
   const lastSeenDate =
@@ -1057,28 +933,30 @@ const SellerPage = () => {
       : null;
 
   const productCount =
-    seller.productsCount ||
+    Number(seller.productsCount || 0) ||
     products.length ||
     0;
 
   const sellerImage =
-    getSellerImageUrl(
-      seller.avatar
-    );
+    getSellerImageUrl(seller.avatar);
 
-  const averageRating =
-    Number(
-      reviewSummary.averageRating ||
-        seller.rating ||
-        0
-    );
+  const averageRating = Math.max(
+    0,
+    Math.min(
+      5,
+      Number(
+        reviewSummary.averageRating ||
+          seller.rating ||
+          0
+      )
+    )
+  );
 
-  const totalReviews =
-    Number(
-      reviewSummary.totalReviews ||
-        seller.reviewCount ||
-        0
-    );
+  const totalReviews = Number(
+    reviewSummary.totalReviews ||
+      seller.reviewCount ||
+      0
+  );
 
   const breakdown =
     reviewSummary.breakdown || {
@@ -1093,48 +971,45 @@ const SellerPage = () => {
   // WHATSAPP
   // ==========================================================
 
-  const handleWhatsApp =
-    () => {
-      const rawPhone =
-        seller.phone || "";
+  const handleWhatsApp = () => {
+    const rawPhone = seller.phone || "";
 
-      let phone =
-        String(rawPhone).replace(
-          /\D/g,
-          ""
-        );
+    let phone = String(rawPhone).replace(
+      /\D/g,
+      ""
+    );
 
-      if (
-        phone.startsWith("0") &&
-        phone.length === 10
-      ) {
-        phone =
-          "233" +
-          phone.substring(1);
-      }
+    if (
+      phone.startsWith("0") &&
+      phone.length === 10
+    ) {
+      phone =
+        "233" +
+        phone.substring(1);
+    }
 
-      if (
-        !phone ||
-        phone.length < 10
-      ) {
-        alert(
-          "This seller has not provided a valid phone number."
-        );
+    if (
+      !phone ||
+      phone.length < 10
+    ) {
+      alert(
+        "This seller has not provided a valid phone number."
+      );
 
-        return;
-      }
+      return;
+    }
 
-      const message =
-        "Hi, I'm interested in your products listed on BuyUKUsed.com. Are you available?";
+    const message =
+      "Hi, I'm interested in your products listed on BuyUKUsed.com. Are you available?";
 
-      const encoded =
-        encodeURIComponent(
-          message
-        );
+    const encoded =
+      encodeURIComponent(message);
 
-      window.location.href =
-        `https://wa.me/${phone}?text=${encoded}`;
-    };
+    const whatsappUrl =
+      `https://wa.me/${phone}?text=${encoded}`;
+
+    window.location.href = whatsappUrl;
+  };
 
   // ==========================================================
   // LOAD MORE REVIEWS
@@ -1149,17 +1024,111 @@ const SellerPage = () => {
         return;
       }
 
+      const currentPage =
+        Number(
+          reviewsPagination.page || 1
+        );
+
+      const totalPages =
+        Number(
+          reviewsPagination.totalPages || 1
+        );
+
       if (
-        reviewsPagination.page >=
-        reviewsPagination.totalPages
+        currentPage >= totalPages
       ) {
         return;
       }
 
       await fetchReviews(
-        reviewsPagination.page + 1,
+        currentPage + 1,
         true
       );
+    };
+
+  // ==========================================================
+  // LOAD MORE PRODUCTS
+  // ==========================================================
+
+  const handleLoadMoreProducts =
+    async () => {
+      if (
+        loading ||
+        !pagination
+      ) {
+        return;
+      }
+
+      const currentPage =
+        Number(
+          pagination.page || 1
+        );
+
+      const totalPages =
+        Number(
+          pagination.totalPages || 1
+        );
+
+      if (
+        currentPage >= totalPages
+      ) {
+        return;
+      }
+
+      try {
+        setLoading(true);
+
+        const nextPage =
+          currentPage + 1;
+
+        const response =
+          await getPublicSellerProducts(
+            sellerId,
+            {
+              page: nextPage,
+              limit: 20,
+              sort: "-createdAt",
+            }
+          );
+
+        if (!response?.success) {
+          throw new Error(
+            response?.message ||
+              "Unable to load more products."
+          );
+        }
+
+        const newProducts =
+          Array.isArray(
+            response.products
+          )
+            ? response.products
+            : [];
+
+        setProducts(
+          (previous) => [
+            ...previous,
+            ...newProducts,
+          ]
+        );
+
+        setPagination(
+          response.pagination ||
+            pagination
+        );
+      } catch (err) {
+        console.error(
+          "❌ Error loading more products:",
+          err
+        );
+
+        setError(
+          err?.message ||
+            "Unable to load more products."
+        );
+      } finally {
+        setLoading(false);
+      }
     };
 
   // ==========================================================
@@ -1279,20 +1248,13 @@ const SellerPage = () => {
                   objectFit: "cover",
                   display: "block",
                 }}
-                onError={(
-                  event
-                ) => {
+                onError={() => {
                   console.error(
                     "❌ Seller profile image failed:",
                     sellerImage
                   );
 
-                  setImageError(
-                    true
-                  );
-
-                  event.currentTarget.style.display =
-                    "none";
+                  setImageError(true);
                 }}
               />
             ) : (
@@ -1404,8 +1366,7 @@ const SellerPage = () => {
               {memberSince}
 
               {memberDuration &&
-                memberDuration !==
-                  "N/A" && (
+                memberDuration !== "N/A" && (
                   <>
                     {" "}
                     ({memberDuration})
@@ -1468,16 +1429,12 @@ const SellerPage = () => {
                 }}
               >
                 <Stars
-                  rating={
-                    averageRating
-                  }
+                  rating={averageRating}
                   size="15px"
                 />
 
                 {averageRating > 0
-                  ? averageRating.toFixed(
-                      1
-                    )
+                  ? averageRating.toFixed(1)
                   : "No rating"}
 
                 {totalReviews > 0 && (
@@ -1497,31 +1454,24 @@ const SellerPage = () => {
             {/* CONTACT */}
 
             <button
-              onClick={
-                handleWhatsApp
-              }
-              disabled={
-                !seller.phone
-              }
+              type="button"
+              onClick={handleWhatsApp}
+              disabled={!seller.phone}
               style={{
-                padding:
-                  "10px 24px",
-                background:
-                  seller.phone
-                    ? "#25D366"
-                    : "var(--gray-300)",
+                padding: "10px 24px",
+                background: seller.phone
+                  ? "#25D366"
+                  : "var(--gray-300)",
                 color: "white",
                 border: "none",
                 borderRadius:
                   "var(--radius-full)",
                 fontWeight: 700,
                 fontSize: "15px",
-                cursor:
-                  seller.phone
-                    ? "pointer"
-                    : "not-allowed",
-                display:
-                  "inline-flex",
+                cursor: seller.phone
+                  ? "pointer"
+                  : "not-allowed",
+                display: "inline-flex",
                 alignItems: "center",
                 gap: "8px",
               }}
@@ -1570,8 +1520,7 @@ const SellerPage = () => {
                 style={{
                   color:
                     "var(--gray-500)",
-                  margin:
-                    "6px 0 0",
+                  margin: "6px 0 0",
                 }}
               >
                 See what other buyers
@@ -1586,24 +1535,19 @@ const SellerPage = () => {
                 gap: "10px",
                 background:
                   "var(--gray-100)",
-                padding:
-                  "10px 15px",
+                padding: "10px 15px",
                 borderRadius:
                   "var(--radius-full)",
               }}
             >
               <Stars
-                rating={
-                  averageRating
-                }
+                rating={averageRating}
                 size="16px"
               />
 
               <strong>
                 {averageRating > 0
-                  ? averageRating.toFixed(
-                      1
-                    )
+                  ? averageRating.toFixed(1)
                   : "0.0"}
               </strong>
 
@@ -1637,8 +1581,7 @@ const SellerPage = () => {
 
             <div
               style={{
-                background:
-                  "white",
+                background: "white",
                 borderRadius:
                   "var(--radius-xl)",
                 padding: "25px",
@@ -1655,18 +1598,13 @@ const SellerPage = () => {
                   marginBottom: "10px",
                 }}
               >
-                {averageRating >
-                0
-                  ? averageRating.toFixed(
-                      1
-                    )
+                {averageRating > 0
+                  ? averageRating.toFixed(1)
                   : "0.0"}
               </div>
 
               <Stars
-                rating={
-                  averageRating
-                }
+                rating={averageRating}
                 size="20px"
               />
 
@@ -1677,8 +1615,7 @@ const SellerPage = () => {
                     "var(--gray-500)",
                 }}
               >
-                Based on{" "}
-                {totalReviews}{" "}
+                Based on {totalReviews}{" "}
                 reviews
               </div>
             </div>
@@ -1687,8 +1624,7 @@ const SellerPage = () => {
 
             <div
               style={{
-                background:
-                  "white",
+                background: "white",
                 borderRadius:
                   "var(--radius-xl)",
                 padding: "25px",
@@ -1700,14 +1636,11 @@ const SellerPage = () => {
                 (rating) => {
                   const count =
                     Number(
-                      breakdown[
-                        rating
-                      ] || 0
+                      breakdown[rating] || 0
                     );
 
                   const percentage =
-                    totalReviews >
-                    0
+                    totalReviews > 0
                       ? Math.round(
                           (count /
                             totalReviews) *
@@ -1719,8 +1652,7 @@ const SellerPage = () => {
                     <div
                       key={rating}
                       style={{
-                        display:
-                          "grid",
+                        display: "grid",
                         gridTemplateColumns:
                           "55px 1fr 45px",
                         alignItems:
@@ -1734,10 +1666,8 @@ const SellerPage = () => {
                     >
                       <div
                         style={{
-                          fontSize:
-                            "14px",
-                          fontWeight:
-                            600,
+                          fontSize: "14px",
+                          fontWeight: 600,
                         }}
                       >
                         {rating}{" "}
@@ -1752,8 +1682,7 @@ const SellerPage = () => {
 
                       <div
                         style={{
-                          height:
-                            "8px",
+                          height: "8px",
                           background:
                             "var(--gray-200)",
                           borderRadius:
@@ -1764,9 +1693,9 @@ const SellerPage = () => {
                       >
                         <div
                           style={{
-                            width: `${percentage}%`,
-                            height:
-                              "100%",
+                            width:
+                              `${percentage}%`,
+                            height: "100%",
                             background:
                               "#f59e0b",
                             borderRadius:
@@ -1779,12 +1708,10 @@ const SellerPage = () => {
 
                       <div
                         style={{
-                          fontSize:
-                            "13px",
+                          fontSize: "13px",
                           color:
                             "var(--gray-500)",
-                          textAlign:
-                            "right",
+                          textAlign: "right",
                         }}
                       >
                         {count}
@@ -1802,8 +1729,7 @@ const SellerPage = () => {
 
           <div
             style={{
-              background:
-                "white",
+              background: "white",
               borderRadius:
                 "var(--radius-xl)",
               padding: "25px",
@@ -1828,8 +1754,7 @@ const SellerPage = () => {
                 color:
                   "var(--gray-500)",
                 marginTop: 0,
-                marginBottom:
-                  "20px",
+                marginBottom: "20px",
               }}
             >
               Share your experience
@@ -1844,19 +1769,15 @@ const SellerPage = () => {
                   color: "#be123c",
                   border:
                     "1px solid #fecdd3",
-                  padding:
-                    "12px 15px",
-                  borderRadius:
-                    "10px",
-                  marginBottom:
-                    "15px",
+                  padding: "12px 15px",
+                  borderRadius: "10px",
+                  marginBottom: "15px",
                 }}
               >
                 <i
                   className="fas fa-exclamation-circle"
                   style={{
-                    marginRight:
-                      "8px",
+                    marginRight: "8px",
                   }}
                 />
 
@@ -1872,19 +1793,15 @@ const SellerPage = () => {
                   color: "#15803d",
                   border:
                     "1px solid #bbf7d0",
-                  padding:
-                    "12px 15px",
-                  borderRadius:
-                    "10px",
-                  marginBottom:
-                    "15px",
+                  padding: "12px 15px",
+                  borderRadius: "10px",
+                  marginBottom: "15px",
                 }}
               >
                 <i
                   className="fas fa-check-circle"
                   style={{
-                    marginRight:
-                      "8px",
+                    marginRight: "8px",
                   }}
                 />
 
@@ -1901,17 +1818,14 @@ const SellerPage = () => {
 
               <div
                 style={{
-                  marginBottom:
-                    "20px",
+                  marginBottom: "20px",
                 }}
               >
                 <label
                   style={{
-                    display:
-                      "block",
+                    display: "block",
                     fontWeight: 700,
-                    marginBottom:
-                      "10px",
+                    marginBottom: "10px",
                   }}
                 >
                   Your Rating
@@ -1919,8 +1833,7 @@ const SellerPage = () => {
 
                 <div
                   style={{
-                    display:
-                      "flex",
+                    display: "flex",
                     gap: "6px",
                   }}
                 >
@@ -1941,16 +1854,13 @@ const SellerPage = () => {
                             : ""
                         }`}
                         style={{
-                          border:
-                            "none",
+                          border: "none",
                           background:
                             "transparent",
-                          padding:
-                            "3px",
+                          padding: "3px",
                           cursor:
                             "pointer",
-                          fontSize:
-                            "28px",
+                          fontSize: "28px",
                           color:
                             star <=
                             selectedRating
@@ -1976,18 +1886,15 @@ const SellerPage = () => {
 
               <div
                 style={{
-                  marginBottom:
-                    "20px",
+                  marginBottom: "20px",
                 }}
               >
                 <label
                   htmlFor="seller-review-comment"
                   style={{
-                    display:
-                      "block",
+                    display: "block",
                     fontWeight: 700,
-                    marginBottom:
-                      "10px",
+                    marginBottom: "10px",
                   }}
                 >
                   Your Review
@@ -1995,9 +1902,7 @@ const SellerPage = () => {
 
                 <textarea
                   id="seller-review-comment"
-                  value={
-                    reviewComment
-                  }
+                  value={reviewComment}
                   onChange={(event) =>
                     setReviewComment(
                       event.target.value
@@ -2010,18 +1915,14 @@ const SellerPage = () => {
                     width: "100%",
                     boxSizing:
                       "border-box",
-                    resize:
-                      "vertical",
+                    resize: "vertical",
                     border:
                       "1px solid var(--gray-300)",
-                    borderRadius:
-                      "12px",
+                    borderRadius: "12px",
                     padding:
                       "13px 14px",
-                    fontSize:
-                      "15px",
-                    outline:
-                      "none",
+                    fontSize: "15px",
+                    outline: "none",
                     fontFamily:
                       "inherit",
                   }}
@@ -2029,19 +1930,14 @@ const SellerPage = () => {
 
                 <div
                   style={{
-                    textAlign:
-                      "right",
-                    fontSize:
-                      "12px",
+                    textAlign: "right",
+                    fontSize: "12px",
                     color:
                       "var(--gray-500)",
-                    marginTop:
-                      "5px",
+                    marginTop: "5px",
                   }}
                 >
-                  {
-                    reviewComment.length
-                  }
+                  {reviewComment.length}
                   /2000
                 </div>
               </div>
@@ -2052,8 +1948,7 @@ const SellerPage = () => {
                   submittingReview
                 }
                 style={{
-                  padding:
-                    "12px 24px",
+                  padding: "12px 24px",
                   background:
                     submittingReview
                       ? "var(--gray-300)"
@@ -2067,10 +1962,8 @@ const SellerPage = () => {
                     submittingReview
                       ? "not-allowed"
                       : "pointer",
-                  display:
-                    "inline-flex",
-                  alignItems:
-                    "center",
+                  display: "inline-flex",
+                  alignItems: "center",
                   gap: "8px",
                 }}
               >
@@ -2098,25 +1991,21 @@ const SellerPage = () => {
               style={{
                 fontSize: "20px",
                 fontWeight: 800,
-                marginBottom:
-                  "18px",
+                marginBottom: "18px",
               }}
             >
               What Buyers Say
             </h3>
 
             {reviewsLoading &&
-            reviews.length ===
-              0 ? (
+            reviews.length === 0 ? (
               <div
                 style={{
-                  background:
-                    "white",
+                  background: "white",
                   borderRadius:
                     "var(--radius-xl)",
                   padding: "35px",
-                  textAlign:
-                    "center",
+                  textAlign: "center",
                   color:
                     "var(--gray-500)",
                 }}
@@ -2124,15 +2013,14 @@ const SellerPage = () => {
                 <i
                   className="fas fa-spinner fa-spin"
                   style={{
-                    marginRight:
-                      "8px",
+                    marginRight: "8px",
                   }}
                 />
+
                 Loading reviews...
               </div>
             ) : reviewError &&
-              reviews.length ===
-                0 ? (
+              reviews.length === 0 ? (
               <div
                 style={{
                   background:
@@ -2140,24 +2028,21 @@ const SellerPage = () => {
                   color: "#c2410c",
                   border:
                     "1px solid #fed7aa",
-                  borderRadius:
-                    "12px",
+                  borderRadius: "12px",
                   padding: "15px",
                 }}
               >
                 {reviewError}
               </div>
-            ) : reviews.length ===
-              0 ? (
+            ) : reviews.length === 0 ? (
               <div
                 style={{
-                  background:
-                    "white",
+                  background: "white",
                   borderRadius:
                     "var(--radius-xl)",
-                  padding: "40px 25px",
-                  textAlign:
-                    "center",
+                  padding:
+                    "40px 25px",
+                  textAlign: "center",
                   boxShadow:
                     "0 4px 20px rgba(0,0,0,0.05)",
                 }}
@@ -2165,21 +2050,17 @@ const SellerPage = () => {
                 <i
                   className="far fa-star"
                   style={{
-                    fontSize:
-                      "48px",
+                    fontSize: "48px",
                     color:
                       "var(--gray-300)",
-                    marginBottom:
-                      "15px",
+                    marginBottom: "15px",
                   }}
                 />
 
                 <h4
                   style={{
-                    fontSize:
-                      "18px",
-                    fontWeight:
-                      700,
+                    fontSize: "18px",
+                    fontWeight: 700,
                     margin:
                       "0 0 8px",
                   }}
@@ -2202,8 +2083,7 @@ const SellerPage = () => {
               <>
                 <div
                   style={{
-                    display:
-                      "flex",
+                    display: "flex",
                     flexDirection:
                       "column",
                     gap: "15px",
@@ -2265,10 +2145,8 @@ const SellerPage = () => {
                           >
                             <div
                               style={{
-                                width:
-                                  "46px",
-                                height:
-                                  "46px",
+                                width: "46px",
+                                height: "46px",
                                 borderRadius:
                                   "50%",
                                 overflow:
@@ -2336,8 +2214,7 @@ const SellerPage = () => {
                                     "flex",
                                   alignItems:
                                     "center",
-                                  gap:
-                                    "8px",
+                                  gap: "8px",
                                   flexWrap:
                                     "wrap",
                                 }}
@@ -2375,8 +2252,7 @@ const SellerPage = () => {
                                         "inline-flex",
                                       alignItems:
                                         "center",
-                                      gap:
-                                        "4px",
+                                      gap: "4px",
                                     }}
                                   >
                                     <i className="fas fa-check-circle" />
@@ -2396,15 +2272,12 @@ const SellerPage = () => {
                                 "0 0 15px",
                               color:
                                 "var(--gray-700)",
-                              lineHeight:
-                                1.65,
+                              lineHeight: 1.65,
                               whiteSpace:
                                 "pre-wrap",
                             }}
                           >
-                            {
-                              review.comment
-                            }
+                            {review.comment}
                           </p>
 
                           {/* PRODUCT */}
@@ -2557,19 +2430,22 @@ const SellerPage = () => {
                   )}
                 </div>
 
-                {/* LOAD MORE */}
+                {/* LOAD MORE REVIEWS */}
 
                 {reviewsPagination &&
-                  reviewsPagination.page <
-                    reviewsPagination.totalPages && (
+                  Number(
+                    reviewsPagination.page || 1
+                  ) <
+                    Number(
+                      reviewsPagination.totalPages ||
+                        1
+                    ) && (
                     <div
                       style={{
-                        display:
-                          "flex",
+                        display: "flex",
                         justifyContent:
                           "center",
-                        marginTop:
-                          "25px",
+                        marginTop: "25px",
                       }}
                     >
                       <button
@@ -2587,14 +2463,11 @@ const SellerPage = () => {
                             reviewsLoading
                               ? "var(--gray-300)"
                               : "var(--primary)",
-                          color:
-                            "white",
-                          border:
-                            "none",
+                          color: "white",
+                          border: "none",
                           borderRadius:
                             "var(--radius-full)",
-                          fontWeight:
-                            700,
+                          fontWeight: 700,
                           cursor:
                             reviewsLoading
                               ? "not-allowed"
@@ -2651,8 +2524,7 @@ const SellerPage = () => {
         {productCount === 0 ? (
           <div
             style={{
-              color:
-                "var(--gray-500)",
+              color: "var(--gray-500)",
               padding: "40px 0",
               textAlign: "center",
             }}
@@ -2683,15 +2555,11 @@ const SellerPage = () => {
               {products.map(
                 (product) => (
                   <div
-                    key={
-                      product._id
-                    }
+                    key={product._id}
                     className="product-card"
                   >
                     <ProductCard
-                      product={
-                        product
-                      }
+                      product={product}
                       isFavorite={isFavorite(
                         product._id
                       )}
@@ -2706,35 +2574,62 @@ const SellerPage = () => {
               )}
             </div>
 
+            {/* LOAD MORE PRODUCTS */}
+
             {pagination &&
-              pagination.totalPages >
-                1 && (
+              Number(
+                pagination.page || 1
+              ) <
+                Number(
+                  pagination.totalPages ||
+                    1
+                ) && (
                 <div
                   style={{
-                    display:
-                      "flex",
+                    display: "flex",
                     justifyContent:
                       "center",
-                    gap: "10px",
-                    marginTop:
-                      "30px",
+                    marginTop: "30px",
                   }}
                 >
                   <button
+                    type="button"
+                    onClick={
+                      handleLoadMoreProducts
+                    }
+                    disabled={loading}
                     style={{
-                      padding:
-                        "8px 16px",
+                      padding: "11px 25px",
                       background:
-                        "var(--primary)",
+                        loading
+                          ? "var(--gray-300)"
+                          : "var(--primary)",
                       color: "white",
                       border: "none",
                       borderRadius:
-                        "var(--radius-md)",
-                      cursor:
-                        "pointer",
+                        "var(--radius-full)",
+                      fontWeight: 700,
+                      cursor: loading
+                        ? "not-allowed"
+                        : "pointer",
+                      display:
+                        "inline-flex",
+                      alignItems:
+                        "center",
+                      gap: "8px",
                     }}
                   >
-                    Load More
+                    {loading ? (
+                      <>
+                        <i className="fas fa-spinner fa-spin" />
+                        Loading...
+                      </>
+                    ) : (
+                      <>
+                        <i className="fas fa-plus" />
+                        Load More Products
+                      </>
+                    )}
                   </button>
                 </div>
               )}

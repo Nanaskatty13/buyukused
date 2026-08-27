@@ -31,28 +31,51 @@ const REQUEST_TIMEOUT = 30000;
 const MAX_RETRIES = 2;
 
 // ================================================================
-// HEADERS
+// AUTH HELPERS
 // ================================================================
 
-const getHeaders = (token = getToken()) => ({
-  "Content-Type": "application/json",
+const hasUsableToken = (token) => {
+  return (
+    typeof token === "string" &&
+    token.trim().length > 0
+  );
+};
 
-  ...(token
-    ? {
-        Authorization: `Bearer ${token}`,
-      }
-    : {}),
-});
+// ================================================================
+// JSON HEADERS
+// ================================================================
 
+const getHeaders = (token = getToken()) => {
+  const headers = {
+    Accept: "application/json",
+    "Content-Type": "application/json",
+  };
+
+  if (hasUsableToken(token)) {
+    headers.Authorization = `Bearer ${token.trim()}`;
+  }
+
+  return headers;
+};
+
+// ================================================================
+// FILE / FORMDATA HEADERS
 // IMPORTANT:
-// Never manually set Content-Type for FormData.
-const getFileHeaders = (token = getToken()) => ({
-  ...(token
-    ? {
-        Authorization: `Bearer ${token}`,
-      }
-    : {}),
-});
+// Do NOT set Content-Type manually for FormData.
+// Browser must set multipart/form-data boundary.
+// ================================================================
+
+const getFileHeaders = (token = getToken()) => {
+  const headers = {
+    Accept: "application/json",
+  };
+
+  if (hasUsableToken(token)) {
+    headers.Authorization = `Bearer ${token.trim()}`;
+  }
+
+  return headers;
+};
 
 // ================================================================
 // RESPONSE HANDLER
@@ -66,7 +89,11 @@ const handleResponse = async (response) => {
       response.headers.get("content-type") || "";
 
     try {
-      if (contentType.includes("application/json")) {
+      if (
+        contentType
+          .toLowerCase()
+          .includes("application/json")
+      ) {
         data = await response.json();
       } else {
         const text = await response.text();
@@ -88,15 +115,21 @@ const handleResponse = async (response) => {
   }
 
   if (!response.ok) {
-    const error = new Error(
+    const message =
       data?.message ||
-        data?.error ||
-        `HTTP ${response.status}`
-    );
+      data?.error ||
+      data?.errors?.[0]?.message ||
+      `HTTP ${response.status}`;
+
+    const error = new Error(message);
 
     error.status = response.status;
     error.data = data;
     error.url = response.url;
+
+    if (response.status === 401) {
+      error.isAuthError = true;
+    }
 
     throw error;
   }
@@ -116,6 +149,11 @@ const sleep = (ms) =>
 // ================================================================
 // REQUEST HELPER
 // ================================================================
+//
+// IMPORTANT:
+// The token is read HERE, immediately before fetch().
+// This prevents an old token captured earlier from being used.
+// ================================================================
 
 const request = async (
   url,
@@ -132,10 +170,111 @@ const request = async (
       controller.abort();
     }, REQUEST_TIMEOUT);
 
+    // ============================================================
+    // ALWAYS GET THE LATEST TOKEN
+    // ============================================================
+
+    const latestToken = getToken();
+
+    // ============================================================
+    // MERGE HEADERS
+    // ============================================================
+
+    const incomingHeaders =
+      options.headers || {};
+
+    const isFormData =
+      options.body instanceof FormData;
+
+    let headers;
+
+    if (isFormData) {
+      headers = {
+        ...incomingHeaders,
+      };
+
+      // If caller didn't provide Authorization,
+      // use the latest stored token.
+      if (
+        !headers.Authorization &&
+        hasUsableToken(latestToken)
+      ) {
+        headers.Authorization =
+          `Bearer ${latestToken.trim()}`;
+      }
+
+      // Never manually set Content-Type for FormData.
+      delete headers["Content-Type"];
+      delete headers["content-type"];
+    } else {
+      headers = {
+        ...incomingHeaders,
+      };
+
+      // Add JSON Content-Type if not already present.
+      if (
+        !headers["Content-Type"] &&
+        !headers["content-type"]
+      ) {
+        headers["Content-Type"] =
+          "application/json";
+      }
+
+      if (
+        !headers.Accept &&
+        !headers.accept
+      ) {
+        headers.Accept =
+          "application/json";
+      }
+
+      // ==========================================================
+      // MOST IMPORTANT AUTH FIX
+      // ==========================================================
+
+      if (
+        !headers.Authorization &&
+        !headers.authorization &&
+        hasUsableToken(latestToken)
+      ) {
+        headers.Authorization =
+          `Bearer ${latestToken.trim()}`;
+      }
+    }
+
+    // ============================================================
+    // DEBUG AUTH
+    // ============================================================
+
+    if (url.includes("/reviews")) {
+      console.log("⭐ Review API request");
+      console.log("➡️ URL:", url);
+      console.log(
+        "🔐 Token available:",
+        hasUsableToken(latestToken)
+      );
+      console.log(
+        "🔐 Token length:",
+        hasUsableToken(latestToken)
+          ? latestToken.length
+          : 0
+      );
+      console.log(
+        "🔐 Authorization header:",
+        headers.Authorization
+          ? "Bearer [PRESENT]"
+          : "[MISSING]"
+      );
+    }
+
+    // ============================================================
+    // FETCH
+    // ============================================================
+
     const response = await fetch(url, {
       credentials: "include",
       ...options,
-
+      headers,
       signal:
         options.signal ||
         controller.signal,
@@ -143,22 +282,40 @@ const request = async (
 
     clearTimeout(timeoutId);
 
+    // ============================================================
+    // HANDLE 401
+    // ============================================================
+
+    if (response.status === 401) {
+      console.error(
+        "🔐 401 Unauthorized:",
+        url
+      );
+
+      console.error(
+        "🔐 Token available:",
+        hasUsableToken(latestToken)
+      );
+
+      // Don't immediately clear auth data here.
+      // The caller may need to inspect the error.
+      //
+      // This is especially useful while debugging
+      // login/session problems.
+    }
+
     return await handleResponse(response);
   } catch (error) {
     if (timeoutId) {
       clearTimeout(timeoutId);
     }
 
+    // ============================================================
+    // ABORT / TIMEOUT
+    // ============================================================
+
     const isAbortError =
       error?.name === "AbortError";
-
-    const isNetworkError =
-      error?.name === "TypeError" ||
-      error?.message === "Failed to fetch";
-
-    // ============================================================
-    // TIMEOUT
-    // ============================================================
 
     if (isAbortError) {
       if (retries > 0) {
@@ -180,7 +337,9 @@ const request = async (
         "The server took too long to respond."
       );
 
-      timeoutError.code = "REQUEST_TIMEOUT";
+      timeoutError.code =
+        "REQUEST_TIMEOUT";
+
       timeoutError.url = url;
 
       console.error(
@@ -194,6 +353,10 @@ const request = async (
     // ============================================================
     // NETWORK ERROR
     // ============================================================
+
+    const isNetworkError =
+      error?.name === "TypeError" ||
+      error?.message === "Failed to fetch";
 
     if (
       isNetworkError &&
@@ -232,7 +395,8 @@ const request = async (
 // ================================================================
 
 const buildQuery = (params = {}) => {
-  const searchParams = new URLSearchParams();
+  const searchParams =
+    new URLSearchParams();
 
   Object.entries(params).forEach(
     ([key, value]) => {
@@ -247,7 +411,8 @@ const buildQuery = (params = {}) => {
       if (
         (key === "category" ||
           key === "location") &&
-        value === "all"
+        String(value).toLowerCase() ===
+          "all"
       ) {
         return;
       }
@@ -259,9 +424,12 @@ const buildQuery = (params = {}) => {
     }
   );
 
-  const query = searchParams.toString();
+  const query =
+    searchParams.toString();
 
-  return query ? `?${query}` : "";
+  return query
+    ? `?${query}`
+    : "";
 };
 
 // ================================================================
@@ -277,24 +445,26 @@ export const getImageUrl = (path) => {
     return "/placeholder.png";
   }
 
-  const cleanPath = path.trim();
+  const cleanPath =
+    path.trim();
 
   if (!cleanPath) {
     return "/placeholder.png";
   }
 
-  // ==============================================================
-  // EXTERNAL URL
-  // ==============================================================
-
+  // External URL
   if (
     cleanPath.startsWith("http://") ||
     cleanPath.startsWith("https://")
   ) {
     // Cloudinary optimization
     if (
-      cleanPath.includes("res.cloudinary.com") &&
-      cleanPath.includes("/image/upload/")
+      cleanPath.includes(
+        "res.cloudinary.com"
+      ) &&
+      cleanPath.includes(
+        "/image/upload/"
+      )
     ) {
       return cleanPath.replace(
         "/image/upload/",
@@ -305,26 +475,21 @@ export const getImageUrl = (path) => {
     return cleanPath;
   }
 
-  // ==============================================================
-  // BASE64
-  // ==============================================================
-
-  if (cleanPath.startsWith("data:")) {
+  // Base64
+  if (
+    cleanPath.startsWith("data:")
+  ) {
     return cleanPath;
   }
 
-  // ==============================================================
-  // BLOB
-  // ==============================================================
-
-  if (cleanPath.startsWith("blob:")) {
+  // Blob
+  if (
+    cleanPath.startsWith("blob:")
+  ) {
     return cleanPath;
   }
 
-  // ==============================================================
-  // BACKEND RELATIVE PATH
-  // ==============================================================
-
+  // Backend relative path
   return `${API_URL}${
     cleanPath.startsWith("/")
       ? cleanPath
@@ -342,10 +507,6 @@ export const health = {
       `${API_URL}/health`,
       {
         method: "GET",
-
-        headers: {
-          Accept: "application/json",
-        },
       }
     );
   },
@@ -369,14 +530,16 @@ export const auth = {
       `${API_URL}/auth/login`,
       {
         method: "POST",
-
         headers: {
+          Accept:
+            "application/json",
           "Content-Type":
             "application/json",
         },
-
         body: JSON.stringify({
-          email: String(email || "")
+          email: String(
+            email || ""
+          )
             .trim()
             .toLowerCase(),
 
@@ -443,12 +606,12 @@ export const auth = {
       `${API_URL}/auth/register`,
       {
         method: "POST",
-
         headers: {
+          Accept:
+            "application/json",
           "Content-Type":
             "application/json",
         },
-
         body: JSON.stringify(
           registrationData
         ),
@@ -459,12 +622,13 @@ export const auth = {
   getMe: async (
     token = getToken()
   ) => {
-    if (!token) {
+    if (!hasUsableToken(token)) {
       const error = new Error(
         "Authentication token is missing."
       );
 
       error.status = 401;
+      error.isAuthError = true;
 
       throw error;
     }
@@ -478,7 +642,6 @@ export const auth = {
       `${API_URL}/auth/me`,
       {
         method: "GET",
-
         headers:
           getHeaders(token),
       }
@@ -488,21 +651,26 @@ export const auth = {
   logout: async (
     token = getToken()
   ) => {
-    if (!token) {
+    if (!hasUsableToken(token)) {
+      clearAuthData();
+
       return {
         success: true,
       };
     }
 
-    return request(
-      `${API_URL}/auth/logout`,
-      {
-        method: "POST",
-
-        headers:
-          getHeaders(token),
-      }
-    );
+    try {
+      return await request(
+        `${API_URL}/auth/logout`,
+        {
+          method: "POST",
+          headers:
+            getHeaders(token),
+        }
+      );
+    } finally {
+      clearAuthData();
+    }
   },
 };
 
@@ -521,11 +689,6 @@ export const products = {
       `${API_URL}/api/products${query}`,
       {
         method: "GET",
-
-        headers: {
-          Accept:
-            "application/json",
-        },
       }
     );
   },
@@ -545,11 +708,6 @@ export const products = {
       )}`,
       {
         method: "GET",
-
-        headers: {
-          Accept:
-            "application/json",
-        },
       }
     );
   },
@@ -558,14 +716,21 @@ export const products = {
     productData,
     token = getToken()
   ) => {
+    if (!hasUsableToken(token)) {
+      const error = new Error(
+        "Authentication token is missing."
+      );
+
+      error.status = 401;
+      throw error;
+    }
+
     return request(
       `${API_URL}/api/products`,
       {
         method: "POST",
-
         headers:
           getHeaders(token),
-
         body: JSON.stringify(
           productData
         ),
@@ -577,14 +742,21 @@ export const products = {
     formData,
     token = getToken()
   ) => {
+    if (!hasUsableToken(token)) {
+      const error = new Error(
+        "Authentication token is missing."
+      );
+
+      error.status = 401;
+      throw error;
+    }
+
     return request(
       `${API_URL}/api/products`,
       {
         method: "POST",
-
         headers:
           getFileHeaders(token),
-
         body: formData,
       }
     );
@@ -607,10 +779,8 @@ export const products = {
       )}`,
       {
         method: "PUT",
-
         headers:
           getHeaders(token),
-
         body: JSON.stringify(
           productData
         ),
@@ -635,10 +805,8 @@ export const products = {
       )}`,
       {
         method: "PUT",
-
         headers:
           getFileHeaders(token),
-
         body: formData,
       }
     );
@@ -660,7 +828,6 @@ export const products = {
       )}`,
       {
         method: "DELETE",
-
         headers:
           getHeaders(token),
       }
@@ -684,10 +851,8 @@ export const products = {
       )}/status`,
       {
         method: "PATCH",
-
         headers:
           getHeaders(token),
-
         body: JSON.stringify({
           status,
         }),
@@ -712,7 +877,6 @@ export const users = {
       `${API_URL}/api/users${query}`,
       {
         method: "GET",
-
         headers:
           getHeaders(token),
       }
@@ -735,7 +899,6 @@ export const users = {
       )}`,
       {
         method: "GET",
-
         headers:
           getHeaders(token),
       }
@@ -759,10 +922,8 @@ export const users = {
       )}`,
       {
         method: "PUT",
-
         headers:
           getHeaders(token),
-
         body: JSON.stringify(
           userData
         ),
@@ -787,10 +948,8 @@ export const users = {
       )}`,
       {
         method: "PUT",
-
         headers:
           getFileHeaders(token),
-
         body: formData,
       }
     );
@@ -812,7 +971,6 @@ export const users = {
       )}`,
       {
         method: "DELETE",
-
         headers:
           getHeaders(token),
       }
@@ -826,7 +984,6 @@ export const users = {
       `${API_URL}/api/users/stats`,
       {
         method: "GET",
-
         headers:
           getHeaders(token),
       }
@@ -855,7 +1012,6 @@ export const notifications = {
       )}`,
       {
         method: "GET",
-
         headers:
           getHeaders(token),
       }
@@ -869,7 +1025,6 @@ export const notifications = {
       `${API_URL}/api/notifications/admin`,
       {
         method: "GET",
-
         headers:
           getHeaders(token),
       }
@@ -884,13 +1039,9 @@ export const notifications = {
       `${API_URL}/api/notifications`,
       {
         method: "POST",
-
         headers:
           getHeaders(token),
-
-        body: JSON.stringify(
-          data
-        ),
+        body: JSON.stringify(data),
       }
     );
   },
@@ -911,7 +1062,6 @@ export const notifications = {
       )}/read`,
       {
         method: "PUT",
-
         headers:
           getHeaders(token),
       }
@@ -934,7 +1084,6 @@ export const notifications = {
       )}`,
       {
         method: "DELETE",
-
         headers:
           getHeaders(token),
       }
@@ -958,7 +1107,6 @@ export const orders = {
       `${API_URL}/api/orders${query}`,
       {
         method: "GET",
-
         headers:
           getHeaders(token),
       }
@@ -981,7 +1129,6 @@ export const orders = {
       )}`,
       {
         method: "GET",
-
         headers:
           getHeaders(token),
       }
@@ -996,10 +1143,8 @@ export const orders = {
       `${API_URL}/api/orders`,
       {
         method: "POST",
-
         headers:
           getHeaders(token),
-
         body: JSON.stringify(
           orderData
         ),
@@ -1024,10 +1169,8 @@ export const orders = {
       )}`,
       {
         method: "PUT",
-
         headers:
           getHeaders(token),
-
         body: JSON.stringify(
           updates
         ),
@@ -1051,7 +1194,6 @@ export const orders = {
       )}`,
       {
         method: "DELETE",
-
         headers:
           getHeaders(token),
       }
@@ -1080,7 +1222,6 @@ export const messages = {
       )}`,
       {
         method: "GET",
-
         headers:
           getHeaders(token),
       }
@@ -1094,7 +1235,6 @@ export const messages = {
       `${API_URL}/api/messages/conversations`,
       {
         method: "GET",
-
         headers:
           getHeaders(token),
       }
@@ -1117,7 +1257,6 @@ export const messages = {
       )}`,
       {
         method: "GET",
-
         headers:
           getHeaders(token),
       }
@@ -1134,10 +1273,8 @@ export const messages = {
       `${API_URL}/api/messages`,
       {
         method: "POST",
-
         headers:
           getHeaders(token),
-
         body: JSON.stringify({
           receiver,
           message,
@@ -1163,7 +1300,6 @@ export const messages = {
       )}/read`,
       {
         method: "PUT",
-
         headers:
           getHeaders(token),
       }
@@ -1186,7 +1322,6 @@ export const messages = {
       )}`,
       {
         method: "DELETE",
-
         headers:
           getHeaders(token),
       }
@@ -1206,7 +1341,6 @@ export const favorites = {
       `${API_URL}/api/favorites`,
       {
         method: "GET",
-
         headers:
           getHeaders(token),
       }
@@ -1227,10 +1361,8 @@ export const favorites = {
       `${API_URL}/api/favorites`,
       {
         method: "POST",
-
         headers:
           getHeaders(token),
-
         body: JSON.stringify({
           productId,
         }),
@@ -1254,7 +1386,6 @@ export const favorites = {
       )}`,
       {
         method: "DELETE",
-
         headers:
           getHeaders(token),
       }
@@ -1265,30 +1396,10 @@ export const favorites = {
 // ================================================================
 // REVIEWS
 // ================================================================
-//
-// Backend:
-// /api/reviews
-//
-// Supported:
-// GET    /api/reviews
-// POST   /api/reviews
-// PUT    /api/reviews/:id
-// DELETE /api/reviews/:id
-// POST   /api/reviews/:id/helpful
-// POST   /api/reviews/:id/report
-// POST   /api/reviews/:id/reply
-// DELETE /api/reviews/:id/reply
-//
-// Seller summary:
-// GET /api/reviews/seller/:sellerId/summary
-//
-// Product summary:
-// GET /api/reviews/product/:productId/summary
-// ================================================================
 
 export const reviews = {
   // ==============================================================
-  // GET REVIEWS
+  // GET ALL REVIEWS
   // ==============================================================
 
   getAll: async (
@@ -1302,7 +1413,6 @@ export const reviews = {
       `${API_URL}/api/reviews${query}`,
       {
         method: "GET",
-
         headers:
           getHeaders(token),
       }
@@ -1334,7 +1444,6 @@ export const reviews = {
       `${API_URL}/api/reviews${query}`,
       {
         method: "GET",
-
         headers:
           getHeaders(token),
       }
@@ -1366,7 +1475,6 @@ export const reviews = {
       `${API_URL}/api/reviews${query}`,
       {
         method: "GET",
-
         headers:
           getHeaders(token),
       }
@@ -1381,15 +1489,28 @@ export const reviews = {
     reviewData,
     token = getToken()
   ) => {
-    if (!token) {
+    // ============================================================
+    // VALIDATE AUTH
+    // ============================================================
+
+    if (!hasUsableToken(token)) {
       const error = new Error(
         "Authentication token is missing."
       );
 
       error.status = 401;
+      error.isAuthError = true;
+
+      console.error(
+        "🔐 Cannot create review: token missing."
+      );
 
       throw error;
     }
+
+    // ============================================================
+    // VALIDATE SELLER
+    // ============================================================
 
     if (!reviewData?.sellerId) {
       throw new Error(
@@ -1397,56 +1518,126 @@ export const reviews = {
       );
     }
 
+    // ============================================================
+    // VALIDATE RATING
+    // ============================================================
+
     if (
-      reviewData?.rating === undefined ||
-      reviewData?.rating === null
+      reviewData.rating ===
+        undefined ||
+      reviewData.rating === null
     ) {
       throw new Error(
         "Rating is required"
       );
     }
 
+    const rating =
+      Number(reviewData.rating);
+
     if (
-      !reviewData?.comment ||
-      !String(
-        reviewData.comment
-      ).trim()
+      !Number.isFinite(rating) ||
+      rating < 1 ||
+      rating > 5
     ) {
+      throw new Error(
+        "Rating must be between 1 and 5"
+      );
+    }
+
+    // ============================================================
+    // VALIDATE COMMENT
+    // ============================================================
+
+    const comment =
+      String(
+        reviewData.comment || ""
+      ).trim();
+
+    if (!comment) {
       throw new Error(
         "Review comment is required"
       );
     }
 
+    // ============================================================
+    // PAYLOAD
+    // ============================================================
+
+    const payload = {
+      sellerId:
+        reviewData.sellerId,
+
+      rating,
+
+      comment,
+    };
+
+    if (reviewData.productId) {
+      payload.productId =
+        reviewData.productId;
+    }
+
+    if (reviewData.orderId) {
+      payload.orderId =
+        reviewData.orderId;
+    }
+
+    // ============================================================
+    // DEBUG
+    // ============================================================
+
+    console.log(
+      "⭐ Creating seller review..."
+    );
+
+    console.log(
+      "⭐ Seller ID:",
+      payload.sellerId
+    );
+
+    console.log(
+      "⭐ Product ID:",
+      payload.productId ||
+        "none"
+    );
+
+    console.log(
+      "⭐ Order ID:",
+      payload.orderId ||
+        "none"
+    );
+
+    console.log(
+      "⭐ Rating:",
+      payload.rating
+    );
+
+    console.log(
+      "⭐ Comment:",
+      payload.comment
+    );
+
+    console.log(
+      "⭐ Auth token:",
+      hasUsableToken(token)
+        ? "PRESENT"
+        : "MISSING"
+    );
+
+    // ============================================================
+    // SEND
+    // ============================================================
+
     return request(
       `${API_URL}/api/reviews`,
       {
         method: "POST",
-
         headers:
           getHeaders(token),
-
-        body: JSON.stringify({
-          sellerId:
-            reviewData.sellerId,
-
-          productId:
-            reviewData.productId ||
-            undefined,
-
-          orderId:
-            reviewData.orderId ||
-            undefined,
-
-          rating:
-            Number(
-              reviewData.rating
-            ),
-
-          comment:
-            String(
-              reviewData.comment
-            ).trim(),
-        }),
+        body: JSON.stringify(
+          payload
+        ),
       }
     );
   },
@@ -1466,37 +1657,39 @@ export const reviews = {
       );
     }
 
+    const payload = {};
+
+    if (
+      reviewData?.rating !==
+      undefined
+    ) {
+      payload.rating =
+        Number(
+          reviewData.rating
+        );
+    }
+
+    if (
+      reviewData?.comment !==
+      undefined
+    ) {
+      payload.comment =
+        String(
+          reviewData.comment
+        ).trim();
+    }
+
     return request(
       `${API_URL}/api/reviews/${encodeURIComponent(
         id
       )}`,
       {
         method: "PUT",
-
         headers:
           getHeaders(token),
-
-        body: JSON.stringify({
-          ...(reviewData?.rating !==
-          undefined
-            ? {
-                rating:
-                  Number(
-                    reviewData.rating
-                  ),
-              }
-            : {}),
-
-          ...(reviewData?.comment !==
-          undefined
-            ? {
-                comment:
-                  String(
-                    reviewData.comment
-                  ).trim(),
-              }
-            : {}),
-        }),
+        body: JSON.stringify(
+          payload
+        ),
       }
     );
   },
@@ -1521,7 +1714,6 @@ export const reviews = {
       )}`,
       {
         method: "DELETE",
-
         headers:
           getHeaders(token),
       }
@@ -1529,7 +1721,7 @@ export const reviews = {
   },
 
   // ==============================================================
-  // HELPFUL TOGGLE
+  // HELPFUL
   // ==============================================================
 
   toggleHelpful: async (
@@ -1548,7 +1740,6 @@ export const reviews = {
       )}/helpful`,
       {
         method: "POST",
-
         headers:
           getHeaders(token),
       }
@@ -1556,7 +1747,7 @@ export const reviews = {
   },
 
   // ==============================================================
-  // REPORT REVIEW
+  // REPORT
   // ==============================================================
 
   report: async (
@@ -1576,10 +1767,8 @@ export const reviews = {
       )}/report`,
       {
         method: "POST",
-
         headers:
           getHeaders(token),
-
         body: JSON.stringify({
           reason:
             String(
@@ -1621,10 +1810,8 @@ export const reviews = {
       )}/reply`,
       {
         method: "POST",
-
         headers:
           getHeaders(token),
-
         body: JSON.stringify({
           text: cleanText,
         }),
@@ -1652,7 +1839,6 @@ export const reviews = {
       )}/reply`,
       {
         method: "DELETE",
-
         headers:
           getHeaders(token),
       }
@@ -1660,7 +1846,7 @@ export const reviews = {
   },
 
   // ==============================================================
-  // GET SELLER RATING SUMMARY
+  // SELLER SUMMARY
   // ==============================================================
 
   getSellerSummary: async (
@@ -1679,7 +1865,6 @@ export const reviews = {
       )}/summary`,
       {
         method: "GET",
-
         headers:
           getHeaders(token),
       }
@@ -1687,7 +1872,7 @@ export const reviews = {
   },
 
   // ==============================================================
-  // GET PRODUCT RATING SUMMARY
+  // PRODUCT SUMMARY
   // ==============================================================
 
   getProductSummary: async (
@@ -1706,7 +1891,6 @@ export const reviews = {
       )}/summary`,
       {
         method: "GET",
-
         headers:
           getHeaders(token),
       }
@@ -1719,10 +1903,7 @@ export const reviews = {
 // ================================================================
 
 export const admin = {
-  // ============================================================
-  // DASHBOARD
-  // ============================================================
-
+  // Dashboard
   getDashboardStats: async (
     token = getToken()
   ) => {
@@ -1730,17 +1911,13 @@ export const admin = {
       `${API_URL}/api/admin/dashboard`,
       {
         method: "GET",
-
         headers:
           getHeaders(token),
       }
     );
   },
 
-  // ============================================================
-  // USERS
-  // ============================================================
-
+  // Users
   getUsers: async (
     params = {},
     token = getToken()
@@ -1752,7 +1929,6 @@ export const admin = {
       `${API_URL}/api/admin/users${query}`,
       {
         method: "GET",
-
         headers:
           getHeaders(token),
       }
@@ -1775,7 +1951,6 @@ export const admin = {
       )}`,
       {
         method: "GET",
-
         headers:
           getHeaders(token),
       }
@@ -1799,10 +1974,8 @@ export const admin = {
       )}/role`,
       {
         method: "PUT",
-
         headers:
           getHeaders(token),
-
         body: JSON.stringify({
           role,
         }),
@@ -1826,17 +1999,13 @@ export const admin = {
       )}`,
       {
         method: "DELETE",
-
         headers:
           getHeaders(token),
       }
     );
   },
 
-  // ============================================================
-  // PRODUCTS
-  // ============================================================
-
+  // Products
   getProducts: async (
     params = {},
     token = getToken()
@@ -1848,7 +2017,6 @@ export const admin = {
       `${API_URL}/api/admin/products${query}`,
       {
         method: "GET",
-
         headers:
           getHeaders(token),
       }
@@ -1871,17 +2039,13 @@ export const admin = {
       )}`,
       {
         method: "DELETE",
-
         headers:
           getHeaders(token),
       }
     );
   },
 
-  // ============================================================
-  // ORDERS
-  // ============================================================
-
+  // Orders
   getOrders: async (
     params = {},
     token = getToken()
@@ -1893,7 +2057,6 @@ export const admin = {
       `${API_URL}/api/admin/orders${query}`,
       {
         method: "GET",
-
         headers:
           getHeaders(token),
       }
@@ -1917,10 +2080,8 @@ export const admin = {
       )}/status`,
       {
         method: "PUT",
-
         headers:
           getHeaders(token),
-
         body: JSON.stringify({
           status,
         }),
@@ -1928,10 +2089,7 @@ export const admin = {
     );
   },
 
-  // ============================================================
-  // RIDERS
-  // ============================================================
-
+  // Riders
   getRiders: async (
     params = {},
     token = getToken()
@@ -1943,7 +2101,6 @@ export const admin = {
       `${API_URL}/api/admin/riders${query}`,
       {
         method: "GET",
-
         headers:
           getHeaders(token),
       }
@@ -1966,7 +2123,6 @@ export const admin = {
       )}`,
       {
         method: "GET",
-
         headers:
           getHeaders(token),
       }
@@ -1989,7 +2145,6 @@ export const admin = {
       )}/approve`,
       {
         method: "PUT",
-
         headers:
           getHeaders(token),
       }
@@ -2012,7 +2167,6 @@ export const admin = {
       )}/reject`,
       {
         method: "PUT",
-
         headers:
           getHeaders(token),
       }
@@ -2036,10 +2190,8 @@ export const admin = {
       )}/approval`,
       {
         method: "PUT",
-
         headers:
           getHeaders(token),
-
         body: JSON.stringify({
           isApproved:
             Boolean(isApproved),
@@ -2064,17 +2216,13 @@ export const admin = {
       )}`,
       {
         method: "DELETE",
-
         headers:
           getHeaders(token),
       }
     );
   },
 
-  // ============================================================
-  // DELIVERIES
-  // ============================================================
-
+  // Deliveries
   getDeliveries: async (
     params = {},
     token = getToken()
@@ -2086,7 +2234,6 @@ export const admin = {
       `${API_URL}/api/admin/deliveries${query}`,
       {
         method: "GET",
-
         headers:
           getHeaders(token),
       }
@@ -2109,7 +2256,6 @@ export const admin = {
       )}`,
       {
         method: "GET",
-
         headers:
           getHeaders(token),
       }
@@ -2133,10 +2279,8 @@ export const admin = {
       )}/status`,
       {
         method: "PUT",
-
         headers:
           getHeaders(token),
-
         body: JSON.stringify({
           status,
         }),
@@ -2144,10 +2288,7 @@ export const admin = {
     );
   },
 
-  // ============================================================
-  // SELLER VERIFICATION
-  // ============================================================
-
+  // Seller verification
   getUnverifiedSellers: async (
     token = getToken()
   ) => {
@@ -2155,7 +2296,6 @@ export const admin = {
       `${API_URL}/api/admin/sellers/unverified`,
       {
         method: "GET",
-
         headers:
           getHeaders(token),
       }
@@ -2178,7 +2318,6 @@ export const admin = {
       )}/verify`,
       {
         method: "PUT",
-
         headers:
           getHeaders(token),
       }
@@ -2199,10 +2338,8 @@ export const deliveries = {
       `${API_URL}/api/deliveries`,
       {
         method: "POST",
-
         headers:
           getHeaders(token),
-
         body: JSON.stringify(
           deliveryData
         ),
@@ -2217,7 +2354,6 @@ export const deliveries = {
       `${API_URL}/api/deliveries/customer`,
       {
         method: "GET",
-
         headers:
           getHeaders(token),
       }
@@ -2231,7 +2367,6 @@ export const deliveries = {
       `${API_URL}/api/deliveries/available`,
       {
         method: "GET",
-
         headers:
           getHeaders(token),
       }
@@ -2245,7 +2380,6 @@ export const deliveries = {
       `${API_URL}/api/deliveries/my`,
       {
         method: "GET",
-
         headers:
           getHeaders(token),
       }
@@ -2259,7 +2393,6 @@ export const deliveries = {
       `${API_URL}/api/deliveries/rider`,
       {
         method: "GET",
-
         headers:
           getHeaders(token),
       }
@@ -2274,10 +2407,8 @@ export const deliveries = {
       `${API_URL}/api/deliveries/rider/availability`,
       {
         method: "PATCH",
-
         headers:
           getHeaders(token),
-
         body: JSON.stringify({
           isAvailable:
             Boolean(isAvailable),
@@ -2294,10 +2425,8 @@ export const deliveries = {
       `${API_URL}/api/deliveries/rider/availability`,
       {
         method: "PATCH",
-
         headers:
           getHeaders(token),
-
         body: JSON.stringify({
           isAvailable:
             Boolean(isAvailable),
@@ -2322,7 +2451,6 @@ export const deliveries = {
       )}/accept`,
       {
         method: "PATCH",
-
         headers:
           getHeaders(token),
       }
@@ -2346,10 +2474,8 @@ export const deliveries = {
       )}/status`,
       {
         method: "PATCH",
-
         headers:
           getHeaders(token),
-
         body: JSON.stringify({
           status,
         }),
@@ -2374,10 +2500,8 @@ export const deliveries = {
       )}/location`,
       {
         method: "PATCH",
-
         headers:
           getHeaders(token),
-
         body: JSON.stringify(
           location
         ),
@@ -2401,7 +2525,6 @@ export const deliveries = {
       )}`,
       {
         method: "GET",
-
         headers:
           getHeaders(token),
       }
@@ -2424,7 +2547,6 @@ export const deliveries = {
       )}/cancel`,
       {
         method: "PATCH",
-
         headers:
           getHeaders(token),
       }
@@ -2436,10 +2558,17 @@ export const deliveries = {
 // NAMED AUTH EXPORTS
 // ================================================================
 
-export const login = auth.login;
-export const register = auth.register;
-export const getMe = auth.getMe;
-export const logout = auth.logout;
+export const login =
+  auth.login;
+
+export const register =
+  auth.register;
+
+export const getMe =
+  auth.getMe;
+
+export const logout =
+  auth.logout;
 
 // ================================================================
 // PRODUCT EXPORTS
@@ -2473,19 +2602,18 @@ export const updateProductStatus =
 // SELLER PRODUCTS
 // ================================================================
 
-export const getSellerProducts = async (
-  sellerId
-) => {
-  if (!sellerId) {
-    throw new Error(
-      "Seller ID is required"
-    );
-  }
+export const getSellerProducts =
+  async (sellerId) => {
+    if (!sellerId) {
+      throw new Error(
+        "Seller ID is required"
+      );
+    }
 
-  return products.getAll({
-    sellerId,
-  });
-};
+    return products.getAll({
+      sellerId,
+    });
+  };
 
 // ================================================================
 // USER EXPORTS
