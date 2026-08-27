@@ -1,5 +1,6 @@
 // ============================================================
 // BuyUKUsed Backend Server
+// backend/server.js
 // ============================================================
 
 const express = require("express");
@@ -13,6 +14,10 @@ const morgan = require("morgan");
 const jwt = require("jsonwebtoken");
 const path = require("path");
 
+// ============================================================
+// ENVIRONMENT
+// ============================================================
+
 dotenv.config();
 
 // ============================================================
@@ -23,9 +28,11 @@ const connectDB = require("./config/db");
 
 require("./config/passport")(passport);
 
+// Activity tracking
 const activityMiddleware =
   require("./middleware/activity");
 
+// Category seeding
 const {
   ensureDefaultCategories,
 } = require("./controllers/categoryController");
@@ -41,10 +48,9 @@ const requiredEnv = [
   "JWT_SECRET",
 ];
 
-const missing =
-  requiredEnv.filter(
-    (key) => !process.env[key]
-  );
+const missing = requiredEnv.filter(
+  (key) => !process.env[key]
+);
 
 if (missing.length > 0) {
   console.error(
@@ -90,8 +96,7 @@ app.use(compression());
 
 app.use(
   morgan(
-    process.env.NODE_ENV ===
-      "production"
+    process.env.NODE_ENV === "production"
       ? "combined"
       : "dev"
   )
@@ -102,39 +107,22 @@ app.use(
 // ============================================================
 
 const allowedOrigins = [
-  // ----------------------------------------------------------
   // Local development
-  // ----------------------------------------------------------
-
   "http://localhost:5173",
   "http://127.0.0.1:5173",
 
-  // ----------------------------------------------------------
-  // Main Vercel deployment
-  // ----------------------------------------------------------
-
+  // Current production frontend
   "https://buyukused.vercel.app",
 
-  // ----------------------------------------------------------
   // BuyUKUsed Vercel deployments
-  // ----------------------------------------------------------
-
   "https://buyukused-ggapyipm3-nanaskatty13s-projects.vercel.app",
-
   "https://buyukused-2w4b8fl3w-nanaskatty13s-projects.vercel.app",
 
-  // ----------------------------------------------------------
-  // Previous Sell Platform deployments
-  // ----------------------------------------------------------
-
+  // Older frontend deployments
   "https://sell-platform2.vercel.app",
-
   "https://sell-platform2-mcv0eniwt-nanaskatty13s-projects.vercel.app",
 
-  // ----------------------------------------------------------
-  // Optional environment URL
-  // ----------------------------------------------------------
-
+  // Environment variable
   process.env.FRONTEND_URL,
 ].filter(Boolean);
 
@@ -147,33 +135,18 @@ console.log(
 // CORS HELPER
 // ============================================================
 
-const isAllowedOrigin = (
-  origin
-) => {
-  // Requests without Origin header:
-  // curl, Render health checks,
-  // server-to-server requests, etc.
-
+const isAllowedOrigin = (origin) => {
+  // Server-to-server / Render health checks
   if (!origin) {
     return true;
   }
 
-  // ----------------------------------------------------------
   // Explicitly allowed origins
-  // ----------------------------------------------------------
-
-  if (
-    allowedOrigins.includes(
-      origin
-    )
-  ) {
+  if (allowedOrigins.includes(origin)) {
     return true;
   }
 
-  // ----------------------------------------------------------
   // BuyUKUsed Vercel preview deployments
-  // ----------------------------------------------------------
-
   if (
     /^https:\/\/buyukused-[a-zA-Z0-9-]+-nanaskatty13s-projects\.vercel\.app$/.test(
       origin
@@ -182,10 +155,7 @@ const isAllowedOrigin = (
     return true;
   }
 
-  // ----------------------------------------------------------
-  // Any standard Vercel deployment
-  // ----------------------------------------------------------
-
+  // Any normal Vercel deployment
   if (
     /^https:\/\/[a-zA-Z0-9-]+\.vercel\.app$/.test(
       origin
@@ -202,22 +172,14 @@ const isAllowedOrigin = (
 // ============================================================
 
 const corsOptions = {
-  origin: (
-    origin,
-    callback
-  ) => {
+  origin: (origin, callback) => {
     console.log(
       "🔍 Incoming origin:",
       origin || "undefined"
     );
 
-    if (
-      isAllowedOrigin(origin)
-    ) {
-      return callback(
-        null,
-        true
-      );
+    if (isAllowedOrigin(origin)) {
+      return callback(null, true);
     }
 
     console.log(
@@ -265,11 +227,7 @@ const corsOptions = {
 // APPLY CORS
 // ============================================================
 
-app.use(
-  cors(corsOptions)
-);
-
-// Explicit OPTIONS handler
+app.use(cors(corsOptions));
 
 app.options(
   "*",
@@ -297,12 +255,11 @@ app.use(
 // STATIC UPLOADS
 // ============================================================
 
-const uploadsDirectory =
-  path.join(
-    __dirname,
-    "public",
-    "uploads"
-  );
+const uploadsDirectory = path.join(
+  __dirname,
+  "public",
+  "uploads"
+);
 
 app.use(
   "/uploads",
@@ -363,9 +320,7 @@ const skipIfAdmin = (
 
   if (
     !authHeader ||
-    !authHeader.startsWith(
-      "Bearer "
-    )
+    !authHeader.startsWith("Bearer ")
   ) {
     return next();
   }
@@ -446,7 +401,7 @@ app.use(
 );
 
 // ============================================================
-// REQUEST LOGGER FOR DELIVERY API
+// DELIVERY REQUEST LOGGER
 // ============================================================
 
 app.use(
@@ -484,10 +439,8 @@ app.get(
   (req, res) => {
     res.status(200).json({
       success: true,
-
       message:
         "BuyUKUsed API is running",
-
       environment:
         process.env.NODE_ENV ||
         "development",
@@ -503,9 +456,7 @@ const healthResponse =
   (req, res) => {
     res.status(200).json({
       success: true,
-
       status: "ok",
-
       timestamp:
         new Date().toISOString(),
     });
@@ -525,66 +476,98 @@ app.get(
 // LOAD ROUTES
 // ============================================================
 
+// ------------------------------------------------------------
+// AUTH / PASSWORD
+// ------------------------------------------------------------
+
 const passwordRoutes =
   require("./routes/passwordRoutes");
 
 const authRoutes =
   require("./routes/auth");
 
+// ------------------------------------------------------------
+// PRODUCTS
+// ------------------------------------------------------------
+
 const productRoutes =
   require("./routes/products");
+
+// ------------------------------------------------------------
+// NOTIFICATIONS
+// ------------------------------------------------------------
 
 const notificationRoutes =
   require("./routes/notifications");
 
+// ------------------------------------------------------------
+// USERS
+// ------------------------------------------------------------
+
 const userRoutes =
   require("./routes/users");
+
+// ------------------------------------------------------------
+// MESSAGES
+// ------------------------------------------------------------
 
 const messageRoutes =
   require("./routes/messages");
 
+// ------------------------------------------------------------
+// ADMIN
+// ------------------------------------------------------------
+
 const adminRoutes =
   require("./routes/admin");
+
+// ------------------------------------------------------------
+// DELIVERY
+// ------------------------------------------------------------
 
 const deliveryRoutes =
   require("./routes/deliveryRoutes");
 
+// ------------------------------------------------------------
+// UPLOAD
+// ------------------------------------------------------------
+
 const uploadRoutes =
   require("./routes/upload");
+
+// ------------------------------------------------------------
+// SELLERS
+// ------------------------------------------------------------
 
 const sellerRoutes =
   require("./routes/sellers");
 
+// ------------------------------------------------------------
+// CATEGORIES
+// ------------------------------------------------------------
+
 const categoryRoutes =
   require("./routes/categories");
 
-// ============================================================
-// VISUAL SEARCH ROUTE
-// ============================================================
+// ------------------------------------------------------------
+// VISUAL SEARCH
+// ------------------------------------------------------------
 
 const visualSearchRoutes =
   require("./routes/visualSearchRoutes");
 
-// ============================================================
-// REVIEWS ROUTE
-// ============================================================
-//
-// IMPORTANT:
-// This fixes:
-//
-// GET /api/reviews?sellerId=...
-//
-// returning:
-//
-// 404 API endpoint not found
-//
-// ============================================================
+// ------------------------------------------------------------
+// REVIEWS
+// IMPORTANT: THIS FIXES:
+// GET /api/reviews
+// POST /api/reviews
+// ------------------------------------------------------------
 
-const reviewRoutes =
-  require("./routes/reviews");
+const reviewController =
+  require("./controllers/reviewController");
 
 console.log(
-  "✅ Routes loaded successfully"
+  "✅ All route modules loaded successfully"
 );
 
 // ============================================================
@@ -610,6 +593,13 @@ app.use(
 // ============================================================
 
 app.use(
+  "/api/sellers",
+  sellerRoutes
+);
+
+// Keep compatibility with older frontend
+// requests that use /sellers.
+app.use(
   "/sellers",
   sellerRoutes
 );
@@ -633,34 +623,7 @@ app.use(
 );
 
 console.log(
-  "🖼️ Visual image search API mounted at /api/visual-search"
-);
-
-// ============================================================
-// REVIEWS
-// ============================================================
-//
-// Public GET:
-//
-// GET /api/reviews
-//
-// Seller:
-//
-// GET /api/reviews?sellerId=SELLER_ID
-//
-// Product:
-//
-// GET /api/reviews?productId=PRODUCT_ID
-//
-// ============================================================
-
-app.use(
-  "/api/reviews",
-  reviewRoutes
-);
-
-console.log(
-  "⭐ Reviews API mounted at /api/reviews"
+  "🖼️ Visual Search API mounted at /api/visual-search"
 );
 
 // ============================================================
@@ -688,6 +651,10 @@ app.use(
 app.use(
   "/api/messages",
   messageRoutes
+);
+
+console.log(
+  "💬 Messages API mounted at /api/messages"
 );
 
 // ============================================================
@@ -739,19 +706,75 @@ console.log(
 );
 
 // ============================================================
-// ROUTE STATUS
+// REVIEWS
+// ============================================================
+//
+// GET    /api/reviews
+// POST   /api/reviews
+// PUT    /api/reviews/:id
+// DELETE /api/reviews/:id
+//
+// POST   /api/reviews/:id/helpful
+// POST   /api/reviews/:id/report
+//
+// POST   /api/reviews/:id/reply
+// DELETE /api/reviews/:id/reply
+//
+// The controller already handles authentication
+// checks where required.
+//
 // ============================================================
 
-console.log(
-  "🔐 Admin API mounted at /api/admin"
+// GET REVIEWS
+app.get(
+  "/api/reviews",
+  reviewController.getReviews
+);
+
+// CREATE REVIEW
+app.post(
+  "/api/reviews",
+  reviewController.createReview
+);
+
+// UPDATE REVIEW
+app.put(
+  "/api/reviews/:id",
+  reviewController.updateReview
+);
+
+// DELETE REVIEW
+app.delete(
+  "/api/reviews/:id",
+  reviewController.deleteReview
+);
+
+// HELPFUL
+app.post(
+  "/api/reviews/:id/helpful",
+  reviewController.toggleHelpful
+);
+
+// REPORT
+app.post(
+  "/api/reviews/:id/report",
+  reviewController.reportReview
+);
+
+// SELLER REPLY
+app.post(
+  "/api/reviews/:id/reply",
+  reviewController.replyToReview
+);
+
+// DELETE SELLER REPLY
+app.delete(
+  "/api/reviews/:id/reply",
+  reviewController.deleteReply
 );
 
 console.log(
   "⭐ Reviews API mounted at /api/reviews"
-);
-
-console.log(
-  "🛒 Seller API mounted at /sellers"
 );
 
 // ============================================================
@@ -765,24 +788,15 @@ app.use(
     );
 
     if (
-      req.path.startsWith(
-        "/api"
-      ) ||
-      req.path.startsWith(
-        "/auth"
-      ) ||
-      req.path.startsWith(
-        "/sellers"
-      )
+      req.path.startsWith("/api") ||
+      req.path.startsWith("/auth") ||
+      req.path.startsWith("/sellers")
     ) {
       return res.status(404).json({
         success: false,
-
         message:
           "API endpoint not found",
-
-        path:
-          req.originalUrl,
+        path: req.originalUrl,
       });
     }
 
@@ -819,9 +833,7 @@ app.use(
     ) {
       return res.status(403).json({
         success: false,
-
-        message:
-          err.message,
+        message: err.message,
       });
     }
 
@@ -840,7 +852,6 @@ app.use(
       ) {
         return res.status(413).json({
           success: false,
-
           message:
             "File too large. Maximum size is 5MB.",
         });
@@ -848,7 +859,6 @@ app.use(
 
       return res.status(400).json({
         success: false,
-
         message:
           err.message ||
           "File upload error.",
@@ -856,7 +866,7 @@ app.use(
     }
 
     // --------------------------------------------------------
-    // DUPLICATE MONGODB FIELD
+    // DUPLICATE MONGODB KEY
     // --------------------------------------------------------
 
     if (
@@ -870,7 +880,6 @@ app.use(
 
       return res.status(409).json({
         success: false,
-
         message:
           `${field} already exists`,
       });
@@ -895,17 +904,47 @@ app.use(
 
       return res.status(400).json({
         success: false,
-
         message:
           "Validation error",
-
-        errors:
-          messages,
+        errors: messages,
       });
     }
 
     // --------------------------------------------------------
-    // DEFAULT ERROR
+    // INVALID OBJECT ID
+    // --------------------------------------------------------
+
+    if (
+      err &&
+      err.name ===
+        "CastError"
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Invalid ID.",
+      });
+    }
+
+    // --------------------------------------------------------
+    // JSON PARSING ERROR
+    // --------------------------------------------------------
+
+    if (
+      err &&
+      err instanceof SyntaxError &&
+      err.status === 400 &&
+      "body" in err
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Invalid JSON request body.",
+      });
+    }
+
+    // --------------------------------------------------------
+    // DEFAULT
     // --------------------------------------------------------
 
     return res
@@ -914,7 +953,6 @@ app.use(
       )
       .json({
         success: false,
-
         message:
           err?.message ||
           "Internal Server Error",
@@ -999,10 +1037,6 @@ const createDefaultAdmin =
             normalizedEmail,
         });
 
-      // --------------------------------------------------------
-      // CREATE ADMIN
-      // --------------------------------------------------------
-
       if (!user) {
         user = new User({
           name: "Admin",
@@ -1025,13 +1059,7 @@ const createDefaultAdmin =
         console.log(
           `✅ Default admin created: ${normalizedEmail}`
         );
-      }
-
-      // --------------------------------------------------------
-      // PROMOTE EXISTING USER
-      // --------------------------------------------------------
-
-      else if (
+      } else if (
         user.role !== "admin"
       ) {
         user.role = "admin";
@@ -1041,13 +1069,7 @@ const createDefaultAdmin =
         console.log(
           `✅ User ${normalizedEmail} promoted to admin`
         );
-      }
-
-      // --------------------------------------------------------
-      // ALREADY ADMIN
-      // --------------------------------------------------------
-
-      else {
+      } else {
         console.log(
           `ℹ️ Admin user already exists: ${normalizedEmail}`
         );
@@ -1068,7 +1090,7 @@ const start =
   async () => {
     try {
       // --------------------------------------------------------
-      // CONNECT MONGODB
+      // CONNECT DATABASE
       // --------------------------------------------------------
 
       const connection =
@@ -1079,7 +1101,7 @@ const start =
       );
 
       // --------------------------------------------------------
-      // SEED DEFAULT CATEGORIES
+      // DEFAULT CATEGORIES
       // --------------------------------------------------------
 
       await ensureDefaultCategories();
@@ -1089,13 +1111,13 @@ const start =
       );
 
       // --------------------------------------------------------
-      // CREATE DEFAULT ADMIN
+      // DEFAULT ADMIN
       // --------------------------------------------------------
 
       await createDefaultAdmin();
 
       // --------------------------------------------------------
-      // START SERVER
+      // START HTTP SERVER
       // --------------------------------------------------------
 
       const server =
@@ -1133,11 +1155,7 @@ const start =
             );
 
             console.log(
-              "⭐ Reviews API: /api/reviews"
-            );
-
-            console.log(
-              "🚴 Delivery/Rider API: /api/deliveries"
+              "🚴 Delivery API: /api/deliveries"
             );
 
             console.log(
@@ -1145,7 +1163,11 @@ const start =
             );
 
             console.log(
-              "🛒 Seller API: /sellers"
+              "🛒 Seller API: /api/sellers"
+            );
+
+            console.log(
+              "💬 Messages API: /api/messages"
             );
 
             console.log(
@@ -1154,6 +1176,10 @@ const start =
 
             console.log(
               "🖼️ Visual Search API: /api/visual-search"
+            );
+
+            console.log(
+              "⭐ Reviews API: /api/reviews"
             );
 
             console.log(
@@ -1171,7 +1197,7 @@ const start =
         );
 
       // --------------------------------------------------------
-      // TIMEOUTS
+      // SERVER TIMEOUTS
       // --------------------------------------------------------
 
       server.timeout =
