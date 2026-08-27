@@ -1,4 +1,7 @@
+// ============================================================
 // backend/routes/passwordRoutes.js
+// BuyUKUsed Password Reset Routes
+// ============================================================
 
 const express = require("express");
 const crypto = require("crypto");
@@ -10,6 +13,13 @@ const {
 } = require("../services/email");
 
 const router = express.Router();
+
+// ============================================================
+// CONSTANTS
+// ============================================================
+
+const RESET_TOKEN_EXPIRATION_MS =
+  60 * 60 * 1000; // 1 hour
 
 // ============================================================
 // HELPERS
@@ -24,9 +34,12 @@ const normalizeEmail = (email) => {
 const hashResetToken = (token) => {
   return crypto
     .createHash("sha256")
-    .update(token)
+    .update(String(token))
     .digest("hex");
 };
+
+const genericSuccessMessage =
+  "If that email exists, a password reset link has been sent.";
 
 // ============================================================
 // POST /api/password/forgot
@@ -34,8 +47,12 @@ const hashResetToken = (token) => {
 
 router.post("/forgot", async (req, res) => {
   try {
+    console.log(
+      "📧 Password reset request received"
+    );
+
     // --------------------------------------------------------
-    // GET EMAIL
+    // EMAIL
     // --------------------------------------------------------
 
     const email = normalizeEmail(
@@ -45,12 +62,12 @@ router.post("/forgot", async (req, res) => {
     if (!email) {
       return res.status(400).json({
         success: false,
-        message: "Email is required",
+        message: "Email is required.",
       });
     }
 
     // --------------------------------------------------------
-    // VALIDATE EMAIL
+    // EMAIL VALIDATION
     // --------------------------------------------------------
 
     const emailRegex =
@@ -60,9 +77,13 @@ router.post("/forgot", async (req, res) => {
       return res.status(400).json({
         success: false,
         message:
-          "Please provide a valid email address",
+          "Please provide a valid email address.",
       });
     }
+
+    console.log(
+      `🔎 Looking for user: ${email}`
+    );
 
     // --------------------------------------------------------
     // FIND USER
@@ -70,49 +91,62 @@ router.post("/forgot", async (req, res) => {
 
     const user = await User.findOne({
       email,
-    });
+    }).select(
+      "+resetPasswordToken +resetPasswordExpires"
+    );
 
     // --------------------------------------------------------
-    // DO NOT REVEAL WHETHER ACCOUNT EXISTS
+    // USER DOES NOT EXIST
+    //
+    // Do not reveal whether the account exists.
     // --------------------------------------------------------
 
     if (!user) {
+      console.log(
+        "ℹ️ No account found for requested email."
+      );
+
       return res.status(200).json({
         success: true,
-        message:
-          "If that email exists, a password reset link has been sent.",
+        message: genericSuccessMessage,
       });
     }
 
     // --------------------------------------------------------
-    // CHECK ACCOUNT STATUS
+    // ACCOUNT DEACTIVATED
     // --------------------------------------------------------
 
     if (user.isActive === false) {
+      console.log(
+        "ℹ️ Password reset requested for inactive account."
+      );
+
       return res.status(200).json({
         success: true,
-        message:
-          "If that email exists, a password reset link has been sent.",
+        message: genericSuccessMessage,
       });
     }
 
     // --------------------------------------------------------
-    // SOCIAL LOGIN ACCOUNT
+    // SOCIAL LOGIN
     // --------------------------------------------------------
 
     if (
       user.provider &&
       user.provider !== "local"
     ) {
+      console.log(
+        `ℹ️ ${email} uses ${user.provider} authentication.`
+      );
+
       return res.status(200).json({
         success: true,
-        message:
-          "If that email exists, a password reset link has been sent.",
+        message: genericSuccessMessage,
       });
     }
 
     // --------------------------------------------------------
-    // CHECK FRONTEND URL BEFORE CREATING TOKEN
+    // FRONTEND URL
     // --------------------------------------------------------
 
     const frontendUrl = String(
@@ -123,7 +157,7 @@ router.post("/forgot", async (req, res) => {
 
     if (!frontendUrl) {
       console.error(
-        "❌ FRONTEND_URL is not configured."
+        "❌ FRONTEND_URL is missing."
       );
 
       return res.status(500).json({
@@ -134,17 +168,16 @@ router.post("/forgot", async (req, res) => {
     }
 
     // --------------------------------------------------------
-    // CHECK RESEND CONFIGURATION
+    // RESEND API KEY
     // --------------------------------------------------------
 
-    if (
-      !process.env.RESEND_API_KEY ||
-      !String(
-        process.env.RESEND_API_KEY
-      ).trim()
-    ) {
+    const resendApiKey = String(
+      process.env.RESEND_API_KEY || ""
+    ).trim();
+
+    if (!resendApiKey) {
       console.error(
-        "❌ RESEND_API_KEY is not configured."
+        "❌ RESEND_API_KEY is missing."
       );
 
       return res.status(500).json({
@@ -155,32 +188,52 @@ router.post("/forgot", async (req, res) => {
     }
 
     // --------------------------------------------------------
-    // GENERATE SECURE RESET TOKEN
+    // EMAIL FUNCTION CHECK
+    // --------------------------------------------------------
+
+    if (
+      typeof sendPasswordResetEmail !==
+      "function"
+    ) {
+      console.error(
+        "❌ sendPasswordResetEmail is not a function."
+      );
+
+      return res.status(500).json({
+        success: false,
+        message:
+          "Password reset email service is not configured correctly.",
+      });
+    }
+
+    // --------------------------------------------------------
+    // GENERATE SECURE TOKEN
     // --------------------------------------------------------
 
     const resetToken =
       crypto.randomBytes(32).toString("hex");
 
     // --------------------------------------------------------
-    // HASH TOKEN BEFORE DATABASE STORAGE
+    // HASH TOKEN
+    //
+    // Only the hash goes into MongoDB.
     // --------------------------------------------------------
 
     const hashedToken =
       hashResetToken(resetToken);
 
     // --------------------------------------------------------
-    // TOKEN EXPIRATION
-    // 1 HOUR
+    // EXPIRATION
     // --------------------------------------------------------
 
     const resetPasswordExpires =
       new Date(
         Date.now() +
-          60 * 60 * 1000
+          RESET_TOKEN_EXPIRATION_MS
       );
 
     // --------------------------------------------------------
-    // SAVE RESET TOKEN
+    // SAVE TOKEN
     // --------------------------------------------------------
 
     user.resetPasswordToken =
@@ -189,14 +242,16 @@ router.post("/forgot", async (req, res) => {
     user.resetPasswordExpires =
       resetPasswordExpires;
 
-    await user.save();
+    await user.save({
+      validateBeforeSave: false,
+    });
 
     console.log(
-      `🔐 Password reset token created for ${user.email}`
+      `🔐 Password reset token created for ${email}`
     );
 
     // --------------------------------------------------------
-    // CREATE RESET URL
+    // RESET URL
     // --------------------------------------------------------
 
     const resetUrl =
@@ -205,26 +260,26 @@ router.post("/forgot", async (req, res) => {
       )}`;
 
     console.log(
-      "🔗 Password reset URL created successfully."
+      "🔗 Password reset link generated."
     );
-
-    // Do NOT log the actual token or reset URL
-    // in production because the URL contains the
-    // secret reset token.
 
     // --------------------------------------------------------
     // SEND EMAIL
     // --------------------------------------------------------
 
     try {
+      console.log(
+        `📨 Sending password reset email to ${email}...`
+      );
+
       await sendPasswordResetEmail(
         user.email,
         resetUrl,
-        user.name
+        user.name || "there"
       );
 
       console.log(
-        `📧 Password reset email sent to ${user.email}`
+        `✅ Password reset email sent successfully to ${email}`
       );
     } catch (emailError) {
       console.error(
@@ -244,13 +299,32 @@ router.post("/forgot", async (req, res) => {
       );
 
       console.error(
-        "Resend data:",
+        "Status:",
+        emailError?.statusCode ||
+          emailError?.status ||
+          "N/A"
+      );
+
+      console.error(
+        "Name:",
+        emailError?.name ||
+          "N/A"
+      );
+
+      console.error(
+        "Response:",
+        emailError?.response ||
+          "N/A"
+      );
+
+      console.error(
+        "Data:",
         emailError?.data ||
           "N/A"
       );
 
       // ------------------------------------------------------
-      // REMOVE TOKEN IF EMAIL FAILED
+      // CLEAN UP TOKEN
       // ------------------------------------------------------
 
       try {
@@ -260,10 +334,16 @@ router.post("/forgot", async (req, res) => {
         user.resetPasswordExpires =
           undefined;
 
-        await user.save();
+        await user.save({
+          validateBeforeSave: false,
+        });
+
+        console.log(
+          "🧹 Password reset token removed after email failure."
+        );
       } catch (cleanupError) {
         console.error(
-          "❌ Failed to remove reset token:",
+          "❌ Could not clean up reset token:",
           cleanupError
         );
       }
@@ -281,18 +361,29 @@ router.post("/forgot", async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message:
-        "If that email exists, a password reset link has been sent.",
+      message: genericSuccessMessage,
     });
   } catch (error) {
     console.error(
-      "❌ Forgot password error:"
+      "❌ Forgot password route error."
     );
 
     console.error(
       "Message:",
       error?.message ||
         error
+    );
+
+    console.error(
+      "Name:",
+      error?.name ||
+        "N/A"
+    );
+
+    console.error(
+      "Code:",
+      error?.code ||
+        "N/A"
     );
 
     console.error(
@@ -318,7 +409,7 @@ router.post(
   async (req, res) => {
     try {
       // ------------------------------------------------------
-      // GET TOKEN
+      // TOKEN
       // ------------------------------------------------------
 
       const token = String(
@@ -334,20 +425,18 @@ router.post(
       }
 
       // ------------------------------------------------------
-      // GET PASSWORD
+      // PASSWORD
       // ------------------------------------------------------
 
       const password = String(
         req.body?.password || ""
       );
 
-      const confirmPassword = String(
-        req.body?.confirmPassword || ""
-      );
-
-      // ------------------------------------------------------
-      // VALIDATE PASSWORD
-      // ------------------------------------------------------
+      const confirmPassword =
+        String(
+          req.body?.confirmPassword ||
+            ""
+        );
 
       if (
         !password ||
@@ -396,13 +485,6 @@ router.post(
 
       // ------------------------------------------------------
       // FIND USER
-      //
-      // User.js has:
-      //
-      // resetPasswordToken: select: false
-      // resetPasswordExpires: select: false
-      //
-      // Therefore explicitly select both fields.
       // ------------------------------------------------------
 
       const user =
@@ -414,7 +496,7 @@ router.post(
             $gt: new Date(),
           },
         }).select(
-          "+resetPasswordToken +resetPasswordExpires"
+          "+password +resetPasswordToken +resetPasswordExpires"
         );
 
       // ------------------------------------------------------
@@ -430,7 +512,7 @@ router.post(
       }
 
       // ------------------------------------------------------
-      // CHECK ACCOUNT STATUS
+      // ACCOUNT STATUS
       // ------------------------------------------------------
 
       if (user.isActive === false) {
@@ -446,17 +528,15 @@ router.post(
       //
       // IMPORTANT:
       //
-      // User.js has a pre-save hook that automatically
-      // bcrypt-hashes the password.
-      //
-      // Therefore DO NOT manually hash the password here.
+      // We assign the plain password here.
+      // Your User.js pre-save hook should bcrypt-hash it.
       // ------------------------------------------------------
 
       user.password =
         password;
 
       // ------------------------------------------------------
-      // INVALIDATE RESET TOKEN
+      // INVALIDATE TOKEN
       // ------------------------------------------------------
 
       user.resetPasswordToken =
@@ -466,7 +546,7 @@ router.post(
         undefined;
 
       // ------------------------------------------------------
-      // SAVE USER
+      // SAVE
       // ------------------------------------------------------
 
       await user.save();
@@ -476,7 +556,7 @@ router.post(
       );
 
       // ------------------------------------------------------
-      // SUCCESS
+      // RESPONSE
       // ------------------------------------------------------
 
       return res.status(200).json({
@@ -486,13 +566,25 @@ router.post(
       });
     } catch (error) {
       console.error(
-        "❌ Reset password error:"
+        "❌ Reset password error."
       );
 
       console.error(
         "Message:",
         error?.message ||
           error
+      );
+
+      console.error(
+        "Name:",
+        error?.name ||
+          "N/A"
+      );
+
+      console.error(
+        "Code:",
+        error?.code ||
+          "N/A"
       );
 
       console.error(
@@ -511,7 +603,83 @@ router.post(
 );
 
 // ============================================================
-// EXPORT ROUTER
+// GET /api/password/reset/:token
+// VERIFY RESET TOKEN
+// ============================================================
+
+router.get(
+  "/reset/:token",
+  async (req, res) => {
+    try {
+      const token = String(
+        req.params?.token || ""
+      ).trim();
+
+      if (!token) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Reset token is required.",
+        });
+      }
+
+      const hashedToken =
+        hashResetToken(token);
+
+      const user =
+        await User.findOne({
+          resetPasswordToken:
+            hashedToken,
+
+          resetPasswordExpires: {
+            $gt: new Date(),
+          },
+        }).select(
+          "+resetPasswordToken +resetPasswordExpires"
+        );
+
+      if (!user) {
+        return res.status(400).json({
+          success: false,
+          valid: false,
+          message:
+            "This password reset link is invalid or has expired.",
+        });
+      }
+
+      if (user.isActive === false) {
+        return res.status(403).json({
+          success: false,
+          valid: false,
+          message:
+            "Your account has been deactivated.",
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        valid: true,
+        message:
+          "Password reset token is valid.",
+      });
+    } catch (error) {
+      console.error(
+        "❌ Verify reset token error:",
+        error
+      );
+
+      return res.status(500).json({
+        success: false,
+        valid: false,
+        message:
+          "Unable to verify password reset token.",
+      });
+    }
+  }
+);
+
+// ============================================================
+// EXPORT
 // ============================================================
 
 module.exports = router;

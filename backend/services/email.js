@@ -1,51 +1,75 @@
+// ============================================================
 // backend/services/email.js
+// BuyUKUsed / KN Classifieds Email Service
+// Resend
+// ============================================================
 
 const { Resend } = require("resend");
 
 // ============================================================
-// RESEND CONFIGURATION
+// ENVIRONMENT CONFIGURATION
 // ============================================================
 
-const RESEND_API_KEY =
-  String(
-    process.env.RESEND_API_KEY || ""
-  ).trim();
+const RESEND_API_KEY = String(
+  process.env.RESEND_API_KEY || ""
+).trim();
 
-const EMAIL_FROM =
-  String(
-    process.env.EMAIL_FROM ||
-      "buyukused <onboarding@resend.dev>"
-  ).trim();
+const EMAIL_FROM = String(
+  process.env.EMAIL_FROM ||
+    "buyukused <onboarding@resend.dev>"
+).trim();
 
 // ============================================================
 // RESEND CLIENT
 // ============================================================
 
-const resend =
-  RESEND_API_KEY
-    ? new Resend(
-        RESEND_API_KEY
-      )
-    : null;
+const resend = RESEND_API_KEY
+  ? new Resend(RESEND_API_KEY)
+  : null;
 
 // ============================================================
 // STARTUP LOGGING
 // ============================================================
 
-if (!RESEND_API_KEY) {
-  console.error(
-    "❌ RESEND_API_KEY is NOT configured."
-  );
+console.log("============================================================");
+console.log("📧 EMAIL SERVICE");
+console.log("============================================================");
+
+if (RESEND_API_KEY) {
+  console.log("✅ RESEND_API_KEY configured");
 } else {
-  console.log(
-    "✅ Resend API key configured."
-  );
+  console.error("❌ RESEND_API_KEY NOT configured");
 }
 
-console.log(
-  "📧 Email sender:",
-  EMAIL_FROM
-);
+console.log("📤 Email sender:", EMAIL_FROM);
+
+console.log("============================================================");
+
+// ============================================================
+// VALIDATE EMAIL
+// ============================================================
+
+const isValidEmail = (email) => {
+  const emailRegex =
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  return emailRegex.test(
+    String(email || "").trim()
+  );
+};
+
+// ============================================================
+// ESCAPE HTML
+// ============================================================
+
+const escapeHtml = (value) => {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+};
 
 // ============================================================
 // SEND PASSWORD RESET EMAIL
@@ -56,91 +80,103 @@ async function sendPasswordResetEmail(
   resetUrl,
   name
 ) {
-  // ----------------------------------------------------------
-  // CHECK RESEND
-  // ----------------------------------------------------------
+  // ==========================================================
+  // CHECK RESEND CLIENT
+  // ==========================================================
 
   if (!resend) {
-    const error =
-      new Error(
-        "RESEND_API_KEY is not configured"
-      );
+    const error = new Error(
+      "RESEND_API_KEY is not configured."
+    );
 
-    error.code =
-      "RESEND_API_KEY_MISSING";
+    error.code = "RESEND_API_KEY_MISSING";
 
     throw error;
   }
 
-  // ----------------------------------------------------------
-  // RECIPIENT
-  // ----------------------------------------------------------
+  // ==========================================================
+  // NORMALIZE RECIPIENT
+  // ==========================================================
 
-  const recipient =
-    String(to || "")
-      .trim()
-      .toLowerCase();
+  const recipient = String(to || "")
+    .trim()
+    .toLowerCase();
 
   if (!recipient) {
-    const error =
-      new Error(
-        "Recipient email is missing"
-      );
+    const error = new Error(
+      "Recipient email is missing."
+    );
 
-    error.code =
-      "RECIPIENT_MISSING";
+    error.code = "RECIPIENT_MISSING";
 
     throw error;
   }
 
-  // ----------------------------------------------------------
-  // RESET URL
-  // ----------------------------------------------------------
+  // ==========================================================
+  // VALIDATE RECIPIENT
+  // ==========================================================
 
-  if (!resetUrl) {
-    const error =
-      new Error(
-        "Password reset URL is missing"
-      );
+  if (!isValidEmail(recipient)) {
+    const error = new Error(
+      `Invalid recipient email address: ${recipient}`
+    );
 
-    error.code =
-      "RESET_URL_MISSING";
+    error.code = "INVALID_RECIPIENT";
 
     throw error;
   }
 
-  // ----------------------------------------------------------
+  // ==========================================================
+  // CHECK RESET URL
+  // ==========================================================
+
+  const passwordResetUrl =
+    String(resetUrl || "").trim();
+
+  if (!passwordResetUrl) {
+    const error = new Error(
+      "Password reset URL is missing."
+    );
+
+    error.code = "RESET_URL_MISSING";
+
+    throw error;
+  }
+
+  // ==========================================================
   // DISPLAY NAME
-  // ----------------------------------------------------------
+  // ==========================================================
 
-  const displayName =
-    String(
-      name || "there"
-    ).trim();
+  const displayName = String(
+    name || "there"
+  ).trim();
 
-  // ----------------------------------------------------------
+  const safeDisplayName =
+    escapeHtml(displayName);
+
+  // ==========================================================
   // TEXT EMAIL
-  // ----------------------------------------------------------
+  // ==========================================================
 
   const text = `
 Hello ${displayName},
 
-We received a request to reset your KN Classifieds account password.
+We received a request to reset your BuyUKUsed account password.
 
 Click the link below to create a new password:
 
-${resetUrl}
+${passwordResetUrl}
 
 This password reset link will expire in 1 hour.
 
 If you did not request this password reset, you can safely ignore this email.
 
-KN Classifieds
+BuyUKUsed
   `.trim();
 
-  // ----------------------------------------------------------
+  // ==========================================================
   // HTML EMAIL
-  // ----------------------------------------------------------
+  // ==========================================================
 
   const html = `
 <!DOCTYPE html>
@@ -169,20 +205,68 @@ font-family:Arial,Helvetica,sans-serif;
 "
 >
 
-<div
+<table
+width="100%"
+cellpadding="0"
+cellspacing="0"
+border="0"
 style="
-max-width:600px;
-margin:40px auto;
-padding:20px;
+background:#f5f7fa;
+padding:40px 20px;
 "
 >
 
-<div
+<tr>
+
+<td align="center">
+
+<table
+width="100%"
+cellpadding="0"
+cellspacing="0"
+border="0"
 style="
+max-width:600px;
 background:#ffffff;
 border-radius:14px;
+overflow:hidden;
+"
+>
+
+<!-- HEADER -->
+
+<tr>
+
+<td
+style="
+background:#111827;
+padding:28px 35px;
+text-align:center;
+"
+>
+
+<h1
+style="
+margin:0;
+color:#ffffff;
+font-size:24px;
+font-weight:800;
+"
+>
+BuyUKUsed
+</h1>
+
+</td>
+
+</tr>
+
+<!-- CONTENT -->
+
+<tr>
+
+<td
+style="
 padding:35px;
-box-shadow:0 4px 20px rgba(0,0,0,0.06);
 "
 >
 
@@ -190,7 +274,7 @@ box-shadow:0 4px 20px rgba(0,0,0,0.06);
 style="
 margin:0 0 18px;
 color:#111827;
-font-size:25px;
+font-size:24px;
 font-weight:800;
 "
 >
@@ -199,25 +283,25 @@ Reset Your Password
 
 <p
 style="
-margin:0 0 15px;
+margin:0 0 16px;
 color:#374151;
 font-size:15px;
 line-height:1.6;
 "
 >
-Hello ${displayName},
+Hello ${safeDisplayName},
 </p>
 
 <p
 style="
-margin:0 0 15px;
+margin:0 0 16px;
 color:#374151;
 font-size:15px;
 line-height:1.6;
 "
 >
 We received a request to reset your
-KN Classifieds account password.
+BuyUKUsed account password.
 </p>
 
 <p
@@ -239,10 +323,10 @@ margin:30px 0;
 >
 
 <a
-href="${resetUrl}"
+href="${passwordResetUrl}"
 style="
 display:inline-block;
-padding:14px 26px;
+padding:14px 28px;
 background:#111827;
 color:#ffffff;
 text-decoration:none;
@@ -264,8 +348,8 @@ font-size:14px;
 line-height:1.6;
 "
 >
-This password reset link will expire
-in <strong>1 hour</strong>.
+This password reset link will expire in
+<strong>1 hour</strong>.
 </p>
 
 <p
@@ -293,72 +377,115 @@ style="
 margin:0;
 color:#9ca3af;
 font-size:12px;
+line-height:1.5;
 "
 >
-KN Classifieds
+This is an automated message from BuyUKUsed.
 </p>
 
-</div>
+</td>
 
-</div>
+</tr>
+
+<!-- FOOTER -->
+
+<tr>
+
+<td
+style="
+padding:20px 35px;
+background:#f9fafb;
+text-align:center;
+"
+>
+
+<p
+style="
+margin:0;
+color:#9ca3af;
+font-size:12px;
+"
+>
+© ${new Date().getFullYear()} BuyUKUsed
+</p>
+
+</td>
+
+</tr>
+
+</table>
+
+</td>
+
+</tr>
+
+</table>
 
 </body>
 
 </html>
   `.trim();
 
-  // ----------------------------------------------------------
-  // SEND EMAIL
-  // ----------------------------------------------------------
+  // ==========================================================
+  // SEND WITH RESEND
+  // ==========================================================
 
   try {
-    console.log(
-      "📨 Sending password reset email..."
-    );
+    console.log("============================================================");
+    console.log("📨 PASSWORD RESET EMAIL");
+    console.log("============================================================");
 
-    console.log(
-      "📬 Recipient:",
-      recipient
-    );
+    console.log("📬 Recipient:", recipient);
+    console.log("📤 From:", EMAIL_FROM);
+    console.log("🔗 Reset URL generated: YES");
+    console.log("🔐 Reset token: NOT LOGGED");
 
-    console.log(
-      "📤 From:",
-      EMAIL_FROM
-    );
+    // --------------------------------------------------------
+    // RESEND REQUEST
+    // --------------------------------------------------------
 
     const result =
       await resend.emails.send({
         from: EMAIL_FROM,
-
-        to: [
-          recipient,
-        ],
-
+        to: [recipient],
         subject:
-          "Reset Your KN Classifieds Password",
-
+          "Reset Your BuyUKUsed Password",
         text,
-
         html,
       });
 
     // --------------------------------------------------------
-    // RESEND ERROR
+    // RESEND API ERROR
     // --------------------------------------------------------
 
     if (result?.error) {
       console.error(
-        "❌ Resend returned an error:"
+        "============================================================"
+      );
+
+      console.error(
+        "❌ RESEND API ERROR"
+      );
+
+      console.error(
+        "============================================================"
       );
 
       console.error(
         "Name:",
-        result.error.name
+        result.error.name || "N/A"
       );
 
       console.error(
         "Message:",
-        result.error.message
+        result.error.message || "N/A"
+      );
+
+      console.error(
+        "Status:",
+        result.error.statusCode ||
+          result.error.status ||
+          "N/A"
       );
 
       console.error(
@@ -366,18 +493,20 @@ KN Classifieds
         result.error
       );
 
-      const error =
-        new Error(
-          result.error.message ||
-            "Resend failed to send email"
-        );
+      const error = new Error(
+        result.error.message ||
+          "Resend failed to send the email."
+      );
 
       error.code =
         result.error.name ||
-        "RESEND_ERROR";
+        "RESEND_API_ERROR";
 
-      error.data =
-        result.error;
+      error.statusCode =
+        result.error.statusCode ||
+        result.error.status;
+
+      error.data = result.error;
 
       throw error;
     }
@@ -387,37 +516,70 @@ KN Classifieds
     // --------------------------------------------------------
 
     console.log(
-      "✅ Password reset email sent."
+      "============================================================"
     );
 
     console.log(
-      "📨 Resend message ID:",
-      result?.data?.id ||
-        "N/A"
+      "✅ PASSWORD RESET EMAIL SENT"
+    );
+
+    console.log(
+      "============================================================"
+    );
+
+    console.log(
+      "📨 Resend ID:",
+      result?.data?.id || "N/A"
     );
 
     return result?.data;
+
   } catch (error) {
+    // ========================================================
+    // EMAIL ERROR
+    // ========================================================
+
     console.error(
-      "❌ Email sending failed."
+      "============================================================"
+    );
+
+    console.error(
+      "❌ PASSWORD RESET EMAIL FAILED"
+    );
+
+    console.error(
+      "============================================================"
     );
 
     console.error(
       "Message:",
-      error?.message ||
-        error
+      error?.message || error
     );
 
     console.error(
       "Code:",
-      error?.code ||
+      error?.code || "N/A"
+    );
+
+    console.error(
+      "Status:",
+      error?.statusCode ||
+        error?.status ||
         "N/A"
     );
 
     console.error(
       "Data:",
-      error?.data ||
-        "N/A"
+      error?.data || "N/A"
+    );
+
+    console.error(
+      "Stack:",
+      error?.stack || "N/A"
+    );
+
+    console.error(
+      "============================================================"
     );
 
     throw error;
@@ -425,23 +587,46 @@ KN Classifieds
 }
 
 // ============================================================
-// VERIFY CONFIGURATION
+// VERIFY EMAIL CONFIGURATION
 // ============================================================
 
 async function verifyEmailConfiguration() {
-  if (!resend) {
+  try {
+    if (!RESEND_API_KEY) {
+      console.error(
+        "❌ Email verification failed: RESEND_API_KEY missing."
+      );
+
+      return false;
+    }
+
+    if (!resend) {
+      console.error(
+        "❌ Email verification failed: Resend client unavailable."
+      );
+
+      return false;
+    }
+
+    console.log(
+      "✅ Resend email service is configured."
+    );
+
+    console.log(
+      "📤 Configured sender:",
+      EMAIL_FROM
+    );
+
+    return true;
+
+  } catch (error) {
     console.error(
-      "❌ Resend is not configured."
+      "❌ Email configuration verification failed:",
+      error
     );
 
     return false;
   }
-
-  console.log(
-    "✅ Resend client is configured."
-  );
-
-  return true;
 }
 
 // ============================================================
