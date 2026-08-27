@@ -31,6 +31,12 @@ require("./config/passport")(passport);
 // Activity tracking
 const activityMiddleware = require("./middleware/activity");
 
+// CENTRAL AUTHENTICATION
+const {
+  protect,
+  optionalAuthenticate,
+} = require("./middleware/auth");
+
 // Category seeding
 const {
   ensureDefaultCategories,
@@ -422,13 +428,15 @@ const limiter =
     },
   });
 
-// API routes
+// ============================================================
+// APPLY API RATE LIMITER
+// ============================================================
+
 app.use(
   "/api",
   limiter
 );
 
-// Auth routes
 app.use(
   "/auth",
   limiter
@@ -472,8 +480,10 @@ app.get(
   (req, res) => {
     res.status(200).json({
       success: true,
+
       message:
         "BuyUKUsed API is running",
+
       environment:
         process.env.NODE_ENV ||
         "development",
@@ -489,7 +499,9 @@ const healthResponse =
   (req, res) => {
     res.status(200).json({
       success: true,
+
       status: "ok",
+
       timestamp:
         new Date().toISOString(),
     });
@@ -598,6 +610,56 @@ const reviewController =
 
 console.log(
   "✅ All route modules loaded successfully"
+);
+
+// ============================================================
+// VERIFY REVIEW CONTROLLER
+// ============================================================
+
+const requiredReviewHandlers = [
+  "getReviews",
+  "createReview",
+  "updateReview",
+  "deleteReview",
+  "toggleHelpful",
+  "reportReview",
+  "replyToReview",
+  "deleteReply",
+  "getSellerSummary",
+  "getProductSummary",
+];
+
+const missingReviewHandlers =
+  requiredReviewHandlers.filter(
+    (handler) =>
+      typeof reviewController[handler] !==
+      "function"
+  );
+
+if (
+  missingReviewHandlers.length > 0
+) {
+  console.error(
+    "❌ Missing review controller handlers:",
+    missingReviewHandlers
+  );
+
+  console.error(
+    "📦 Available review controller exports:",
+    Object.keys(
+      reviewController
+    )
+  );
+
+  throw new Error(
+    `Review controller is missing: ${missingReviewHandlers.join(
+      ", "
+    )}`
+  );
+}
+
+console.log(
+  "✅ Review controller loaded successfully"
 );
 
 // ============================================================
@@ -739,69 +801,184 @@ console.log(
 // REVIEWS
 // ============================================================
 //
-// GET    /api/reviews
+// PUBLIC:
+//
+// GET /api/reviews
+//
+// AUTHENTICATED:
+//
 // POST   /api/reviews
 // PUT    /api/reviews/:id
 // DELETE /api/reviews/:id
-//
 // POST   /api/reviews/:id/helpful
 // POST   /api/reviews/:id/report
-//
 // POST   /api/reviews/:id/reply
 // DELETE /api/reviews/:id/reply
 //
+// PUBLIC SUMMARY:
+//
+// GET /api/reviews/seller/:sellerId/summary
+// GET /api/reviews/product/:productId/summary
+//
 // ============================================================
 
+// ------------------------------------------------------------
 // GET REVIEWS
+// ------------------------------------------------------------
+//
+// Public endpoint.
+// We use optional authentication so the controller can
+// identify the logged-in user when available.
+//
+// This allows things such as:
+// - showing whether current user marked helpful
+// - showing current user's own review
+// - public visitors viewing reviews
+//
+// ------------------------------------------------------------
+
 app.get(
   "/api/reviews",
+  optionalAuthenticate,
   reviewController.getReviews
 );
 
+// ------------------------------------------------------------
 // CREATE REVIEW
+// ------------------------------------------------------------
+//
+// IMPORTANT FIX:
+//
+// This route MUST use protect.
+//
+// protect comes from:
+// backend/middleware/auth.js
+//
+// It verifies the JWT and attaches:
+//
+// req.user
+// req.userId
+// req.userRole
+// req.auth
+// req.token
+//
+// This fixes:
+//
+// POST /api/reviews → 401 Authentication required
+//
+// ------------------------------------------------------------
+
 app.post(
   "/api/reviews",
+  protect,
   reviewController.createReview
 );
 
+// ------------------------------------------------------------
 // UPDATE REVIEW
+// ------------------------------------------------------------
+
 app.put(
   "/api/reviews/:id",
+  protect,
   reviewController.updateReview
 );
 
+// ------------------------------------------------------------
 // DELETE REVIEW
+// ------------------------------------------------------------
+
 app.delete(
   "/api/reviews/:id",
+  protect,
   reviewController.deleteReview
 );
 
+// ------------------------------------------------------------
 // HELPFUL
+// ------------------------------------------------------------
+
 app.post(
   "/api/reviews/:id/helpful",
+  protect,
   reviewController.toggleHelpful
 );
 
+// ------------------------------------------------------------
 // REPORT
+// ------------------------------------------------------------
+
 app.post(
   "/api/reviews/:id/report",
+  protect,
   reviewController.reportReview
 );
 
+// ------------------------------------------------------------
 // SELLER REPLY
+// ------------------------------------------------------------
+//
+// protect authenticates the account.
+// reviewController should additionally verify that the
+// authenticated user is actually the seller associated with
+// the review.
+//
+// ------------------------------------------------------------
+
 app.post(
   "/api/reviews/:id/reply",
+  protect,
   reviewController.replyToReview
 );
 
+// ------------------------------------------------------------
 // DELETE SELLER REPLY
+// ------------------------------------------------------------
+
 app.delete(
   "/api/reviews/:id/reply",
+  protect,
   reviewController.deleteReply
+);
+
+// ------------------------------------------------------------
+// SELLER SUMMARY
+// ------------------------------------------------------------
+//
+// Public.
+// Seller pages need this without requiring login.
+//
+// ------------------------------------------------------------
+
+app.get(
+  "/api/reviews/seller/:sellerId/summary",
+  reviewController.getSellerSummary
+);
+
+// ------------------------------------------------------------
+// PRODUCT SUMMARY
+// ------------------------------------------------------------
+//
+// Public.
+// Product pages need this without requiring login.
+//
+// ------------------------------------------------------------
+
+app.get(
+  "/api/reviews/product/:productId/summary",
+  reviewController.getProductSummary
 );
 
 console.log(
   "⭐ Reviews API mounted at /api/reviews"
+);
+
+console.log(
+  "🔐 Review write operations require authentication"
+);
+
+console.log(
+  "🌐 Review reading and summaries are public"
 );
 
 // ============================================================
@@ -821,9 +998,12 @@ app.use(
     ) {
       return res.status(404).json({
         success: false,
+
         message:
           "API endpoint not found",
-        path: req.originalUrl,
+
+        path:
+          req.originalUrl,
       });
     }
 
@@ -860,7 +1040,9 @@ app.use(
     ) {
       return res.status(403).json({
         success: false,
-        message: err.message,
+
+        message:
+          err.message,
       });
     }
 
@@ -879,6 +1061,7 @@ app.use(
       ) {
         return res.status(413).json({
           success: false,
+
           message:
             "File too large. Maximum size is 5MB.",
         });
@@ -886,6 +1069,7 @@ app.use(
 
       return res.status(400).json({
         success: false,
+
         message:
           err.message ||
           "File upload error.",
@@ -907,6 +1091,7 @@ app.use(
 
       return res.status(409).json({
         success: false,
+
         message:
           `${field} already exists`,
       });
@@ -931,9 +1116,12 @@ app.use(
 
       return res.status(400).json({
         success: false,
+
         message:
           "Validation error",
-        errors: messages,
+
+        errors:
+          messages,
       });
     }
 
@@ -948,6 +1136,7 @@ app.use(
     ) {
       return res.status(400).json({
         success: false,
+
         message:
           "Invalid ID.",
       });
@@ -965,6 +1154,7 @@ app.use(
     ) {
       return res.status(400).json({
         success: false,
+
         message:
           "Invalid JSON request body.",
       });
@@ -980,6 +1170,7 @@ app.use(
       )
       .json({
         success: false,
+
         message:
           err?.message ||
           "Internal Server Error",
@@ -1102,6 +1293,7 @@ const createDefaultAdmin =
         user.role !== "admin"
       ) {
         user.role = "admin";
+
         user.isActive = true;
 
         await user.save();
@@ -1246,6 +1438,10 @@ const start =
 
             console.log(
               "🟢 Rate limiting: ENABLED"
+            );
+
+            console.log(
+              "🔐 Review authentication: ENABLED"
             );
 
             console.log(
