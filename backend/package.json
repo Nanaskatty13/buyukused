@@ -39,7 +39,7 @@
     "prop-types": "^15.8.1",
     "react-hook-form": "^7.86.0",
     "redis": "^6.2.0",
-    "resend": "^6.20.0",
+    "resend": "^6.24.0",
     "sharp": "^0.35.3",
     "streamifier": "^0.1.1",
     "uuid": "^14.0.2",
