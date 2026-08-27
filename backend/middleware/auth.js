@@ -1,217 +1,647 @@
+// ============================================================
+// BuyUKUsed
 // backend/middleware/auth.js
+// ============================================================
+//
+// CENTRAL AUTHENTICATION MIDDLEWARE
+//
+// This file is the main authentication/authorization middleware
+// for BuyUKUsed.
+//
+// It:
+// - Verifies JWT tokens
+// - Loads the current user from MongoDB
+// - Blocks deleted/deactivated accounts
+// - Supports buyer/seller/user/admin/rider roles
+// - Provides optional authentication
+// - Provides role-based authorization
+// - Keeps backward-compatible exports for existing routes
+//
+// ============================================================
 
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 
 // ============================================================
-// VERIFY JWT TOKEN
+// GET TOKEN FROM REQUEST
 // ============================================================
 
-const verifyToken = async (req, res, next) => {
+const getTokenFromRequest = (req) => {
+  const authHeader =
+    req.headers.authorization || "";
+
+  if (
+    !authHeader ||
+    !authHeader.startsWith("Bearer ")
+  ) {
+    return null;
+  }
+
+  return authHeader
+    .substring(7)
+    .trim();
+};
+
+// ============================================================
+// GET USER ID FROM JWT
+// ============================================================
+//
+// Supports all currently used JWT payload formats:
+//
+// {
+//   id: "..."
+// }
+//
+// {
+//   _id: "..."
+// }
+//
+// {
+//   userId: "..."
+// }
+//
+// ============================================================
+
+const getUserIdFromToken = (decoded) => {
+  if (!decoded) {
+    return null;
+  }
+
+  return (
+    decoded.id ||
+    decoded._id ||
+    decoded.userId ||
+    null
+  );
+};
+
+// ============================================================
+// VERIFY JWT TOKEN
+// ============================================================
+//
+// Main authentication middleware.
+//
+// Usage:
+//
+// router.get(
+//   "/protected",
+//   protect,
+//   controller
+// );
+//
+// ============================================================
+
+const verifyToken = async (
+  req,
+  res,
+  next
+) => {
   try {
+    // --------------------------------------------------------
+    // CHECK JWT SECRET
+    // --------------------------------------------------------
+
     if (!process.env.JWT_SECRET) {
-      console.error("❌ JWT_SECRET is not configured");
+      console.error(
+        "❌ JWT_SECRET is not configured"
+      );
 
       return res.status(500).json({
         success: false,
-        message: "Server authentication is not configured",
+        message:
+          "Server authentication is not configured.",
       });
     }
 
-    const authHeader = req.headers.authorization || "";
+    // --------------------------------------------------------
+    // GET TOKEN
+    // --------------------------------------------------------
 
-    if (!authHeader.startsWith("Bearer ")) {
-      return res.status(401).json({
-        success: false,
-        message: "No authentication token provided",
-      });
-    }
-
-    const token = authHeader.substring(7).trim();
+    const token =
+      getTokenFromRequest(req);
 
     if (!token) {
       return res.status(401).json({
         success: false,
-        message: "Authentication token missing",
+        message:
+          "No authentication token provided.",
       });
     }
 
-    const decoded = jwt.verify(
-      token,
-      process.env.JWT_SECRET
-    );
+    // --------------------------------------------------------
+    // VERIFY JWT
+    // --------------------------------------------------------
+
+    let decoded;
+
+    try {
+      decoded =
+        jwt.verify(
+          token,
+          process.env.JWT_SECRET
+        );
+    } catch (error) {
+      console.error(
+        "❌ JWT verification failed:",
+        error.message
+      );
+
+      if (
+        error.name ===
+        "TokenExpiredError"
+      ) {
+        return res.status(401).json({
+          success: false,
+          message:
+            "Token expired. Please log in again.",
+        });
+      }
+
+      if (
+        error.name ===
+        "JsonWebTokenError"
+      ) {
+        return res.status(401).json({
+          success: false,
+          message:
+            "Invalid authentication token.",
+        });
+      }
+
+      return res.status(401).json({
+        success: false,
+        message:
+          "Authentication failed.",
+      });
+    }
+
+    // --------------------------------------------------------
+    // GET USER ID
+    // --------------------------------------------------------
 
     const userId =
-      decoded.id ||
-      decoded._id ||
-      decoded.userId;
+      getUserIdFromToken(
+        decoded
+      );
 
     if (!userId) {
       return res.status(401).json({
         success: false,
-        message: "Invalid token payload",
+        message:
+          "Invalid token payload.",
       });
     }
 
-    const user = await User.findById(userId).select("-password");
+    // --------------------------------------------------------
+    // LOAD USER
+    // --------------------------------------------------------
+
+    const user =
+      await User.findById(
+        userId
+      ).select("-password");
 
     if (!user) {
       return res.status(401).json({
         success: false,
-        message: "User not found",
+        message:
+          "User account no longer exists.",
       });
     }
 
-    if (user.isActive === false) {
+    // --------------------------------------------------------
+    // ACTIVE ACCOUNT CHECK
+    // --------------------------------------------------------
+
+    if (
+      user.isActive === false
+    ) {
       return res.status(403).json({
         success: false,
-        message: "Account is deactivated",
+        message:
+          "Your account has been deactivated.",
       });
     }
 
-    // Attach full user document
+    // --------------------------------------------------------
+    // ATTACH USER
+    // --------------------------------------------------------
+
     req.user = user;
 
-    // Convenient user ID
-    req.userId = user._id.toString();
+    // String user ID
+    req.userId =
+      user._id.toString();
 
-    // Keep decoded JWT available
-    req.auth = decoded;
+    // Current role
+    req.userRole =
+      user.role;
 
-    next();
+    // Original JWT payload
+    req.auth =
+      decoded;
+
+    // Token
+    req.token =
+      token;
+
+    // --------------------------------------------------------
+    // CONTINUE
+    // --------------------------------------------------------
+
+    return next();
+
   } catch (error) {
     console.error(
-      "❌ Auth middleware error:",
-      error.message
+      "❌ Authentication middleware error:",
+      error
     );
 
-    if (error.name === "TokenExpiredError") {
-      return res.status(401).json({
-        success: false,
-        message: "Token expired",
-      });
-    }
-
-    if (error.name === "JsonWebTokenError") {
-      return res.status(401).json({
-        success: false,
-        message: "Invalid token",
-      });
-    }
-
-    return res.status(401).json({
+    return res.status(500).json({
       success: false,
-      message: "Authentication failed",
+      message:
+        "Authentication error.",
     });
   }
 };
 
 // ============================================================
+// OPTIONAL AUTHENTICATION
+// ============================================================
+//
+// Allows public routes to continue without authentication.
+//
+// If the token is valid:
+//   req.user is populated.
+//
+// If there is no token, an invalid token, an expired token,
+// or a deleted/deactivated account:
+//   request continues as unauthenticated.
+//
+// Useful for public product/review pages.
+//
+// ============================================================
+
+const optionalAuthenticate =
+  async (
+    req,
+    res,
+    next
+  ) => {
+    try {
+      // ------------------------------------------------------
+      // JWT SECRET
+      // ------------------------------------------------------
+
+      if (!process.env.JWT_SECRET) {
+        return next();
+      }
+
+      // ------------------------------------------------------
+      // TOKEN
+      // ------------------------------------------------------
+
+      const token =
+        getTokenFromRequest(req);
+
+      if (!token) {
+        return next();
+      }
+
+      // ------------------------------------------------------
+      // VERIFY
+      // ------------------------------------------------------
+
+      let decoded;
+
+      try {
+        decoded =
+          jwt.verify(
+            token,
+            process.env.JWT_SECRET
+          );
+      } catch (error) {
+        // Optional authentication should not reject
+        // an otherwise public request.
+        return next();
+      }
+
+      // ------------------------------------------------------
+      // USER ID
+      // ------------------------------------------------------
+
+      const userId =
+        getUserIdFromToken(
+          decoded
+        );
+
+      if (!userId) {
+        return next();
+      }
+
+      // ------------------------------------------------------
+      // LOAD USER
+      // ------------------------------------------------------
+
+      const user =
+        await User.findById(
+          userId
+        ).select("-password");
+
+      if (!user) {
+        return next();
+      }
+
+      // ------------------------------------------------------
+      // ACTIVE ACCOUNT CHECK
+      // ------------------------------------------------------
+
+      if (
+        user.isActive === false
+      ) {
+        return next();
+      }
+
+      // ------------------------------------------------------
+      // ATTACH AUTH DATA
+      // ------------------------------------------------------
+
+      req.user = user;
+
+      req.userId =
+        user._id.toString();
+
+      req.userRole =
+        user.role;
+
+      req.auth =
+        decoded;
+
+      req.token =
+        token;
+
+      return next();
+
+    } catch (error) {
+      console.warn(
+        "⚠️ Optional authentication failed:",
+        error.message
+      );
+
+      return next();
+    }
+  };
+
+// ============================================================
+// ROLE CHECKER
+// ============================================================
+//
+// Usage:
+//
+// router.post(
+//   "/something",
+//   protect,
+//   requireRoles("admin"),
+//   controller
+// );
+//
+// Multiple roles:
+//
+// requireRoles(
+//   "buyer",
+//   "seller"
+// )
+//
+// ============================================================
+
+const requireRoles =
+  (...roles) => {
+    return (
+      req,
+      res,
+      next
+    ) => {
+      // ------------------------------------------------------
+      // AUTHENTICATION REQUIRED
+      // ------------------------------------------------------
+
+      if (!req.user) {
+        return res.status(401).json({
+          success: false,
+          message:
+            "Authentication required.",
+        });
+      }
+
+      // ------------------------------------------------------
+      // ROLE CHECK
+      // ------------------------------------------------------
+
+      if (
+        !roles.includes(
+          req.user.role
+        )
+      ) {
+        return res.status(403).json({
+          success: false,
+          message:
+            "You do not have permission to perform this action.",
+          requiredRoles:
+            roles,
+          currentRole:
+            req.user.role,
+        });
+      }
+
+      return next();
+    };
+  };
+
+// ============================================================
 // ADMIN ONLY
 // ============================================================
 
-const isAdmin = (req, res, next) => {
-  if (
-    req.user &&
-    req.user.role === "admin"
-  ) {
-    return next();
-  }
-
-  return res.status(403).json({
-    success: false,
-    message: "Access denied. Admin only.",
-  });
-};
-
-// ============================================================
-// SELLER ONLY (UPDATED FOR NEUTRAL)
-// ============================================================
-
-const isSeller = (req, res, next) => {
-  // Allow any authenticated user (except riders) to act as seller.
-  // In a neutral marketplace, all users can buy and sell.
-  // The only role we explicitly restrict is 'rider' (if needed).
-  if (
-    req.user &&
-    (
-      req.user.role === "user" ||
-      req.user.role === "buyer" ||
-      req.user.role === "seller" ||
-      req.user.role === "admin"
-    )
-  ) {
-    return next();
-  }
-
-  return res.status(403).json({
-    success: false,
-    message: "Access denied. Seller permissions required.",
-  });
-};
+const isAdmin =
+  requireRoles(
+    "admin"
+  );
 
 // ============================================================
 // RIDER ONLY
 // ============================================================
 
-const isRider = (req, res, next) => {
-  if (
-    req.user &&
-    req.user.role === "rider"
-  ) {
-    return next();
-  }
-
-  return res.status(403).json({
-    success: false,
-    message: "Access denied. Rider only.",
-  });
-};
+const isRider =
+  requireRoles(
+    "rider"
+  );
 
 // ============================================================
-// CUSTOMER ONLY (UPDATED FOR NEUTRAL)
+// SELLER
+// ============================================================
+//
+// BuyUKUsed uses a neutral marketplace model.
+//
+// Normal marketplace accounts can sell:
+//
+// - user
+// - buyer
+// - seller
+//
+// Admin is also allowed for administrative listing
+// management.
+//
+// Rider is NOT allowed to create normal marketplace
+// listings through seller-protected routes.
+//
 // ============================================================
 
-const isCustomer = (req, res, next) => {
-  if (
-    req.user &&
-    (
-      req.user.role === "user" ||
-      req.user.role === "buyer" ||
-      req.user.role === "seller" ||
-      req.user.role === "admin"
-    )
-  ) {
-    return next();
-  }
+const isSeller =
+  requireRoles(
+    "user",
+    "buyer",
+    "seller",
+    "admin"
+  );
 
-  return res.status(403).json({
-    success: false,
-    message: "Access denied. Customer only.",
-  });
-};
+// ============================================================
+// CUSTOMER
+// ============================================================
+//
+// A buyer or seller can purchase/request delivery.
+//
+// "user" is retained for compatibility with older accounts.
+//
+// Admin is intentionally not included here because admin
+// endpoints should use isAdmin.
+//
+// ============================================================
+
+const isCustomer =
+  requireRoles(
+    "user",
+    "buyer",
+    "seller"
+  );
+
+// ============================================================
+// BUYER ONLY
+// ============================================================
+
+const isBuyer =
+  requireRoles(
+    "buyer"
+  );
+
+// ============================================================
+// MARKETPLACE USER
+// ============================================================
+//
+// General normal-user authorization.
+//
+// ============================================================
+
+const isMarketplaceUser =
+  requireRoles(
+    "user",
+    "buyer",
+    "seller"
+  );
+
+// ============================================================
+// SPECIAL ROLE HELPERS
+// ============================================================
+
+const requireAdmin =
+  isAdmin;
+
+const requireRider =
+  isRider;
+
+const requireSeller =
+  isSeller;
+
+const requireCustomer =
+  isCustomer;
+
+const requireBuyer =
+  isBuyer;
+
+const requireMarketplaceUser =
+  isMarketplaceUser;
 
 // ============================================================
 // BACKWARD-COMPATIBILITY ALIASES
 // ============================================================
+//
+// Existing routes may use:
+//
+// protect
+// seller
+// auth
+//
+// Keep all of them working.
+//
+// ============================================================
 
-const protect = verifyToken;
-const seller = isSeller;
+const protect =
+  verifyToken;
+
+const authenticate =
+  verifyToken;
+
+const auth =
+  verifyToken;
+
+const seller =
+  isSeller;
 
 // ============================================================
 // EXPORTS
 // ============================================================
 
 module.exports = {
+  // ----------------------------------------------------------
+  // Authentication
+  // ----------------------------------------------------------
+
   verifyToken,
+  authenticate,
   protect,
+  auth,
+
+  optionalAuthenticate,
+
+  // ----------------------------------------------------------
+  // Role checker
+  // ----------------------------------------------------------
+
+  requireRoles,
+
+  // ----------------------------------------------------------
+  // Role middleware
+  // ----------------------------------------------------------
 
   isAdmin,
   isSeller,
-
+  isBuyer,
   isRider,
   isCustomer,
+  isMarketplaceUser,
 
-  // Compatibility aliases
+  // ----------------------------------------------------------
+  // require-style aliases
+  // ----------------------------------------------------------
+
+  requireAdmin,
+  requireSeller,
+  requireBuyer,
+  requireRider,
+  requireCustomer,
+  requireMarketplaceUser,
+
+  // ----------------------------------------------------------
+  // Compatibility
+  // ----------------------------------------------------------
+
   seller,
 };

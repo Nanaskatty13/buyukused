@@ -29,8 +29,7 @@ const connectDB = require("./config/db");
 require("./config/passport")(passport);
 
 // Activity tracking
-const activityMiddleware =
-  require("./middleware/activity");
+const activityMiddleware = require("./middleware/activity");
 
 // Category seeding
 const {
@@ -54,9 +53,7 @@ const missing = requiredEnv.filter(
 
 if (missing.length > 0) {
   console.error(
-    `❌ Missing environment variables: ${missing.join(
-      ", "
-    )}`
+    `❌ Missing environment variables: ${missing.join(", ")}`
   );
 
   process.exit(1);
@@ -73,7 +70,7 @@ app.set("trust proxy", 1);
 // ============================================================
 
 app.use((req, res, next) => {
-  req.baseUrl =
+  req.apiBaseUrl =
     process.env.BASE_URL ||
     `${req.protocol}://${req.get("host")}`;
 
@@ -107,22 +104,39 @@ app.use(
 // ============================================================
 
 const allowedOrigins = [
+  // ----------------------------------------------------------
   // Local development
+  // ----------------------------------------------------------
+
+  "http://localhost:3000",
   "http://localhost:5173",
+  "http://127.0.0.1:3000",
   "http://127.0.0.1:5173",
 
+  // ----------------------------------------------------------
   // Current production frontend
+  // ----------------------------------------------------------
+
   "https://buyukused.vercel.app",
 
+  // ----------------------------------------------------------
   // BuyUKUsed Vercel deployments
+  // ----------------------------------------------------------
+
   "https://buyukused-ggapyipm3-nanaskatty13s-projects.vercel.app",
   "https://buyukused-2w4b8fl3w-nanaskatty13s-projects.vercel.app",
 
+  // ----------------------------------------------------------
   // Older frontend deployments
+  // ----------------------------------------------------------
+
   "https://sell-platform2.vercel.app",
   "https://sell-platform2-mcv0eniwt-nanaskatty13s-projects.vercel.app",
 
+  // ----------------------------------------------------------
   // Environment variable
+  // ----------------------------------------------------------
+
   process.env.FRONTEND_URL,
 ].filter(Boolean);
 
@@ -136,7 +150,8 @@ console.log(
 // ============================================================
 
 const isAllowedOrigin = (origin) => {
-  // Server-to-server / Render health checks
+  // Server-to-server requests, health checks,
+  // Postman, curl, etc.
   if (!origin) {
     return true;
   }
@@ -146,7 +161,10 @@ const isAllowedOrigin = (origin) => {
     return true;
   }
 
+  // ----------------------------------------------------------
   // BuyUKUsed Vercel preview deployments
+  // ----------------------------------------------------------
+
   if (
     /^https:\/\/buyukused-[a-zA-Z0-9-]+-nanaskatty13s-projects\.vercel\.app$/.test(
       origin
@@ -155,7 +173,10 @@ const isAllowedOrigin = (origin) => {
     return true;
   }
 
+  // ----------------------------------------------------------
   // Any normal Vercel deployment
+  // ----------------------------------------------------------
+
   if (
     /^https:\/\/[a-zA-Z0-9-]+\.vercel\.app$/.test(
       origin
@@ -229,8 +250,9 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 
+// Express 5 compatible OPTIONS handler
 app.options(
-  "*",
+  /.*/,
   cors(corsOptions)
 );
 
@@ -316,17 +338,20 @@ const skipIfAdmin = (
   next
 ) => {
   const authHeader =
-    req.headers.authorization;
+    req.headers.authorization || "";
 
   if (
-    !authHeader ||
     !authHeader.startsWith("Bearer ")
   ) {
     return next();
   }
 
   const token =
-    authHeader.split(" ")[1];
+    authHeader.substring(7).trim();
+
+  if (!token) {
+    return next();
+  }
 
   try {
     const decoded =
@@ -336,12 +361,13 @@ const skipIfAdmin = (
       );
 
     if (
+      decoded &&
       decoded.role === "admin"
     ) {
       req.skipRateLimit = true;
     }
   } catch (error) {
-    // Ignore invalid token.
+    // Ignore invalid/expired tokens.
   }
 
   next();
@@ -350,6 +376,10 @@ const skipIfAdmin = (
 app.use(
   skipIfAdmin
 );
+
+// ============================================================
+// API RATE LIMITER
+// ============================================================
 
 const limiter =
   rateLimit({
@@ -363,12 +393,14 @@ const limiter =
         : 500,
 
     skip: (req) => {
+      // Admin users bypass rate limiting
       if (
         req.skipRateLimit
       ) {
         return true;
       }
 
+      // Disable rate limiting during local development
       if (
         process.env.NODE_ENV ===
         "development"
@@ -390,11 +422,13 @@ const limiter =
     },
   });
 
+// API routes
 app.use(
   "/api",
   limiter
 );
 
+// Auth routes
 app.use(
   "/auth",
   limiter
@@ -419,8 +453,7 @@ app.use(
       () => {
         console.log(
           `🚴 DELIVERY RESPONSE ← ${req.method} ${req.originalUrl} | ${res.statusCode} | ${
-            Date.now() -
-            startedAt
+            Date.now() - startedAt
           }ms`
         );
       }
@@ -558,9 +591,6 @@ const visualSearchRoutes =
 
 // ------------------------------------------------------------
 // REVIEWS
-// IMPORTANT: THIS FIXES:
-// GET /api/reviews
-// POST /api/reviews
 // ------------------------------------------------------------
 
 const reviewController =
@@ -597,8 +627,8 @@ app.use(
   sellerRoutes
 );
 
-// Keep compatibility with older frontend
-// requests that use /sellers.
+// Compatibility with older frontend
+// requests using /sellers.
 app.use(
   "/sellers",
   sellerRoutes
@@ -719,9 +749,6 @@ console.log(
 //
 // POST   /api/reviews/:id/reply
 // DELETE /api/reviews/:id/reply
-//
-// The controller already handles authentication
-// checks where required.
 //
 // ============================================================
 
@@ -1037,6 +1064,10 @@ const createDefaultAdmin =
             normalizedEmail,
         });
 
+      // --------------------------------------------------------
+      // CREATE ADMIN
+      // --------------------------------------------------------
+
       if (!user) {
         user = new User({
           name: "Admin",
@@ -1059,21 +1090,36 @@ const createDefaultAdmin =
         console.log(
           `✅ Default admin created: ${normalizedEmail}`
         );
-      } else if (
+
+        return;
+      }
+
+      // --------------------------------------------------------
+      // PROMOTE EXISTING USER
+      // --------------------------------------------------------
+
+      if (
         user.role !== "admin"
       ) {
         user.role = "admin";
+        user.isActive = true;
 
         await user.save();
 
         console.log(
           `✅ User ${normalizedEmail} promoted to admin`
         );
-      } else {
-        console.log(
-          `ℹ️ Admin user already exists: ${normalizedEmail}`
-        );
+
+        return;
       }
+
+      // --------------------------------------------------------
+      // ADMIN ALREADY EXISTS
+      // --------------------------------------------------------
+
+      console.log(
+        `ℹ️ Admin user already exists: ${normalizedEmail}`
+      );
     } catch (error) {
       console.warn(
         "⚠️ Could not create admin:",
@@ -1183,11 +1229,23 @@ const start =
             );
 
             console.log(
+              "🔐 Password API: /api/password"
+            );
+
+            console.log(
+              "🔑 Auth API: /auth"
+            );
+
+            console.log(
               "🟢 Activity tracking: ENABLED"
             );
 
             console.log(
               "🟢 CORS: ENABLED"
+            );
+
+            console.log(
+              "🟢 Rate limiting: ENABLED"
             );
 
             console.log(
