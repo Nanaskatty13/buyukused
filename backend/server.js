@@ -24,8 +24,7 @@ const connectDB = require("./config/db");
 
 require("./config/passport")(passport);
 
-const activityMiddleware =
-  require("./middleware/activity");
+const activityMiddleware = require("./middleware/activity");
 
 const {
   ensureDefaultCategories,
@@ -97,52 +96,98 @@ app.use(
 // ============================================================
 // CORS
 // ============================================================
+//
+// IMPORTANT:
+// BuyUKUsed production domain:
+// https://buyukused.com
+//
+// Also allow:
+// https://www.buyukused.com
+//
+// Vercel preview deployments are allowed separately.
+// ============================================================
 
 const allowedOrigins = [
-  // Local development
+  // ----------------------------------------------------------
+  // PRODUCTION
+  // ----------------------------------------------------------
+  "https://buyukused.com",
+  "https://www.buyukused.com",
+
+  // ----------------------------------------------------------
+  // LOCAL DEVELOPMENT
+  // ----------------------------------------------------------
   "http://localhost:5173",
   "http://127.0.0.1:5173",
   "http://localhost:3000",
   "http://127.0.0.1:3000",
 
-  // Main BuyUKUsed
+  // ----------------------------------------------------------
+  // MAIN VERCEL DEPLOYMENT
+  // ----------------------------------------------------------
   "https://buyukused.vercel.app",
 
-  // BuyUKUsed deployments
+  // ----------------------------------------------------------
+  // KNOWN VERCEL DEPLOYMENTS
+  // ----------------------------------------------------------
   "https://buyukused-ggapyipm3-nanaskatty13s-projects.vercel.app",
   "https://buyukused-2w4b8fl3w-nanaskatty13s-projects.vercel.app",
 
-  // Previous deployments
+  // ----------------------------------------------------------
+  // PREVIOUS PROJECT DEPLOYMENT
+  // ----------------------------------------------------------
   "https://sell-platform2.vercel.app",
   "https://sell-platform2-mcv0eniwt-nanaskatty13s-projects.vercel.app",
 
-  // Environment variable
+  // ----------------------------------------------------------
+  // ENVIRONMENT VARIABLE
+  // ----------------------------------------------------------
   process.env.FRONTEND_URL,
 ].filter(Boolean);
 
+// Remove duplicates
+const uniqueAllowedOrigins = [
+  ...new Set(allowedOrigins),
+];
+
 console.log(
-  "🟢 Allowed Origins:",
-  allowedOrigins
+  "🟢 Allowed CORS Origins:"
+);
+
+console.log(
+  uniqueAllowedOrigins
 );
 
 // ============================================================
-// CORS HELPER
+// CORS ORIGIN CHECK
 // ============================================================
 
 const isAllowedOrigin = (origin) => {
-  // Requests without Origin:
-  // curl, Render health checks,
-  // server-to-server requests, etc.
+  // Requests without Origin are allowed.
+  //
+  // Examples:
+  // - curl
+  // - Render health checks
+  // - server-to-server requests
+  //
   if (!origin) {
     return true;
   }
 
-  // Explicit origins
-  if (allowedOrigins.includes(origin)) {
+  // ----------------------------------------------------------
+  // Explicitly allowed origins
+  // ----------------------------------------------------------
+
+  if (
+    uniqueAllowedOrigins.includes(origin)
+  ) {
     return true;
   }
 
+  // ----------------------------------------------------------
   // BuyUKUsed Vercel preview deployments
+  // ----------------------------------------------------------
+
   if (
     /^https:\/\/buyukused-[a-zA-Z0-9-]+-nanaskatty13s-projects\.vercel\.app$/.test(
       origin
@@ -151,7 +196,10 @@ const isAllowedOrigin = (origin) => {
     return true;
   }
 
+  // ----------------------------------------------------------
   // General Vercel deployments
+  // ----------------------------------------------------------
+
   if (
     /^https:\/\/[a-zA-Z0-9-]+\.vercel\.app$/.test(
       origin
@@ -170,16 +218,21 @@ const isAllowedOrigin = (origin) => {
 const corsOptions = {
   origin: (origin, callback) => {
     console.log(
-      "🔍 Incoming origin:",
+      "🔍 Incoming CORS origin:",
       origin || "undefined"
     );
 
     if (isAllowedOrigin(origin)) {
+      console.log(
+        "✅ CORS allowed:",
+        origin || "no-origin"
+      );
+
       return callback(null, true);
     }
 
     console.log(
-      "🚫 Blocked CORS origin:",
+      "🚫 CORS blocked:",
       origin
     );
 
@@ -199,6 +252,7 @@ const corsOptions = {
     "PATCH",
     "DELETE",
     "OPTIONS",
+    "HEAD",
   ],
 
   allowedHeaders: [
@@ -296,11 +350,7 @@ console.log(
 // RATE LIMITING
 // ============================================================
 
-const skipIfAdmin = (
-  req,
-  res,
-  next
-) => {
+const skipIfAdmin = (req, res, next) => {
   const authHeader =
     req.headers.authorization;
 
@@ -498,10 +548,7 @@ app.get("/", (req, res) => {
 // HEALTH
 // ============================================================
 
-const healthResponse = (
-  req,
-  res
-) => {
+const healthResponse = (req, res) => {
   res.status(200).json({
     success: true,
     status: "ok",
@@ -732,45 +779,38 @@ console.log(
 // 404 HANDLER
 // ============================================================
 
-app.use(
-  (req, res) => {
-    console.log(
-      `❌ 404: ${req.method} ${req.originalUrl}`
-    );
+app.use((req, res) => {
+  console.log(
+    `❌ 404: ${req.method} ${req.originalUrl}`
+  );
 
-    if (
-      req.path.startsWith("/api") ||
-      req.path.startsWith("/auth") ||
-      req.path.startsWith("/sellers")
-    ) {
-      return res
-        .status(404)
-        .json({
-          success: false,
-          message:
-            "API endpoint not found",
-          path:
-            req.originalUrl,
-        });
-    }
-
+  if (
+    req.path.startsWith("/api") ||
+    req.path.startsWith("/auth") ||
+    req.path.startsWith("/sellers")
+  ) {
     return res
       .status(404)
-      .send("Not Found");
+      .json({
+        success: false,
+        message:
+          "API endpoint not found",
+        path:
+          req.originalUrl,
+      });
   }
-);
+
+  return res
+    .status(404)
+    .send("Not Found");
+});
 
 // ============================================================
 // GLOBAL ERROR HANDLER
 // ============================================================
 
 app.use(
-  (
-    err,
-    req,
-    res,
-    next
-  ) => {
+  (err, req, res, next) => {
     console.error(
       "\n============================================================"
     );
@@ -791,6 +831,11 @@ app.use(
     console.error(
       "URL:",
       req.originalUrl
+    );
+
+    console.error(
+      "Origin:",
+      req.headers.origin || "undefined"
     );
 
     console.error(
@@ -1188,6 +1233,10 @@ const start = async () => {
           );
 
           console.log(
+            "🌐 Production frontend: https://buyukused.com"
+          );
+
+          console.log(
             "============================================================"
           );
         }
@@ -1207,9 +1256,7 @@ const start = async () => {
     // GRACEFUL SHUTDOWN
     // --------------------------------------------------------
 
-    const shutdown = async (
-      signal
-    ) => {
+    const shutdown = async (signal) => {
       console.log(
         `\n🛑 ${signal} received. Shutting down server...`
       );
