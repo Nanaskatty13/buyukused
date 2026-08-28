@@ -14,10 +14,16 @@ const Product = require("../models/Product");
 // ============================================================
 
 const isValidObjectId = (id) => {
-  return (
-    id !== null &&
-    id !== undefined &&
-    mongoose.Types.ObjectId.isValid(String(id))
+  if (
+    id === null ||
+    id === undefined ||
+    id === ""
+  ) {
+    return false;
+  }
+
+  return mongoose.Types.ObjectId.isValid(
+    String(id)
   );
 };
 
@@ -35,7 +41,21 @@ const getUserId = (req) => {
 };
 
 // ============================================================
-// NORMALIZE ID
+// CONVERT TO OBJECT ID
+// ============================================================
+
+const toObjectId = (id) => {
+  if (!isValidObjectId(id)) {
+    return null;
+  }
+
+  return new mongoose.Types.ObjectId(
+    String(id)
+  );
+};
+
+// ============================================================
+// NORMALIZE OPTIONAL ID
 // ============================================================
 
 const normalizeId = (value) => {
@@ -59,31 +79,7 @@ const normalizeId = (value) => {
 };
 
 // ============================================================
-// TO OBJECT ID
-// ============================================================
-
-const toObjectId = (id) => {
-  if (!isValidObjectId(id)) {
-    return null;
-  }
-
-  return new mongoose.Types.ObjectId(
-    String(id)
-  );
-};
-
-// ============================================================
-// ACTIVE/PUBLISHED FILTER
-// ============================================================
-
-const publicReviewFilter = () => ({
-  isActive: true,
-  isVisible: true,
-  moderationStatus: "approved",
-});
-
-// ============================================================
-// DATABASE ERROR HANDLER
+// ERROR HANDLER
 // ============================================================
 
 const handleDatabaseError = (
@@ -121,68 +117,74 @@ const handleDatabaseError = (
   );
 
   console.error(
-    "Errors:",
-    error?.errors
-  );
-
-  console.error(
     "Stack:",
     error?.stack
   );
 
-  // ----------------------------------------------------------
+  // ==========================================================
   // DUPLICATE KEY
-  // ----------------------------------------------------------
+  // ==========================================================
 
   if (error?.code === 11000) {
+    const keyPattern =
+      error.keyPattern || {};
+
+    // Product review duplicate
+    if (
+      keyPattern.productId
+    ) {
+      return res.status(409).json({
+        success: false,
+        message:
+          "You have already reviewed this product.",
+        error:
+          "REVIEW_ALREADY_EXISTS",
+        canEdit: true,
+      });
+    }
+
+    // Seller review duplicate
     return res.status(409).json({
       success: false,
-
       message:
-        "A review with these details already exists.",
-
-      error: "DUPLICATE_KEY",
-
-      details:
-        error.keyValue || null,
+        "You have already reviewed this seller.",
+      error:
+        "REVIEW_ALREADY_EXISTS",
+      canEdit: true,
     });
   }
 
-  // ----------------------------------------------------------
-  // VALIDATION ERROR
-  // ----------------------------------------------------------
+  // ==========================================================
+  // VALIDATION
+  // ==========================================================
 
   if (
     error?.name ===
     "ValidationError"
   ) {
-    const validationErrors = {};
+    const errors = {};
 
     Object.keys(
       error.errors || {}
     ).forEach((field) => {
-      validationErrors[field] =
+      errors[field] =
         error.errors[field]?.message ||
         "Invalid value.";
     });
 
     return res.status(400).json({
       success: false,
-
       message:
         "Review validation failed.",
-
       error:
         "VALIDATION_ERROR",
-
-      errors:
-        validationErrors,
+      errors,
     });
   }
 
-  // ----------------------------------------------------------
+  // ==========================================================
   // CAST ERROR
-  // ----------------------------------------------------------
+  // ==========================================================
 
   if (
     error?.name ===
@@ -190,34 +192,24 @@ const handleDatabaseError = (
   ) {
     return res.status(400).json({
       success: false,
-
       message:
-        `Invalid ${
-          error.path || "ID"
-        } value.`,
-
+        `Invalid ${error.path || "ID"} value.`,
       error:
         "CAST_ERROR",
     });
   }
 
-  // ----------------------------------------------------------
-  // GENERIC ERROR
-  // ----------------------------------------------------------
+  // ==========================================================
+  // GENERIC
+  // ==========================================================
 
   return res.status(500).json({
     success: false,
-
     message:
-      process.env.NODE_ENV ===
-      "production"
-        ? "Something went wrong."
-        : error?.message ||
-          `Failed to ${operation.toLowerCase()}.`,
-
+      error?.message ||
+      `Failed to ${operation.toLowerCase()}.`,
     error:
-      process.env.NODE_ENV ===
-      "production"
+      process.env.NODE_ENV === "production"
         ? "DATABASE_ERROR"
         : error?.name ||
           "DATABASE_ERROR",
@@ -247,54 +239,58 @@ const getReviews = async (
       limit = 10,
     } = req.query;
 
-    // --------------------------------------------------------
+    // ========================================================
     // REQUIRE SELLER OR PRODUCT
-    // --------------------------------------------------------
+    // ========================================================
 
-    if (!sellerId && !productId) {
+    if (
+      !sellerId &&
+      !productId
+    ) {
       return res.status(400).json({
         success: false,
-
         message:
           "sellerId or productId is required.",
       });
     }
 
-    // --------------------------------------------------------
+    // ========================================================
     // VALIDATE SELLER
-    // --------------------------------------------------------
+    // ========================================================
 
     if (
       sellerId &&
-      !isValidObjectId(sellerId)
+      !isValidObjectId(
+        sellerId
+      )
     ) {
       return res.status(400).json({
         success: false,
-
         message:
           "Invalid seller ID.",
       });
     }
 
-    // --------------------------------------------------------
+    // ========================================================
     // VALIDATE PRODUCT
-    // --------------------------------------------------------
+    // ========================================================
 
     if (
       productId &&
-      !isValidObjectId(productId)
+      !isValidObjectId(
+        productId
+      )
     ) {
       return res.status(400).json({
         success: false,
-
         message:
           "Invalid product ID.",
       });
     }
 
-    // --------------------------------------------------------
-    // VALIDATE RATING
-    // --------------------------------------------------------
+    // ========================================================
+    // RATING
+    // ========================================================
 
     let numericRating = null;
 
@@ -314,16 +310,15 @@ const getReviews = async (
       ) {
         return res.status(400).json({
           success: false,
-
           message:
             "Rating must be a whole number from 1 to 5.",
         });
       }
     }
 
-    // --------------------------------------------------------
+    // ========================================================
     // PAGINATION
-    // --------------------------------------------------------
+    // ========================================================
 
     const currentPage =
       Math.max(
@@ -350,22 +345,26 @@ const getReviews = async (
       (currentPage - 1) *
       perPage;
 
-    // --------------------------------------------------------
+    // ========================================================
     // QUERY
-    // --------------------------------------------------------
+    // ========================================================
 
     const query = {
-      ...publicReviewFilter(),
+      status: "published",
     };
 
     if (sellerId) {
       query.sellerId =
-        toObjectId(sellerId);
+        toObjectId(
+          sellerId
+        );
     }
 
     if (productId) {
       query.productId =
-        toObjectId(productId);
+        toObjectId(
+          productId
+        );
     }
 
     if (
@@ -375,9 +374,9 @@ const getReviews = async (
         numericRating;
     }
 
-    // --------------------------------------------------------
-    // FETCH REVIEWS
-    // --------------------------------------------------------
+    // ========================================================
+    // REVIEWS
+    // ========================================================
 
     const [
       reviews,
@@ -385,12 +384,12 @@ const getReviews = async (
     ] = await Promise.all([
       Review.find(query)
         .populate(
-          "reviewerId",
-          "name email avatar profileImage"
+          "reviewer",
+          "name email avatar profileImage photo photoURL"
         )
         .populate(
           "sellerId",
-          "name email avatar profileImage"
+          "name email avatar profileImage photo photoURL"
         )
         .populate(
           "productId",
@@ -408,9 +407,45 @@ const getReviews = async (
       ),
     ]);
 
-    // --------------------------------------------------------
+    // ========================================================
+    // ADD USER-SPECIFIC HELPFUL STATUS
+    // ========================================================
+
+    const authenticatedUserId =
+      getUserId(req);
+
+    const formattedReviews =
+      reviews.map(
+        (review) => ({
+          ...review,
+
+          helpfulCount:
+            Array.isArray(
+              review.helpfulBy
+            )
+              ? review.helpfulBy.length
+              : review.helpfulCount ||
+                0,
+
+          hasHelpful:
+            authenticatedUserId
+              ? Array.isArray(
+                  review.helpfulBy
+                ) &&
+                review.helpfulBy.some(
+                  (id) =>
+                    String(id) ===
+                    String(
+                      authenticatedUserId
+                    )
+                )
+              : false,
+        })
+      );
+
+    // ========================================================
     // SUMMARY
-    // --------------------------------------------------------
+    // ========================================================
 
     const summaryMatch = {
       ...query,
@@ -526,21 +561,27 @@ const getReviews = async (
         oneStars: 0,
       };
 
+    // ========================================================
+    // PAGINATION
+    // ========================================================
+
     const totalPages =
       total === 0
-        ? 0
+        ? 1
         : Math.ceil(
-            total / perPage
+            total /
+              perPage
           );
 
-    // --------------------------------------------------------
+    // ========================================================
     // RESPONSE
-    // --------------------------------------------------------
+    // ========================================================
 
     return res.status(200).json({
       success: true,
 
-      reviews,
+      reviews:
+        formattedReviews,
 
       summary: {
         averageRating:
@@ -552,6 +593,9 @@ const getReviews = async (
         totalReviews:
           summary.totalReviews ||
           0,
+
+        // Keep both formats available
+        // for frontend compatibility.
 
         fiveStars:
           summary.fiveStars ||
@@ -572,10 +616,35 @@ const getReviews = async (
         oneStars:
           summary.oneStars ||
           0,
+
+        breakdown: {
+          5:
+            summary.fiveStars ||
+            0,
+
+          4:
+            summary.fourStars ||
+            0,
+
+          3:
+            summary.threeStars ||
+            0,
+
+          2:
+            summary.twoStars ||
+            0,
+
+          1:
+            summary.oneStars ||
+            0,
+        },
       },
 
       pagination: {
         page:
+          currentPage,
+
+        currentPage:
           currentPage,
 
         limit:
@@ -606,6 +675,27 @@ const getReviews = async (
 // ============================================================
 // CREATE REVIEW
 // ============================================================
+//
+// POST /api/reviews
+//
+// Seller review:
+//
+// {
+//   sellerId: "...",
+//   rating: 5,
+//   comment: "Great seller"
+// }
+//
+// Product review:
+//
+// {
+//   sellerId: "...",
+//   productId: "...",
+//   rating: 5,
+//   comment: "Great product"
+// }
+//
+// ============================================================
 
 const createReview = async (
   req,
@@ -622,18 +712,26 @@ const createReview = async (
     );
 
     // ========================================================
-    // AUTHENTICATION
+    // AUTH
     // ========================================================
 
     const authenticatedUserId =
       getUserId(req);
+
+    console.log(
+      "⭐ Authenticated user:",
+      authenticatedUserId
+        ? String(
+            authenticatedUserId
+          )
+        : "NONE"
+    );
 
     if (
       !authenticatedUserId
     ) {
       return res.status(401).json({
         success: false,
-
         message:
           "Authentication required.",
       });
@@ -646,7 +744,6 @@ const createReview = async (
     ) {
       return res.status(401).json({
         success: false,
-
         message:
           "Invalid authenticated user ID.",
       });
@@ -658,7 +755,7 @@ const createReview = async (
       );
 
     // ========================================================
-    // BODY
+    // REQUEST DATA
     // ========================================================
 
     const sellerId =
@@ -687,6 +784,37 @@ const createReview = async (
         ? req.body.comment.trim()
         : "";
 
+    console.log(
+      "⭐ Seller ID:",
+      sellerId
+        ? String(sellerId)
+        : "NONE"
+    );
+
+    console.log(
+      "⭐ Product ID:",
+      productId
+        ? String(productId)
+        : "NONE"
+    );
+
+    console.log(
+      "⭐ Order ID:",
+      orderId
+        ? String(orderId)
+        : "NONE"
+    );
+
+    console.log(
+      "⭐ Rating:",
+      rating
+    );
+
+    console.log(
+      "⭐ Comment:",
+      comment
+    );
+
     // ========================================================
     // SELLER
     // ========================================================
@@ -694,7 +822,6 @@ const createReview = async (
     if (!sellerId) {
       return res.status(400).json({
         success: false,
-
         message:
           "sellerId is required.",
       });
@@ -707,14 +834,15 @@ const createReview = async (
     ) {
       return res.status(400).json({
         success: false,
-
         message:
           "Invalid seller ID.",
       });
     }
 
     const sellerObjectId =
-      toObjectId(sellerId);
+      toObjectId(
+        sellerId
+      );
 
     // ========================================================
     // PRODUCT
@@ -733,14 +861,15 @@ const createReview = async (
       ) {
         return res.status(400).json({
           success: false,
-
           message:
             "Invalid product ID.",
         });
       }
 
       productObjectId =
-        toObjectId(productId);
+        toObjectId(
+          productId
+        );
 
       product =
         await Product.findById(
@@ -752,13 +881,15 @@ const createReview = async (
       if (!product) {
         return res.status(404).json({
           success: false,
-
           message:
             "Product not found.",
         });
       }
 
-      // Product must belong to seller
+      // ------------------------------------------------------
+      // PRODUCT MUST BELONG TO SELLER
+      // ------------------------------------------------------
+
       if (
         product.sellerId &&
         String(
@@ -770,7 +901,6 @@ const createReview = async (
       ) {
         return res.status(400).json({
           success: false,
-
           message:
             "The selected product does not belong to this seller.",
         });
@@ -792,14 +922,15 @@ const createReview = async (
       ) {
         return res.status(400).json({
           success: false,
-
           message:
             "Invalid order ID.",
         });
       }
 
       orderObjectId =
-        toObjectId(orderId);
+        toObjectId(
+          orderId
+        );
     }
 
     // ========================================================
@@ -807,12 +938,15 @@ const createReview = async (
     // ========================================================
 
     if (
-      String(reviewerId) ===
-      String(sellerObjectId)
+      String(
+        reviewerId
+      ) ===
+      String(
+        sellerObjectId
+      )
     ) {
       return res.status(400).json({
         success: false,
-
         message:
           "You cannot review yourself.",
       });
@@ -831,7 +965,6 @@ const createReview = async (
     ) {
       return res.status(400).json({
         success: false,
-
         message:
           "Rating must be a whole number from 1 to 5.",
       });
@@ -841,19 +974,21 @@ const createReview = async (
     // COMMENT
     // ========================================================
 
-    if (comment.length < 3) {
+    if (
+      comment.length < 3
+    ) {
       return res.status(400).json({
         success: false,
-
         message:
           "Review must be at least 3 characters.",
       });
     }
 
-    if (comment.length > 2000) {
+    if (
+      comment.length > 2000
+    ) {
       return res.status(400).json({
         success: false,
-
         message:
           "Review cannot exceed 2000 characters.",
       });
@@ -867,13 +1002,12 @@ const createReview = async (
       await User.findById(
         reviewerId
       ).select(
-        "name avatar profileImage email isActive role"
+        "name avatar profileImage photo photoURL email isActive role"
       );
 
     if (!reviewer) {
       return res.status(404).json({
         success: false,
-
         message:
           "Reviewer account not found.",
       });
@@ -885,7 +1019,6 @@ const createReview = async (
     ) {
       return res.status(403).json({
         success: false,
-
         message:
           "Your account is inactive.",
       });
@@ -899,13 +1032,12 @@ const createReview = async (
       await User.findById(
         sellerObjectId
       ).select(
-        "name email avatar profileImage isActive role"
+        "name shopName email avatar profileImage photo photoURL isActive role"
       );
 
     if (!seller) {
       return res.status(404).json({
         success: false,
-
         message:
           "Seller not found.",
       });
@@ -917,7 +1049,6 @@ const createReview = async (
     ) {
       return res.status(400).json({
         success: false,
-
         message:
           "This seller account is inactive.",
       });
@@ -927,46 +1058,42 @@ const createReview = async (
     // DUPLICATE CHECK
     // ========================================================
     //
-    // The query exactly mirrors the three unique indexes.
+    // IMPORTANT:
+    // Seller-only reviews do NOT set productId to null.
+    //
+    // They leave productId undefined.
+    //
+    // This matches the partial unique index in Review.js.
     //
     // ========================================================
 
     const duplicateQuery = {
+      reviewer:
+        reviewerId,
+
       sellerId:
         sellerObjectId,
 
-      reviewerId:
-        reviewerId,
-
-      isActive: true,
+      status: {
+        $ne: "removed",
+      },
     };
 
-    if (productObjectId) {
-      // Product review
+    if (
+      productObjectId
+    ) {
       duplicateQuery.productId =
         productObjectId;
-
-      duplicateQuery.orderId = {
-        $exists: false,
-      };
-    } else if (orderObjectId) {
-      // Order review
-      duplicateQuery.orderId =
-        orderObjectId;
-
-      duplicateQuery.productId = {
-        $exists: false,
-      };
     } else {
-      // Seller-only review
       duplicateQuery.productId = {
-        $exists: false,
-      };
-
-      duplicateQuery.orderId = {
         $exists: false,
       };
     }
+
+    console.log(
+      "⭐ Duplicate check:",
+      duplicateQuery
+    );
 
     const existingReview =
       await Review.findOne(
@@ -977,15 +1104,22 @@ const createReview = async (
         })
         .lean();
 
-    if (existingReview) {
+    if (
+      existingReview
+    ) {
+      console.log(
+        "⚠️ Existing review:",
+        String(
+          existingReview._id
+        )
+      );
+
       return res.status(409).json({
         success: false,
 
         message:
           productObjectId
             ? "You have already reviewed this product."
-            : orderObjectId
-            ? "You have already reviewed this order."
             : "You have already reviewed this seller.",
 
         error:
@@ -1005,10 +1139,14 @@ const createReview = async (
     let verifiedPurchase =
       false;
 
-    if (orderObjectId) {
+    if (
+      orderObjectId
+    ) {
       try {
         const Order =
-          require("../models/Order");
+          require(
+            "../models/Order"
+          );
 
         const order =
           await Order.findById(
@@ -1055,41 +1193,59 @@ const createReview = async (
               true;
           }
         }
-      } catch (orderError) {
+      } catch (
+        orderError
+      ) {
         console.warn(
           "⚠️ Order verification skipped:",
           orderError.message
         );
+
+        verifiedPurchase =
+          false;
       }
     }
 
     // ========================================================
-    // NAMES / AVATARS
+    // NAME / AVATAR
     // ========================================================
 
     const reviewerName =
       typeof reviewer.name ===
       "string"
         ? reviewer.name.trim()
-        : "";
+        : "Buyer";
 
     const reviewerAvatar =
       reviewer.avatar ||
       reviewer.profileImage ||
+      reviewer.photo ||
+      reviewer.photoURL ||
       "";
 
     const sellerName =
-      typeof seller.name ===
-      "string"
-        ? seller.name.trim()
-        : "";
+      typeof (
+        seller.shopName ||
+        seller.name
+      ) === "string"
+        ? String(
+            seller.shopName ||
+              seller.name
+          ).trim()
+        : "Seller";
 
     // ========================================================
     // REVIEW DATA
     // ========================================================
+    //
+    // IMPORTANT:
+    // We intentionally DO NOT put productId: null
+    // on seller-only reviews.
+    //
+    // ========================================================
 
     const reviewData = {
-      reviewerId:
+      reviewer:
         reviewerId,
 
       reviewerName:
@@ -1128,24 +1284,19 @@ const createReview = async (
       sellerReply: {
         text: "",
         repliedAt: null,
-        repliedBy: null,
       },
 
-      isActive:
-        true,
-
-      isVisible:
-        true,
-
-      moderationStatus:
-        "approved",
+      status:
+        "published",
     };
 
     // --------------------------------------------------------
-    // ONLY ADD OPTIONAL IDS WHEN THEY EXIST
+    // ONLY ADD PRODUCT FIELDS IF PRODUCT EXISTS
     // --------------------------------------------------------
 
-    if (productObjectId) {
+    if (
+      productObjectId
+    ) {
       reviewData.productId =
         productObjectId;
 
@@ -1153,10 +1304,65 @@ const createReview = async (
         product?.title || "";
     }
 
-    if (orderObjectId) {
+    // --------------------------------------------------------
+    // ONLY ADD ORDER IF ORDER EXISTS
+    // --------------------------------------------------------
+
+    if (
+      orderObjectId
+    ) {
       reviewData.orderId =
         orderObjectId;
     }
+
+    // ========================================================
+    // LOG
+    // ========================================================
+
+    console.log(
+      "⭐ FINAL REVIEW DATA:"
+    );
+
+    console.log(
+      JSON.stringify(
+        {
+          reviewer:
+            String(
+              reviewData.reviewer
+            ),
+
+          sellerId:
+            String(
+              reviewData.sellerId
+            ),
+
+          productId:
+            reviewData.productId
+              ? String(
+                  reviewData.productId
+                )
+              : "UNDEFINED",
+
+          orderId:
+            reviewData.orderId
+              ? String(
+                  reviewData.orderId
+                )
+              : "UNDEFINED",
+
+          rating:
+            reviewData.rating,
+
+          comment:
+            reviewData.comment,
+
+          verifiedPurchase:
+            reviewData.verifiedPurchase,
+        },
+        null,
+        2
+      )
+    );
 
     // ========================================================
     // CREATE
@@ -1169,13 +1375,22 @@ const createReview = async (
         await Review.create(
           reviewData
         );
-    } catch (createError) {
+    } catch (
+      createError
+    ) {
       return handleDatabaseError(
         res,
         createError,
         "CREATE REVIEW"
       );
     }
+
+    console.log(
+      "✅ REVIEW CREATED:",
+      String(
+        review._id
+      )
+    );
 
     // ========================================================
     // POPULATE
@@ -1189,33 +1404,56 @@ const createReview = async (
           review._id
         )
           .populate(
-            "reviewerId",
-            "name email avatar profileImage"
+            "reviewer",
+            "name email avatar profileImage photo photoURL"
           )
           .populate(
             "sellerId",
-            "name email avatar profileImage"
+            "name shopName email avatar profileImage photo photoURL"
           )
           .populate(
             "productId",
             "title image images price"
           )
           .lean();
-    } catch (populateError) {
-      console.error(
-        "⚠️ Review population error:",
-        populateError
+    } catch (
+      populateError
+    ) {
+      console.warn(
+        "⚠️ Review population failed:",
+        populateError.message
       );
 
       populatedReview =
         review.toObject();
     }
 
+    // ========================================================
+    // UPDATE SELLER RATING
+    // ========================================================
+
+    await recalculateSellerRating(
+      sellerObjectId
+    );
+
+    // ========================================================
+    // UPDATE PRODUCT RATING
+    // ========================================================
+
+    if (
+      productObjectId
+    ) {
+      await recalculateProductRating(
+        productObjectId
+      );
+    }
+
+    // ========================================================
+    // RESPONSE
+    // ========================================================
+
     console.log(
-      "✅ REVIEW CREATED:",
-      String(
-        review._id
-      )
+      "✅ REVIEW COMPLETE"
     );
 
     console.log(
@@ -1251,6 +1489,10 @@ const createReview = async (
 // ============================================================
 // UPDATE REVIEW
 // ============================================================
+//
+// PUT /api/reviews/:id
+//
+// ============================================================
 
 const updateReview = async (
   req,
@@ -1258,13 +1500,12 @@ const updateReview = async (
   next
 ) => {
   try {
-    const reviewerId =
+    const userId =
       getUserId(req);
 
-    if (!reviewerId) {
+    if (!userId) {
       return res.status(401).json({
         success: false,
-
         message:
           "Authentication required.",
       });
@@ -1280,7 +1521,6 @@ const updateReview = async (
     ) {
       return res.status(400).json({
         success: false,
-
         message:
           "Invalid review ID.",
       });
@@ -1294,43 +1534,42 @@ const updateReview = async (
     if (!review) {
       return res.status(404).json({
         success: false,
-
         message:
           "Review not found.",
       });
     }
 
+    // ========================================================
+    // OWNER ONLY
+    // ========================================================
+
     if (
       String(
-        review.reviewerId
+        review.reviewer
       ) !==
-      String(
-        reviewerId
-      )
+      String(userId)
     ) {
       return res.status(403).json({
         success: false,
-
         message:
           "You can only edit your own review.",
       });
     }
 
     if (
-      review.isActive ===
-      false
+      review.status ===
+      "removed"
     ) {
       return res.status(400).json({
         success: false,
-
         message:
-          "This review has been deleted.",
+          "This review has been removed.",
       });
     }
 
-    // --------------------------------------------------------
+    // ========================================================
     // RATING
-    // --------------------------------------------------------
+    // ========================================================
 
     if (
       req.body.rating !==
@@ -1350,7 +1589,6 @@ const updateReview = async (
       ) {
         return res.status(400).json({
           success: false,
-
           message:
             "Rating must be a whole number from 1 to 5.",
         });
@@ -1360,9 +1598,9 @@ const updateReview = async (
         rating;
     }
 
-    // --------------------------------------------------------
+    // ========================================================
     // COMMENT
-    // --------------------------------------------------------
+    // ========================================================
 
     if (
       req.body.comment !==
@@ -1374,7 +1612,6 @@ const updateReview = async (
       ) {
         return res.status(400).json({
           success: false,
-
           message:
             "Comment must be text.",
         });
@@ -1383,19 +1620,21 @@ const updateReview = async (
       const comment =
         req.body.comment.trim();
 
-      if (comment.length < 3) {
+      if (
+        comment.length < 3
+      ) {
         return res.status(400).json({
           success: false,
-
           message:
             "Review must be at least 3 characters.",
         });
       }
 
-      if (comment.length > 2000) {
+      if (
+        comment.length > 2000
+      ) {
         return res.status(400).json({
           success: false,
-
           message:
             "Review cannot exceed 2000 characters.",
         });
@@ -1405,19 +1644,43 @@ const updateReview = async (
         comment;
     }
 
+    // ========================================================
+    // SAVE
+    // ========================================================
+
     await review.save();
+
+    // ========================================================
+    // RECALCULATE
+    // ========================================================
+
+    await recalculateSellerRating(
+      review.sellerId
+    );
+
+    if (
+      review.productId
+    ) {
+      await recalculateProductRating(
+        review.productId
+      );
+    }
+
+    // ========================================================
+    // POPULATE
+    // ========================================================
 
     const updatedReview =
       await Review.findById(
         review._id
       )
         .populate(
-          "reviewerId",
-          "name email avatar profileImage"
+          "reviewer",
+          "name email avatar profileImage photo photoURL"
         )
         .populate(
           "sellerId",
-          "name email avatar profileImage"
+          "name shopName email avatar profileImage photo photoURL"
         )
         .populate(
           "productId",
@@ -1451,6 +1714,12 @@ const updateReview = async (
 // ============================================================
 // DELETE REVIEW
 // ============================================================
+//
+// DELETE /api/reviews/:id
+//
+// Soft delete.
+//
+// ============================================================
 
 const deleteReview = async (
   req,
@@ -1458,13 +1727,12 @@ const deleteReview = async (
   next
 ) => {
   try {
-    const reviewerId =
+    const userId =
       getUserId(req);
 
-    if (!reviewerId) {
+    if (!userId) {
       return res.status(401).json({
         success: false,
-
         message:
           "Authentication required.",
       });
@@ -1480,7 +1748,6 @@ const deleteReview = async (
     ) {
       return res.status(400).json({
         success: false,
-
         message:
           "Invalid review ID.",
       });
@@ -1494,48 +1761,64 @@ const deleteReview = async (
     if (!review) {
       return res.status(404).json({
         success: false,
-
         message:
           "Review not found.",
       });
     }
 
+    // ========================================================
+    // OWNER OR ADMIN
+    // ========================================================
+
+    const isOwner =
+      String(
+        review.reviewer
+      ) ===
+      String(userId);
+
+    const isAdmin =
+      req.user?.role ===
+      "admin";
+
     if (
-      String(
-        review.reviewerId
-      ) !==
-      String(
-        reviewerId
-      )
+      !isOwner &&
+      !isAdmin
     ) {
       return res.status(403).json({
         success: false,
-
         message:
-          "You can only delete your own review.",
+          "You are not allowed to delete this review.",
       });
     }
 
-    if (
-      review.isActive ===
-      false
-    ) {
-      return res.status(400).json({
-        success: false,
+    const sellerId =
+      review.sellerId;
 
-        message:
-          "Review is already deleted.",
-      });
-    }
+    const productId =
+      review.productId;
 
-    // Soft delete
-    review.isActive =
-      false;
+    // ========================================================
+    // SOFT DELETE
+    // ========================================================
 
-    review.isVisible =
-      false;
+    review.status =
+      "removed";
 
     await review.save();
+
+    // ========================================================
+    // RECALCULATE
+    // ========================================================
+
+    await recalculateSellerRating(
+      sellerId
+    );
+
+    if (productId) {
+      await recalculateProductRating(
+        productId
+      );
+    }
 
     return res.status(200).json({
       success: true,
@@ -1558,7 +1841,11 @@ const deleteReview = async (
 };
 
 // ============================================================
-// TOGGLE HELPFUL
+// HELPFUL TOGGLE
+// ============================================================
+//
+// POST /api/reviews/:id/helpful
+//
 // ============================================================
 
 const toggleHelpful = async (
@@ -1573,7 +1860,6 @@ const toggleHelpful = async (
     if (!userId) {
       return res.status(401).json({
         success: false,
-
         message:
           "Authentication required.",
       });
@@ -1589,7 +1875,6 @@ const toggleHelpful = async (
     ) {
       return res.status(400).json({
         success: false,
-
         message:
           "Invalid review ID.",
       });
@@ -1603,23 +1888,17 @@ const toggleHelpful = async (
     if (!review) {
       return res.status(404).json({
         success: false,
-
         message:
           "Review not found.",
       });
     }
 
     if (
-      review.isActive !==
-        true ||
-      review.isVisible !==
-        true ||
-      review.moderationStatus !==
-        "approved"
+      review.status !==
+      "published"
     ) {
       return res.status(400).json({
         success: false,
-
         message:
           "This review is not available.",
       });
@@ -1632,27 +1911,25 @@ const toggleHelpful = async (
           String(userId)
       );
 
-    let helpful =
-      false;
+    let helpful = false;
 
     if (
-      existingIndex >=
-      0
+      existingIndex >= 0
     ) {
       review.helpfulBy.splice(
         existingIndex,
         1
       );
 
-      helpful =
-        false;
+      helpful = false;
     } else {
       review.helpfulBy.push(
-        userId
+        toObjectId(
+          userId
+        )
       );
 
-      helpful =
-        true;
+      helpful = true;
     }
 
     review.helpfulCount =
@@ -1674,16 +1951,16 @@ const toggleHelpful = async (
       error
     );
 
-    return handleDatabaseError(
-      res,
-      error,
-      "TOGGLE HELPFUL"
-    );
+    next(error);
   }
 };
 
 // ============================================================
 // REPORT REVIEW
+// ============================================================
+//
+// POST /api/reviews/:id/report
+//
 // ============================================================
 
 const reportReview = async (
@@ -1698,7 +1975,6 @@ const reportReview = async (
     if (!userId) {
       return res.status(401).json({
         success: false,
-
         message:
           "Authentication required.",
       });
@@ -1714,7 +1990,6 @@ const reportReview = async (
     ) {
       return res.status(400).json({
         success: false,
-
         message:
           "Invalid review ID.",
       });
@@ -1728,54 +2003,45 @@ const reportReview = async (
     if (!review) {
       return res.status(404).json({
         success: false,
-
         message:
           "Review not found.",
       });
     }
 
     if (
-      review.isActive ===
-        false ||
-      review.isVisible ===
-        false
+      review.status ===
+      "removed"
     ) {
       return res.status(400).json({
         success: false,
-
         message:
           "This review is no longer available.",
       });
     }
 
-    // --------------------------------------------------------
-    // CHECK EXISTING REPORT
-    // --------------------------------------------------------
+    // ========================================================
+    // PREVENT DUPLICATE REPORT
+    // ========================================================
 
     const alreadyReported =
       review.reportedBy.some(
-        (item) =>
-          item.userId &&
+        (report) =>
+          report.userId &&
           String(
-            item.userId
+            report.userId
           ) ===
-            String(
-              userId
-            )
+            String(userId)
       );
 
-    if (alreadyReported) {
+    if (
+      alreadyReported
+    ) {
       return res.status(409).json({
         success: false,
-
         message:
           "You have already reported this review.",
       });
     }
-
-    // --------------------------------------------------------
-    // REASON
-    // --------------------------------------------------------
 
     const reason =
       typeof req.body?.reason ===
@@ -1783,22 +2049,21 @@ const reportReview = async (
         ? req.body.reason.trim()
         : "No reason provided";
 
-    if (reason.length > 500) {
+    if (
+      reason.length > 500
+    ) {
       return res.status(400).json({
         success: false,
-
         message:
           "Report reason cannot exceed 500 characters.",
       });
     }
 
-    // --------------------------------------------------------
-    // ADD REPORT
-    // --------------------------------------------------------
-
     review.reportedBy.push({
       userId:
-        toObjectId(userId),
+        toObjectId(
+          userId
+        ),
 
       reason,
 
@@ -1826,16 +2091,16 @@ const reportReview = async (
       error
     );
 
-    return handleDatabaseError(
-      res,
-      error,
-      "REPORT REVIEW"
-    );
+    next(error);
   }
 };
 
 // ============================================================
 // SELLER REPLY
+// ============================================================
+//
+// POST /api/reviews/:id/reply
+//
 // ============================================================
 
 const replyToReview = async (
@@ -1850,7 +2115,6 @@ const replyToReview = async (
     if (!sellerUserId) {
       return res.status(401).json({
         success: false,
-
         message:
           "Authentication required.",
       });
@@ -1866,7 +2130,6 @@ const replyToReview = async (
     ) {
       return res.status(400).json({
         success: false,
-
         message:
           "Invalid review ID.",
       });
@@ -1878,19 +2141,21 @@ const replyToReview = async (
         ? req.body.text.trim()
         : "";
 
-    if (text.length < 1) {
+    if (
+      text.length < 1
+    ) {
       return res.status(400).json({
         success: false,
-
         message:
           "Reply cannot be empty.",
       });
     }
 
-    if (text.length > 2000) {
+    if (
+      text.length > 2000
+    ) {
       return res.status(400).json({
         success: false,
-
         message:
           "Reply cannot exceed 2000 characters.",
       });
@@ -1904,15 +2169,14 @@ const replyToReview = async (
     if (!review) {
       return res.status(404).json({
         success: false,
-
         message:
           "Review not found.",
       });
     }
 
-    // --------------------------------------------------------
-    // ONLY SELLER CAN REPLY
-    // --------------------------------------------------------
+    // ========================================================
+    // SELLER OWNERSHIP
+    // ========================================================
 
     if (
       String(
@@ -1924,42 +2188,27 @@ const replyToReview = async (
     ) {
       return res.status(403).json({
         success: false,
-
         message:
           "Only the seller can reply to this review.",
       });
     }
 
     if (
-      review.isActive !==
-        true ||
-      review.isVisible !==
-        true ||
-      review.moderationStatus !==
-        "approved"
+      review.status !==
+      "published"
     ) {
       return res.status(400).json({
         success: false,
-
         message:
           "Cannot reply to this review.",
       });
     }
-
-    // --------------------------------------------------------
-    // SAVE REPLY
-    // --------------------------------------------------------
 
     review.sellerReply = {
       text,
 
       repliedAt:
         new Date(),
-
-      repliedBy:
-        toObjectId(
-          sellerUserId
-        ),
     };
 
     await review.save();
@@ -1979,16 +2228,16 @@ const replyToReview = async (
       error
     );
 
-    return handleDatabaseError(
-      res,
-      error,
-      "REPLY TO REVIEW"
-    );
+    next(error);
   }
 };
 
 // ============================================================
 // DELETE SELLER REPLY
+// ============================================================
+//
+// DELETE /api/reviews/:id/reply
+//
 // ============================================================
 
 const deleteReply = async (
@@ -2003,7 +2252,6 @@ const deleteReply = async (
     if (!sellerUserId) {
       return res.status(401).json({
         success: false,
-
         message:
           "Authentication required.",
       });
@@ -2019,7 +2267,6 @@ const deleteReply = async (
     ) {
       return res.status(400).json({
         success: false,
-
         message:
           "Invalid review ID.",
       });
@@ -2033,7 +2280,6 @@ const deleteReply = async (
     if (!review) {
       return res.status(404).json({
         success: false,
-
         message:
           "Review not found.",
       });
@@ -2049,7 +2295,6 @@ const deleteReply = async (
     ) {
       return res.status(403).json({
         success: false,
-
         message:
           "Only the seller can delete this reply.",
       });
@@ -2058,7 +2303,6 @@ const deleteReply = async (
     review.sellerReply = {
       text: "",
       repliedAt: null,
-      repliedBy: null,
     };
 
     await review.save();
@@ -2075,16 +2319,16 @@ const deleteReply = async (
       error
     );
 
-    return handleDatabaseError(
-      res,
-      error,
-      "DELETE SELLER REPLY"
-    );
+    next(error);
   }
 };
 
 // ============================================================
-// GET SELLER SUMMARY
+// SELLER SUMMARY
+// ============================================================
+//
+// GET /api/reviews/seller/:sellerId/summary
+//
 // ============================================================
 
 const getSellerSummary = async (
@@ -2103,7 +2347,6 @@ const getSellerSummary = async (
     ) {
       return res.status(400).json({
         success: false,
-
         message:
           "Invalid seller ID.",
       });
@@ -2118,7 +2361,8 @@ const getSellerSummary = async (
                 sellerId
               ),
 
-            ...publicReviewFilter(),
+            status:
+              "published",
           },
         },
 
@@ -2256,6 +2500,28 @@ const getSellerSummary = async (
         oneStars:
           summary.oneStars ||
           0,
+
+        breakdown: {
+          5:
+            summary.fiveStars ||
+            0,
+
+          4:
+            summary.fourStars ||
+            0,
+
+          3:
+            summary.threeStars ||
+            0,
+
+          2:
+            summary.twoStars ||
+            0,
+
+          1:
+            summary.oneStars ||
+            0,
+        },
       },
     });
   } catch (error) {
@@ -2264,16 +2530,16 @@ const getSellerSummary = async (
       error
     );
 
-    return handleDatabaseError(
-      res,
-      error,
-      "GET SELLER SUMMARY"
-    );
+    next(error);
   }
 };
 
 // ============================================================
-// GET PRODUCT SUMMARY
+// PRODUCT SUMMARY
+// ============================================================
+//
+// GET /api/reviews/product/:productId/summary
+//
 // ============================================================
 
 const getProductSummary = async (
@@ -2292,7 +2558,6 @@ const getProductSummary = async (
     ) {
       return res.status(400).json({
         success: false,
-
         message:
           "Invalid product ID.",
       });
@@ -2307,7 +2572,8 @@ const getProductSummary = async (
                 productId
               ),
 
-            ...publicReviewFilter(),
+            status:
+              "published",
           },
         },
 
@@ -2445,6 +2711,28 @@ const getProductSummary = async (
         oneStars:
           summary.oneStars ||
           0,
+
+        breakdown: {
+          5:
+            summary.fiveStars ||
+            0,
+
+          4:
+            summary.fourStars ||
+            0,
+
+          3:
+            summary.threeStars ||
+            0,
+
+          2:
+            summary.twoStars ||
+            0,
+
+          1:
+            summary.oneStars ||
+            0,
+        },
       },
     });
   } catch (error) {
@@ -2453,13 +2741,172 @@ const getProductSummary = async (
       error
     );
 
-    return handleDatabaseError(
-      res,
-      error,
-      "GET PRODUCT SUMMARY"
-    );
+    next(error);
   }
 };
+
+// ============================================================
+// RECALCULATE SELLER RATING
+// ============================================================
+
+const recalculateSellerRating =
+  async (sellerId) => {
+    try {
+      const result =
+        await Review.aggregate([
+          {
+            $match: {
+              sellerId:
+                toObjectId(
+                  sellerId
+                ),
+
+              status:
+                "published",
+            },
+          },
+
+          {
+            $group: {
+              _id: null,
+
+              averageRating: {
+                $avg: "$rating",
+              },
+
+              reviewCount: {
+                $sum: 1,
+              },
+            },
+          },
+        ]);
+
+      const averageRating =
+        result[0]
+          ?.averageRating ||
+        0;
+
+      const reviewCount =
+        result[0]
+          ?.reviewCount ||
+        0;
+
+      // --------------------------------------------------------
+      // Only update fields that actually exist on User.
+      // --------------------------------------------------------
+      //
+      // Mongoose strict mode ignores fields that aren't
+      // declared in the User schema.
+      //
+      // --------------------------------------------------------
+
+      await User.findByIdAndUpdate(
+        sellerId,
+        {
+          $set: {
+            averageRating:
+              Number(
+                averageRating
+              ).toFixed(1),
+
+            reviewCount:
+              reviewCount,
+          },
+        }
+      );
+
+      console.log(
+        "⭐ Seller rating recalculated:",
+        String(
+          sellerId
+        ),
+        averageRating,
+        reviewCount
+      );
+    } catch (error) {
+      console.warn(
+        "⚠️ Seller rating recalculation failed:",
+        error.message
+      );
+    }
+  };
+
+// ============================================================
+// RECALCULATE PRODUCT RATING
+// ============================================================
+
+const recalculateProductRating =
+  async (productId) => {
+    try {
+      const result =
+        await Review.aggregate([
+          {
+            $match: {
+              productId:
+                toObjectId(
+                  productId
+                ),
+
+              status:
+                "published",
+            },
+          },
+
+          {
+            $group: {
+              _id: null,
+
+              averageRating: {
+                $avg: "$rating",
+              },
+
+              reviewCount: {
+                $sum: 1,
+              },
+            },
+          },
+        ]);
+
+      const averageRating =
+        result[0]
+          ?.averageRating ||
+        0;
+
+      const reviewCount =
+        result[0]
+          ?.reviewCount ||
+        0;
+
+      await Product.findByIdAndUpdate(
+        productId,
+        {
+          $set: {
+            rating:
+              Number(
+                averageRating
+              ).toFixed(1),
+
+            reviewCount:
+              reviewCount,
+          },
+        }
+      );
+
+      console.log(
+        "⭐ Product rating recalculated:",
+        String(
+          productId
+        ),
+        averageRating,
+        reviewCount
+      );
+    } catch (error) {
+      console.warn(
+        "⚠️ Product rating recalculation failed:",
+        error.message
+      );
+    }
+  };
 
 // ============================================================
 // EXPORTS
