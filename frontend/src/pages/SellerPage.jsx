@@ -2,7 +2,7 @@
 // frontend/src/pages/SellerPage.jsx
 // ============================================================
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 
 import {
   useParams,
@@ -18,6 +18,7 @@ import {
   getSellerReviews,
   createReview,
   toggleReviewHelpful,
+  updateReview, // we need this for editing
 } from "../services/api";
 
 import {
@@ -200,6 +201,47 @@ const SellerPage = () => {
   const [reviewComment, setReviewComment] = useState("");
   const [submittingReview, setSubmittingReview] = useState(false);
   const [reviewSuccess, setReviewSuccess] = useState("");
+
+  // ─── EDIT MODE ──────────────────────────────────────────────
+
+  const [editingReviewId, setEditingReviewId] = useState(null);
+  const [isEditing, setIsEditing] = useState(false);
+
+  // ==========================================================
+  // CURRENT USER ID
+  // ==========================================================
+
+  const currentUserId = user?._id || user?.id;
+
+  // ==========================================================
+  // ✅ DETECT EXISTING SELLER REVIEW (with debug logs)
+  // ==========================================================
+
+  const userReview = useMemo(() => {
+    if (!currentUserId || !reviews.length) {
+      console.log("🔍 No current user or reviews – skipping duplicate check.");
+      return null;
+    }
+
+    const found = reviews.find((r) => {
+      // Extract reviewer ID robustly
+      const reviewerId = r.reviewer?._id || r.reviewer?.id || r.reviewer;
+      if (!reviewerId) return false;
+
+      const isSameUser = String(reviewerId) === String(currentUserId);
+      if (!isSameUser) return false;
+
+      // Seller review: no productId (undefined, null, or missing)
+      // Also check for null or empty productId
+      const hasProductId = r.productId !== undefined && r.productId !== null && r.productId !== "";
+      return !hasProductId;
+    });
+
+    console.log("🔍 Existing seller review for user:", found ? found._id : "NONE");
+    return found || null;
+  }, [reviews, currentUserId]);
+
+  const hasUserReviewed = Boolean(userReview);
 
   // ==========================================================
   // FETCH SELLER
@@ -526,7 +568,18 @@ const SellerPage = () => {
   }, [sellerId, user]);
 
   // ==========================================================
-  // SUBMIT REVIEW
+  // RESET FORM
+  // ==========================================================
+
+  const resetForm = () => {
+    setSelectedRating(0);
+    setReviewComment("");
+    setEditingReviewId(null);
+    setIsEditing(false);
+  };
+
+  // ==========================================================
+  // SUBMIT REVIEW (with duplicate check + edit mode)
   // ==========================================================
 
   const handleSubmitReview = async (event) => {
@@ -577,10 +630,6 @@ const SellerPage = () => {
     // Cannot review yourself
     // ------------------------------------------------------
 
-    const currentUserId =
-      user?._id ||
-      user?.id;
-
     if (
       currentUserId &&
       String(currentUserId) ===
@@ -594,71 +643,124 @@ const SellerPage = () => {
     }
 
     // ==========================================================
-    // ✅ FIX: CHECK FOR EXISTING REVIEW (PREVENT 409)
+    // 🔍 DEBUG: Log current state before duplicate check
     // ==========================================================
 
-    if (currentUserId) {
-      const existingReview = reviews.find(
-        (r) =>
-          r.reviewer &&
-          String(r.reviewer?._id || r.reviewer) === String(currentUserId)
-      );
+    console.log("🔍 handleSubmitReview - currentUserId:", currentUserId);
+    console.log("🔍 handleSubmitReview - hasUserReviewed:", hasUserReviewed);
+    console.log("🔍 handleSubmitReview - userReview:", userReview);
+    console.log("🔍 handleSubmitReview - reviews:", reviews);
+    console.log("🔍 handleSubmitReview - editingReviewId:", editingReviewId);
 
-      if (existingReview) {
-        setReviewError(
-          "You have already reviewed this seller. You can edit your existing review if needed."
-        );
-        return;
-      }
+    // ==========================================================
+    // ✅ DUPLICATE CHECK – if user already has a seller review
+    // ==========================================================
+
+    if (!editingReviewId && hasUserReviewed && userReview) {
+      // Switch to edit mode – pre‑fill the form with existing review data
+      setReviewError("");
+      setReviewSuccess("You already have a review – you can edit it below.");
+      setEditingReviewId(userReview._id);
+      setSelectedRating(userReview.rating);
+      setReviewComment(userReview.comment || "");
+      setIsEditing(true);
+      return;
     }
+
+    // ==========================================================
+    // SUBMIT (create or update)
+    // ==========================================================
 
     try {
       setSubmittingReview(true);
 
-      const response =
-        await createReview({
-          sellerId,
-          rating: selectedRating,
-          comment: cleanComment,
-        });
+      // ─── EDIT MODE ──────────────────────────────────────────
 
-      console.log(
-        "⭐ Review created:",
-        response
-      );
+      if (editingReviewId && isEditing) {
+        const response = await updateReview(
+          editingReviewId,
+          {
+            rating: selectedRating,
+            comment: cleanComment,
+          }
+        );
+
+        if (response.success) {
+          setReviewSuccess(
+            response.message || "Your review has been updated successfully."
+          );
+          resetForm();
+          setPage(1);
+          await fetchReviews(1, false);
+        } else {
+          throw new Error(response.message || "Failed to update review.");
+        }
+        return;
+      }
+
+      // ─── CREATE MODE ────────────────────────────────────────
+
+      const response = await createReview({
+        sellerId,
+        rating: selectedRating,
+        comment: cleanComment,
+      });
+
+      console.log("⭐ Review created:", response);
 
       if (!response?.success) {
         throw new Error(
-          response?.message ||
-            "Unable to post review."
+          response?.message || "Unable to post review."
         );
       }
-
-      setSelectedRating(0);
-      setReviewComment("");
 
       setReviewSuccess(
-        "Your review has been posted successfully."
+        response.message || "Your review has been posted successfully."
       );
+
+      resetForm();
 
       await fetchReviews(1, false);
+    } catch (err) {
+      console.error("❌ Create review error:", err);
 
-      if (response?.review) {
-        console.log(
-          "New review rating:",
-          response.review.rating
+      // ==========================================================
+      // 409 FALLBACK – reload and auto‑edit
+      // ==========================================================
+
+      if (err?.response?.status === 409) {
+        // Reload reviews to get the latest list
+        await fetchReviews(1, false);
+
+        // After reload, check if we can find the user's review
+        const updatedUserReview = reviews.find((r) => {
+          const reviewerId = r.reviewer?._id || r.reviewer?.id || r.reviewer;
+          return (
+            reviewerId &&
+            String(reviewerId) === String(currentUserId) &&
+            !r.productId
+          );
+        });
+
+        if (updatedUserReview) {
+          setEditingReviewId(updatedUserReview._id);
+          setSelectedRating(updatedUserReview.rating);
+          setReviewComment(updatedUserReview.comment || "");
+          setIsEditing(true);
+          setReviewError("");
+          setReviewSuccess(
+            "You already have a review. You can edit it below."
+          );
+        } else {
+          setReviewError(
+            "You have already reviewed this seller, but we couldn't find your review. Please refresh and try again."
+          );
+        }
+      } else {
+        setReviewError(
+          err?.message || "Unable to post your review."
         );
       }
-    } catch (err) {
-      console.error(
-        "❌ Create review error:",
-        err
-      );
-
-      setReviewError(
-        err?.message ||
-          "Unable to post your review."
-      );
     } finally {
       setSubmittingReview(false);
     }
@@ -1743,7 +1845,7 @@ const SellerPage = () => {
           </div>
 
           {/* ==================================================
-              WRITE REVIEW
+              WRITE / EDIT REVIEW FORM
           ================================================== */}
 
           <div
@@ -1765,7 +1867,7 @@ const SellerPage = () => {
                 marginBottom: "8px",
               }}
             >
-              Write a Review
+              {isEditing ? "Edit Your Review" : "Write a Review"}
             </h3>
 
             <p
@@ -1776,8 +1878,9 @@ const SellerPage = () => {
                 marginBottom: "20px",
               }}
             >
-              Share your experience
-              with this seller.
+              {isEditing
+                ? "Update your experience with this seller."
+                : "Share your experience with this seller."}
             </p>
 
             {reviewError && (
@@ -1961,43 +2064,80 @@ const SellerPage = () => {
                 </div>
               </div>
 
-              <button
-                type="submit"
-                disabled={
-                  submittingReview
-                }
+              <div
                 style={{
-                  padding: "12px 24px",
-                  background:
-                    submittingReview
-                      ? "var(--gray-300)"
-                      : "var(--primary)",
-                  color: "white",
-                  border: "none",
-                  borderRadius:
-                    "var(--radius-full)",
-                  fontWeight: 700,
-                  cursor:
-                    submittingReview
-                      ? "not-allowed"
-                      : "pointer",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "8px",
+                  display: "flex",
+                  gap: "12px",
+                  flexWrap: "wrap",
                 }}
               >
-                {submittingReview ? (
-                  <>
-                    <i className="fas fa-spinner fa-spin" />
-                    Posting...
-                  </>
-                ) : (
-                  <>
-                    <i className="fas fa-paper-plane" />
-                    Post Review
-                  </>
+                {isEditing && (
+                  <button
+                    type="button"
+                    onClick={resetForm}
+                    style={{
+                      padding: "12px 24px",
+                      background: "var(--gray-200)",
+                      color: "var(--gray-700)",
+                      border: "none",
+                      borderRadius:
+                        "var(--radius-full)",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                    }}
+                  >
+                    Cancel Edit
+                  </button>
                 )}
-              </button>
+
+                <button
+                  type="submit"
+                  disabled={
+                    submittingReview
+                  }
+                  style={{
+                    padding: "12px 24px",
+                    background:
+                      submittingReview
+                        ? "var(--gray-300)"
+                        : "var(--primary)",
+                    color: "white",
+                    border: "none",
+                    borderRadius:
+                      "var(--radius-full)",
+                    fontWeight: 700,
+                    cursor:
+                      submittingReview
+                        ? "not-allowed"
+                        : "pointer",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "8px",
+                  }}
+                >
+                  {submittingReview ? (
+                    <>
+                      <i className="fas fa-spinner fa-spin" />
+                      {isEditing
+                        ? "Updating..."
+                        : "Posting..."}
+                    </>
+                  ) : (
+                    <>
+                      <i
+                        className={
+                          isEditing
+                            ? "fas fa-pen"
+                            : "fas fa-paper-plane"
+                        }
+                      />
+                      {isEditing
+                        ? "Update Review"
+                        : "Post Review"}
+                    </>
+                  )}
+                </button>
+              </div>
             </form>
           </div>
 

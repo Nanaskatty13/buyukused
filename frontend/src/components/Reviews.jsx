@@ -7,6 +7,7 @@ import React, {
   useCallback,
   useEffect,
   useState,
+  useMemo,
 } from "react";
 
 import axios from "axios";
@@ -257,16 +258,33 @@ const Reviews = ({
     );
 
   // ==========================================================
-  // HAS USER REVIEWED?
+  // HAS USER REVIEWED? (CONTEXT-AWARE)
   // ==========================================================
 
-  const userReview = reviews.find(
-    (r) =>
-      currentUserId &&
-      r.reviewer &&
-      String(r.reviewer?._id || r.reviewer) ===
-        String(currentUserId)
-  );
+  const userReview = useMemo(() => {
+    if (!currentUserId || !reviews.length) {
+      return null;
+    }
+
+    return reviews.find((r) => {
+      // Get reviewer ID (handles object or string)
+      const reviewerId = r.reviewer?._id || r.reviewer?.id || r.reviewer;
+      if (!reviewerId) return false;
+
+      // Must be the current user
+      if (String(reviewerId) !== String(currentUserId)) return false;
+
+      // If we are in product review mode (productId prop is provided)
+      if (productId) {
+        // Match a review with the same productId
+        const reviewProductId = r.productId?._id || r.productId;
+        return reviewProductId && String(reviewProductId) === String(productId);
+      } else {
+        // Seller review mode: must have no productId (null or undefined)
+        return !r.productId;
+      }
+    });
+  }, [reviews, currentUserId, productId]);
 
   const hasUserReviewed = Boolean(userReview);
 
@@ -558,7 +576,7 @@ const Reviews = ({
     }
 
     // ========================================================
-    // CLIENT‑SIDE CHECK FOR EXISTING REVIEW
+    // CLIENT‑SIDE CHECK FOR EXISTING REVIEW (CONTEXT-AWARE)
     // ========================================================
 
     if (!editingReviewId && hasUserReviewed && userReview) {
@@ -717,7 +735,7 @@ const Reviews = ({
           );
 
           setSuccess(
-            "You already reviewed this seller. You can edit your existing review."
+            "You already reviewed this. You can edit your existing review."
           );
 
           setShowForm(true);
@@ -734,34 +752,10 @@ const Reviews = ({
         // Reload reviews to get the user's review
         await loadReviews();
 
-        // After reload, re‑evaluate userReview (it will be updated in state)
-        // We need to use the updated reviews; since state updates are async,
-        // we can directly look at the response if available, or wait for the next render.
-        // A simpler approach: use a timeout to let state settle, then check.
-        // But a more robust way is to use a useEffect that reacts to reviews changes.
-        // For now, we set a success message and try to find the review after a short delay.
         setError(""); // clear error
         setSuccess(
-          "You have already reviewed this seller. You can edit your review below."
+          "You have already reviewed this. You can edit your review below."
         );
-
-        // Try to find the user's review from the newly loaded list after a brief delay.
-        setTimeout(() => {
-          // We need to access the current reviews state – but inside setTimeout it's stale.
-          // So we'll use a ref or simply rely on the fact that the user can click the edit button.
-          // Alternatively, we can set a flag to trigger a useEffect.
-          // For simplicity, we just show a message and let the user click "Edit your review".
-          // But we can also auto‑open the form if we find the review.
-          // We'll do it via a state update in the setTimeout that reads the latest reviews.
-          // To avoid complexity, we'll just re‑run the check after loadReviews completes.
-          // Actually, loadReviews updates the state, and the component will re‑render.
-          // We can use a useEffect that watches reviews and currentUser to auto‑open.
-          // But for now, we'll just show the message and the user can click "Edit your review".
-          // We'll also set the form to open if we find the review.
-          // Let's implement a small helper that we call after loadReviews.
-          // We'll use a useEffect to auto‑open when hasUserReviewed becomes true.
-          // But that's already handled by the button.
-        }, 100);
 
         return;
       }
@@ -779,16 +773,6 @@ const Reviews = ({
       setSubmitting(false);
     }
   };
-
-  // ==========================================================
-  // EFFECT TO AUTO‑OPEN EDIT FORM AFTER LOADING REVIEWS
-  // ==========================================================
-
-  useEffect(() => {
-    // If the user has reviewed and we have a success message about editing,
-    // we can automatically start editing. But we'll handle that via button click.
-    // For now, we keep it manual.
-  }, [hasUserReviewed]);
 
   // ==========================================================
   // HELPFUL

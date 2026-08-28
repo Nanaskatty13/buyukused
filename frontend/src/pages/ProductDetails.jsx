@@ -17,6 +17,7 @@ import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
 
 import SoldBadge from "../components/SoldBadge";
+import ReviewSection from "../components/ReviewSection"; // ✅ Added
 
 // ── Laptop constants ──────────────────────────────────────────────
 import {
@@ -1187,14 +1188,13 @@ const ProductDetails = () => {
   };
 
   // ================================================================
-  // MESSAGING – FETCH MESSAGES (updated endpoint)
+  // MESSAGING – FETCH MESSAGES
   // ================================================================
 
   const fetchMessages = async () => {
     if (!user || !product) return;
 
     try {
-      // Try the conversation endpoint first (if available)
       const sellerId = product.sellerId?._id || product.sellerId;
       if (!sellerId) {
         setChatError('Seller information not available.');
@@ -1211,7 +1211,6 @@ const ProductDetails = () => {
       );
 
       if (response.status === 403 || response.status === 404) {
-        // Fallback: try the generic messages endpoint (old behaviour)
         const fallbackResponse = await fetch(
           `${import.meta.env.VITE_API_URL || 'https://buyukused.onrender.com'}/api/messages`,
           {
@@ -1224,7 +1223,6 @@ const ProductDetails = () => {
         const fallbackData = await fallbackResponse.json();
         if (fallbackData.success) {
           const allMessages = fallbackData.messages || [];
-          // Filter messages related to this product
           const productMessages = allMessages.filter(
             msg => msg.productId && msg.productId._id === product._id
           );
@@ -1298,11 +1296,9 @@ const ProductDetails = () => {
 
       const data = await response.json();
       if (data.success) {
-        // Add the new message to the list
         const sentMessage = data.message || data.data;
         setMessages(prev => [...prev, sentMessage]);
         setNewMessage('');
-        // Update local chat messages so it appears immediately
       } else {
         setChatError(data.message || 'Could not send message');
       }
@@ -1590,12 +1586,32 @@ const ProductDetails = () => {
     product?.sellerId?.toString() === user._id?.toString()
   );
 
+  // ✅ Robust seller ID extraction for reviews
   const sellerName = (() => {
     const seller = product.seller || product.sellerId || {};
     return seller.name || product.sellerName || 'Seller';
   })();
 
-  const sellerId = product.sellerId?._id || product.sellerId || product.seller?._id || '';
+  const sellerId = (() => {
+    if (!product) return '';
+    const candidates = [
+      product?.sellerId?._id,
+      product?.sellerId,
+      product?.seller?._id,
+      product?.seller,
+      product?.sellerId?.id,
+      product?.seller?.id,
+      product?.userId,
+      product?.ownerId,
+    ];
+    for (const c of candidates) {
+      if (c && typeof c === 'string') return c;
+      if (c && typeof c === 'object' && c._id) return c._id;
+    }
+    return '';
+  })();
+
+  console.log('🔍 Seller ID for reviews:', sellerId);
 
   // ================================================================
   // RENDER
@@ -2406,6 +2422,19 @@ const ProductDetails = () => {
             )}
           </div>
         )}
+
+        {/* ============================================================
+            ✅ REVIEW SECTION – added here
+        ============================================================ */}
+        <div style={{ marginTop: "60px", paddingTop: "40px", borderTop: "1px solid #e5e7eb" }}>
+          <ReviewSection
+            sellerId={sellerId}
+            productId={product._id}
+            sellerName={sellerName}
+            currentUser={user}
+            showWriteReview={!isSeller && !isSold}
+          />
+        </div>
 
         {/* EDIT MODAL (unchanged) */}
         {showEditModal && (
