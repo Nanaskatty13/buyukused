@@ -56,6 +56,12 @@ if (missing.length > 0) {
 // ============================================================
 // TRUST PROXY
 // ============================================================
+//
+// Render sits behind a proxy/load balancer.
+//
+// This allows express-rate-limit to correctly identify
+// the originating client IP.
+//
 
 app.set("trust proxy", 1);
 
@@ -85,6 +91,10 @@ app.use(
 
 app.use(compression());
 
+// ============================================================
+// REQUEST LOGGING
+// ============================================================
+
 app.use(
   morgan(
     process.env.NODE_ENV === "production"
@@ -96,56 +106,58 @@ app.use(
 // ============================================================
 // CORS
 // ============================================================
-//
-// IMPORTANT:
-// BuyUKUsed production domain:
-// https://buyukused.com
-//
-// Also allow:
-// https://www.buyukused.com
-//
-// Vercel preview deployments are allowed separately.
-// ============================================================
 
 const allowedOrigins = [
   // ----------------------------------------------------------
   // PRODUCTION
   // ----------------------------------------------------------
+
   "https://buyukused.com",
   "https://www.buyukused.com",
 
   // ----------------------------------------------------------
   // LOCAL DEVELOPMENT
   // ----------------------------------------------------------
+
   "http://localhost:5173",
   "http://127.0.0.1:5173",
+
   "http://localhost:3000",
   "http://127.0.0.1:3000",
 
   // ----------------------------------------------------------
   // MAIN VERCEL DEPLOYMENT
   // ----------------------------------------------------------
+
   "https://buyukused.vercel.app",
 
   // ----------------------------------------------------------
   // KNOWN VERCEL DEPLOYMENTS
   // ----------------------------------------------------------
+
   "https://buyukused-ggapyipm3-nanaskatty13s-projects.vercel.app",
+
   "https://buyukused-2w4b8fl3w-nanaskatty13s-projects.vercel.app",
 
   // ----------------------------------------------------------
   // PREVIOUS PROJECT DEPLOYMENT
   // ----------------------------------------------------------
+
   "https://sell-platform2.vercel.app",
+
   "https://sell-platform2-mcv0eniwt-nanaskatty13s-projects.vercel.app",
 
   // ----------------------------------------------------------
   // ENVIRONMENT VARIABLE
   // ----------------------------------------------------------
+
   process.env.FRONTEND_URL,
 ].filter(Boolean);
 
-// Remove duplicates
+// ============================================================
+// REMOVE DUPLICATES
+// ============================================================
+
 const uniqueAllowedOrigins = [
   ...new Set(allowedOrigins),
 ];
@@ -163,13 +175,15 @@ console.log(
 // ============================================================
 
 const isAllowedOrigin = (origin) => {
+  // ----------------------------------------------------------
   // Requests without Origin are allowed.
   //
   // Examples:
   // - curl
   // - Render health checks
   // - server-to-server requests
-  //
+  // ----------------------------------------------------------
+
   if (!origin) {
     return true;
   }
@@ -266,6 +280,9 @@ const corsOptions = {
   exposedHeaders: [
     "Content-Length",
     "Content-Range",
+    "RateLimit-Limit",
+    "RateLimit-Remaining",
+    "RateLimit-Reset",
   ],
 
   optionsSuccessStatus: 204,
@@ -349,6 +366,35 @@ console.log(
 // ============================================================
 // RATE LIMITING
 // ============================================================
+//
+// RATE-LIMITING STRATEGY
+//
+// 1. Admin users
+//    - Bypass rate limiting.
+//
+// 2. Development
+//    - Rate limiting effectively disabled.
+//
+// 3. Normal API traffic
+//    - 500 requests / 15 minutes / IP.
+//
+// 4. Public product GET requests
+//    - 1000 requests / 15 minutes / IP.
+//
+// 5. Public review GET requests
+//    - 1000 requests / 15 minutes / IP.
+//
+// 6. Authentication
+//    - 30 requests / 15 minutes / IP.
+//
+// This prevents normal product pages from accidentally
+// hitting 429 Too Many Requests while still protecting
+// sensitive endpoints.
+//
+
+// ============================================================
+// ADMIN RATE-LIMIT BYPASS
+// ============================================================
 
 const skipIfAdmin = (req, res, next) => {
   const authHeader =
@@ -374,8 +420,12 @@ const skipIfAdmin = (req, res, next) => {
       req.skipRateLimit = true;
     }
   } catch {
+    // --------------------------------------------------------
     // Invalid JWT.
-    // Normal authentication will handle it later.
+    //
+    // Do not reject here.
+    // Normal authentication middleware will handle it.
+    // --------------------------------------------------------
   }
 
   next();
@@ -383,22 +433,73 @@ const skipIfAdmin = (req, res, next) => {
 
 app.use(skipIfAdmin);
 
-const limiter = rateLimit({
+// ============================================================
+// GLOBAL API RATE LIMITER
+// ============================================================
+//
+// Applies to /api/* requests.
+//
+// Public product and review GET requests are skipped here
+// because they receive their own higher-limit limiter below.
+//
+
+const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
 
   max:
     process.env.NODE_ENV === "production"
-      ? 100
-      : 500,
+      ? 500
+      : 1000,
 
   skip: (req) => {
+    // --------------------------------------------------------
+    // Admin bypass
+    // --------------------------------------------------------
+
     if (req.skipRateLimit) {
       return true;
     }
 
+    // --------------------------------------------------------
+    // Development bypass
+    // --------------------------------------------------------
+
     if (
       process.env.NODE_ENV ===
       "development"
+    ) {
+      return true;
+    }
+
+    // --------------------------------------------------------
+    // Public product GET requests
+    //
+    // Because apiLimiter is mounted at /api,
+    // req.path here will be:
+    //
+    // /products
+    //
+    // --------------------------------------------------------
+
+    if (
+      req.method === "GET" &&
+      req.path.startsWith("/products")
+    ) {
+      return true;
+    }
+
+    // --------------------------------------------------------
+    // Public review GET requests
+    //
+    // req.path:
+    //
+    // /reviews
+    //
+    // --------------------------------------------------------
+
+    if (
+      req.method === "GET" &&
+      req.path.startsWith("/reviews")
     ) {
       return true;
     }
@@ -412,13 +513,106 @@ const limiter = rateLimit({
 
   message: {
     success: false,
+
     message:
       "Too many requests, please try again later.",
+
+    errorCode:
+      "RATE_LIMITED",
   },
 });
 
-app.use("/api", limiter);
-app.use("/auth", limiter);
+// ============================================================
+// APPLY GLOBAL API LIMITER
+// ============================================================
+
+app.use(
+  "/api",
+  apiLimiter
+);
+
+// ============================================================
+// PUBLIC READ RATE LIMITER
+// ============================================================
+//
+// Product browsing and review reading are normal website
+// activity.
+//
+// Production:
+// 1000 requests / 15 minutes / IP
+//
+// Development:
+// 5000 requests / 15 minutes / IP
+//
+
+const publicReadLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+
+  max:
+    process.env.NODE_ENV === "production"
+      ? 1000
+      : 5000,
+
+  standardHeaders: true,
+
+  legacyHeaders: false,
+
+  message: {
+    success: false,
+
+    message:
+      "Too many requests. Please try again later.",
+
+    errorCode:
+      "RATE_LIMITED",
+  },
+});
+
+// ============================================================
+// AUTHENTICATION RATE LIMITER
+// ============================================================
+//
+// Authentication endpoints are intentionally stricter because
+// they are common brute-force targets.
+//
+// Production:
+// 30 requests / 15 minutes / IP
+//
+// Development:
+// 200 requests / 15 minutes / IP
+//
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+
+  max:
+    process.env.NODE_ENV === "production"
+      ? 30
+      : 200,
+
+  standardHeaders: true,
+
+  legacyHeaders: false,
+
+  message: {
+    success: false,
+
+    message:
+      "Too many authentication attempts. Please try again later.",
+
+    errorCode:
+      "AUTH_RATE_LIMITED",
+  },
+});
+
+// ============================================================
+// AUTH RATE LIMITER
+// ============================================================
+
+app.use(
+  "/auth",
+  authLimiter
+);
 
 // ============================================================
 // DELIVERY REQUEST LOGGER
@@ -451,7 +645,7 @@ app.use(
 //
 // IMPORTANT:
 // Never log Authorization headers or JWT tokens.
-// ============================================================
+//
 
 app.use(
   "/api/reviews",
@@ -536,8 +730,10 @@ app.use(
 app.get("/", (req, res) => {
   res.status(200).json({
     success: true,
+
     message:
       "BuyUKUsed API is running",
+
     environment:
       process.env.NODE_ENV ||
       "development",
@@ -551,7 +747,9 @@ app.get("/", (req, res) => {
 const healthResponse = (req, res) => {
   res.status(200).json({
     success: true,
+
     status: "ok",
+
     timestamp:
       new Date().toISOString(),
   });
@@ -647,18 +845,59 @@ app.use(
 // ============================================================
 // PRODUCTS
 // ============================================================
+//
+// Public GET requests receive the higher public-read limit.
+//
+// POST/PUT/PATCH/DELETE continue through the global API
+// limiter.
+//
 
 app.use(
   "/api/products",
+  (req, res, next) => {
+    if (req.method === "GET") {
+      return publicReadLimiter(
+        req,
+        res,
+        next
+      );
+    }
+
+    next();
+  },
   productRoutes
 );
 
 // ============================================================
 // REVIEWS
 // ============================================================
+//
+// Public GET requests receive the higher public-read limit.
+//
+// POST/PUT/PATCH/DELETE continue through the global API
+// limiter.
+//
+// IMPORTANT:
+// This rate limiter does NOT decide whether a user is allowed
+// to create a review.
+//
+// The review backend still decides whether the user has already
+// reviewed the seller/product/order.
+//
 
 app.use(
   "/api/reviews",
+  (req, res, next) => {
+    if (req.method === "GET") {
+      return publicReadLimiter(
+        req,
+        res,
+        next
+      );
+    }
+
+    next();
+  },
   reviewRoutes
 );
 
@@ -793,8 +1032,10 @@ app.use((req, res) => {
       .status(404)
       .json({
         success: false,
+
         message:
           "API endpoint not found",
+
         path:
           req.originalUrl,
       });
@@ -875,7 +1116,9 @@ app.use(
         .status(403)
         .json({
           success: false,
+
           message: err.message,
+
           errorCode:
             "CORS_ERROR",
         });
@@ -891,14 +1134,16 @@ app.use(
     ) {
       if (
         err.code ===
-        "LIMIT_FILE_SIZE"
+          "LIMIT_FILE_SIZE"
       ) {
         return res
           .status(413)
           .json({
             success: false,
+
             message:
               "File too large. Maximum size is 5MB.",
+
             errorCode:
               "FILE_TOO_LARGE",
           });
@@ -908,9 +1153,11 @@ app.use(
         .status(400)
         .json({
           success: false,
+
           message:
             err.message ||
             "File upload error.",
+
           errorCode:
             "UPLOAD_ERROR",
         });
@@ -994,6 +1241,28 @@ app.use(
 
           errorCode:
             "CAST_ERROR",
+        });
+    }
+
+    // --------------------------------------------------------
+    // RATE LIMIT ERROR
+    // --------------------------------------------------------
+
+    if (
+      err &&
+      err.status === 429
+    ) {
+      return res
+        .status(429)
+        .json({
+          success: false,
+
+          message:
+            err.message ||
+            "Too many requests, please try again later.",
+
+          errorCode:
+            "RATE_LIMITED",
         });
     }
 
@@ -1233,6 +1502,18 @@ const start = async () => {
           );
 
           console.log(
+            "🛡️ Global API rate limit: 500 / 15 min"
+          );
+
+          console.log(
+            "🛡️ Public product/review reads: 1000 / 15 min"
+          );
+
+          console.log(
+            "🔐 Authentication rate limit: 30 / 15 min"
+          );
+
+          console.log(
             "🌐 Production frontend: https://buyukused.com"
           );
 
@@ -1256,54 +1537,63 @@ const start = async () => {
     // GRACEFUL SHUTDOWN
     // --------------------------------------------------------
 
-    const shutdown = async (signal) => {
+    const shutdown = async (
+      signal
+    ) => {
       console.log(
         `\n🛑 ${signal} received. Shutting down server...`
       );
 
-      server.close(async () => {
-        console.log(
-          "🛑 HTTP server closed."
-        );
-
-        try {
-          const mongoose =
-            require("mongoose");
-
-          await mongoose.connection.close();
-
+      server.close(
+        async () => {
           console.log(
-            "🛑 MongoDB connection closed."
+            "🛑 HTTP server closed."
           );
 
-          process.exit(0);
-        } catch (error) {
+          try {
+            const mongoose =
+              require("mongoose");
+
+            await mongoose.connection.close();
+
+            console.log(
+              "🛑 MongoDB connection closed."
+            );
+
+            process.exit(0);
+          } catch (error) {
+            console.error(
+              "❌ Error closing MongoDB:",
+              error
+            );
+
+            process.exit(1);
+          }
+        }
+      );
+
+      setTimeout(
+        () => {
           console.error(
-            "❌ Error closing MongoDB:",
-            error
+            "❌ Forced shutdown after timeout."
           );
 
           process.exit(1);
-        }
-      });
-
-      setTimeout(() => {
-        console.error(
-          "❌ Forced shutdown after timeout."
-        );
-
-        process.exit(1);
-      }, 10000);
+        },
+        10000
+      );
     };
 
     process.once(
       "SIGTERM",
-      () => shutdown("SIGTERM")
+      () =>
+        shutdown("SIGTERM")
     );
 
     process.once(
       "SIGINT",
-      () => shutdown("SIGINT")
+      () =>
+        shutdown("SIGINT")
     );
   } catch (error) {
     console.error(
@@ -1314,5 +1604,9 @@ const start = async () => {
     process.exit(1);
   }
 };
+
+// ============================================================
+// START
+// ============================================================
 
 start();

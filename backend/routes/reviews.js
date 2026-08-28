@@ -1,173 +1,262 @@
 // ============================================================
-// backend/routes/reviews.js
-// BuyUKUsed - Review Routes
+// backend/models/Review.js
+// BuyUKUsed Review Model
 // ============================================================
 
-const express = require("express");
-
-const router = express.Router();
-
-const {
-  verifyToken,
-} = require("../middleware/auth");
-
-const {
-  getReviews,
-  createReview,
-  updateReview,
-  deleteReview,
-  toggleHelpful,
-  reportReview,
-  replyToReview,
-  deleteReply,
-  getSellerSummary,
-} = require("../controllers/reviewController");
+const mongoose = require("mongoose");
 
 // ============================================================
-// TEST
+// REVIEW SCHEMA
 // ============================================================
 
-router.get("/test", (req, res) => {
-  return res.json({
-    success: true,
-    message: "Reviews router is alive!",
-  });
+const reviewSchema = new mongoose.Schema(
+  {
+    // ----------------------------------------------------------
+    // USER WHO CREATED THE REVIEW
+    // ----------------------------------------------------------
+
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
+    },
+
+    // ----------------------------------------------------------
+    // REVIEW TYPE
+    // ----------------------------------------------------------
+
+    type: {
+      type: String,
+      enum: ["PRODUCT", "SELLER"],
+      required: true,
+      uppercase: true,
+      trim: true,
+      index: true,
+    },
+
+    // ----------------------------------------------------------
+    // PRODUCT
+    // ----------------------------------------------------------
+
+    productId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Product",
+      default: null,
+      index: true,
+    },
+
+    // ----------------------------------------------------------
+    // SELLER
+    // ----------------------------------------------------------
+
+    sellerId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+      index: true,
+    },
+
+    // ----------------------------------------------------------
+    // OPTIONAL ORDER
+    // ----------------------------------------------------------
+
+    orderId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Order",
+      default: null,
+      index: true,
+    },
+
+    // ----------------------------------------------------------
+    // RATING
+    // ----------------------------------------------------------
+
+    rating: {
+      type: Number,
+      required: true,
+      min: 1,
+      max: 5,
+    },
+
+    // ----------------------------------------------------------
+    // COMMENT
+    // ----------------------------------------------------------
+
+    comment: {
+      type: String,
+      required: true,
+      trim: true,
+      minlength: 1,
+      maxlength: 2000,
+    },
+
+    // ----------------------------------------------------------
+    // ACTIVE STATUS
+    // ----------------------------------------------------------
+
+    isActive: {
+      type: Boolean,
+      default: true,
+      index: true,
+    },
+
+    // ----------------------------------------------------------
+    // OPTIONAL MODERATION
+    // ----------------------------------------------------------
+
+    isVerified: {
+      type: Boolean,
+      default: false,
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
+
+// ============================================================
+// VALIDATION
+// ============================================================
+
+reviewSchema.pre("validate", function (next) {
+  const type = String(this.type || "").toUpperCase();
+
+  // ----------------------------------------------------------
+  // PRODUCT REVIEW
+  // ----------------------------------------------------------
+
+  if (type === "PRODUCT") {
+    if (!this.productId) {
+      return next(
+        new Error(
+          "Product ID is required for a product review."
+        )
+      );
+    }
+
+    if (!this.sellerId) {
+      return next(
+        new Error(
+          "Seller ID is required for a product review."
+        )
+      );
+    }
+  }
+
+  // ----------------------------------------------------------
+  // SELLER REVIEW
+  // ----------------------------------------------------------
+
+  if (type === "SELLER") {
+    if (!this.sellerId) {
+      return next(
+        new Error(
+          "Seller ID is required for a seller review."
+        )
+      );
+    }
+
+    // Seller reviews do NOT require a product.
+    this.productId = null;
+  }
+
+  next();
 });
 
 // ============================================================
-// GET REVIEWS
+// IMPORTANT UNIQUE INDEXES
+// ============================================================
 //
-// GET /api/reviews
+// PRODUCT:
+// One user can review each product only once.
 //
-// Examples:
+// SELLER:
+// One user can review each seller only once.
 //
-// /api/reviews?sellerId=USER_ID
-// /api/reviews?productId=PRODUCT_ID
-// /api/reviews?sellerId=USER_ID&page=1&limit=10
-// /api/reviews?sellerId=USER_ID&rating=5
-//
-// Public route.
-// Login is NOT required to read reviews.
+// These are partial indexes so PRODUCT reviews don't interfere
+// with SELLER reviews and vice versa.
 // ============================================================
 
-router.get("/", getReviews);
+reviewSchema.index(
+  {
+    userId: 1,
+    productId: 1,
+    type: 1,
+  },
+  {
+    unique: true,
+    partialFilterExpression: {
+      type: "PRODUCT",
+      productId: {
+        $exists: true,
+        $ne: null,
+      },
+    },
+    name: "unique_user_product_review",
+  }
+);
 
-// ============================================================
-// GET SELLER RATING SUMMARY
-//
-// GET /api/reviews/seller/:sellerId/summary
-//
-// Public route.
-// ============================================================
-
-router.get(
-  "/seller/:sellerId/summary",
-  getSellerSummary
+reviewSchema.index(
+  {
+    userId: 1,
+    sellerId: 1,
+    type: 1,
+  },
+  {
+    unique: true,
+    partialFilterExpression: {
+      type: "SELLER",
+      sellerId: {
+        $exists: true,
+        $ne: null,
+      },
+    },
+    name: "unique_user_seller_review",
+  }
 );
 
 // ============================================================
-// CREATE REVIEW
-//
-// POST /api/reviews
-//
-// Authentication required.
+// QUERY INDEXES
 // ============================================================
 
-router.post(
-  "/",
-  verifyToken,
-  createReview
-);
+reviewSchema.index({
+  productId: 1,
+  type: 1,
+  isActive: 1,
+  createdAt: -1,
+});
+
+reviewSchema.index({
+  sellerId: 1,
+  type: 1,
+  isActive: 1,
+  createdAt: -1,
+});
+
+reviewSchema.index({
+  userId: 1,
+  type: 1,
+  createdAt: -1,
+});
 
 // ============================================================
-// UPDATE REVIEW
-//
-// PUT /api/reviews/:id
-//
-// Authentication required.
-// Controller checks ownership/admin permissions.
+// JSON OUTPUT
 // ============================================================
 
-router.put(
-  "/:id",
-  verifyToken,
-  updateReview
-);
+reviewSchema.set("toJSON", {
+  virtuals: true,
+  transform: (doc, ret) => {
+    ret.id = ret._id;
+    delete ret.__v;
+    return ret;
+  },
+});
 
 // ============================================================
-// DELETE REVIEW
-//
-// DELETE /api/reviews/:id
-//
-// Authentication required.
-// Controller checks ownership/admin permissions.
+// MODEL
 // ============================================================
 
-router.delete(
-  "/:id",
-  verifyToken,
-  deleteReview
-);
-
-// ============================================================
-// HELPFUL TOGGLE
-//
-// POST /api/reviews/:id/helpful
-//
-// Authentication required.
-// ============================================================
-
-router.post(
-  "/:id/helpful",
-  verifyToken,
-  toggleHelpful
-);
-
-// ============================================================
-// REPORT REVIEW
-//
-// POST /api/reviews/:id/report
-//
-// Authentication required.
-// ============================================================
-
-router.post(
-  "/:id/report",
-  verifyToken,
-  reportReview
-);
-
-// ============================================================
-// SELLER REPLY
-//
-// POST /api/reviews/:id/reply
-//
-// Authentication required.
-// Controller verifies that logged-in user is the seller.
-// ============================================================
-
-router.post(
-  "/:id/reply",
-  verifyToken,
-  replyToReview
-);
-
-// ============================================================
-// DELETE SELLER REPLY
-//
-// DELETE /api/reviews/:id/reply
-//
-// Authentication required.
-// ============================================================
-
-router.delete(
-  "/:id/reply",
-  verifyToken,
-  deleteReply
-);
-
-// ============================================================
-// EXPORT
-// ============================================================
-
-module.exports = router;
+module.exports =
+  mongoose.models.Review ||
+  mongoose.model("Review", reviewSchema);

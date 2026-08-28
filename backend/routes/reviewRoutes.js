@@ -1,148 +1,171 @@
 // ============================================================
 // backend/routes/reviewRoutes.js
-// BuyUKUsed - Review Routes
+// BuyUKUsed Review Routes
 // ============================================================
 
 const express = require("express");
 
 const router = express.Router();
 
-// ============================================================
-// CONTROLLER
-// ============================================================
-
 const {
-  getReviews,
+  getProductReviews,
+  getSellerReviews,
+  getReviewById,
   createReview,
   updateReview,
   deleteReview,
-  toggleHelpful,
-  reportReview,
-  replyToReview,
-  deleteReply,
-  getSellerSummary,
-  getProductSummary,
+  checkUserReview,
 } = require("../controllers/reviewController");
 
 // ============================================================
 // AUTHENTICATION
 // ============================================================
 
-const { protect } = require("../middleware/auth");
+const passport = require("passport");
 
 // ============================================================
-// PUBLIC ROUTES
+// AUTH MIDDLEWARE
 // ============================================================
-
-// ------------------------------------------------------------
-// GET /api/reviews
-// ------------------------------------------------------------
 //
-// Examples:
+// This assumes your Passport JWT strategy is already configured
+// in:
+// backend/config/passport.js
 //
-// /api/reviews?sellerId=123
-// /api/reviews?productId=123
-// /api/reviews?sellerId=123&page=1&limit=10
-// /api/reviews?sellerId=123&rating=5
-//
-// ------------------------------------------------------------
-
-router.get("/", getReviews);
-
-// ============================================================
-// SELLER SUMMARY
+// Public GET routes remain accessible without login.
+// POST/PUT/DELETE require authentication.
 // ============================================================
 
-// GET /api/reviews/seller/:sellerId/summary
-
-router.get(
-  "/seller/:sellerId/summary",
-  getSellerSummary
+const requireAuth = passport.authenticate(
+  "jwt",
+  {
+    session: false,
+  }
 );
 
 // ============================================================
-// PRODUCT SUMMARY
+// GET PRODUCT REVIEWS
+// ============================================================
+//
+// GET /api/reviews?productId=...&page=1&limit=10
+//
+// PUBLIC
 // ============================================================
 
-// GET /api/reviews/product/:productId/summary
-
 router.get(
-  "/product/:productId/summary",
-  getProductSummary
+  "/",
+  (req, res, next) => {
+    // If sellerId is supplied without productId,
+    // return seller reviews.
+
+    if (
+      req.query.sellerId &&
+      !req.query.productId
+    ) {
+      return getSellerReviews(
+        req,
+        res,
+        next
+      );
+    }
+
+    return getProductReviews(
+      req,
+      res,
+      next
+    );
+  }
 );
 
 // ============================================================
-// AUTHENTICATED ROUTES
+// EXPLICIT PRODUCT REVIEWS
 // ============================================================
 
-router.use(protect);
+router.get(
+  "/product",
+  getProductReviews
+);
+
+// ============================================================
+// EXPLICIT SELLER REVIEWS
+// ============================================================
+
+router.get(
+  "/seller",
+  getSellerReviews
+);
+
+// ============================================================
+// CHECK USER REVIEW
+// ============================================================
+//
+// GET /api/reviews/check?type=PRODUCT&productId=...
+//
+// AUTHENTICATED
+// ============================================================
+
+router.get(
+  "/check",
+  requireAuth,
+  checkUserReview
+);
+
+// ============================================================
+// GET SINGLE REVIEW
+// ============================================================
+//
+// GET /api/reviews/:id
+//
+// PUBLIC
+// ============================================================
+
+router.get(
+  "/:id",
+  getReviewById
+);
 
 // ============================================================
 // CREATE REVIEW
 // ============================================================
-
+//
 // POST /api/reviews
+//
+// AUTHENTICATED
+// ============================================================
 
-router.post("/", createReview);
+router.post(
+  "/",
+  requireAuth,
+  createReview
+);
 
 // ============================================================
 // UPDATE REVIEW
 // ============================================================
-
+//
 // PUT /api/reviews/:id
+//
+// AUTHENTICATED
+// ============================================================
 
-router.put("/:id", updateReview);
+router.put(
+  "/:id",
+  requireAuth,
+  updateReview
+);
 
 // ============================================================
 // DELETE REVIEW
 // ============================================================
-
+//
 // DELETE /api/reviews/:id
-
-router.delete("/:id", deleteReview);
-
+//
+// AUTHENTICATED
 // ============================================================
-// HELPFUL
-// ============================================================
-
-// POST /api/reviews/:id/helpful
-
-router.post(
-  "/:id/helpful",
-  toggleHelpful
-);
-
-// ============================================================
-// REPORT
-// ============================================================
-
-// POST /api/reviews/:id/report
-
-router.post(
-  "/:id/report",
-  reportReview
-);
-
-// ============================================================
-// SELLER REPLY
-// ============================================================
-
-// POST /api/reviews/:id/reply
-
-router.post(
-  "/:id/reply",
-  replyToReview
-);
-
-// ============================================================
-// DELETE SELLER REPLY
-// ============================================================
-
-// DELETE /api/reviews/:id/reply
 
 router.delete(
-  "/:id/reply",
-  deleteReply
+  "/:id",
+  requireAuth,
+  deleteReview
 );
 
 // ============================================================

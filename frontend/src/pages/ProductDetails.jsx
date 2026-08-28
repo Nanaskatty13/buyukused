@@ -1,6 +1,6 @@
 // frontend/src/pages/ProductDetails.jsx
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo, memo } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 
 import { FaMotorcycle } from "react-icons/fa";
@@ -257,12 +257,21 @@ const formatPrice = (price) => {
   return `GH₵ ${Number(price).toLocaleString()}`;
 };
 
-// ─── Helper: Product Card for related products ──────────────────
-const RelatedProductCard = ({ product }) => {
+// ─── Helper: Optimised Product Card for related products ──────
+const RelatedProductCard = memo(({ product }) => {
   const navigate = useNavigate();
 
   const image = product.images?.[0] || product.image || "";
-  const imageUrl = image ? getImageUrl(image) : "https://placehold.co/300x300?text=No+Image";
+  const imageUrl = useMemo(() => {
+    if (!image) return "https://placehold.co/300x300?text=No+Image";
+    let url = getImageUrl(image);
+    // Apply Cloudinary transformation for thumbnails (300x300, quality auto)
+    if (url.includes('res.cloudinary.com')) {
+      url = url.replace('/image/upload/', '/image/upload/w_300,h_300,c_fill,f_auto,q_auto/');
+    }
+    return url;
+  }, [image]);
+
   const isSold = product.status === "sold";
 
   return (
@@ -300,6 +309,7 @@ const RelatedProductCard = ({ product }) => {
         <img
           src={imageUrl}
           alt={product.title}
+          loading="lazy"
           style={{
             position: "absolute",
             top: 0,
@@ -316,13 +326,13 @@ const RelatedProductCard = ({ product }) => {
           <div
             style={{
               position: "absolute",
-              top: "8px",
-              right: "8px",
+              top: "6px",
+              right: "6px",
               background: "#dc2626",
               color: "white",
-              padding: "4px 12px",
+              padding: "2px 10px",
               borderRadius: "4px",
-              fontSize: "11px",
+              fontSize: "10px",
               fontWeight: 700,
               textTransform: "uppercase",
             }}
@@ -333,12 +343,12 @@ const RelatedProductCard = ({ product }) => {
       </div>
 
       {/* Info */}
-      <div style={{ padding: "14px 16px" }}>
+      <div style={{ padding: "10px 12px" }}>
         <h4
           style={{
-            fontSize: "15px",
+            fontSize: "14px",
             fontWeight: 700,
-            margin: "0 0 4px",
+            margin: "0 0 2px",
             overflow: "hidden",
             textOverflow: "ellipsis",
             whiteSpace: "nowrap",
@@ -348,16 +358,16 @@ const RelatedProductCard = ({ product }) => {
         </h4>
         <div
           style={{
-            fontSize: "12px",
+            fontSize: "11px",
             color: "var(--gray-500)",
-            marginBottom: "4px",
+            marginBottom: "2px",
           }}
         >
           {product.location || "Ghana"}
         </div>
         <div
           style={{
-            fontSize: "18px",
+            fontSize: "16px",
             fontWeight: 800,
             color: isSold ? "#9ca3af" : "var(--primary)",
           }}
@@ -367,7 +377,7 @@ const RelatedProductCard = ({ product }) => {
       </div>
     </div>
   );
-};
+});
 
 // ================================================================
 // MAIN COMPONENT
@@ -492,9 +502,10 @@ const ProductDetails = () => {
     try {
       setRelatedLoading(true);
 
+      // Fetch only 4 related products for faster load
       const params = {
         category: currentProduct.category,
-        limit: 8,
+        limit: 4,
         status: "active",
       };
 
@@ -503,10 +514,10 @@ const ProductDetails = () => {
       if (data?.products) {
         let filtered = data.products.filter((p) => p._id !== currentProduct._id);
 
-        if (filtered.length < 4) {
+        if (filtered.length < 3) {
           const fallbackParams = {
             category: currentProduct.category,
-            limit: 12,
+            limit: 6,
             status: "active",
           };
           const fallbackData = await getProducts(fallbackParams);
@@ -515,7 +526,7 @@ const ProductDetails = () => {
           }
         }
 
-        setRelatedProducts(filtered.slice(0, 6));
+        setRelatedProducts(filtered.slice(0, 4));
       }
     } catch (err) {
       console.error("Failed to fetch related products:", err);
@@ -956,6 +967,26 @@ const ProductDetails = () => {
       ? images.length
       : 1;
 
+  // ─── Optimised image URL helpers ──────────────────────────────
+
+  const getOptimizedImageUrl = (path, width = 800, height = 800) => {
+    if (!path) return "https://placehold.co/600x600?text=No+Image";
+    let url = getImageUrl(path);
+    if (url.includes('res.cloudinary.com')) {
+      url = url.replace('/image/upload/', `/image/upload/w_${width},h_${height},c_fill,f_auto,q_auto/`);
+    }
+    return url;
+  };
+
+  const getThumbnailUrl = (path) => {
+    if (!path) return "https://placehold.co/100x100?text=No+Image";
+    let url = getImageUrl(path);
+    if (url.includes('res.cloudinary.com')) {
+      url = url.replace('/image/upload/', '/image/upload/w_100,h_100,c_fill,f_auto,q_auto/');
+    }
+    return url;
+  };
+
   const handlePrev = (e) => {
     e.stopPropagation();
 
@@ -989,14 +1020,18 @@ const ProductDetails = () => {
       hasImages &&
       images[currentImageIndex]
     ) {
-      return getImageUrl(
-        images[currentImageIndex]
+      return getOptimizedImageUrl(
+        images[currentImageIndex],
+        800,
+        800
       );
     }
 
     if (product?.image) {
-      return getImageUrl(
-        product.image
+      return getOptimizedImageUrl(
+        product.image,
+        800,
+        800
       );
     }
 
@@ -1611,8 +1646,6 @@ const ProductDetails = () => {
     return '';
   })();
 
-  console.log('🔍 Seller ID for reviews:', sellerId);
-
   // ================================================================
   // RENDER
   // ================================================================
@@ -1624,12 +1657,12 @@ const ProductDetails = () => {
           @media (max-width: 768px) {
             .product-detail {
               grid-template-columns: 1fr !important;
-              gap: 24px !important;
+              gap: 16px !important;
             }
 
             .thumbnails img {
-              width: 60px !important;
-              height: 60px !important;
+              width: 50px !important;
+              height: 50px !important;
             }
 
             .details h1 {
@@ -1642,17 +1675,17 @@ const ProductDetails = () => {
 
             .details .meta {
               font-size: 13px !important;
-              gap: 10px !important;
+              gap: 6px !important;
             }
 
             .actions button {
               font-size: 14px !important;
-              padding: 10px 18px !important;
+              padding: 8px 16px !important;
             }
 
             .safety {
-              font-size: 12px !important;
-              padding: 12px 14px !important;
+              font-size: 11px !important;
+              padding: 8px 10px !important;
             }
 
             .specs-grid {
@@ -1662,16 +1695,16 @@ const ProductDetails = () => {
 
           @media (max-width: 480px) {
             .thumbnails img {
-              width: 50px !important;
-              height: 50px !important;
+              width: 40px !important;
+              height: 40px !important;
             }
 
             .details h1 {
-              font-size: 20px !important;
+              font-size: 18px !important;
             }
 
             .details .price {
-              font-size: 22px !important;
+              font-size: 20px !important;
             }
 
             .actions {
@@ -1681,19 +1714,20 @@ const ProductDetails = () => {
             .actions button {
               width: 100% !important;
               justify-content: center !important;
+              padding: 8px 12px !important;
             }
           }
 
           .related-products-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 20px;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 12px;
           }
 
           @media (max-width: 600px) {
             .related-products-grid {
               grid-template-columns: repeat(2, 1fr);
-              gap: 12px;
+              gap: 10px;
             }
           }
         `}
@@ -1702,7 +1736,7 @@ const ProductDetails = () => {
       <div
         className="container"
         style={{
-          padding: "30px 20px",
+          padding: "16px 12px",
         }}
       >
         <div
@@ -1710,7 +1744,7 @@ const ProductDetails = () => {
           style={{
             display: "grid",
             gridTemplateColumns: "1fr 1fr",
-            gap: "40px",
+            gap: "20px",
           }}
         >
           {/* GALLERY */}
@@ -1746,15 +1780,15 @@ const ProductDetails = () => {
                     style={{
                       position: "absolute",
                       top: "50%",
-                      left: "12px",
+                      left: "6px",
                       transform: "translateY(-50%)",
                       background: "rgba(0,0,0,0.5)",
                       color: "white",
                       border: "none",
                       borderRadius: "50%",
-                      width: "40px",
-                      height: "40px",
-                      fontSize: "24px",
+                      width: "28px",
+                      height: "28px",
+                      fontSize: "16px",
                       cursor: "pointer",
                       zIndex: 10,
                     }}
@@ -1768,15 +1802,15 @@ const ProductDetails = () => {
                     style={{
                       position: "absolute",
                       top: "50%",
-                      right: "12px",
+                      right: "6px",
                       transform: "translateY(-50%)",
                       background: "rgba(0,0,0,0.5)",
                       color: "white",
                       border: "none",
                       borderRadius: "50%",
-                      width: "40px",
-                      height: "40px",
-                      fontSize: "24px",
+                      width: "28px",
+                      height: "28px",
+                      fontSize: "16px",
                       cursor: "pointer",
                       zIndex: 10,
                     }}
@@ -1787,11 +1821,11 @@ const ProductDetails = () => {
                   <div
                     style={{
                       position: "absolute",
-                      bottom: "16px",
+                      bottom: "10px",
                       left: "50%",
                       transform: "translateX(-50%)",
                       display: "flex",
-                      gap: "8px",
+                      gap: "4px",
                       zIndex: 10,
                     }}
                   >
@@ -1801,8 +1835,8 @@ const ProductDetails = () => {
                         type="button"
                         onClick={() => handleThumbClick(idx)}
                         style={{
-                          width: "10px",
-                          height: "10px",
+                          width: "7px",
+                          height: "7px",
                           borderRadius: "50%",
                           background:
                             idx === currentImageIndex
@@ -1824,8 +1858,8 @@ const ProductDetails = () => {
                 className="thumbnails"
                 style={{
                   display: "flex",
-                  gap: "10px",
-                  marginTop: "12px",
+                  gap: "6px",
+                  marginTop: "8px",
                   overflowX: "auto",
                   paddingBottom: "4px",
                 }}
@@ -1833,12 +1867,13 @@ const ProductDetails = () => {
                 {images.map((img, idx) => (
                   <img
                     key={idx}
-                    src={getImageUrl(img)}
+                    src={getThumbnailUrl(img)}
                     alt={`Thumb ${idx + 1}`}
+                    loading="lazy"
                     onClick={() => handleThumbClick(idx)}
                     style={{
-                      width: "80px",
-                      height: "80px",
+                      width: "60px",
+                      height: "60px",
                       objectFit: "cover",
                       borderRadius: "var(--radius-sm)",
                       cursor: "pointer",
@@ -1847,6 +1882,7 @@ const ProductDetails = () => {
                           ? "3px solid var(--primary)"
                           : "2px solid transparent",
                       flexShrink: 0,
+                      background: "#f1f5f9",
                     }}
                   />
                 ))}
@@ -1858,9 +1894,9 @@ const ProductDetails = () => {
           <div className="details">
             <h1
               style={{
-                fontSize: "28px",
+                fontSize: "24px",
                 fontWeight: 800,
-                marginBottom: "8px",
+                marginBottom: "2px",
               }}
             >
               {product.title}
@@ -1868,13 +1904,13 @@ const ProductDetails = () => {
               {isSold && (
                 <span
                   style={{
-                    fontSize: "16px",
+                    fontSize: "13px",
                     fontWeight: 700,
                     color: "#dc2626",
                     background: "#fee2e2",
-                    padding: "2px 14px",
+                    padding: "2px 8px",
                     borderRadius: "4px",
-                    marginLeft: "12px",
+                    marginLeft: "6px",
                     display: "inline-block",
                     verticalAlign: "middle",
                   }}
@@ -1887,21 +1923,21 @@ const ProductDetails = () => {
             <div
               className="price"
               style={{
-                fontSize: "32px",
+                fontSize: "28px",
                 fontWeight: 800,
                 color: isSold ? "#9ca3af" : "var(--primary)",
-                marginBottom: "8px",
+                marginBottom: "2px",
               }}
             >
               GH₵ {Number(product.price || 0).toLocaleString()}
               {product.oldPrice && (
                 <span
                   style={{
-                    fontSize: "18px",
+                    fontSize: "15px",
                     fontWeight: 400,
                     color: "var(--gray-400)",
                     textDecoration: "line-through",
-                    marginLeft: "12px",
+                    marginLeft: "8px",
                   }}
                 >
                   GH₵ {Number(product.oldPrice).toLocaleString()}
@@ -1913,11 +1949,11 @@ const ProductDetails = () => {
               className="meta"
               style={{
                 display: "flex",
-                gap: "16px",
+                gap: "8px",
                 flexWrap: "wrap",
-                fontSize: "14px",
+                fontSize: "13px",
                 color: "var(--gray-500)",
-                marginBottom: "16px",
+                marginBottom: "6px",
               }}
             >
               <span>
@@ -1946,17 +1982,17 @@ const ProductDetails = () => {
               <div
                 className="specs"
                 style={{
-                  marginBottom: "20px",
-                  padding: "16px",
+                  marginBottom: "10px",
+                  padding: "10px",
                   background: "var(--gray-50)",
                   borderRadius: "var(--radius-md)",
                 }}
               >
                 <h3
                   style={{
-                    fontSize: "16px",
+                    fontSize: "14px",
                     fontWeight: 700,
-                    marginBottom: "12px",
+                    marginBottom: "6px",
                   }}
                 >
                   {specsTitle}
@@ -1965,8 +2001,9 @@ const ProductDetails = () => {
                   className="specs-grid"
                   style={{
                     display: "grid",
-                    gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))",
-                    gap: "8px",
+                    gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))",
+                    gap: "4px",
+                    fontSize: "13px",
                   }}
                 >
                   {renderSpecs()}
@@ -1978,8 +2015,9 @@ const ProductDetails = () => {
               className="description"
               style={{
                 color: "var(--gray-700)",
-                lineHeight: 1.7,
-                marginBottom: "20px",
+                lineHeight: 1.5,
+                marginBottom: "10px",
+                fontSize: "14px",
               }}
             >
               {product.description || "No description provided."}
@@ -1991,19 +2029,19 @@ const ProductDetails = () => {
               style={{
                 background: 'var(--gray-50)',
                 borderRadius: 'var(--radius-md)',
-                padding: '16px 20px',
-                marginBottom: '20px',
+                padding: '10px 14px',
+                marginBottom: '10px',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '16px',
+                gap: '10px',
               }}
             >
               <div
                 className="seller-avatar-wrapper"
                 style={{
                   position: 'relative',
-                  width: '56px',
-                  height: '56px',
+                  width: '44px',
+                  height: '44px',
                   borderRadius: '50%',
                   overflow: 'hidden',
                   flexShrink: 0,
@@ -2011,7 +2049,7 @@ const ProductDetails = () => {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  fontSize: '24px',
+                  fontSize: '18px',
                   fontWeight: 700,
                   color: 'var(--primary)',
                 }}
@@ -2051,7 +2089,7 @@ const ProductDetails = () => {
                           console.warn('⚠️ Avatar failed to load:', avatarUrl);
                           e.currentTarget.style.display = 'none';
                           const parent = e.currentTarget.parentElement;
-                          parent.innerHTML = `<i class="fas fa-user-circle" style="font-size: 28px; color: var(--gray-400);"></i>`;
+                          parent.innerHTML = `<i class="fas fa-user-circle" style="font-size: 22px; color: var(--gray-400);"></i>`;
                           parent.style.display = 'flex';
                           parent.style.alignItems = 'center';
                           parent.style.justifyContent = 'center';
@@ -2060,7 +2098,7 @@ const ProductDetails = () => {
                     );
                   }
 
-                  return <i className="fas fa-user-circle" style={{ fontSize: '28px', color: 'var(--gray-400)' }} />;
+                  return <i className="fas fa-user-circle" style={{ fontSize: '22px', color: 'var(--gray-400)' }} />;
                 })()}
 
                 <span
@@ -2087,8 +2125,8 @@ const ProductDetails = () => {
                   to={`/seller/${sellerId}`}
                   style={{
                     fontWeight: 700,
-                    fontSize: '16px',
-                    marginBottom: '2px',
+                    fontSize: '14px',
+                    marginBottom: '1px',
                     color: 'var(--primary)',
                     textDecoration: 'underline',
                     textDecorationColor: 'var(--primary)',
@@ -2104,14 +2142,14 @@ const ProductDetails = () => {
 
                 {user ? (
                   product.sellerPhone && (
-                    <div style={{ fontSize: '14px', color: 'var(--gray-600)' }}>
-                      <i className="fas fa-phone" style={{ marginRight: '6px' }} />
+                    <div style={{ fontSize: '12px', color: 'var(--gray-600)' }}>
+                      <i className="fas fa-phone" style={{ marginRight: '4px' }} />
                       {product.sellerPhone}
                     </div>
                   )
                 ) : (
-                  <div style={{ fontSize: '14px', color: 'var(--gray-600)' }}>
-                    <i className="fas fa-lock" style={{ marginRight: '6px' }} />
+                  <div style={{ fontSize: '12px', color: 'var(--gray-600)' }}>
+                    <i className="fas fa-lock" style={{ marginRight: '4px' }} />
                     <span
                       style={{
                         color: 'var(--primary)',
@@ -2130,7 +2168,7 @@ const ProductDetails = () => {
                   const seller = product.seller || product.sellerId || {};
                   if (seller.createdAt) {
                     return (
-                      <div style={{ fontSize: '12px', color: 'var(--gray-400)', marginTop: '4px' }}>
+                      <div style={{ fontSize: '10px', color: 'var(--gray-400)', marginTop: '1px' }}>
                         <i className="fas fa-calendar-alt" style={{ marginRight: '4px' }} />
                         Member since {new Date(seller.createdAt).toLocaleDateString()}
                       </div>
@@ -2146,7 +2184,7 @@ const ProductDetails = () => {
               className="actions"
               style={{
                 display: "flex",
-                gap: "12px",
+                gap: "6px",
                 flexWrap: "wrap",
               }}
             >
@@ -2155,17 +2193,17 @@ const ProductDetails = () => {
                   type="button"
                   disabled
                   style={{
-                    padding: "12px 32px",
+                    padding: "8px 20px",
                     background: "#9ca3af",
                     color: "white",
                     border: "none",
                     borderRadius: "var(--radius-full)",
                     fontWeight: 700,
-                    fontSize: "16px",
+                    fontSize: "14px",
                     cursor: "not-allowed",
                     display: "flex",
                     alignItems: "center",
-                    gap: "8px",
+                    gap: "6px",
                     opacity: 0.7,
                   }}
                 >
@@ -2180,18 +2218,18 @@ const ProductDetails = () => {
                       onClick={handleContact}
                       className="btn-secondary"
                       style={{
-                        padding: "12px 32px",
+                        padding: "8px 20px",
                         background: "var(--secondary)",
                         color: "white",
                         border: "none",
                         borderRadius: "var(--radius-full)",
                         fontWeight: 700,
-                        fontSize: "16px",
+                        fontSize: "14px",
                         cursor: "pointer",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        gap: "8px",
+                        gap: "6px",
                         touchAction: "manipulation",
                       }}
                     >
@@ -2205,18 +2243,18 @@ const ProductDetails = () => {
                         type="button"
                         onClick={openChat}
                         style={{
-                          padding: "12px 32px",
+                          padding: "8px 20px",
                           background: "#0055a5",
                           color: "white",
                           border: "none",
                           borderRadius: "var(--radius-full)",
                           fontWeight: 700,
-                          fontSize: "16px",
+                          fontSize: "14px",
                           cursor: "pointer",
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
-                          gap: "8px",
+                          gap: "6px",
                           touchAction: "manipulation",
                         }}
                       >
@@ -2231,18 +2269,18 @@ const ProductDetails = () => {
                     onClick={() => navigate('/login')}
                     className="btn-secondary"
                     style={{
-                      padding: "12px 32px",
+                      padding: "8px 20px",
                       background: "#0055a5",
                       color: "white",
                       border: "none",
                       borderRadius: "var(--radius-full)",
                       fontWeight: 700,
-                      fontSize: "16px",
+                      fontSize: "14px",
                       cursor: "pointer",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      gap: "8px",
+                      gap: "6px",
                     }}
                   >
                     <i className="fas fa-sign-in-alt" />
@@ -2267,20 +2305,20 @@ const ProductDetails = () => {
                   })
                 }
                 style={{
-                  padding: "12px 24px",
+                  padding: "8px 16px",
                   border: "1px solid #e5e7eb",
                   borderRadius: "var(--radius-full)",
                   background: "#fff",
                   color: "#111827",
                   fontWeight: 700,
-                  fontSize: "16px",
+                  fontSize: "13px",
                   cursor: "pointer",
                   display: "flex",
                   alignItems: "center",
-                  gap: "8px",
+                  gap: "6px",
                 }}
               >
-                <FaMotorcycle size={18} />
+                <FaMotorcycle size={15} />
                 BOOK A BIKE RIDER
               </button>
 
@@ -2291,17 +2329,17 @@ const ProductDetails = () => {
                   onClick={handleMarkAsSold}
                   disabled={isUpdating}
                   style={{
-                    padding: "12px 24px",
+                    padding: "8px 16px",
                     background: isSold ? "#22c55e" : "#dc2626",
                     color: "white",
                     border: "none",
                     borderRadius: "var(--radius-full)",
                     fontWeight: 600,
-                    fontSize: "16px",
+                    fontSize: "13px",
                     cursor: isUpdating ? "not-allowed" : "pointer",
                     display: "flex",
                     alignItems: "center",
-                    gap: "8px",
+                    gap: "6px",
                     opacity: isUpdating ? 0.7 : 1,
                     touchAction: "manipulation",
                   }}
@@ -2322,17 +2360,17 @@ const ProductDetails = () => {
                   type="button"
                   onClick={() => setShowEditModal(true)}
                   style={{
-                    padding: "12px 24px",
+                    padding: "8px 16px",
                     border: "1.5px solid var(--primary)",
                     borderRadius: "var(--radius-full)",
                     background: "white",
                     color: "var(--primary)",
                     fontWeight: 600,
-                    fontSize: "16px",
+                    fontSize: "13px",
                     cursor: "pointer",
                     display: "flex",
                     alignItems: "center",
-                    gap: "8px",
+                    gap: "6px",
                   }}
                 >
                   <i className="fas fa-pen" />
@@ -2345,16 +2383,16 @@ const ProductDetails = () => {
                 onClick={() => toggleFavorite(product._id)}
                 className="btn-outline"
                 style={{
-                  padding: "12px 24px",
+                  padding: "8px 16px",
                   border: "1.5px solid var(--gray-300)",
                   borderRadius: "var(--radius-full)",
                   background: "transparent",
                   fontWeight: 600,
-                  fontSize: "16px",
+                  fontSize: "13px",
                   cursor: "pointer",
                   display: "flex",
                   alignItems: "center",
-                  gap: "8px",
+                  gap: "6px",
                   color: liked ? "#e74c3c" : "var(--gray-700)",
                 }}
               >
@@ -2367,18 +2405,18 @@ const ProductDetails = () => {
             <div
               className="safety"
               style={{
-                marginTop: "20px",
+                marginTop: "8px",
                 background: "#fef9c3",
                 borderRadius: "var(--radius-md)",
-                padding: "14px 18px",
-                fontSize: "13px",
+                padding: "10px 12px",
+                fontSize: "11px",
                 color: "#854d0e",
               }}
             >
               <strong>
                 <i className="fas fa-shield-alt" /> Safety tips
               </strong>
-              <ul style={{ paddingLeft: "20px", marginTop: "4px" }}>
+              <ul style={{ paddingLeft: "16px", marginTop: "3px", marginBottom: 0 }}>
                 <li>Avoid paying in advance, even for delivery.</li>
                 <li>Meet with the seller at a safe public place.</li>
                 <li>Inspect the item before paying.</li>
@@ -2388,10 +2426,9 @@ const ProductDetails = () => {
         </div>
 
         {/* ============================================================
-            ✅ REVIEW SECTION – moved BEFORE related products
-            🔽 Reduced spacing (marginTop: 40px, paddingTop: 30px)
+            REVIEW SECTION – compact spacing
         ============================================================ */}
-        <div style={{ marginTop: "40px", paddingTop: "30px", borderTop: "1px solid #e5e7eb" }}>
+        <div style={{ marginTop: "20px", paddingTop: "16px", borderTop: "1px solid #e5e7eb" }}>
           <ReviewSection
             sellerId={sellerId}
             productId={product._id}
@@ -2402,28 +2439,28 @@ const ProductDetails = () => {
         </div>
 
         {/* ============================================================
-            RELATED PRODUCTS – reduced spacing (same)
+            RELATED PRODUCTS – compact spacing
         ============================================================ */}
         {relatedProducts.length > 0 && (
           <div
             style={{
-              marginTop: "40px",
-              paddingTop: "30px",
+              marginTop: "20px",
+              paddingTop: "16px",
               borderTop: "1px solid #e5e7eb",
             }}
           >
             <h2
               style={{
-                fontSize: "24px",
+                fontSize: "20px",
                 fontWeight: 800,
-                marginBottom: "20px",
+                marginBottom: "12px",
               }}
             >
               You might also like
             </h2>
 
             {relatedLoading ? (
-              <div style={{ textAlign: "center", padding: "40px", color: "var(--gray-400)" }}>
+              <div style={{ textAlign: "center", padding: "30px", color: "var(--gray-400)" }}>
                 Loading related products...
               </div>
             ) : (
@@ -2439,7 +2476,7 @@ const ProductDetails = () => {
           </div>
         )}
 
-        {/* EDIT MODAL (unchanged) */}
+        {/* EDIT MODAL */}
         {showEditModal && (
           <div
             style={{
@@ -2514,16 +2551,13 @@ const ProductDetails = () => {
               )}
 
               <form onSubmit={handleEditSubmit}>
-                {/* ... (rest of edit form) ... */}
-                {/* The edit form is long; I won't repeat it all here, but it remains unchanged. */}
-                {/* For brevity, I've omitted the full edit form – your existing code is fine. */}
-                {/* However, to keep the answer complete, you can copy the full edit form from your original file. */}
+                {/* The edit form remains unchanged – keep your existing code */}
               </form>
             </div>
           </div>
         )}
 
-        {/* CHAT MODAL (unchanged) */}
+        {/* CHAT MODAL */}
         {showChatModal && (
           <div
             style={{
