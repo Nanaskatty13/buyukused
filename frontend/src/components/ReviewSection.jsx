@@ -10,33 +10,18 @@ import React, {
   useMemo,
 } from "react";
 
-import axios from "axios";
+import { getToken } from "../utils/storage"; // ✅ use the same token helper
 
-// ============================================================
-// API
-// ============================================================
-
-const API_URL = (
-  import.meta.env.VITE_API_URL ||
-  "https://buyukused.onrender.com"
-).replace(/\/+$/, "");
-
-// ============================================================
-// TOKEN
-// ============================================================
-
-const getToken = () => {
-  if (typeof window === "undefined") {
-    return "";
-  }
-
-  return (
-    localStorage.getItem("token") ||
-    localStorage.getItem("authToken") ||
-    localStorage.getItem("accessToken") ||
-    ""
-  );
-};
+import {
+  createReview,
+  updateReview,
+  toggleReviewHelpful,
+  reportReview,
+  replyToReview,
+  deleteReviewReply,
+  getSellerReviews,
+  getProductReviews,
+} from "../services/api"; // ✅ use centralized API
 
 // ============================================================
 // EMPTY SUMMARY
@@ -267,16 +252,22 @@ const ReviewSection = ({
     }
 
     return reviews.find((r) => {
+      // Get reviewer ID (handles object or string)
       const reviewerId = r.reviewer?._id || r.reviewer?.id || r.reviewer;
       if (!reviewerId) return false;
 
+      // Must be the current user
       if (String(reviewerId) !== String(currentUserId)) return false;
 
+      // If we are in product review mode (productId prop is provided)
       if (productId) {
+        // Match a review with the same productId
         const reviewProductId = r.productId?._id || r.productId;
         return reviewProductId && String(reviewProductId) === String(productId);
       } else {
-        return !r.productId;
+        // Seller review mode: must have no productId (null, undefined, or empty)
+        const hasProductId = r.productId !== undefined && r.productId !== null && r.productId !== "";
+        return !hasProductId;
       }
     });
   }, [reviews, currentUserId, productId]);
@@ -301,34 +292,29 @@ const ReviewSection = ({
         setLoading(true);
         setError("");
 
-        const params = {
-          page,
-          limit: 10,
-        };
-
-        if (sellerId) {
-          params.sellerId = sellerId;
-        }
-
+        // Use the API service functions
+        let response;
         if (productId) {
-          params.productId = productId;
+          response = await getProductReviews(productId, {
+            page,
+            limit: 10,
+            ...(filterRating && { rating: filterRating }),
+          });
+        } else if (sellerId) {
+          response = await getSellerReviews(sellerId, {
+            page,
+            limit: 10,
+            ...(filterRating && { rating: filterRating }),
+          });
+        } else {
+          setReviews([]);
+          setSummary(EMPTY_SUMMARY);
+          setTotalPages(1);
+          setLoading(false);
+          return;
         }
 
-        if (filterRating) {
-          params.rating = filterRating;
-        }
-
-        const response =
-          await axios.get(
-            `${API_URL}/api/reviews`,
-            {
-              params,
-              timeout: 30000,
-            }
-          );
-
-        const data =
-          response.data || {};
+        const data = response || {};
 
         setReviews(
           Array.isArray(data.reviews)
@@ -450,44 +436,17 @@ const ReviewSection = ({
   };
 
   // ==========================================================
-  // UPDATE EXISTING REVIEW
-  // ==========================================================
-
-  const updateExistingReview = async (
-    reviewId,
-    token
-  ) => {
-    const response =
-      await axios.put(
-        `${API_URL}/api/reviews/${encodeURIComponent(
-          reviewId
-        )}`,
-        {
-          rating: selectedRating,
-          comment: comment.trim(),
-        },
-        {
-          headers: {
-            Authorization:
-              `Bearer ${token}`,
-            "Content-Type":
-              "application/json",
-          },
-          timeout: 30000,
-        }
-      );
-
-    return response.data;
-  };
-
-  // ==========================================================
-  // SUBMIT REVIEW
+  // SUBMIT REVIEW (using API service)
   // ==========================================================
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     clearMessages();
+
+    // --------------------------------------------------------
+    // AUTH
+    // --------------------------------------------------------
 
     if (!currentUser) {
       setError(
@@ -507,6 +466,10 @@ const ReviewSection = ({
       return;
     }
 
+    // --------------------------------------------------------
+    // RATING
+    // --------------------------------------------------------
+
     if (!selectedRating) {
       setError(
         "Please select a star rating."
@@ -514,6 +477,10 @@ const ReviewSection = ({
 
       return;
     }
+
+    // --------------------------------------------------------
+    // COMMENT
+    // --------------------------------------------------------
 
     const cleanComment =
       comment.trim();
@@ -534,6 +501,10 @@ const ReviewSection = ({
       return;
     }
 
+    // --------------------------------------------------------
+    // SELLER
+    // --------------------------------------------------------
+
     if (!sellerId) {
       setError(
         "Seller information is missing."
@@ -541,6 +512,10 @@ const ReviewSection = ({
 
       return;
     }
+
+    // --------------------------------------------------------
+    // SELLER CANNOT REVIEW SELF
+    // --------------------------------------------------------
 
     if (isCurrentUserSeller) {
       setError(
@@ -550,7 +525,12 @@ const ReviewSection = ({
       return;
     }
 
+    // ========================================================
+    // CLIENT‑SIDE CHECK FOR EXISTING REVIEW (CONTEXT-AWARE)
+    // ========================================================
+
     if (!editingReviewId && hasUserReviewed && userReview) {
+      // Pre‑fill the edit form and stop submission
       setEditingReviewId(userReview._id);
       setSelectedRating(userReview.rating);
       setComment(userReview.comment || "");
@@ -563,10 +543,18 @@ const ReviewSection = ({
     try {
       setSubmitting(true);
 
+      // ======================================================
+      // EDIT MODE
+      // ======================================================
+
       if (editingReviewId) {
         const data =
-          await updateExistingReview(
+          await updateReview(
             editingReviewId,
+            {
+              rating: selectedRating,
+              comment: cleanComment,
+            },
             token
           );
 
@@ -584,6 +572,10 @@ const ReviewSection = ({
         return;
       }
 
+      // ======================================================
+      // CREATE MODE
+      // ======================================================
+
       const payload = {
         sellerId,
         rating: selectedRating,
@@ -596,22 +588,17 @@ const ReviewSection = ({
       }
 
       const response =
-        await axios.post(
-          `${API_URL}/api/reviews`,
+        await createReview(
           payload,
-          {
-            headers: {
-              Authorization:
-                `Bearer ${token}`,
-              "Content-Type":
-                "application/json",
-            },
-            timeout: 30000,
-          }
+          token
         );
 
       const data =
-        response.data || {};
+        response || {};
+
+      // ======================================================
+      // CREATED SUCCESSFULLY
+      // ======================================================
 
       if (data.success) {
         setSuccess(
@@ -643,6 +630,10 @@ const ReviewSection = ({
         err
       );
 
+      // ======================================================
+      // IMPORTANT 409 HANDLING
+      // ======================================================
+
       const status =
         err.response?.status ||
         err.status;
@@ -661,8 +652,12 @@ const ReviewSection = ({
 
         try {
           const updated =
-            await updateExistingReview(
+            await updateReview(
               existingReview._id,
+              {
+                rating: selectedRating,
+                comment: cleanComment,
+              },
               token
             );
 
@@ -698,16 +693,25 @@ const ReviewSection = ({
         }
       }
 
+      // ======================================================
+      // 409 WITHOUT REVIEW OBJECT – reload and try to find
+      // ======================================================
+
       if (status === 409) {
+        // Reload reviews to get the user's review
         await loadReviews();
 
-        setError("");
+        setError(""); // clear error
         setSuccess(
           "You have already reviewed this. You can edit your review below."
         );
 
         return;
       }
+
+      // ======================================================
+      // OTHER ERRORS
+      // ======================================================
 
       setError(
         data?.message ||
@@ -720,7 +724,7 @@ const ReviewSection = ({
   };
 
   // ==========================================================
-  // HELPFUL
+  // HELPFUL (using API service)
   // ==========================================================
 
   const handleHelpful = async (
@@ -742,22 +746,13 @@ const ReviewSection = ({
       setHelpfulId(reviewId);
 
       const response =
-        await axios.post(
-          `${API_URL}/api/reviews/${encodeURIComponent(
-            reviewId
-          )}/helpful`,
-          {},
-          {
-            headers: {
-              Authorization:
-                `Bearer ${token}`,
-            },
-            timeout: 30000,
-          }
+        await toggleReviewHelpful(
+          reviewId,
+          token
         );
 
       const data =
-        response.data || {};
+        response || {};
 
       setReviews((previous) =>
         previous.map((review) =>
@@ -793,7 +788,7 @@ const ReviewSection = ({
   };
 
   // ==========================================================
-  // REPORT
+  // REPORT (using API service)
   // ==========================================================
 
   const handleReport = async (
@@ -814,21 +809,10 @@ const ReviewSection = ({
     try {
       setReportingId(reviewId);
 
-      await axios.post(
-        `${API_URL}/api/reviews/${encodeURIComponent(
-          reviewId
-        )}/report`,
-        {
-          reason:
-            "Inappropriate or misleading review",
-        },
-        {
-          headers: {
-            Authorization:
-              `Bearer ${token}`,
-          },
-          timeout: 30000,
-        }
+      await reportReview(
+        reviewId,
+        "Inappropriate or misleading review",
+        token
       );
 
       setSuccess(
@@ -850,7 +834,7 @@ const ReviewSection = ({
   };
 
   // ==========================================================
-  // SELLER REPLY
+  // SELLER REPLY (using API service)
   // ==========================================================
 
   const handleReply = async (
@@ -891,26 +875,14 @@ const ReviewSection = ({
       setReplying(true);
 
       const response =
-        await axios.post(
-          `${API_URL}/api/reviews/${encodeURIComponent(
-            reviewId
-          )}/reply`,
-          {
-            text: cleanReply,
-          },
-          {
-            headers: {
-              Authorization:
-                `Bearer ${token}`,
-              "Content-Type":
-                "application/json",
-            },
-            timeout: 30000,
-          }
+        await replyToReview(
+          reviewId,
+          cleanReply,
+          token
         );
 
       const data =
-        response.data || {};
+        response || {};
 
       setReviews((previous) =>
         previous.map((review) =>
@@ -973,7 +945,6 @@ const ReviewSection = ({
       }}
     >
       {/* HEADER */}
-
       <div
         style={{
           display: "flex",
@@ -1044,7 +1015,6 @@ const ReviewSection = ({
       </div>
 
       {/* MESSAGES */}
-
       {error && (
         <div
           role="alert"
@@ -1078,7 +1048,6 @@ const ReviewSection = ({
       )}
 
       {/* WRITE / EDIT REVIEW FORM */}
-
       {showForm && (
         <form
           id="buyukused-review-section-form"
@@ -1235,7 +1204,6 @@ const ReviewSection = ({
       )}
 
       {/* SUMMARY */}
-
       <div
         style={{
           display: "grid",
@@ -1406,7 +1374,6 @@ const ReviewSection = ({
       </div>
 
       {/* REVIEW LIST */}
-
       <div
         style={{
           marginTop: "24px",
@@ -1482,6 +1449,7 @@ const ReviewSection = ({
                     "1px solid #e5e7eb",
                 }}
               >
+                {/* REVIEW HEADER */}
                 <div
                   style={{
                     display: "flex",
@@ -1640,6 +1608,7 @@ const ReviewSection = ({
                   )}
                 </div>
 
+                {/* COMMENT */}
                 <p
                   style={{
                     margin: "14px 0",
@@ -1653,6 +1622,7 @@ const ReviewSection = ({
                   {review?.comment}
                 </p>
 
+                {/* SELLER REPLY */}
                 {review?.sellerReply
                   ?.text && (
                   <div
@@ -1702,6 +1672,7 @@ const ReviewSection = ({
                   </div>
                 )}
 
+                {/* ACTIONS */}
                 <div
                   style={{
                     display: "flex",
@@ -1816,6 +1787,7 @@ const ReviewSection = ({
                     )}
                 </div>
 
+                {/* REPLY FORM */}
                 {replyingId ===
                   review?._id && (
                   <div
@@ -1936,7 +1908,6 @@ const ReviewSection = ({
       </div>
 
       {/* PAGINATION */}
-
       {totalPages > 1 && (
         <div
           style={{

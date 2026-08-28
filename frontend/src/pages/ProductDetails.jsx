@@ -17,7 +17,7 @@ import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
 
 import SoldBadge from "../components/SoldBadge";
-import ReviewSection from "../components/ReviewSection"; // ✅ Added
+import ReviewSection from "../components/ReviewSection";
 
 // ── Laptop constants ──────────────────────────────────────────────
 import {
@@ -2387,12 +2387,28 @@ const ProductDetails = () => {
           </div>
         </div>
 
-        {/* RELATED PRODUCTS */}
+        {/* ============================================================
+            ✅ REVIEW SECTION – moved BEFORE related products
+            🔽 Reduced spacing (marginTop: 40px, paddingTop: 30px)
+        ============================================================ */}
+        <div style={{ marginTop: "40px", paddingTop: "30px", borderTop: "1px solid #e5e7eb" }}>
+          <ReviewSection
+            sellerId={sellerId}
+            productId={product._id}
+            sellerName={sellerName}
+            currentUser={user}
+            showWriteReview={!isSeller && !isSold}
+          />
+        </div>
+
+        {/* ============================================================
+            RELATED PRODUCTS – reduced spacing (same)
+        ============================================================ */}
         {relatedProducts.length > 0 && (
           <div
             style={{
-              marginTop: "60px",
-              paddingTop: "40px",
+              marginTop: "40px",
+              paddingTop: "30px",
               borderTop: "1px solid #e5e7eb",
             }}
           >
@@ -2422,19 +2438,6 @@ const ProductDetails = () => {
             )}
           </div>
         )}
-
-        {/* ============================================================
-            ✅ REVIEW SECTION – added here
-        ============================================================ */}
-        <div style={{ marginTop: "60px", paddingTop: "40px", borderTop: "1px solid #e5e7eb" }}>
-          <ReviewSection
-            sellerId={sellerId}
-            productId={product._id}
-            sellerName={sellerName}
-            currentUser={user}
-            showWriteReview={!isSeller && !isSold}
-          />
-        </div>
 
         {/* EDIT MODAL (unchanged) */}
         {showEditModal && (

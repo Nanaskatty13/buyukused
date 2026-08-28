@@ -18,7 +18,7 @@ import {
   getSellerReviews,
   createReview,
   toggleReviewHelpful,
-  updateReview, // we need this for editing
+  updateReview, // ✅ added for editing
 } from "../services/api";
 
 import {
@@ -690,7 +690,7 @@ const SellerPage = () => {
             response.message || "Your review has been updated successfully."
           );
           resetForm();
-          setPage(1);
+          // setPage is not defined in this scope? We need to fix – use fetchReviews directly.
           await fetchReviews(1, false);
         } else {
           throw new Error(response.message || "Failed to update review.");
