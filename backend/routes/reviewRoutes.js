@@ -47,10 +47,7 @@ const { protect } = require("../middleware/auth");
 //
 // ------------------------------------------------------------
 
-router.get(
-  "/",
-  getReviews
-);
+router.get("/", getReviews);
 
 // ============================================================
 // SELLER SUMMARY
@@ -86,10 +83,7 @@ router.use(protect);
 
 // POST /api/reviews
 
-router.post(
-  "/",
-  createReview
-);
+router.post("/", createReview);
 
 // ============================================================
 // UPDATE REVIEW
@@ -97,10 +91,7 @@ router.post(
 
 // PUT /api/reviews/:id
 
-router.put(
-  "/:id",
-  updateReview
-);
+router.put("/:id", updateReview);
 
 // ============================================================
 // DELETE REVIEW
@@ -108,10 +99,7 @@ router.put(
 
 // DELETE /api/reviews/:id
 
-router.delete(
-  "/:id",
-  deleteReview
-);
+router.delete("/:id", deleteReview);
 
 // ============================================================
 // HELPFUL

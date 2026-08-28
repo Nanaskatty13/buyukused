@@ -4,8 +4,8 @@
 // ============================================================
 
 import React, {
+  useCallback,
   useEffect,
-  useMemo,
   useState,
 } from "react";
 
@@ -25,6 +25,10 @@ const API_URL = (
 // ============================================================
 
 const getToken = () => {
+  if (typeof window === "undefined") {
+    return "";
+  }
+
   return (
     localStorage.getItem("token") ||
     localStorage.getItem("authToken") ||
@@ -43,9 +47,7 @@ const Stars = ({
   interactive = false,
   onChange,
 }) => {
-  const roundedValue = Math.round(
-    Number(value) || 0
-  );
+  const roundedValue = Math.round(Number(value) || 0);
 
   return (
     <div
@@ -56,53 +58,38 @@ const Stars = ({
       }}
       aria-label={`${roundedValue} out of 5 stars`}
     >
-      {[1, 2, 3, 4, 5].map(
-        (star) => (
-          <button
-            key={star}
-            type={
-              interactive
-                ? "button"
-                : undefined
+      {[1, 2, 3, 4, 5].map((star) => (
+        <button
+          key={star}
+          type={interactive ? "button" : "button"}
+          onClick={() => {
+            if (interactive) {
+              onChange?.(star);
             }
-            onClick={() =>
-              interactive &&
-              onChange?.(star)
-            }
-            disabled={
-              !interactive
-            }
-            aria-label={
-              interactive
-                ? `${star} star${
-                    star > 1
-                      ? "s"
-                      : ""
-                  }`
-                : undefined
-            }
-            style={{
-              border: "none",
-              background:
-                "transparent",
-              padding: 0,
-              margin: 0,
-              cursor: interactive
-                ? "pointer"
-                : "default",
-              fontSize: `${size}px`,
-              lineHeight: 1,
-              color:
-                star <=
-                roundedValue
-                  ? "#f59e0b"
-                  : "#d1d5db",
-            }}
-          >
-            ★
-          </button>
-        )
-      )}
+          }}
+          disabled={!interactive}
+          aria-label={
+            interactive
+              ? `${star} star${star > 1 ? "s" : ""}`
+              : undefined
+          }
+          style={{
+            border: "none",
+            background: "transparent",
+            padding: 0,
+            margin: 0,
+            cursor: interactive ? "pointer" : "default",
+            fontSize: `${size}px`,
+            lineHeight: 1,
+            color:
+              star <= roundedValue
+                ? "#f59e0b"
+                : "#d1d5db",
+          }}
+        >
+          ★
+        </button>
+      ))}
     </div>
   );
 };
@@ -111,52 +98,35 @@ const Stars = ({
 // FORMAT DATE
 // ============================================================
 
-const formatDate = (
-  date
-) => {
+const formatDate = (date) => {
   if (!date) {
     return "";
   }
 
-  const parsed =
-    new Date(date);
+  const parsed = new Date(date);
 
-  if (
-    Number.isNaN(
-      parsed.getTime()
-    )
-  ) {
+  if (Number.isNaN(parsed.getTime())) {
     return "";
   }
 
-  return parsed.toLocaleDateString(
-    undefined,
-    {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    }
-  );
+  return parsed.toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
 };
 
 // ============================================================
 // INITIALS
 // ============================================================
 
-const getInitials = (
-  name
-) => {
-  return String(
-    name || "Buyer"
-  )
+const getInitials = (name) => {
+  return String(name || "Buyer")
     .trim()
     .split(/\s+/)
     .slice(0, 2)
-    .map(
-      (part) =>
-        part
-          .charAt(0)
-          .toUpperCase()
+    .map((part) =>
+      part.charAt(0).toUpperCase()
     )
     .join("");
 };
@@ -165,9 +135,7 @@ const getInitials = (
 // AVATAR
 // ============================================================
 
-const getAvatar = (
-  reviewer
-) => {
+const getAvatar = (reviewer) => {
   return (
     reviewer?.avatar ||
     reviewer?.profileImage ||
@@ -175,6 +143,22 @@ const getAvatar = (
     reviewer?.photoURL ||
     ""
   );
+};
+
+// ============================================================
+// DEFAULT SUMMARY
+// ============================================================
+
+const DEFAULT_SUMMARY = {
+  averageRating: 0,
+  totalReviews: 0,
+  breakdown: {
+    5: 0,
+    4: 0,
+    3: 0,
+    2: 0,
+    1: 0,
+  },
 };
 
 // ============================================================
@@ -188,21 +172,14 @@ const Reviews = ({
   currentUser = null,
   showWriteReview = true,
 }) => {
-  const [reviews, setReviews] =
-    useState([]);
+  // ==========================================================
+  // STATE
+  // ==========================================================
+
+  const [reviews, setReviews] = useState([]);
 
   const [summary, setSummary] =
-    useState({
-      averageRating: 0,
-      totalReviews: 0,
-      breakdown: {
-        5: 0,
-        4: 0,
-        3: 0,
-        2: 0,
-        1: 0,
-      },
-    });
+    useState(DEFAULT_SUMMARY);
 
   const [loading, setLoading] =
     useState(true);
@@ -243,13 +220,39 @@ const Reviews = ({
   const [replyText, setReplyText] =
     useState("");
 
+  const [replyingSubmittingId, setReplyingSubmittingId] =
+    useState(null);
+
+  // ==========================================================
+  // CURRENT USER ID
+  // ==========================================================
+
+  const currentUserId =
+    currentUser?._id ||
+    currentUser?.id;
+
+  // ==========================================================
+  // IS CURRENT USER THE SELLER?
+  // ==========================================================
+
+  const isCurrentUserSeller =
+    Boolean(
+      currentUserId &&
+        sellerId &&
+        String(currentUserId) ===
+          String(sellerId)
+    );
+
   // ==========================================================
   // LOAD REVIEWS
   // ==========================================================
 
-  const loadReviews =
+  const loadReviews = useCallback(
     async () => {
       if (!sellerId && !productId) {
+        setReviews([]);
+        setSummary(DEFAULT_SUMMARY);
+        setTotalPages(1);
         setLoading(false);
         return;
       }
@@ -264,57 +267,49 @@ const Reviews = ({
         };
 
         if (sellerId) {
-          params.sellerId =
-            sellerId;
+          params.sellerId = sellerId;
         }
 
         if (productId) {
-          params.productId =
-            productId;
+          params.productId = productId;
         }
 
         if (filterRating) {
-          params.rating =
-            filterRating;
+          params.rating = filterRating;
         }
 
-        const response =
-          await axios.get(
-            `${API_URL}/api/reviews`,
-            {
-              params,
-              timeout: 30000,
-            }
-          );
+        const response = await axios.get(
+          `${API_URL}/api/reviews`,
+          {
+            params,
+            timeout: 30000,
+          }
+        );
 
-        const data =
-          response.data;
+        const data = response.data || {};
 
         setReviews(
-          Array.isArray(
-            data?.reviews
-          )
+          Array.isArray(data.reviews)
             ? data.reviews
             : []
         );
 
-        setSummary(
-          data?.summary || {
-            averageRating: 0,
-            totalReviews: 0,
-            breakdown: {
-              5: 0,
-              4: 0,
-              3: 0,
-              2: 0,
-              1: 0,
-            },
-          }
-        );
+        setSummary({
+          ...DEFAULT_SUMMARY,
+          ...(data.summary || {}),
+          breakdown: {
+            ...DEFAULT_SUMMARY.breakdown,
+            ...(data.summary?.breakdown || {}),
+          },
+        });
 
         setTotalPages(
-          data?.pagination
-            ?.totalPages || 1
+          Math.max(
+            Number(
+              data.pagination?.totalPages || 1
+            ),
+            1
+          )
         );
       } catch (err) {
         console.error(
@@ -323,371 +318,462 @@ const Reviews = ({
         );
 
         setError(
-          err.response?.data
-            ?.message ||
+          err.response?.data?.message ||
             "Unable to load reviews."
         );
       } finally {
         setLoading(false);
       }
-    };
+    },
+    [
+      sellerId,
+      productId,
+      page,
+      filterRating,
+    ]
+  );
+
+  // ==========================================================
+  // LOAD ON CHANGE
+  // ==========================================================
 
   useEffect(() => {
     loadReviews();
-  }, [
-    sellerId,
-    productId,
-    page,
-    filterRating,
-  ]);
+  }, [loadReviews]);
 
   // ==========================================================
-  // PERCENTAGE
+  // RESET PAGE WHEN TARGET CHANGES
   // ==========================================================
 
-  const ratingPercentage =
-    (rating) => {
-      const total =
-        summary.totalReviews ||
-        0;
+  useEffect(() => {
+    setPage(1);
+    setFilterRating("");
+  }, [sellerId, productId]);
 
-      if (!total) {
-        return 0;
-      }
+  // ==========================================================
+  // CLEAR SUCCESS MESSAGE
+  // ==========================================================
 
-      return Math.round(
-        ((summary.breakdown?.[
-          rating
-        ] || 0) /
-          total) *
-          100
-      );
-    };
+  useEffect(() => {
+    if (!success) {
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setSuccess("");
+    }, 5000);
+
+    return () => clearTimeout(timer);
+  }, [success]);
+
+  // ==========================================================
+  // RATING PERCENTAGE
+  // ==========================================================
+
+  const ratingPercentage = (rating) => {
+    const total =
+      Number(summary.totalReviews) || 0;
+
+    if (!total) {
+      return 0;
+    }
+
+    const count =
+      Number(
+        summary.breakdown?.[rating]
+      ) || 0;
+
+    return Math.round(
+      (count / total) * 100
+    );
+  };
 
   // ==========================================================
   // SUBMIT REVIEW
   // ==========================================================
 
-  const handleSubmit =
-    async (e) => {
-      e.preventDefault();
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
-      setError("");
-      setSuccess("");
+    setError("");
+    setSuccess("");
 
-      if (!currentUser) {
-        setError(
-          "Please log in to write a review."
-        );
+    // --------------------------------------------------------
+    // LOGIN CHECK
+    // --------------------------------------------------------
 
-        return;
+    if (!currentUser) {
+      setError(
+        "Please log in to write a review."
+      );
+
+      return;
+    }
+
+    // --------------------------------------------------------
+    // RATING CHECK
+    // --------------------------------------------------------
+
+    if (!selectedRating) {
+      setError(
+        "Please select a star rating."
+      );
+
+      return;
+    }
+
+    // --------------------------------------------------------
+    // COMMENT CHECK
+    // --------------------------------------------------------
+
+    const trimmedComment =
+      comment.trim();
+
+    if (trimmedComment.length < 3) {
+      setError(
+        "Please write at least 3 characters."
+      );
+
+      return;
+    }
+
+    // --------------------------------------------------------
+    // SELLER CHECK
+    // --------------------------------------------------------
+
+    if (!sellerId) {
+      setError(
+        "Seller information is missing."
+      );
+
+      return;
+    }
+
+    // --------------------------------------------------------
+    // TOKEN
+    // --------------------------------------------------------
+
+    const token = getToken();
+
+    if (!token) {
+      setError(
+        "Your login session has expired. Please log in again."
+      );
+
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+
+      const payload = {
+        sellerId,
+        rating: selectedRating,
+        comment: trimmedComment,
+      };
+
+      if (productId) {
+        payload.productId = productId;
       }
 
-      if (!selectedRating) {
-        setError(
-          "Please select a star rating."
-        );
-
-        return;
-      }
+      const response = await axios.post(
+        `${API_URL}/api/reviews`,
+        payload,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type":
+              "application/json",
+          },
+          timeout: 30000,
+        }
+      );
 
       if (
-        comment.trim().length <
-        3
+        response.data?.success === false
       ) {
-        setError(
-          "Please write at least 3 characters."
-        );
-
-        return;
-      }
-
-      if (!sellerId) {
-        setError(
-          "Seller information is missing."
-        );
-
-        return;
-      }
-
-      try {
-        setSubmitting(true);
-
-        const token =
-          getToken();
-
-        if (!token) {
-          setError(
-            "Your login session has expired. Please log in again."
-          );
-
-          return;
-        }
-
-        const payload = {
-          sellerId,
-          rating:
-            selectedRating,
-          comment:
-            comment.trim(),
-        };
-
-        if (productId) {
-          payload.productId =
-            productId;
-        }
-
-        const response =
-          await axios.post(
-            `${API_URL}/api/reviews`,
-            payload,
-            {
-              headers: {
-                Authorization: `Bearer ${token}`,
-                "Content-Type":
-                  "application/json",
-              },
-              timeout: 30000,
-            }
-          );
-
-        if (
-          response.data?.success
-        ) {
-          setSuccess(
-            "Your review has been posted successfully."
-          );
-
-          setComment("");
-          setSelectedRating(0);
-          setShowForm(false);
-          setPage(1);
-
-          await loadReviews();
-        }
-      } catch (err) {
-        console.error(
-          "❌ Submit review error:",
-          err
-        );
-
-        setError(
-          err.response?.data
-            ?.message ||
+        throw new Error(
+          response.data?.message ||
             "Unable to post your review."
         );
-      } finally {
-        setSubmitting(false);
       }
-    };
+
+      setSuccess(
+        "Your review has been posted successfully."
+      );
+
+      setComment("");
+      setSelectedRating(0);
+      setShowForm(false);
+      setPage(1);
+
+      // Reload using page 1 immediately.
+      // The effect will also reload because page changed.
+      await loadReviews();
+    } catch (err) {
+      console.error(
+        "❌ Submit review error:",
+        err
+      );
+
+      setError(
+        err.response?.data?.message ||
+          err.message ||
+          "Unable to post your review."
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   // ==========================================================
   // HELPFUL
   // ==========================================================
 
-  const handleHelpful =
-    async (reviewId) => {
-      const token =
-        getToken();
+  const handleHelpful = async (
+    reviewId
+  ) => {
+    const token = getToken();
 
-      if (!token) {
-        setError(
-          "Please log in to mark a review helpful."
+    if (!token) {
+      setError(
+        "Please log in to mark a review helpful."
+      );
+
+      return;
+    }
+
+    if (!reviewId) {
+      return;
+    }
+
+    try {
+      setError("");
+
+      const response =
+        await axios.post(
+          `${API_URL}/api/reviews/${reviewId}/helpful`,
+          {},
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+            timeout: 30000,
+          }
         );
 
-        return;
-      }
+      const data =
+        response.data || {};
 
-      try {
-        const response =
-          await axios.post(
-            `${API_URL}/api/reviews/${reviewId}/helpful`,
-            {},
-            {
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            }
-          );
+      setReviews((previous) =>
+        previous.map((review) =>
+          String(review._id) ===
+          String(reviewId)
+            ? {
+                ...review,
+                helpfulCount:
+                  Number(
+                    data.helpfulCount ??
+                      review.helpfulCount ??
+                      0
+                  ),
+                hasHelpful:
+                  Boolean(
+                    data.helpful ??
+                      data.hasHelpful ??
+                      !review.hasHelpful
+                  ),
+              }
+            : review
+        )
+      );
+    } catch (err) {
+      console.error(
+        "❌ Helpful error:",
+        err
+      );
 
-        const data =
-          response.data;
-
-        setReviews(
-          (previous) =>
-            previous.map(
-              (review) =>
-                review._id ===
-                reviewId
-                  ? {
-                      ...review,
-                      helpfulCount:
-                        data.helpfulCount,
-                      hasHelpful:
-                        data.helpful,
-                    }
-                  : review
-            )
-        );
-      } catch (err) {
-        console.error(
-          "❌ Helpful error:",
-          err
-        );
-
-        setError(
-          err.response?.data
-            ?.message ||
-            "Unable to update helpful vote."
-        );
-      }
-    };
+      setError(
+        err.response?.data?.message ||
+          "Unable to update helpful vote."
+      );
+    }
+  };
 
   // ==========================================================
   // REPORT
   // ==========================================================
 
-  const handleReport =
-    async (reviewId) => {
-      const token =
-        getToken();
+  const handleReport = async (
+    reviewId
+  ) => {
+    const token = getToken();
 
-      if (!token) {
-        setError(
-          "Please log in to report a review."
-        );
+    if (!token) {
+      setError(
+        "Please log in to report a review."
+      );
 
-        return;
-      }
+      return;
+    }
 
-      try {
-        setReportingId(
-          reviewId
-        );
+    if (!reviewId) {
+      return;
+    }
 
-        await axios.post(
-          `${API_URL}/api/reviews/${reviewId}/report`,
-          {
-            reason:
-              "Inappropriate or misleading review",
+    try {
+      setError("");
+      setSuccess("");
+      setReportingId(reviewId);
+
+      await axios.post(
+        `${API_URL}/api/reviews/${reviewId}/report`,
+        {
+          reason:
+            "Inappropriate or misleading review",
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type":
+              "application/json",
           },
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
+          timeout: 30000,
+        }
+      );
 
-        setSuccess(
-          "Thank you. The review has been reported."
-        );
-      } catch (err) {
-        setError(
-          err.response?.data
-            ?.message ||
-            "Unable to report review."
-        );
-      } finally {
-        setReportingId(null);
-      }
-    };
+      setSuccess(
+        "Thank you. The review has been reported."
+      );
+    } catch (err) {
+      console.error(
+        "❌ Report review error:",
+        err
+      );
+
+      setError(
+        err.response?.data?.message ||
+          "Unable to report review."
+      );
+    } finally {
+      setReportingId(null);
+    }
+  };
 
   // ==========================================================
   // SELLER REPLY
   // ==========================================================
 
-  const handleReply =
-    async (reviewId) => {
-      const token =
-        getToken();
+  const handleReply = async (
+    reviewId
+  ) => {
+    const token = getToken();
 
-      if (!token) {
-        setError(
-          "Please log in."
-        );
+    if (!token) {
+      setError(
+        "Please log in to reply."
+      );
 
-        return;
-      }
+      return;
+    }
 
-      if (
-        !replyText.trim()
-      ) {
-        return;
-      }
+    const trimmedReply =
+      replyText.trim();
 
-      try {
-        const response =
-          await axios.post(
-            `${API_URL}/api/reviews/${reviewId}/reply`,
-            {
-              text:
-                replyText.trim(),
+    if (!trimmedReply) {
+      setError(
+        "Please write a reply."
+      );
+
+      return;
+    }
+
+    if (trimmedReply.length < 3) {
+      setError(
+        "Please write at least 3 characters."
+      );
+
+      return;
+    }
+
+    if (!reviewId) {
+      return;
+    }
+
+    try {
+      setError("");
+      setSuccess("");
+      setReplyingSubmittingId(
+        reviewId
+      );
+
+      const response =
+        await axios.post(
+          `${API_URL}/api/reviews/${reviewId}/reply`,
+          {
+            text: trimmedReply,
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type":
+                "application/json",
             },
-            {
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            }
-          );
-
-        setReviews(
-          (previous) =>
-            previous.map(
-              (review) =>
-                review._id ===
-                reviewId
-                  ? {
-                      ...review,
-                      sellerReply:
-                        response
-                          .data
-                          ?.sellerReply,
-                    }
-                  : review
-            )
+            timeout: 30000,
+          }
         );
 
-        setReplyText("");
-        setReplyingId(null);
-        setSuccess(
-          "Reply posted successfully."
-        );
-      } catch (err) {
-        setError(
-          err.response?.data
-            ?.message ||
-            "Unable to post reply."
-        );
-      }
-    };
+      const sellerReply =
+        response.data?.sellerReply;
 
-  // ==========================================================
-  // CURRENT USER ID
-  // ==========================================================
+      setReviews((previous) =>
+        previous.map((review) =>
+          String(review._id) ===
+          String(reviewId)
+            ? {
+                ...review,
+                sellerReply:
+                  sellerReply ||
+                  {
+                    text: trimmedReply,
+                    createdAt:
+                      new Date().toISOString(),
+                  },
+              }
+            : review
+        )
+      );
 
-  const currentUserId =
-    currentUser?._id ||
-    currentUser?.id;
+      setReplyText("");
+      setReplyingId(null);
 
-  // ==========================================================
-  // SELLER ID FROM CURRENT USER
-  // ==========================================================
+      setSuccess(
+        "Reply posted successfully."
+      );
+    } catch (err) {
+      console.error(
+        "❌ Reply error:",
+        err
+      );
 
-  const isCurrentUserSeller =
-    currentUserId &&
-    sellerId &&
-    String(
-      currentUserId
-    ) === String(sellerId);
+      setError(
+        err.response?.data?.message ||
+          "Unable to post reply."
+      );
+    } finally {
+      setReplyingSubmittingId(
+        null
+      );
+    }
+  };
 
   // ==========================================================
   // EMPTY STATE
   // ==========================================================
 
-  const emptyMessage =
-    productId
-      ? "No reviews for this product yet."
-      : `No reviews for ${sellerName} yet.`;
+  const emptyMessage = productId
+    ? "No reviews for this product yet."
+    : `No reviews for ${sellerName} yet.`;
 
   // ==========================================================
   // RENDER
@@ -702,6 +788,7 @@ const Reviews = ({
         padding: "24px",
         border:
           "1px solid #e5e7eb",
+        boxSizing: "border-box",
       }}
     >
       {/* ======================================================
@@ -713,8 +800,7 @@ const Reviews = ({
           display: "flex",
           justifyContent:
             "space-between",
-          alignItems:
-            "center",
+          alignItems: "center",
           gap: "20px",
           flexWrap: "wrap",
           marginBottom: "24px",
@@ -734,8 +820,7 @@ const Reviews = ({
 
           <p
             style={{
-              margin:
-                "6px 0 0",
+              margin: "6px 0 0",
               color: "#6b7280",
               fontSize: "14px",
             }}
@@ -751,22 +836,17 @@ const Reviews = ({
               type="button"
               onClick={() =>
                 setShowForm(
-                  (value) =>
-                    !value
+                  (value) => !value
                 )
               }
               style={{
                 border: "none",
-                borderRadius:
-                  "999px",
-                padding:
-                  "11px 18px",
-                background:
-                  "#111827",
+                borderRadius: "999px",
+                padding: "11px 18px",
+                background: "#111827",
                 color: "#fff",
                 fontWeight: 700,
-                cursor:
-                  "pointer",
+                cursor: "pointer",
               }}
             >
               {showForm
@@ -784,17 +864,12 @@ const Reviews = ({
         <div
           role="alert"
           style={{
-            marginBottom:
-              "16px",
-            padding:
-              "12px 14px",
-            borderRadius:
-              "10px",
-            background:
-              "#fee2e2",
+            marginBottom: "16px",
+            padding: "12px 14px",
+            borderRadius: "10px",
+            background: "#fee2e2",
             color: "#991b1b",
-            fontSize:
-              "14px",
+            fontSize: "14px",
           }}
         >
           {error}
@@ -805,17 +880,12 @@ const Reviews = ({
         <div
           role="status"
           style={{
-            marginBottom:
-              "16px",
-            padding:
-              "12px 14px",
-            borderRadius:
-              "10px",
-            background:
-              "#dcfce7",
+            marginBottom: "16px",
+            padding: "12px 14px",
+            borderRadius: "10px",
+            background: "#dcfce7",
             color: "#166534",
-            fontSize:
-              "14px",
+            fontSize: "14px",
           }}
         >
           {success}
@@ -828,18 +898,12 @@ const Reviews = ({
 
       {showForm && (
         <form
-          onSubmit={
-            handleSubmit
-          }
+          onSubmit={handleSubmit}
           style={{
-            marginBottom:
-              "28px",
-            padding:
-              "20px",
-            borderRadius:
-              "14px",
-            background:
-              "#f9fafb",
+            marginBottom: "28px",
+            padding: "20px",
+            borderRadius: "14px",
+            background: "#f9fafb",
             border:
               "1px solid #e5e7eb",
           }}
@@ -849,6 +913,7 @@ const Reviews = ({
               marginTop: 0,
               fontSize: "18px",
               fontWeight: 800,
+              color: "#111827",
             }}
           >
             Share your experience
@@ -856,14 +921,11 @@ const Reviews = ({
 
           <div
             style={{
-              marginBottom:
-                "16px",
+              marginBottom: "16px",
             }}
           >
             <Stars
-              value={
-                selectedRating
-              }
+              value={selectedRating}
               size={30}
               interactive
               onChange={
@@ -873,12 +935,9 @@ const Reviews = ({
 
             <div
               style={{
-                marginTop:
-                  "6px",
-                color:
-                  "#6b7280",
-                fontSize:
-                  "13px",
+                marginTop: "6px",
+                color: "#6b7280",
+                fontSize: "13px",
               }}
             >
               {selectedRating
@@ -897,26 +956,18 @@ const Reviews = ({
             placeholder="Tell other buyers about your experience..."
             maxLength={2000}
             rows={5}
-            disabled={
-              submitting
-            }
+            disabled={submitting}
             style={{
               width: "100%",
-              boxSizing:
-                "border-box",
-              padding:
-                "13px 14px",
+              boxSizing: "border-box",
+              padding: "13px 14px",
               border:
                 "1px solid #d1d5db",
-              borderRadius:
-                "10px",
+              borderRadius: "10px",
               resize: "vertical",
-              fontFamily:
-                "inherit",
-              fontSize:
-                "14px",
-              outline:
-                "none",
+              fontFamily: "inherit",
+              fontSize: "14px",
+              outline: "none",
             }}
           />
 
@@ -925,50 +976,37 @@ const Reviews = ({
               display: "flex",
               justifyContent:
                 "space-between",
-              alignItems:
-                "center",
-              marginTop:
-                "10px",
+              alignItems: "center",
+              marginTop: "10px",
               gap: "12px",
-              flexWrap:
-                "wrap",
+              flexWrap: "wrap",
             }}
           >
             <span
               style={{
-                color:
-                  "#6b7280",
-                fontSize:
-                  "12px",
+                color: "#6b7280",
+                fontSize: "12px",
               }}
             >
-              {comment.length}
-              /2000
+              {comment.length}/2000
             </span>
 
             <button
               type="submit"
-              disabled={
-                submitting
-              }
+              disabled={submitting}
               style={{
                 border: "none",
-                borderRadius:
-                  "999px",
-                padding:
-                  "12px 20px",
-                background:
-                  "#111827",
+                borderRadius: "999px",
+                padding: "12px 20px",
+                background: "#111827",
                 color: "#fff",
                 fontWeight: 700,
-                cursor:
-                  submitting
-                    ? "not-allowed"
-                    : "pointer",
-                opacity:
-                  submitting
-                    ? 0.6
-                    : 1,
+                cursor: submitting
+                  ? "not-allowed"
+                  : "pointer",
+                opacity: submitting
+                  ? 0.6
+                  : 1,
               }}
             >
               {submitting
@@ -989,8 +1027,7 @@ const Reviews = ({
           gridTemplateColumns:
             "minmax(150px, 220px) 1fr",
           gap: "28px",
-          paddingBottom:
-            "28px",
+          paddingBottom: "28px",
           borderBottom:
             "1px solid #e5e7eb",
         }}
@@ -999,45 +1036,46 @@ const Reviews = ({
 
         <div
           style={{
-            textAlign:
-              "center",
+            textAlign: "center",
           }}
         >
           <div
             style={{
-              fontSize:
-                "48px",
+              fontSize: "48px",
               lineHeight: 1,
               fontWeight: 800,
               color: "#111827",
             }}
           >
             {Number(
-              summary.averageRating ||
-                0
+              summary.averageRating || 0
             ).toFixed(1)}
           </div>
 
-          <Stars
-            value={
-              summary.averageRating
-            }
-            size={22}
-          />
+          <div
+            style={{
+              marginTop: "8px",
+            }}
+          >
+            <Stars
+              value={
+                summary.averageRating
+              }
+              size={22}
+            />
+          </div>
 
           <div
             style={{
-              marginTop:
-                "7px",
-              color:
-                "#6b7280",
-              fontSize:
-                "14px",
+              marginTop: "7px",
+              color: "#6b7280",
+              fontSize: "14px",
             }}
           >
             {summary.totalReviews}{" "}
-            {summary.totalReviews ===
-            1
+            {Number(
+              summary.totalReviews
+            ) === 1
               ? "review"
               : "reviews"}
           </div>
@@ -1047,123 +1085,116 @@ const Reviews = ({
 
         <div>
           {[5, 4, 3, 2, 1].map(
-            (rating) => (
-              <button
-                key={rating}
-                type="button"
-                onClick={() => {
-                  setFilterRating(
-                    filterRating ===
-                      String(
-                        rating
-                      )
-                      ? ""
-                      : String(
-                          rating
-                        )
-                  );
+            (rating) => {
+              const isSelected =
+                filterRating ===
+                String(rating);
 
-                  setPage(1);
-                }}
-                style={{
-                  display:
-                    "grid",
-                  gridTemplateColumns:
-                    "35px 1fr 42px",
-                  alignItems:
-                    "center",
-                  width: "100%",
-                  border: "none",
-                  background:
-                    "transparent",
-                  padding:
-                    "4px 0",
-                  cursor:
-                    "pointer",
-                  textAlign:
-                    "left",
-                }}
-              >
-                <span
-                  style={{
-                    fontSize:
-                      "13px",
-                    color:
-                      "#374151",
+              return (
+                <button
+                  key={rating}
+                  type="button"
+                  onClick={() => {
+                    setFilterRating(
+                      isSelected
+                        ? ""
+                        : String(rating)
+                    );
+
+                    setPage(1);
                   }}
-                >
-                  {rating} ★
-                </span>
-
-                <div
+                  aria-pressed={
+                    isSelected
+                  }
                   style={{
-                    height:
-                      "8px",
+                    display: "grid",
+                    gridTemplateColumns:
+                      "35px 1fr 42px",
+                    alignItems: "center",
+                    width: "100%",
+                    border: "none",
                     background:
-                      "#e5e7eb",
-                    borderRadius:
-                      "999px",
-                    overflow:
-                      "hidden",
+                      isSelected
+                        ? "#f9fafb"
+                        : "transparent",
+                    padding: "4px 6px",
+                    borderRadius: "6px",
+                    cursor: "pointer",
+                    textAlign: "left",
                   }}
                 >
+                  <span
+                    style={{
+                      fontSize: "13px",
+                      color: "#374151",
+                      fontWeight:
+                        isSelected
+                          ? 700
+                          : 400,
+                    }}
+                  >
+                    {rating} ★
+                  </span>
+
                   <div
                     style={{
-                      height:
-                        "100%",
-                      width: `${ratingPercentage(
-                        rating
-                      )}%`,
+                      height: "8px",
                       background:
-                        "#f59e0b",
+                        "#e5e7eb",
                       borderRadius:
                         "999px",
+                      overflow: "hidden",
                     }}
-                  />
-                </div>
+                  >
+                    <div
+                      style={{
+                        height: "100%",
+                        width: `${ratingPercentage(
+                          rating
+                        )}%`,
+                        background:
+                          "#f59e0b",
+                        borderRadius:
+                          "999px",
+                        transition:
+                          "width 0.2s ease",
+                      }}
+                    />
+                  </div>
 
-                <span
-                  style={{
-                    fontSize:
-                      "12px",
-                    color:
-                      "#6b7280",
-                    textAlign:
-                      "right",
-                  }}
-                >
-                  {summary
-                    .breakdown?.[
-                    rating
-                  ] || 0}
-                </span>
-              </button>
-            )
+                  <span
+                    style={{
+                      fontSize: "12px",
+                      color: "#6b7280",
+                      textAlign: "right",
+                    }}
+                  >
+                    {summary
+                      .breakdown?.[
+                      rating
+                    ] || 0}
+                  </span>
+                </button>
+              );
+            }
           )}
 
           {filterRating && (
             <button
               type="button"
               onClick={() => {
-                setFilterRating(
-                  ""
-                );
+                setFilterRating("");
                 setPage(1);
               }}
               style={{
-                marginTop:
-                  "8px",
+                marginTop: "8px",
                 border: "none",
                 background:
                   "transparent",
-                color:
-                  "#2563eb",
-                fontSize:
-                  "13px",
-                fontWeight:
-                  700,
-                cursor:
-                  "pointer",
+                color: "#2563eb",
+                fontSize: "13px",
+                fontWeight: 700,
+                cursor: "pointer",
               }}
             >
               Clear rating filter
@@ -1178,517 +1209,575 @@ const Reviews = ({
 
       <div
         style={{
-          marginTop:
-            "24px",
+          marginTop: "24px",
         }}
       >
         {loading ? (
           <div
             style={{
-              padding:
-                "40px 0",
-              textAlign:
-                "center",
-              color:
-                "#6b7280",
+              padding: "40px 0",
+              textAlign: "center",
+              color: "#6b7280",
             }}
           >
             Loading reviews...
           </div>
-        ) : reviews.length ===
-          0 ? (
+        ) : reviews.length === 0 ? (
           <div
             style={{
-              padding:
-                "40px 0",
-              textAlign:
-                "center",
-              color:
-                "#6b7280",
+              padding: "40px 0",
+              textAlign: "center",
+              color: "#6b7280",
             }}
           >
             {emptyMessage}
           </div>
         ) : (
-          reviews.map(
-            (review) => {
-              const reviewer =
-                review.reviewer;
+          reviews.map((review) => {
+            const reviewer =
+              review?.reviewer;
 
-              const reviewerName =
-                reviewer?.name ||
-                review.reviewerName ||
-                "Buyer";
+            const reviewerName =
+              reviewer?.name ||
+              review?.reviewerName ||
+              "Buyer";
 
-              const avatar =
-                getAvatar(
-                  reviewer
-                ) ||
-                review.reviewerAvatar;
+            const avatar =
+              getAvatar(reviewer) ||
+              review?.reviewerAvatar ||
+              "";
 
-              const isSellerReview =
-                isCurrentUserSeller;
+            const helpfulCount =
+              Number(
+                review?.helpfulCount
+              ) || 0;
 
-              return (
-                <article
-                  key={
-                    review._id
-                  }
+            const hasSellerReply =
+              Boolean(
+                review?.sellerReply
+                  ?.text
+              );
+
+            const isReplying =
+              replyingId ===
+              review?._id;
+
+            const isReplySubmitting =
+              replyingSubmittingId ===
+              review?._id;
+
+            return (
+              <article
+                key={review?._id}
+                style={{
+                  padding: "22px 0",
+                  borderBottom:
+                    "1px solid #e5e7eb",
+                }}
+              >
+                {/* ==================================================
+                    REVIEW HEADER
+                ================================================== */}
+
+                <div
                   style={{
-                    padding:
-                      "22px 0",
-                    borderBottom:
-                      "1px solid #e5e7eb",
+                    display: "flex",
+                    justifyContent:
+                      "space-between",
+                    gap: "16px",
                   }}
                 >
                   <div
                     style={{
-                      display:
-                        "flex",
-                      justifyContent:
-                        "space-between",
-                      gap: "16px",
+                      display: "flex",
+                      gap: "12px",
+                      minWidth: 0,
                     }}
                   >
+                    {/* AVATAR */}
+
+                    {avatar ? (
+                      <img
+                        src={avatar}
+                        alt={reviewerName}
+                        loading="lazy"
+                        onError={(e) => {
+                          e.currentTarget.style.display =
+                            "none";
+                        }}
+                        style={{
+                          width: "44px",
+                          height: "44px",
+                          minWidth: "44px",
+                          borderRadius:
+                            "50%",
+                          objectFit:
+                            "cover",
+                          background:
+                            "#f3f4f6",
+                        }}
+                      />
+                    ) : (
+                      <div
+                        aria-hidden="true"
+                        style={{
+                          width: "44px",
+                          height: "44px",
+                          minWidth: "44px",
+                          borderRadius:
+                            "50%",
+                          background:
+                            "#111827",
+                          color: "#fff",
+                          display: "flex",
+                          alignItems:
+                            "center",
+                          justifyContent:
+                            "center",
+                          fontWeight: 800,
+                          fontSize: "14px",
+                        }}
+                      >
+                        {getInitials(
+                          reviewerName
+                        )}
+                      </div>
+                    )}
+
+                    <div
+                      style={{
+                        minWidth: 0,
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems:
+                            "center",
+                          gap: "8px",
+                          flexWrap:
+                            "wrap",
+                        }}
+                      >
+                        <strong
+                          style={{
+                            color:
+                              "#111827",
+                            fontSize:
+                              "15px",
+                          }}
+                        >
+                          {reviewerName}
+                        </strong>
+
+                        {review?.verifiedPurchase && (
+                          <span
+                            style={{
+                              padding:
+                                "3px 8px",
+                              borderRadius:
+                                "999px",
+                              background:
+                                "#dcfce7",
+                              color:
+                                "#166534",
+                              fontSize:
+                                "11px",
+                              fontWeight:
+                                700,
+                            }}
+                          >
+                            ✓ Verified purchase
+                          </span>
+                        )}
+                      </div>
+
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems:
+                            "center",
+                          gap: "8px",
+                          marginTop:
+                            "4px",
+                          flexWrap:
+                            "wrap",
+                        }}
+                      >
+                        <Stars
+                          value={
+                            review?.rating
+                          }
+                          size={16}
+                        />
+
+                        <span
+                          style={{
+                            color:
+                              "#9ca3af",
+                            fontSize:
+                              "12px",
+                          }}
+                        >
+                          {formatDate(
+                            review?.createdAt
+                          )}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ==================================================
+                    COMMENT
+                ================================================== */}
+
+                <p
+                  style={{
+                    margin:
+                      "14px 0",
+                    color:
+                      "#374151",
+                    fontSize:
+                      "14px",
+                    lineHeight:
+                      1.7,
+                    whiteSpace:
+                      "pre-wrap",
+                    overflowWrap:
+                      "anywhere",
+                  }}
+                >
+                  {review?.comment}
+                </p>
+
+                {/* ==================================================
+                    SELLER REPLY
+                ================================================== */}
+
+                {hasSellerReply && (
+                  <div
+                    style={{
+                      margin:
+                        "14px 0",
+                      padding:
+                        "14px 16px",
+                      background:
+                        "#f3f4f6",
+                      borderRadius:
+                        "10px",
+                      borderLeft:
+                        "3px solid #111827",
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontWeight:
+                          800,
+                        fontSize:
+                          "13px",
+                        color:
+                          "#111827",
+                        marginBottom:
+                          "5px",
+                      }}
+                    >
+                      {sellerName ||
+                        "Seller"}{" "}
+                      response
+                    </div>
+
+                    <div
+                      style={{
+                        color:
+                          "#4b5563",
+                        fontSize:
+                          "13px",
+                        lineHeight:
+                          1.6,
+                        whiteSpace:
+                          "pre-wrap",
+                        overflowWrap:
+                          "anywhere",
+                      }}
+                    >
+                      {
+                        review
+                          ?.sellerReply
+                          ?.text
+                      }
+                    </div>
+
+                    {review
+                      ?.sellerReply
+                      ?.createdAt && (
+                      <div
+                        style={{
+                          marginTop:
+                            "6px",
+                          color:
+                            "#9ca3af",
+                          fontSize:
+                            "11px",
+                        }}
+                      >
+                        {formatDate(
+                          review
+                            .sellerReply
+                            .createdAt
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* ==================================================
+                    ACTIONS
+                ================================================== */}
+
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems:
+                      "center",
+                    gap: "16px",
+                    flexWrap:
+                      "wrap",
+                  }}
+                >
+                  {/* HELPFUL */}
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handleHelpful(
+                        review?._id
+                      )
+                    }
+                    style={{
+                      border: "none",
+                      background:
+                        "transparent",
+                      color:
+                        review?.hasHelpful
+                          ? "#111827"
+                          : "#6b7280",
+                      fontWeight:
+                        review?.hasHelpful
+                          ? 800
+                          : 500,
+                      cursor:
+                        "pointer",
+                      padding: 0,
+                    }}
+                  >
+                    👍 Helpful
+                    {helpfulCount > 0
+                      ? ` (${helpfulCount})`
+                      : ""}
+                  </button>
+
+                  {/* REPORT */}
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handleReport(
+                        review?._id
+                      )
+                    }
+                    disabled={
+                      reportingId ===
+                      review?._id
+                    }
+                    style={{
+                      border: "none",
+                      background:
+                        "transparent",
+                      color: "#9ca3af",
+                      cursor:
+                        reportingId ===
+                        review?._id
+                          ? "not-allowed"
+                          : "pointer",
+                      padding: 0,
+                      fontSize:
+                        "13px",
+                    }}
+                  >
+                    {reportingId ===
+                    review?._id
+                      ? "Reporting..."
+                      : "Report"}
+                  </button>
+
+                  {/* SELLER REPLY */}
+
+                  {isCurrentUserSeller &&
+                    !hasSellerReply && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setReplyingId(
+                            review?._id
+                          );
+                          setReplyText("");
+                          setError("");
+                        }}
+                        style={{
+                          border:
+                            "none",
+                          background:
+                            "transparent",
+                          color:
+                            "#2563eb",
+                          fontWeight:
+                            700,
+                          cursor:
+                            "pointer",
+                          padding: 0,
+                        }}
+                      >
+                        Reply
+                      </button>
+                    )}
+                </div>
+
+                {/* ==================================================
+                    REPLY FORM
+                ================================================== */}
+
+                {isReplying && (
+                  <div
+                    style={{
+                      marginTop:
+                        "14px",
+                    }}
+                  >
+                    <textarea
+                      value={replyText}
+                      onChange={(e) =>
+                        setReplyText(
+                          e.target.value
+                        )
+                      }
+                      rows={3}
+                      maxLength={2000}
+                      disabled={
+                        isReplySubmitting
+                      }
+                      placeholder="Write a professional response..."
+                      style={{
+                        width:
+                          "100%",
+                        boxSizing:
+                          "border-box",
+                        padding:
+                          "11px",
+                        border:
+                          "1px solid #d1d5db",
+                        borderRadius:
+                          "8px",
+                        fontFamily:
+                          "inherit",
+                        fontSize:
+                          "14px",
+                        resize:
+                          "vertical",
+                        outline:
+                          "none",
+                      }}
+                    />
+
                     <div
                       style={{
                         display:
                           "flex",
-                        gap: "12px",
-                      }}
-                    >
-                      {/* AVATAR */}
-
-                      {avatar ? (
-                        <img
-                          src={
-                            avatar
-                          }
-                          alt={
-                            reviewerName
-                          }
-                          style={{
-                            width:
-                              "44px",
-                            height:
-                              "44px",
-                            borderRadius:
-                              "50%",
-                            objectFit:
-                              "cover",
-                          }}
-                        />
-                      ) : (
-                        <div
-                          style={{
-                            width:
-                              "44px",
-                            height:
-                              "44px",
-                            borderRadius:
-                              "50%",
-                            background:
-                              "#111827",
-                            color:
-                              "#fff",
-                            display:
-                              "flex",
-                            alignItems:
-                              "center",
-                            justifyContent:
-                              "center",
-                            fontWeight:
-                              800,
-                            fontSize:
-                              "14px",
-                          }}
-                        >
-                          {getInitials(
-                            reviewerName
-                          )}
-                        </div>
-                      )}
-
-                      <div>
-                        <div
-                          style={{
-                            display:
-                              "flex",
-                            alignItems:
-                              "center",
-                            gap: "8px",
-                            flexWrap:
-                              "wrap",
-                          }}
-                        >
-                          <strong
-                            style={{
-                              color:
-                                "#111827",
-                              fontSize:
-                                "15px",
-                            }}
-                          >
-                            {
-                              reviewerName
-                            }
-                          </strong>
-
-                          {review.verifiedPurchase && (
-                            <span
-                              style={{
-                                padding:
-                                  "3px 8px",
-                                borderRadius:
-                                  "999px",
-                                background:
-                                  "#dcfce7",
-                                color:
-                                  "#166534",
-                                fontSize:
-                                  "11px",
-                                fontWeight:
-                                  700,
-                              }}
-                            >
-                              ✓ Verified purchase
-                            </span>
-                          )}
-                        </div>
-
-                        <div
-                          style={{
-                            display:
-                              "flex",
-                            alignItems:
-                              "center",
-                            gap: "8px",
-                            marginTop:
-                              "4px",
-                          }}
-                        >
-                          <Stars
-                            value={
-                              review.rating
-                            }
-                            size={16}
-                          />
-
-                          <span
-                            style={{
-                              color:
-                                "#9ca3af",
-                              fontSize:
-                                "12px",
-                            }}
-                          >
-                            {formatDate(
-                              review.createdAt
-                            )}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* COMMENT */}
-
-                  <p
-                    style={{
-                      margin:
-                        "14px 0",
-                      color:
-                        "#374151",
-                      fontSize:
-                        "14px",
-                      lineHeight:
-                        1.7,
-                      whiteSpace:
-                        "pre-wrap",
-                    }}
-                  >
-                    {
-                      review.comment
-                    }
-                  </p>
-
-                  {/* SELLER REPLY */}
-
-                  {review.sellerReply
-                    ?.text && (
-                    <div
-                      style={{
-                        margin:
-                          "14px 0",
-                        padding:
-                          "14px 16px",
-                        background:
-                          "#f3f4f6",
-                        borderRadius:
-                          "10px",
-                        borderLeft:
-                          "3px solid #111827",
-                      }}
-                    >
-                      <div
-                        style={{
-                          fontWeight:
-                            800,
-                          fontSize:
-                            "13px",
-                          color:
-                            "#111827",
-                          marginBottom:
-                            "5px",
-                        }}
-                      >
-                        Seller response
-                      </div>
-
-                      <div
-                        style={{
-                          color:
-                            "#4b5563",
-                          fontSize:
-                            "13px",
-                          lineHeight:
-                            1.6,
-                        }}
-                      >
-                        {
-                          review
-                            .sellerReply
-                            .text
-                        }
-                      </div>
-                    </div>
-                  )}
-
-                  {/* ACTIONS */}
-
-                  <div
-                    style={{
-                      display:
-                        "flex",
-                      alignItems:
-                        "center",
-                      gap: "16px",
-                      flexWrap:
-                        "wrap",
-                    }}
-                  >
-                    <button
-                      type="button"
-                      onClick={() =>
-                        handleHelpful(
-                          review._id
-                        )
-                      }
-                      style={{
-                        border:
-                          "none",
-                        background:
-                          "transparent",
-                        color:
-                          review.hasHelpful
-                            ? "#111827"
-                            : "#6b7280",
-                        fontWeight:
-                          review.hasHelpful
-                            ? 800
-                            : 500,
-                        cursor:
-                          "pointer",
-                        padding: 0,
-                      }}
-                    >
-                      👍 Helpful
-                      {review.helpfulCount
-                        ? ` (${review.helpfulCount})`
-                        : ""}
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() =>
-                        handleReport(
-                          review._id
-                        )
-                      }
-                      disabled={
-                        reportingId ===
-                        review._id
-                      }
-                      style={{
-                        border:
-                          "none",
-                        background:
-                          "transparent",
-                        color:
-                          "#9ca3af",
-                        cursor:
-                          "pointer",
-                        padding: 0,
-                        fontSize:
-                          "13px",
-                      }}
-                    >
-                      {reportingId ===
-                      review._id
-                        ? "Reporting..."
-                        : "Report"}
-                    </button>
-
-                    {isSellerReview &&
-                      !review
-                        .sellerReply
-                        ?.text && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setReplyingId(
-                              review._id
-                            );
-                            setReplyText(
-                              ""
-                            );
-                          }}
-                          style={{
-                            border:
-                              "none",
-                            background:
-                              "transparent",
-                            color:
-                              "#2563eb",
-                            fontWeight:
-                              700,
-                            cursor:
-                              "pointer",
-                            padding: 0,
-                          }}
-                        >
-                          Reply
-                        </button>
-                      )}
-                  </div>
-
-                  {/* REPLY FORM */}
-
-                  {replyingId ===
-                    review._id && (
-                    <div
-                      style={{
+                        gap: "8px",
                         marginTop:
-                          "14px",
+                          "8px",
                       }}
                     >
-                      <textarea
-                        value={
-                          replyText
+                      <button
+                        type="button"
+                        disabled={
+                          isReplySubmitting
                         }
-                        onChange={(
-                          e
-                        ) =>
-                          setReplyText(
-                            e.target
-                              .value
+                        onClick={() =>
+                          handleReply(
+                            review?._id
                           )
                         }
-                        rows={3}
-                        maxLength={
-                          2000
-                        }
-                        placeholder="Write a professional response..."
                         style={{
-                          width:
-                            "100%",
-                          boxSizing:
-                            "border-box",
+                          border:
+                            "none",
+                          borderRadius:
+                            "999px",
                           padding:
-                            "11px",
+                            "9px 16px",
+                          background:
+                            "#111827",
+                          color:
+                            "#fff",
+                          fontWeight:
+                            700,
+                          cursor:
+                            isReplySubmitting
+                              ? "not-allowed"
+                              : "pointer",
+                          opacity:
+                            isReplySubmitting
+                              ? 0.6
+                              : 1,
+                        }}
+                      >
+                        {isReplySubmitting
+                          ? "Posting..."
+                          : "Post reply"}
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={
+                          isReplySubmitting
+                        }
+                        onClick={() => {
+                          setReplyingId(
+                            null
+                          );
+                          setReplyText("");
+                        }}
+                        style={{
                           border:
                             "1px solid #d1d5db",
                           borderRadius:
-                            "8px",
-                          fontFamily:
-                            "inherit",
-                          resize:
-                            "vertical",
-                        }}
-                      />
-
-                      <div
-                        style={{
-                          display:
-                            "flex",
-                          gap: "8px",
-                          marginTop:
-                            "8px",
+                            "999px",
+                          padding:
+                            "9px 16px",
+                          background:
+                            "#fff",
+                          color:
+                            "#374151",
+                          fontWeight:
+                            600,
+                          cursor:
+                            isReplySubmitting
+                              ? "not-allowed"
+                              : "pointer",
+                          opacity:
+                            isReplySubmitting
+                              ? 0.6
+                              : 1,
                         }}
                       >
-                        <button
-                          type="button"
-                          onClick={() =>
-                            handleReply(
-                              review._id
-                            )
-                          }
-                          style={{
-                            border:
-                              "none",
-                            borderRadius:
-                              "999px",
-                            padding:
-                              "9px 16px",
-                            background:
-                              "#111827",
-                            color:
-                              "#fff",
-                            fontWeight:
-                              700,
-                            cursor:
-                              "pointer",
-                          }}
-                        >
-                          Post reply
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setReplyingId(
-                              null
-                            );
-                            setReplyText(
-                              ""
-                            );
-                          }}
-                          style={{
-                            border:
-                              "1px solid #d1d5db",
-                            borderRadius:
-                              "999px",
-                            padding:
-                              "9px 16px",
-                            background:
-                              "#fff",
-                            color:
-                              "#374151",
-                            fontWeight:
-                              600,
-                            cursor:
-                              "pointer",
-                          }}
-                        >
-                          Cancel
-                        </button>
-                      </div>
+                        Cancel
+                      </button>
                     </div>
-                  )}
-                </article>
-              );
-            }
-          )
+                  </div>
+                )}
+              </article>
+            );
+          })
         )}
       </div>
 
@@ -1699,45 +1788,38 @@ const Reviews = ({
       {totalPages > 1 && (
         <div
           style={{
-            display:
-              "flex",
+            display: "flex",
             justifyContent:
               "center",
-            alignItems:
-              "center",
+            alignItems: "center",
             gap: "12px",
-            marginTop:
-              "24px",
+            marginTop: "24px",
           }}
         >
           <button
             type="button"
-            disabled={
-              page <= 1
-            }
+            disabled={page <= 1}
             onClick={() =>
               setPage(
                 (value) =>
-                  value - 1
+                  Math.max(
+                    value - 1,
+                    1
+                  )
               )
             }
             style={{
               border:
                 "1px solid #d1d5db",
-              borderRadius:
-                "8px",
-              padding:
-                "8px 14px",
-              background:
-                "#fff",
+              borderRadius: "8px",
+              padding: "8px 14px",
+              background: "#fff",
               cursor:
                 page <= 1
                   ? "not-allowed"
                   : "pointer",
               opacity:
-                page <= 1
-                  ? 0.5
-                  : 1,
+                page <= 1 ? 0.5 : 1,
             }}
           >
             Previous
@@ -1745,10 +1827,8 @@ const Reviews = ({
 
           <span
             style={{
-              fontSize:
-                "13px",
-              color:
-                "#6b7280",
+              fontSize: "13px",
+              color: "#6b7280",
             }}
           >
             Page {page} of{" "}
@@ -1758,32 +1838,29 @@ const Reviews = ({
           <button
             type="button"
             disabled={
-              page >=
-              totalPages
+              page >= totalPages
             }
             onClick={() =>
               setPage(
                 (value) =>
-                  value + 1
+                  Math.min(
+                    value + 1,
+                    totalPages
+                  )
               )
             }
             style={{
               border:
                 "1px solid #d1d5db",
-              borderRadius:
-                "8px",
-              padding:
-                "8px 14px",
-              background:
-                "#fff",
+              borderRadius: "8px",
+              padding: "8px 14px",
+              background: "#fff",
               cursor:
-                page >=
-                totalPages
+                page >= totalPages
                   ? "not-allowed"
                   : "pointer",
               opacity:
-                page >=
-                totalPages
+                page >= totalPages
                   ? 0.5
                   : 1,
             }}
