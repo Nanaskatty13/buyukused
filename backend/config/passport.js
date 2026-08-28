@@ -18,6 +18,9 @@ const JwtStrategy =
 const ExtractJwt =
   require("passport-jwt").ExtractJwt;
 
+const mongoose =
+  require("mongoose");
+
 const User =
   require("../models/User");
 
@@ -26,25 +29,73 @@ const User =
 // ============================================================
 
 module.exports = (passport) => {
+  console.log(
+    "============================================================"
+  );
+
+  console.log(
+    "🔐 Initializing Passport authentication..."
+  );
+
   // ==========================================================
   // SERIALIZATION
   // ==========================================================
 
   passport.serializeUser(
     (user, done) => {
-      done(null, user.id);
+      try {
+        done(null, user.id);
+      } catch (error) {
+        done(error, null);
+      }
     }
   );
 
   passport.deserializeUser(
     async (id, done) => {
       try {
+        if (
+          !mongoose.Types.ObjectId.isValid(id)
+        ) {
+          return done(
+            null,
+            false
+          );
+        }
+
         const user =
           await User.findById(id);
 
-        done(null, user);
-      } catch (err) {
-        done(err, null);
+        if (!user) {
+          return done(
+            null,
+            false
+          );
+        }
+
+        if (
+          user.isActive === false
+        ) {
+          return done(
+            null,
+            false
+          );
+        }
+
+        return done(
+          null,
+          user
+        );
+      } catch (error) {
+        console.error(
+          "❌ Passport deserializeUser error:",
+          error.message
+        );
+
+        return done(
+          error,
+          null
+        );
       }
     }
   );
@@ -53,21 +104,26 @@ module.exports = (passport) => {
   // JWT STRATEGY
   // ==========================================================
   //
-  // Used for authenticated API requests:
+  // Used by authenticated API requests:
   //
   // Authorization: Bearer <JWT>
   //
-  // This is especially important for:
+  // Example:
   //
-  // POST   /api/reviews
-  // PUT    /api/reviews/:id
+  // GET  /api/messages/unread-count
+  // POST /api/reviews
+  // PUT  /api/reviews/:id
   // DELETE /api/reviews/:id
   //
   // ==========================================================
 
   if (!process.env.JWT_SECRET) {
     console.error(
-      "❌ JWT_SECRET is missing. JWT authentication cannot be initialized."
+      "❌ JWT_SECRET is missing."
+    );
+
+    console.error(
+      "❌ Passport JWT strategy was NOT enabled."
     );
   } else {
     passport.use(
@@ -79,7 +135,26 @@ module.exports = (passport) => {
           secretOrKey:
             process.env.JWT_SECRET,
 
-          algorithms: ["HS256"],
+          algorithms: [
+            "HS256",
+          ],
+
+          // Prevent accepting tokens with
+          // unexpected issuer/audience unless
+          // explicitly configured.
+          ...(process.env.JWT_ISSUER
+            ? {
+                issuer:
+                  process.env.JWT_ISSUER,
+              }
+            : {}),
+
+          ...(process.env.JWT_AUDIENCE
+            ? {
+                audience:
+                  process.env.JWT_AUDIENCE,
+              }
+            : {}),
         },
 
         async (
@@ -88,19 +163,37 @@ module.exports = (passport) => {
         ) => {
           try {
             // ------------------------------------------------
-            // Extract user ID from JWT
+            // DEBUG JWT PAYLOAD
+            // ------------------------------------------------
+
+            console.log(
+              "🔐 JWT authentication attempt"
+            );
+
+            // Never log the actual token.
+            console.log(
+              "🔐 JWT payload keys:",
+              Object.keys(
+                payload || {}
+              )
+            );
+
+            // ------------------------------------------------
+            // GET USER ID
             // ------------------------------------------------
             //
-            // Your authController should normally create
-            // tokens containing either:
+            // Support all formats currently used by the
+            // BuyUKUsed application.
+            //
+            // Preferred:
             //
             // { id: user._id }
             //
-            // or:
+            // Also supported:
             //
             // { userId: user._id }
+            // { _id: user._id }
             //
-            // Support both.
             // ------------------------------------------------
 
             const userId =
@@ -110,8 +203,14 @@ module.exports = (passport) => {
 
             if (!userId) {
               console.error(
-                "❌ JWT payload does not contain a user ID:",
-                payload
+                "❌ JWT does not contain a user ID."
+              );
+
+              console.error(
+                "❌ Available payload fields:",
+                Object.keys(
+                  payload || {}
+                )
               );
 
               return done(
@@ -121,7 +220,27 @@ module.exports = (passport) => {
             }
 
             // ------------------------------------------------
-            // Find user
+            // VALIDATE OBJECT ID
+            // ------------------------------------------------
+
+            if (
+              !mongoose.Types.ObjectId.isValid(
+                userId
+              )
+            ) {
+              console.error(
+                "❌ JWT contains invalid MongoDB user ID:",
+                userId
+              );
+
+              return done(
+                null,
+                false
+              );
+            }
+
+            // ------------------------------------------------
+            // FIND USER
             // ------------------------------------------------
 
             const user =
@@ -129,10 +248,18 @@ module.exports = (passport) => {
                 userId
               );
 
+            // ------------------------------------------------
+            // USER DOES NOT EXIST
+            // ------------------------------------------------
+
             if (!user) {
               console.error(
-                "❌ JWT user not found:",
+                "⚠️ JWT user not found:",
                 userId
+              );
+
+              console.error(
+                "⚠️ The token belongs to a user that does not exist in the current MongoDB database."
               );
 
               return done(
@@ -142,14 +269,14 @@ module.exports = (passport) => {
             }
 
             // ------------------------------------------------
-            // Check account status
+            // ACCOUNT STATUS
             // ------------------------------------------------
 
             if (
               user.isActive === false
             ) {
               console.error(
-                "❌ JWT user account is inactive:",
+                "⚠️ JWT user account is inactive:",
                 userId
               );
 
@@ -160,21 +287,26 @@ module.exports = (passport) => {
             }
 
             // ------------------------------------------------
-            // Authentication successful
+            // SUCCESS
             // ------------------------------------------------
+
+            console.log(
+              "✅ JWT user authenticated:",
+              user._id.toString()
+            );
 
             return done(
               null,
               user
             );
-          } catch (err) {
+          } catch (error) {
             console.error(
               "❌ JWT authentication error:",
-              err
+              error.message
             );
 
             return done(
-              err,
+              error,
               false
             );
           }
@@ -196,6 +328,11 @@ module.exports = (passport) => {
       {
         usernameField:
           "email",
+
+        passwordField:
+          "password",
+
+        session: false,
       },
 
       async (
@@ -211,6 +348,20 @@ module.exports = (passport) => {
               .trim()
               .toLowerCase();
 
+          if (
+            !normalizedEmail ||
+            !password
+          ) {
+            return done(
+              null,
+              false,
+              {
+                message:
+                  "Email and password are required.",
+              }
+            );
+          }
+
           const user =
             await User.findOne({
               email:
@@ -223,21 +374,48 @@ module.exports = (passport) => {
               false,
               {
                 message:
-                  "Invalid email or password",
+                  "Invalid email or password.",
               }
             );
           }
 
-          if (!user.password) {
+          // ------------------------------------------------
+          // ACCOUNT STATUS
+          // ------------------------------------------------
+
+          if (
+            user.isActive === false
+          ) {
             return done(
               null,
               false,
               {
                 message:
-                  "Account uses social login",
+                  "Account is inactive.",
               }
             );
           }
+
+          // ------------------------------------------------
+          // SOCIAL LOGIN
+          // ------------------------------------------------
+
+          if (
+            !user.password
+          ) {
+            return done(
+              null,
+              false,
+              {
+                message:
+                  "This account uses social login.",
+              }
+            );
+          }
+
+          // ------------------------------------------------
+          // PASSWORD CHECK
+          // ------------------------------------------------
 
           const isMatch =
             await user.comparePassword(
@@ -250,20 +428,7 @@ module.exports = (passport) => {
               false,
               {
                 message:
-                  "Invalid email or password",
-              }
-            );
-          }
-
-          if (
-            user.isActive === false
-          ) {
-            return done(
-              null,
-              false,
-              {
-                message:
-                  "Account is inactive",
+                  "Invalid email or password.",
               }
             );
           }
@@ -272,9 +437,15 @@ module.exports = (passport) => {
             null,
             user
           );
-        } catch (err) {
+        } catch (error) {
+          console.error(
+            "❌ Passport Local authentication error:",
+            error.message
+          );
+
           return done(
-            err
+            error,
+            false
           );
         }
       }
@@ -306,8 +477,7 @@ module.exports = (passport) => {
 
           callbackURL:
             `${
-              process.env
-                .BACKEND_URL ||
+              process.env.BACKEND_URL ||
               "http://localhost:5000"
             }/auth/google/callback`,
         },
@@ -334,13 +504,24 @@ module.exports = (passport) => {
                   "google",
               });
 
-            if (!user && googleEmail) {
+            // ------------------------------------------------
+            // LINK GOOGLE ACCOUNT TO EXISTING EMAIL
+            // ------------------------------------------------
+
+            if (
+              !user &&
+              googleEmail
+            ) {
               user =
                 await User.findOne({
                   email:
                     googleEmail,
                 });
             }
+
+            // ------------------------------------------------
+            // EXISTING USER
+            // ------------------------------------------------
 
             if (user) {
               user.providerId =
@@ -349,14 +530,30 @@ module.exports = (passport) => {
               user.provider =
                 "google";
 
-              user.photoURL =
-                user.photoURL ||
+              if (
+                !user.photoURL &&
                 profile.photos?.[0]
-                  ?.value ||
-                "";
+                  ?.value
+              ) {
+                user.photoURL =
+                  profile.photos[0].value;
+              }
+
+              if (
+                user.isActive === false
+              ) {
+                user.isActive =
+                  true;
+              }
 
               await user.save();
-            } else {
+            }
+
+            // ------------------------------------------------
+            // NEW USER
+            // ------------------------------------------------
+
+            else {
               user =
                 new User({
                   name:
@@ -365,7 +562,7 @@ module.exports = (passport) => {
 
                   email:
                     googleEmail ||
-                    `${profile.id}@google.com`,
+                    `${profile.id}@google.local`,
 
                   provider:
                     "google",
@@ -378,7 +575,14 @@ module.exports = (passport) => {
                       ?.value ||
                     "",
 
-                  password: "",
+                  password:
+                    "",
+                  
+                  isActive:
+                    true,
+
+                  role:
+                    "buyer",
                 });
 
               await user.save();
@@ -388,9 +592,14 @@ module.exports = (passport) => {
               null,
               user
             );
-          } catch (err) {
+          } catch (error) {
+            console.error(
+              "❌ Google authentication error:",
+              error.message
+            );
+
             return done(
-              err,
+              error,
               null
             );
           }
@@ -400,6 +609,10 @@ module.exports = (passport) => {
 
     console.log(
       "🔐 Passport Google strategy enabled"
+    );
+  } else {
+    console.log(
+      "ℹ️ Google OAuth not configured. Google strategy skipped."
     );
   }
 
@@ -424,8 +637,7 @@ module.exports = (passport) => {
 
           callbackURL:
             `${
-              process.env
-                .BACKEND_URL ||
+              process.env.BACKEND_URL ||
               "http://localhost:5000"
             }/auth/facebook/callback`,
 
@@ -459,6 +671,10 @@ module.exports = (passport) => {
                   "facebook",
               });
 
+            // ------------------------------------------------
+            // LINK FACEBOOK TO EXISTING EMAIL
+            // ------------------------------------------------
+
             if (
               !user &&
               facebookEmail
@@ -470,6 +686,10 @@ module.exports = (passport) => {
                 });
             }
 
+            // ------------------------------------------------
+            // EXISTING USER
+            // ------------------------------------------------
+
             if (user) {
               user.providerId =
                 profile.id;
@@ -477,14 +697,30 @@ module.exports = (passport) => {
               user.provider =
                 "facebook";
 
-              user.photoURL =
-                user.photoURL ||
+              if (
+                !user.photoURL &&
                 profile.photos?.[0]
-                  ?.value ||
-                "";
+                  ?.value
+              ) {
+                user.photoURL =
+                  profile.photos[0].value;
+              }
+
+              if (
+                user.isActive === false
+              ) {
+                user.isActive =
+                  true;
+              }
 
               await user.save();
-            } else {
+            }
+
+            // ------------------------------------------------
+            // NEW USER
+            // ------------------------------------------------
+
+            else {
               user =
                 new User({
                   name:
@@ -493,7 +729,7 @@ module.exports = (passport) => {
 
                   email:
                     facebookEmail ||
-                    `${profile.id}@facebook.com`,
+                    `${profile.id}@facebook.local`,
 
                   provider:
                     "facebook",
@@ -506,7 +742,14 @@ module.exports = (passport) => {
                       ?.value ||
                     "",
 
-                  password: "",
+                  password:
+                    "",
+
+                  isActive:
+                    true,
+
+                  role:
+                    "buyer",
                 });
 
               await user.save();
@@ -516,9 +759,14 @@ module.exports = (passport) => {
               null,
               user
             );
-          } catch (err) {
+          } catch (error) {
+            console.error(
+              "❌ Facebook authentication error:",
+              error.message
+            );
+
             return done(
-              err,
+              error,
               null
             );
           }
@@ -529,6 +777,10 @@ module.exports = (passport) => {
     console.log(
       "🔐 Passport Facebook strategy enabled"
     );
+  } else {
+    console.log(
+      "ℹ️ Facebook OAuth not configured. Facebook strategy skipped."
+    );
   }
 
   // ==========================================================
@@ -537,5 +789,9 @@ module.exports = (passport) => {
 
   console.log(
     "✅ Passport authentication configuration loaded"
+  );
+
+  console.log(
+    "============================================================"
   );
 };
