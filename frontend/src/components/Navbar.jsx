@@ -1,6 +1,6 @@
 // ============================================================
 // frontend/src/components/Navbar.jsx
-// BuyUKUsed - Fixed / Always Visible Navbar
+// BuyUKUsed - Fixed Responsive Navbar
 // ============================================================
 
 import React, {
@@ -40,13 +40,49 @@ const getToken = () => {
 // ============================================================
 
 const getApiUrl = () => {
-  const value = import.meta.env.VITE_API_URL;
+  try {
+    const value = import.meta.env.VITE_API_URL;
 
-  if (!value) {
+    if (!value) {
+      return "http://localhost:5000";
+    }
+
+    return String(value).replace(/\/+$/, "");
+  } catch {
     return "http://localhost:5000";
   }
+};
 
-  return value.replace(/\/+$/, "");
+// ============================================================
+// SAFE NUMBER
+// ============================================================
+
+const safeCount = (value) => {
+  const number = Number(value);
+
+  if (!Number.isFinite(number) || number <= 0) {
+    return 0;
+  }
+
+  return Math.floor(number);
+};
+
+// ============================================================
+// BADGE
+// ============================================================
+
+const Badge = ({ count }) => {
+  const value = safeCount(count);
+
+  if (value <= 0) {
+    return null;
+  }
+
+  return (
+    <span className="navbar-badge">
+      {value > 99 ? "99+" : value}
+    </span>
+  );
 };
 
 // ============================================================
@@ -55,16 +91,19 @@ const getApiUrl = () => {
 
 const Navbar = () => {
   const { user, logout } = useAuth();
-  const { favorites } = useCart();
+  const { favorites = [] } = useCart();
 
-  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [dropdownOpen, setDropdownOpen] =
+    useState(false);
+
   const [mobileDropdownOpen, setMobileDropdownOpen] =
     useState(false);
 
   const [unreadNotifications, setUnreadNotifications] =
     useState(0);
 
-  const [unreadMessages, setUnreadMessages] = useState(0);
+  const [unreadMessages, setUnreadMessages] =
+    useState(0);
 
   const dropdownRef = useRef(null);
   const mobileDropdownRef = useRef(null);
@@ -78,22 +117,27 @@ const Navbar = () => {
 
   useEffect(() => {
     const handleClickOutside = (event) => {
+      const target = event.target;
+
       if (
         dropdownRef.current &&
-        !dropdownRef.current.contains(event.target)
+        !dropdownRef.current.contains(target)
       ) {
         setDropdownOpen(false);
       }
 
       if (
         mobileDropdownRef.current &&
-        !mobileDropdownRef.current.contains(event.target)
+        !mobileDropdownRef.current.contains(target)
       ) {
         setMobileDropdownOpen(false);
       }
     };
 
-    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener(
+      "mousedown",
+      handleClickOutside
+    );
 
     return () => {
       document.removeEventListener(
@@ -119,9 +163,15 @@ const Navbar = () => {
   useEffect(() => {
     let cancelled = false;
 
-    if (!user) {
+    const resetCounts = () => {
+      if (cancelled) return;
+
       setUnreadNotifications(0);
       setUnreadMessages(0);
+    };
+
+    if (!user) {
+      resetCounts();
       return;
     }
 
@@ -130,11 +180,24 @@ const Navbar = () => {
 
       const token = getToken();
 
+      if (!token) {
+        resetCounts();
+        return;
+      }
+
+      const apiUrl = getApiUrl();
+
+      // ========================================================
+      // NOTIFICATIONS
+      // ========================================================
+
+      let notificationCount = 0;
+
       // --------------------------------------------------------
       // ADMIN NOTIFICATIONS
       // --------------------------------------------------------
 
-      if (user.role === "admin" && token) {
+      if (user.role === "admin") {
         try {
           const data =
             await getAdminNotifications(token);
@@ -144,46 +207,79 @@ const Navbar = () => {
             data?.data ||
             [];
 
-          const unread =
-            Array.isArray(notifications)
-              ? notifications.filter(
-                  (notification) =>
-                    !notification.isRead
-                ).length
-              : 0;
-
-          if (!cancelled) {
-            setUnreadNotifications(unread);
+          if (Array.isArray(notifications)) {
+            notificationCount =
+              notifications.filter(
+                (notification) =>
+                  notification &&
+                  !notification.isRead
+              ).length;
           }
         } catch (error) {
           console.warn(
-            "Admin notification fetch failed:",
+            "Admin notification count failed:",
             error?.message || error
           );
-
-          if (!cancelled) {
-            setUnreadNotifications(0);
-          }
         }
-      } else {
-        setUnreadNotifications(0);
       }
 
       // --------------------------------------------------------
-      // MESSAGES
+      // NORMAL USER NOTIFICATIONS
       // --------------------------------------------------------
-
-      if (!token) {
-        if (!cancelled) {
-          setUnreadMessages(0);
-        }
-
-        return;
-      }
+      //
+      // If your backend exposes:
+      // GET /api/notifications/unread-count
+      //
+      // the navbar will automatically use it.
+      //
+      // If that endpoint is unavailable, the navbar safely
+      // keeps the notification count at zero.
+      // --------------------------------------------------------
 
       try {
-        const apiUrl = getApiUrl();
+        const response = await fetch(
+          `${apiUrl}/api/notifications/unread-count`,
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              Accept: "application/json",
+            },
+          }
+        );
 
+        if (response.ok) {
+          const data = await response.json();
+
+          const apiCount =
+            data?.count ??
+            data?.unreadCount ??
+            data?.unread ??
+            data?.totalUnread;
+
+          if (
+            apiCount !== undefined &&
+            apiCount !== null
+          ) {
+            notificationCount = safeCount(apiCount);
+          }
+        }
+      } catch (error) {
+        // Do not allow notification failure
+        // to break the navbar.
+      }
+
+      if (!cancelled) {
+        setUnreadNotifications(
+          notificationCount
+        );
+      }
+
+      // ========================================================
+      // MESSAGES
+      // ========================================================
+
+      try {
         const response = await fetch(
           `${apiUrl}/api/messages/unread-count`,
           {
@@ -205,17 +301,16 @@ const Navbar = () => {
 
         const data = await response.json();
 
-        const count = Number(
+        const messageCount =
           data?.count ??
-            data?.unreadCount ??
-            0
-        );
+          data?.unreadCount ??
+          data?.unread ??
+          data?.totalUnread ??
+          0;
 
         if (!cancelled) {
           setUnreadMessages(
-            Number.isFinite(count) && count > 0
-              ? count
-              : 0
+            safeCount(messageCount)
           );
         }
       } catch (error) {
@@ -227,7 +322,7 @@ const Navbar = () => {
 
     fetchCounts();
 
-    // Poll every 30 seconds.
+    // Refresh every 30 seconds.
     const interval = setInterval(
       fetchCounts,
       30000
@@ -263,12 +358,18 @@ const Navbar = () => {
   // ==========================================================
 
   const toggleDropdown = () => {
-    setDropdownOpen((previous) => !previous);
+    setDropdownOpen(
+      (previous) => !previous
+    );
+
     setMobileDropdownOpen(false);
   };
 
   const toggleMobileDropdown = () => {
-    setMobileDropdownOpen((previous) => !previous);
+    setMobileDropdownOpen(
+      (previous) => !previous
+    );
+
     setDropdownOpen(false);
   };
 
@@ -286,7 +387,9 @@ const Navbar = () => {
   // ==========================================================
 
   const getProfileImage = () => {
-    if (!user) return null;
+    if (!user) {
+      return null;
+    }
 
     const image =
       user.profileImage ||
@@ -305,11 +408,11 @@ const Navbar = () => {
       return image;
     }
 
-    const base = getApiUrl();
-
     if (typeof image !== "string") {
       return null;
     }
+
+    const base = getApiUrl();
 
     if (image.startsWith("/")) {
       return `${base}${image}`;
@@ -318,11 +421,18 @@ const Navbar = () => {
     return `${base}/${image}`;
   };
 
-  const profileImageUrl = getProfileImage();
+  const profileImageUrl =
+    getProfileImage();
 
   // ==========================================================
   // FAVORITES
   // ==========================================================
+
+  const favoriteCount = Array.isArray(
+    favorites
+  )
+    ? favorites.length
+    : 0;
 
   const handleHeartClick = (event) => {
     if (!user) {
@@ -346,7 +456,7 @@ const Navbar = () => {
         {`
           /* =====================================================
              FIXED NAVBAR
-             ===================================================== */
+          ===================================================== */
 
           .navbar-sticky {
             position: fixed !important;
@@ -356,30 +466,33 @@ const Navbar = () => {
 
             width: 100% !important;
 
+            min-width: 0;
+
             z-index: 99999 !important;
 
             box-sizing: border-box;
 
-            background:
-              rgba(255, 255, 255, 0.94);
+            background: rgba(255, 255, 255, 0.96);
 
             backdrop-filter: blur(14px);
             -webkit-backdrop-filter: blur(14px);
 
             border-bottom:
-              1px solid rgba(229, 231, 235, 0.7);
+              1px solid rgba(229, 231, 235, 0.8);
 
             box-shadow:
-              0 1px 8px rgba(0, 0, 0, 0.04);
+              0 2px 10px rgba(0, 0, 0, 0.05);
 
             isolation: isolate;
           }
 
           /* =====================================================
              NAVBAR CONTAINER
-             ===================================================== */
+          ===================================================== */
 
           .navbar-container {
+            width: 100%;
+
             max-width: 1280px;
 
             margin: 0 auto;
@@ -394,14 +507,14 @@ const Navbar = () => {
 
             justify-content: space-between;
 
-            gap: 16px;
+            gap: 12px;
 
             box-sizing: border-box;
           }
 
           /* =====================================================
              LOGO
-             ===================================================== */
+          ===================================================== */
 
           .navbar-logo {
             font-size: 20px;
@@ -418,7 +531,9 @@ const Navbar = () => {
 
             gap: 6px;
 
-            flex-shrink: 0;
+            flex-shrink: 1;
+
+            min-width: 0;
 
             white-space: nowrap;
           }
@@ -428,20 +543,20 @@ const Navbar = () => {
           }
 
           /* =====================================================
-             POST AD
-             ===================================================== */
+             START SELLING
+          ===================================================== */
+
+          .navbar-post-ad-btn {
+            flex-shrink: 0;
+          }
 
           .navbar-post-ad-text {
             display: inline;
           }
 
-          .navbar-post-ad-icon {
-            display: none;
-          }
-
           /* =====================================================
              AVATAR
-             ===================================================== */
+          ===================================================== */
 
           .navbar-avatar {
             width: 28px;
@@ -471,15 +586,32 @@ const Navbar = () => {
           }
 
           /* =====================================================
-             ICONS
-             ===================================================== */
+             RIGHT SIDE
+          ===================================================== */
+
+          .navbar-right {
+            display: flex;
+
+            align-items: center;
+
+            gap: 12px;
+
+            flex-shrink: 0;
+
+            min-width: 0;
+          }
+
+          /* =====================================================
+             ICON BUTTONS
+          ===================================================== */
 
           .navbar-heart,
           .navbar-bell,
           .navbar-envelope {
             position: relative;
 
-            font-size: 18px;
+            width: 24px;
+            height: 24px;
 
             color: #475569;
 
@@ -491,8 +623,11 @@ const Navbar = () => {
 
             justify-content: center;
 
-            width: 24px;
-            height: 24px;
+            flex-shrink: 0;
+
+            font-size: 18px;
+
+            line-height: 1;
 
             transition:
               color 0.2s ease,
@@ -503,53 +638,58 @@ const Navbar = () => {
           .navbar-bell:hover,
           .navbar-envelope:hover {
             color: #0055a5;
+
             transform: translateY(-1px);
           }
 
           /* =====================================================
-             BADGES
-             ===================================================== */
+             UNREAD BADGE
+          ===================================================== */
 
           .navbar-badge {
             position: absolute;
 
-            top: -7px;
-            right: -7px;
+            top: -8px;
+            right: -8px;
+
+            min-width: 16px;
+            height: 16px;
+
+            padding: 0 4px;
+
+            display: flex;
+
+            align-items: center;
+
+            justify-content: center;
 
             background: #e74c3c;
 
             color: white;
 
+            border: 2px solid white;
+
             border-radius: 9999px;
 
-            padding: 2px 5px;
+            font-size: 9px;
 
-            font-size: 10px;
+            font-weight: 800;
 
-            font-weight: 700;
-
-            min-width: 16px;
-
-            text-align: center;
-
-            line-height: 1.2;
+            line-height: 1;
 
             box-sizing: border-box;
 
-            border: 1px solid white;
+            pointer-events: none;
           }
 
           /* =====================================================
-             DESKTOP ONLY
-             ===================================================== */
+             DROPDOWN
+          ===================================================== */
 
-          .desktop-only {
-            display: inline-block;
+          .navbar-dropdown {
+            animation:
+              dropdownFade 0.18s ease;
           }
-
-          /* =====================================================
-             DROPDOWN ANIMATION
-             ===================================================== */
 
           @keyframes dropdownFade {
             from {
@@ -563,50 +703,21 @@ const Navbar = () => {
             }
           }
 
-          .navbar-dropdown {
-            animation:
-              dropdownFade 0.18s ease;
+          /* =====================================================
+             DESKTOP ONLY
+          ===================================================== */
+
+          .desktop-only {
+            display: inline-block;
           }
 
           /* =====================================================
              TABLET
-             ===================================================== */
+          ===================================================== */
 
           @media (max-width: 1024px) {
             .navbar-container {
               padding: 8px 12px;
-              gap: 12px;
-            }
-
-            .navbar-logo {
-              font-size: 18px;
-            }
-
-            .navbar-logo i {
-              font-size: 16px;
-            }
-          }
-
-          /* =====================================================
-             MOBILE
-             ===================================================== */
-
-          @media (max-width: 767px) {
-            .desktop-only {
-              display: none !important;
-            }
-
-            .navbar-post-ad-text {
-              display: none !important;
-            }
-
-            .navbar-post-ad-icon {
-              display: inline-flex !important;
-            }
-
-            .navbar-container {
-              padding: 6px 10px;
-              min-height: 42px;
               gap: 8px;
             }
 
@@ -618,123 +729,208 @@ const Navbar = () => {
               font-size: 16px;
             }
 
-            .navbar-avatar {
-              width: 24px;
-              height: 24px;
-              font-size: 10px;
+            .navbar-right {
+              gap: 10px;
+            }
+          }
+
+          /* =====================================================
+             MOBILE
+          ===================================================== */
+
+          @media (max-width: 767px) {
+            .navbar-container {
+              min-height: 42px;
+
+              padding:
+                6px 10px;
+
+              gap: 6px;
+            }
+
+            .navbar-logo {
+              font-size: 17px;
+
+              gap: 4px;
+            }
+
+            .navbar-logo i {
+              font-size: 15px;
+            }
+
+            .navbar-post-ad-btn {
+              padding:
+                4px 9px !important;
+
+              font-size:
+                10px !important;
+            }
+
+            .navbar-post-ad-text {
+              display: none !important;
+            }
+
+            .navbar-right {
+              gap: 9px;
             }
 
             .navbar-heart,
             .navbar-bell,
             .navbar-envelope {
-              font-size: 16px;
+              width: 21px;
+              height: 21px;
 
-              width: 22px;
-              height: 22px;
+              font-size: 15px;
+            }
+
+            .navbar-avatar {
+              width: 23px;
+              height: 23px;
+
+              font-size: 9px;
             }
 
             .navbar-badge {
-              font-size: 8px;
+              top: -6px;
+              right: -6px;
 
-              padding: 1px 4px;
+              min-width: 13px;
+              height: 13px;
 
-              min-width: 12px;
+              padding:
+                0 3px;
 
-              top: -5px;
-              right: -5px;
+              font-size: 7px;
+
+              border-width: 1.5px;
             }
 
-            .navbar-right {
-              gap: 14px !important;
-            }
-
-            .navbar-post-ad-btn {
-              padding: 4px 10px !important;
-
-              font-size: 11px !important;
+            .desktop-only {
+              display: none !important;
             }
           }
 
           /* =====================================================
              SMALL MOBILE
-             ===================================================== */
+          ===================================================== */
 
           @media (max-width: 480px) {
+            .navbar-container {
+              min-height: 39px;
+
+              padding:
+                5px 7px;
+
+              gap: 4px;
+            }
+
             .navbar-logo {
-              font-size: 16px !important;
+              font-size: 15px;
+
+              gap: 3px;
             }
 
             .navbar-logo i {
-              font-size: 14px !important;
+              font-size: 13px;
             }
 
-            .navbar-container {
-              padding: 5px 8px !important;
+            .navbar-post-ad-btn {
+              padding:
+                3px 7px !important;
 
-              min-height: 38px;
+              font-size:
+                9px !important;
+            }
 
-              gap: 6px !important;
+            .navbar-right {
+              gap: 7px;
             }
 
             .navbar-heart,
             .navbar-bell,
             .navbar-envelope {
-              font-size: 14px !important;
+              width: 19px;
+              height: 19px;
 
-              width: 20px;
-              height: 20px;
+              font-size: 13px;
             }
 
             .navbar-avatar {
-              width: 20px !important;
-              height: 20px !important;
+              width: 20px;
+              height: 20px;
 
-              font-size: 8px !important;
-            }
-
-            .navbar-post-ad-btn {
-              padding: 3px 8px !important;
-
-              font-size: 10px !important;
+              font-size: 8px;
             }
 
             .navbar-badge {
-              font-size: 7px;
+              top: -5px;
+              right: -5px;
 
-              padding: 1px 3px;
+              min-width: 11px;
+              height: 11px;
 
-              min-width: 10px;
+              padding:
+                0 2px;
 
-              top: -4px;
-              right: -4px;
-            }
-
-            .navbar-right {
-              gap: 10px !important;
+              font-size: 6px;
             }
           }
 
           /* =====================================================
-             VERY SMALL SCREENS
-             ===================================================== */
+             VERY SMALL MOBILE
+          ===================================================== */
 
           @media (max-width: 360px) {
             .navbar-container {
-              padding-left: 6px !important;
-              padding-right: 6px !important;
+              padding:
+                4px 5px;
             }
 
             .navbar-logo {
-              font-size: 15px !important;
+              font-size: 14px;
             }
 
-            .navbar-right {
-              gap: 7px !important;
+            .navbar-logo i {
+              font-size: 12px;
             }
 
             .navbar-post-ad-btn {
-              padding-left: 6px !important;
-              padding-right: 6px !important;
+              padding:
+                3px 5px !important;
+            }
+
+            .navbar-right {
+              gap: 5px;
+            }
+
+            .navbar-heart,
+            .navbar-bell,
+            .navbar-envelope {
+              width: 18px;
+              height: 18px;
+
+              font-size: 12px;
+            }
+
+            .navbar-avatar {
+              width: 19px;
+              height: 19px;
+            }
+          }
+
+          /* =====================================================
+             REDUCE MOTION
+          ===================================================== */
+
+          @media (prefers-reduced-motion: reduce) {
+            .navbar-dropdown {
+              animation: none;
+            }
+
+            .navbar-heart,
+            .navbar-bell,
+            .navbar-envelope {
+              transition: none;
             }
           }
         `}
@@ -742,20 +938,9 @@ const Navbar = () => {
 
       {/* ========================================================
           FIXED HEADER
-          ======================================================== */}
+      ======================================================== */}
 
-      <header
-        className="navbar-sticky"
-        style={{
-          background:
-            "rgba(255, 255, 255, 0.94)",
-          backdropFilter: "blur(14px)",
-          WebkitBackdropFilter:
-            "blur(14px)",
-          borderBottom:
-            "1px solid rgba(229, 231, 235, 0.7)",
-        }}
-      >
+      <header className="navbar-sticky">
         <div className="navbar-container">
 
           {/* ====================================================
@@ -765,17 +950,19 @@ const Navbar = () => {
           <Link
             to="/"
             className="navbar-logo"
+            aria-label="BuyUKUsed home"
           >
-            <i className="fas fa-tag"></i>
+            <i className="fas fa-tag" />
 
-            BuyUk{" "}
-
-            <span
-              style={{
-                color: "#2ecc71",
-              }}
-            >
-              Used
+            <span>
+              BuyUk{" "}
+              <span
+                style={{
+                  color: "#2ecc71",
+                }}
+              >
+                Used
+              </span>
             </span>
           </Link>
 
@@ -789,32 +976,20 @@ const Navbar = () => {
             style={{
               background: "#2ecc71",
               color: "white",
-
               padding: "6px 16px",
-
               borderRadius: "9999px",
-
               fontWeight: 700,
-
               fontSize: "13px",
-
               textDecoration: "none",
-
               display: "inline-flex",
-
               alignItems: "center",
-
+              justifyContent: "center",
               gap: "6px",
-
               transition:
                 "all 0.2s ease",
-
               boxShadow:
                 "0 2px 4px rgba(46, 204, 113, 0.3)",
-
               whiteSpace: "nowrap",
-
-              flexShrink: 0,
             }}
             onMouseEnter={(event) => {
               event.currentTarget.style.background =
@@ -834,9 +1009,9 @@ const Navbar = () => {
             <i
               className="fas fa-plus-circle"
               style={{
-                fontSize: "14px",
+                fontSize: "13px",
               }}
-            ></i>
+            />
 
             <span className="navbar-post-ad-text">
               Start Selling
@@ -847,15 +1022,7 @@ const Navbar = () => {
               RIGHT SIDE
           ==================================================== */}
 
-          <div
-            className="navbar-right"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "12px",
-              flexShrink: 0,
-            }}
-          >
+          <div className="navbar-right">
 
             {/* ==================================================
                 FAVORITES
@@ -865,18 +1032,16 @@ const Navbar = () => {
               to="/wishlist"
               onClick={handleHeartClick}
               className="navbar-heart"
-              aria-label="Favorites"
+              aria-label={`Favorites${
+                favoriteCount > 0
+                  ? `, ${favoriteCount} saved`
+                  : ""
+              }`}
               title="Favorites"
             >
-              <i className="fas fa-heart"></i>
+              <i className="fas fa-heart" />
 
-              {favorites.length > 0 && (
-                <span className="navbar-badge">
-                  {favorites.length > 99
-                    ? "99+"
-                    : favorites.length}
-                </span>
-              )}
+              <Badge count={favoriteCount} />
             </Link>
 
             {/* ==================================================
@@ -887,18 +1052,18 @@ const Navbar = () => {
               <Link
                 to="/notifications"
                 className="navbar-bell"
-                aria-label="Notifications"
+                aria-label={`Notifications${
+                  unreadNotifications > 0
+                    ? `, ${unreadNotifications} unread`
+                    : ""
+                }`}
                 title="Notifications"
               >
-                <i className="fas fa-bell"></i>
+                <i className="fas fa-bell" />
 
-                {unreadNotifications > 0 && (
-                  <span className="navbar-badge">
-                    {unreadNotifications > 99
-                      ? "99+"
-                      : unreadNotifications}
-                  </span>
-                )}
+                <Badge
+                  count={unreadNotifications}
+                />
               </Link>
             )}
 
@@ -910,18 +1075,18 @@ const Navbar = () => {
               <Link
                 to="/messages"
                 className="navbar-envelope"
-                aria-label="Messages"
+                aria-label={`Messages${
+                  unreadMessages > 0
+                    ? `, ${unreadMessages} unread`
+                    : ""
+                }`}
                 title="Messages"
               >
-                <i className="fas fa-envelope"></i>
+                <i className="fas fa-envelope" />
 
-                {unreadMessages > 0 && (
-                  <span className="navbar-badge">
-                    {unreadMessages > 99
-                      ? "99+"
-                      : unreadMessages}
-                  </span>
-                )}
+                <Badge
+                  count={unreadMessages}
+                />
               </Link>
             )}
 
@@ -934,6 +1099,7 @@ const Navbar = () => {
                 ref={dropdownRef}
                 style={{
                   position: "relative",
+                  flexShrink: 0,
                 }}
               >
                 {/* USER BUTTON */}
@@ -943,25 +1109,18 @@ const Navbar = () => {
                   role="button"
                   tabIndex={0}
                   aria-expanded={dropdownOpen}
+                  aria-label="Open account menu"
                   style={{
                     display: "flex",
-
                     alignItems: "center",
-
                     gap: "6px",
-
                     cursor: "pointer",
-
-                    padding: "4px 8px",
-
+                    padding: "4px 7px",
                     borderRadius: "9999px",
-
                     background:
                       "rgba(241, 245, 249, 0.8)",
-
                     border:
                       "1px solid transparent",
-
                     transition:
                       "all 0.2s ease",
                   }}
@@ -1008,45 +1167,25 @@ const Navbar = () => {
                         onError={(event) => {
                           event.currentTarget.style.display =
                             "none";
-
-                          const parent =
-                            event.currentTarget
-                              .parentElement;
-
-                          if (parent) {
-                            parent.textContent =
-                              userInitial;
-                          }
                         }}
                       />
                     ) : (
                       userInitial
                     )}
 
-                    {/* ADMIN BADGE */}
-
                     {user.role === "admin" && (
                       <span
                         style={{
                           position: "absolute",
-
                           top: "-2px",
-
                           right: "-2px",
-
                           background:
                             "#f59e0b",
-
                           color: "white",
-
                           fontSize: "7px",
-
                           fontWeight: 700,
-
                           borderRadius: "50%",
-
                           padding: "1px 3px",
-
                           border:
                             "1px solid white",
                         }}
@@ -1062,17 +1201,12 @@ const Navbar = () => {
                     className="desktop-only"
                     style={{
                       fontSize: "13px",
-
                       color: "#334155",
-
                       fontWeight: 500,
-
                       maxWidth: "120px",
-
                       overflow: "hidden",
-
-                      textOverflow: "ellipsis",
-
+                      textOverflow:
+                        "ellipsis",
                       whiteSpace: "nowrap",
                     }}
                   >
@@ -1088,11 +1222,10 @@ const Navbar = () => {
                         : "down"
                     }`}
                     style={{
-                      fontSize: "10px",
-
+                      fontSize: "9px",
                       color: "#94a3b8",
                     }}
-                  ></i>
+                  />
                 </div>
 
                 {/* =================================================
@@ -1104,39 +1237,25 @@ const Navbar = () => {
                     className="navbar-dropdown"
                     style={{
                       position: "absolute",
-
                       top:
                         "calc(100% + 8px)",
-
                       right: 0,
-
                       minWidth: "190px",
-
                       background:
-                        "rgba(255, 255, 255, 0.97)",
-
+                        "rgba(255, 255, 255, 0.98)",
                       backdropFilter:
                         "blur(14px)",
-
                       WebkitBackdropFilter:
                         "blur(14px)",
-
                       border:
                         "1px solid #e5e7eb",
-
                       borderRadius: "12px",
-
                       boxShadow:
                         "0 10px 35px rgba(0,0,0,0.14)",
-
                       padding: "4px 0",
-
                       zIndex: 100000,
                     }}
                   >
-
-                    {/* SELL */}
-
                     <Link
                       to="/post-ad"
                       onClick={() =>
@@ -1144,29 +1263,18 @@ const Navbar = () => {
                       }
                       style={{
                         display: "flex",
-
                         alignItems: "center",
-
                         gap: "10px",
-
-                        padding:
-                          "9px 14px",
-
+                        padding: "9px 14px",
                         color: "#2ecc71",
-
                         fontWeight: 600,
-
                         fontSize: "13px",
-
-                        textDecoration:
-                          "none",
+                        textDecoration: "none",
                       }}
                     >
-                      <i className="fas fa-plus-circle"></i>
+                      <i className="fas fa-plus-circle" />
                       SELL
                     </Link>
-
-                    {/* PROFILE */}
 
                     <Link
                       to="/profile"
@@ -1175,27 +1283,17 @@ const Navbar = () => {
                       }
                       style={{
                         display: "flex",
-
                         alignItems: "center",
-
                         gap: "10px",
-
-                        padding:
-                          "9px 14px",
-
+                        padding: "9px 14px",
                         color: "#334155",
-
                         fontSize: "13px",
-
-                        textDecoration:
-                          "none",
+                        textDecoration: "none",
                       }}
                     >
-                      <i className="fas fa-user"></i>
+                      <i className="fas fa-user" />
                       My Profile
                     </Link>
-
-                    {/* MY ADS */}
 
                     <Link
                       to="/my-ads"
@@ -1204,27 +1302,17 @@ const Navbar = () => {
                       }
                       style={{
                         display: "flex",
-
                         alignItems: "center",
-
                         gap: "10px",
-
-                        padding:
-                          "9px 14px",
-
+                        padding: "9px 14px",
                         color: "#334155",
-
                         fontSize: "13px",
-
-                        textDecoration:
-                          "none",
+                        textDecoration: "none",
                       }}
                     >
-                      <i className="fas fa-box"></i>
+                      <i className="fas fa-box" />
                       My Ads
                     </Link>
-
-                    {/* WISHLIST */}
 
                     <Link
                       to="/wishlist"
@@ -1233,27 +1321,29 @@ const Navbar = () => {
                       }
                       style={{
                         display: "flex",
-
                         alignItems: "center",
-
                         gap: "10px",
-
-                        padding:
-                          "9px 14px",
-
+                        padding: "9px 14px",
                         color: "#334155",
-
                         fontSize: "13px",
-
-                        textDecoration:
-                          "none",
+                        textDecoration: "none",
                       }}
                     >
-                      <i className="fas fa-heart"></i>
+                      <i className="fas fa-heart" />
                       Favorites
-                    </Link>
 
-                    {/* ADMIN */}
+                      {favoriteCount > 0 && (
+                        <span
+                          style={{
+                            marginLeft: "auto",
+                            color: "#e74c3c",
+                            fontWeight: 700,
+                          }}
+                        >
+                          {favoriteCount}
+                        </span>
+                      )}
+                    </Link>
 
                     {user.role === "admin" && (
                       <Link
@@ -1263,71 +1353,46 @@ const Navbar = () => {
                         }
                         style={{
                           display: "flex",
-
                           alignItems: "center",
-
                           gap: "10px",
-
-                          padding:
-                            "9px 14px",
-
+                          padding: "9px 14px",
                           color: "#334155",
-
                           fontSize: "13px",
-
-                          textDecoration:
-                            "none",
+                          textDecoration: "none",
                         }}
                       >
-                        <i className="fas fa-user-shield"></i>
+                        <i className="fas fa-user-shield" />
                         Admin Dashboard
                       </Link>
                     )}
 
-                    {/* DIVIDER */}
-
                     <hr
                       style={{
                         margin: "4px 0",
-
                         border: "none",
-
                         borderTop:
                           "1px solid #e5e7eb",
                       }}
                     />
-
-                    {/* LOGOUT */}
 
                     <button
                       type="button"
                       onClick={handleLogout}
                       style={{
                         display: "flex",
-
                         alignItems: "center",
-
                         gap: "10px",
-
                         width: "100%",
-
-                        padding:
-                          "9px 14px",
-
+                        padding: "9px 14px",
                         background: "none",
-
                         border: "none",
-
                         color: "#dc2626",
-
                         fontSize: "13px",
-
                         cursor: "pointer",
-
                         textAlign: "left",
                       }}
                     >
-                      <i className="fas fa-sign-out-alt"></i>
+                      <i className="fas fa-sign-out-alt" />
                       Logout
                     </button>
                   </div>
@@ -1342,13 +1407,10 @@ const Navbar = () => {
               <div
                 style={{
                   display: "flex",
-
                   alignItems: "center",
-
                   gap: "6px",
                 }}
               >
-
                 {/* DESKTOP LOGIN */}
 
                 <Link
@@ -1357,18 +1419,12 @@ const Navbar = () => {
                   style={{
                     border:
                       "1px solid #0055a5",
-
                     color: "#0055a5",
-
                     padding: "4px 10px",
-
                     borderRadius:
                       "9999px",
-
                     fontWeight: 600,
-
                     fontSize: "12px",
-
                     textDecoration:
                       "none",
                   }}
@@ -1383,18 +1439,12 @@ const Navbar = () => {
                   className="desktop-only"
                   style={{
                     background: "#0055a5",
-
                     color: "white",
-
                     padding: "4px 10px",
-
                     borderRadius:
                       "9999px",
-
                     fontWeight: 600,
-
                     fontSize: "12px",
-
                     textDecoration:
                       "none",
                   }}
@@ -1419,23 +1469,16 @@ const Navbar = () => {
                     aria-expanded={
                       mobileDropdownOpen
                     }
+                    aria-label="Open account menu"
                     style={{
                       display: "flex",
-
                       alignItems: "center",
-
                       cursor: "pointer",
-
-                      padding: "4px",
-
+                      padding: "3px",
                       borderRadius:
                         "9999px",
-
                       background:
                         "rgba(241, 245, 249, 0.8)",
-
-                      border:
-                        "1px solid transparent",
                     }}
                     onKeyDown={(event) => {
                       if (
@@ -1448,7 +1491,7 @@ const Navbar = () => {
                     }}
                   >
                     <div className="navbar-avatar">
-                      <i className="fas fa-user"></i>
+                      <i className="fas fa-user" />
                     </div>
                   </div>
 
@@ -1459,40 +1502,26 @@ const Navbar = () => {
                       className="navbar-dropdown"
                       style={{
                         position: "absolute",
-
                         top:
                           "calc(100% + 8px)",
-
                         right: 0,
-
                         minWidth: "180px",
-
                         background:
-                          "rgba(255, 255, 255, 0.97)",
-
+                          "rgba(255, 255, 255, 0.98)",
                         backdropFilter:
                           "blur(14px)",
-
                         WebkitBackdropFilter:
                           "blur(14px)",
-
                         border:
                           "1px solid #e5e7eb",
-
                         borderRadius:
                           "12px",
-
                         boxShadow:
                           "0 10px 35px rgba(0,0,0,0.14)",
-
                         padding: "4px 0",
-
                         zIndex: 100000,
                       }}
                     >
-
-                      {/* FAVORITES */}
-
                       <Link
                         to="/wishlist"
                         onClick={() =>
@@ -1502,60 +1531,35 @@ const Navbar = () => {
                         }
                         style={{
                           display: "flex",
-
                           alignItems:
                             "center",
-
                           gap: "10px",
-
                           padding:
                             "9px 14px",
-
                           color: "#334155",
-
                           fontSize: "13px",
-
                           textDecoration:
                             "none",
                         }}
                       >
-                        <i className="fas fa-heart"></i>
+                        <i className="fas fa-heart" />
 
                         Favorites
 
-                        {favorites.length >
-                          0 && (
+                        {favoriteCount > 0 && (
                           <span
                             style={{
                               marginLeft:
                                 "auto",
-
-                              background:
+                              color:
                                 "#e74c3c",
-
-                              color: "white",
-
-                              borderRadius:
-                                "9999px",
-
-                              padding:
-                                "1px 6px",
-
-                              fontSize:
-                                "10px",
-
                               fontWeight: 700,
                             }}
                           >
-                            {favorites.length >
-                            99
-                              ? "99+"
-                              : favorites.length}
+                            {favoriteCount}
                           </span>
                         )}
                       </Link>
-
-                      {/* LOGIN */}
 
                       <Link
                         to="/login"
@@ -1566,29 +1570,21 @@ const Navbar = () => {
                         }
                         style={{
                           display: "flex",
-
                           alignItems:
                             "center",
-
                           gap: "10px",
-
                           padding:
                             "9px 14px",
-
                           color:
                             "#0055a5",
-
                           fontSize: "13px",
-
                           textDecoration:
                             "none",
                         }}
                       >
-                        <i className="fas fa-sign-in-alt"></i>
+                        <i className="fas fa-sign-in-alt" />
                         Log In
                       </Link>
-
-                      {/* REGISTER */}
 
                       <Link
                         to="/register"
@@ -1599,25 +1595,19 @@ const Navbar = () => {
                         }
                         style={{
                           display: "flex",
-
                           alignItems:
                             "center",
-
                           gap: "10px",
-
                           padding:
                             "9px 14px",
-
                           color:
                             "#0055a5",
-
                           fontSize: "13px",
-
                           textDecoration:
                             "none",
                         }}
                       >
-                        <i className="fas fa-user-plus"></i>
+                        <i className="fas fa-user-plus" />
                         Sign Up
                       </Link>
                     </div>
