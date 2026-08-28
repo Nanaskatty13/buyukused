@@ -120,6 +120,40 @@ import SellerProducts from "./seller/Products";
 import SellerPage from "./pages/SellerPage";
 
 // ============================================================
+// GLOBAL STYLES – prevents navbar overlap
+// ============================================================
+
+const globalStyles = document.createElement("style");
+globalStyles.textContent = `
+  /* Reserve space for sticky navbar (desktop) */
+  .app-content {
+    padding-top: 72px;
+  }
+
+  /* Tablet */
+  @media (max-width: 1024px) {
+    .app-content {
+      padding-top: 68px;
+    }
+  }
+
+  /* Mobile */
+  @media (max-width: 767px) {
+    .app-content {
+      padding-top: 64px;
+    }
+  }
+
+  /* Small mobile */
+  @media (max-width: 480px) {
+    .app-content {
+      padding-top: 56px;
+    }
+  }
+`;
+document.head.appendChild(globalStyles);
+
+// ============================================================
 // APP
 // ============================================================
 
@@ -141,294 +175,302 @@ function App() {
         <Navbar />
 
         {/* ======================================================
-            APPLICATION ROUTES
+            CONTENT WRAPPER – prevents navbar overlap
         ====================================================== */}
 
-        <Routes>
+        <main className="app-content">
 
           {/* ======================================================
-              HOME
+              APPLICATION ROUTES
           ====================================================== */}
 
-          <Route
-            path="/"
-            element={<Home />}
-          />
+          <Routes>
 
-          {/* ======================================================
-              AUTHENTICATION
-          ====================================================== */}
+            {/* ======================================================
+                HOME
+            ====================================================== */}
 
-          <Route
-            path="/login"
-            element={<Login />}
-          />
+            <Route
+              path="/"
+              element={<Home />}
+            />
 
-          <Route
-            path="/register"
-            element={<Register />}
-          />
+            {/* ======================================================
+                AUTHENTICATION
+            ====================================================== */}
 
-          <Route
-            path="/forgot-password"
-            element={<ForgotPassword />}
-          />
+            <Route
+              path="/login"
+              element={<Login />}
+            />
 
-          <Route
-            path="/reset-password/:token"
-            element={<ResetPassword />}
-          />
+            <Route
+              path="/register"
+              element={<Register />}
+            />
 
-          {/* ======================================================
-              PRODUCTS
-          ====================================================== */}
+            <Route
+              path="/forgot-password"
+              element={<ForgotPassword />}
+            />
 
-          <Route
-            path="/products"
-            element={<Products />}
-          />
+            <Route
+              path="/reset-password/:token"
+              element={<ResetPassword />}
+            />
 
-          <Route
-            path="/product/:id"
-            element={<ProductDetails />}
-          />
+            {/* ======================================================
+                PRODUCTS
+            ====================================================== */}
 
-          <Route
-            path="/search-results"
-            element={<SearchResultsPage />}
-          />
+            <Route
+              path="/products"
+              element={<Products />}
+            />
 
-          {/* ======================================================
-              VISUAL SEARCH
-          ====================================================== */}
+            <Route
+              path="/product/:id"
+              element={<ProductDetails />}
+            />
 
-          <Route
-            path="/visual-search"
-            element={<VisualSearch />}
-          />
+            <Route
+              path="/search-results"
+              element={<SearchResultsPage />}
+            />
 
-          {/* ======================================================
-              USER
-          ====================================================== */}
+            {/* ======================================================
+                VISUAL SEARCH
+            ====================================================== */}
 
-          <Route
-            path="/profile"
-            element={<Profile />}
-          />
+            <Route
+              path="/visual-search"
+              element={<VisualSearch />}
+            />
 
-          <Route
-            path="/wishlist"
-            element={<Wishlist />}
-          />
+            {/* ======================================================
+                USER
+            ====================================================== */}
 
-          <Route
-            path="/cart"
-            element={<Cart />}
-          />
+            <Route
+              path="/profile"
+              element={<Profile />}
+            />
 
-          {/* ======================================================
-              INFORMATION
-          ====================================================== */}
+            <Route
+              path="/wishlist"
+              element={<Wishlist />}
+            />
 
-          <Route
-            path="/about"
-            element={<About />}
-          />
+            <Route
+              path="/cart"
+              element={<Cart />}
+            />
 
-          <Route
-            path="/how-it-works"
-            element={<HowItWorks />}
-          />
+            {/* ======================================================
+                INFORMATION
+            ====================================================== */}
 
-          <Route
-            path="/contact"
-            element={<Contact />}
-          />
+            <Route
+              path="/about"
+              element={<About />}
+            />
 
-          {/* ======================================================
-              SELLERS
-          ====================================================== */}
+            <Route
+              path="/how-it-works"
+              element={<HowItWorks />}
+            />
 
-          <Route
-            path="/for-sellers"
-            element={<Buyers />}
-          />
+            <Route
+              path="/contact"
+              element={<Contact />}
+            />
 
-          <Route
-            path="/for-sellers/pricing"
-            element={<Pricing />}
-          />
+            {/* ======================================================
+                SELLERS
+            ====================================================== */}
 
-          <Route
-            path="/for-sellers/tips"
-            element={<Tips />}
-          />
+            <Route
+              path="/for-sellers"
+              element={<Buyers />}
+            />
 
-          {/* ======================================================
-              BUYERS
-          ====================================================== */}
+            <Route
+              path="/for-sellers/pricing"
+              element={<Pricing />}
+            />
 
-          <Route
-            path="/for-buyers"
-            element={<Buyers />}
-          />
+            <Route
+              path="/for-sellers/tips"
+              element={<Tips />}
+            />
 
-          <Route
-            path="/for-buyers/safety-tips"
-            element={<SafetyTips />}
-          />
+            {/* ======================================================
+                BUYERS
+            ====================================================== */}
 
-          <Route
-            path="/for-buyers/report-ad"
-            element={<ReportAd />}
-          />
+            <Route
+              path="/for-buyers"
+              element={<Buyers />}
+            />
 
-          {/* ======================================================
-              SUPPORT
-          ====================================================== */}
+            <Route
+              path="/for-buyers/safety-tips"
+              element={<SafetyTips />}
+            />
 
-          <Route
-            path="/support"
-            element={<Support />}
-          />
+            <Route
+              path="/for-buyers/report-ad"
+              element={<ReportAd />}
+            />
 
-          {/* ======================================================
-              LEGAL
-          ====================================================== */}
+            {/* ======================================================
+                SUPPORT
+            ====================================================== */}
 
-          <Route
-            path="/legal/terms"
-            element={<Terms />}
-          />
+            <Route
+              path="/support"
+              element={<Support />}
+            />
 
-          <Route
-            path="/legal/privacy"
-            element={<Privacy />}
-          />
+            {/* ======================================================
+                LEGAL
+            ====================================================== */}
 
-          <Route
-            path="/legal/cookies"
-            element={<Cookies />}
-          />
+            <Route
+              path="/legal/terms"
+              element={<Terms />}
+            />
 
-          <Route
-            path="/info"
-            element={<InfoPage />}
-          />
+            <Route
+              path="/legal/privacy"
+              element={<Privacy />}
+            />
 
-          {/* ======================================================
-              SELLING
-          ====================================================== */}
+            <Route
+              path="/legal/cookies"
+              element={<Cookies />}
+            />
 
-          <Route
-            path="/post-ad"
-            element={<PostAd />}
-          />
+            <Route
+              path="/info"
+              element={<InfoPage />}
+            />
 
-          <Route
-            path="/edit-product/:id"
-            element={<EditProduct />}
-          />
+            {/* ======================================================
+                SELLING
+            ====================================================== */}
 
-          <Route
-            path="/my-ads"
-            element={<MyAds />}
-          />
+            <Route
+              path="/post-ad"
+              element={<PostAd />}
+            />
 
-          <Route
-            path="/analytics"
-            element={<Analytics />}
-          />
+            <Route
+              path="/edit-product/:id"
+              element={<EditProduct />}
+            />
 
-          {/* ======================================================
-              RIDER
-          ====================================================== */}
+            <Route
+              path="/my-ads"
+              element={<MyAds />}
+            />
 
-          <Route
-            path="/book-rider"
-            element={<BookRider />}
-          />
+            <Route
+              path="/analytics"
+              element={<Analytics />}
+            />
 
-          <Route
-            path="/rider/dashboard"
-            element={<RiderDashboard />}
-          />
+            {/* ======================================================
+                RIDER
+            ====================================================== */}
 
-          {/* ======================================================
-              ADMIN
-          ====================================================== */}
+            <Route
+              path="/book-rider"
+              element={<BookRider />}
+            />
 
-          <Route
-            path="/admin"
-            element={<AdminDashboard />}
-          />
+            <Route
+              path="/rider/dashboard"
+              element={<RiderDashboard />}
+            />
 
-          <Route
-            path="/admin/sellers"
-            element={<Sellers />}
-          />
+            {/* ======================================================
+                ADMIN
+            ====================================================== */}
 
-          {/* ======================================================
-              NOTIFICATIONS
-          ====================================================== */}
+            <Route
+              path="/admin"
+              element={<AdminDashboard />}
+            />
 
-          <Route
-            path="/notifications"
-            element={<Notifications />}
-          />
+            <Route
+              path="/admin/sellers"
+              element={<Sellers />}
+            />
 
-          {/* ======================================================
-              MESSAGES
-          ====================================================== */}
+            {/* ======================================================
+                NOTIFICATIONS
+            ====================================================== */}
 
-          <Route
-            path="/messages"
-            element={<Messages />}
-          />
+            <Route
+              path="/notifications"
+              element={<Notifications />}
+            />
 
-          <Route
-            path="/chat"
-            element={<Messages />}
-          />
+            {/* ======================================================
+                MESSAGES
+            ====================================================== */}
 
-          <Route
-            path="/chat/:userId"
-            element={<Messages />}
-          />
+            <Route
+              path="/messages"
+              element={<Messages />}
+            />
 
-          <Route
-            path="/chat/:userId/:productId"
-            element={<Messages />}
-          />
+            <Route
+              path="/chat"
+              element={<Messages />}
+            />
 
-          {/* ======================================================
-              SELLER PRODUCTS
-          ====================================================== */}
+            <Route
+              path="/chat/:userId"
+              element={<Messages />}
+            />
 
-          <Route
-            path="/seller/products"
-            element={<SellerProducts />}
-          />
+            <Route
+              path="/chat/:userId/:productId"
+              element={<Messages />}
+            />
 
-          {/* ======================================================
-              PUBLIC SELLER PROFILE
-          ====================================================== */}
+            {/* ======================================================
+                SELLER PRODUCTS
+            ====================================================== */}
 
-          <Route
-            path="/seller/:sellerId"
-            element={<SellerPage />}
-          />
+            <Route
+              path="/seller/products"
+              element={<SellerProducts />}
+            />
 
-          {/* ======================================================
-              FALLBACK
-          ====================================================== */}
+            {/* ======================================================
+                PUBLIC SELLER PROFILE
+            ====================================================== */}
 
-          <Route
-            path="*"
-            element={<Home />}
-          />
+            <Route
+              path="/seller/:sellerId"
+              element={<SellerPage />}
+            />
 
-        </Routes>
+            {/* ======================================================
+                FALLBACK
+            ====================================================== */}
+
+            <Route
+              path="*"
+              element={<Home />}
+            />
+
+          </Routes>
+
+        </main>
 
         {/* ======================================================
             GLOBAL FLOATING COMPONENTS

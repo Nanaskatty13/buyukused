@@ -593,6 +593,25 @@ const SellerPage = () => {
       return;
     }
 
+    // ==========================================================
+    // ✅ FIX: CHECK FOR EXISTING REVIEW (PREVENT 409)
+    // ==========================================================
+
+    if (currentUserId) {
+      const existingReview = reviews.find(
+        (r) =>
+          r.reviewer &&
+          String(r.reviewer?._id || r.reviewer) === String(currentUserId)
+      );
+
+      if (existingReview) {
+        setReviewError(
+          "You have already reviewed this seller. You can edit your existing review if needed."
+        );
+        return;
+      }
+    }
+
     try {
       setSubmittingReview(true);
 
