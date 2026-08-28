@@ -4172,3 +4172,134 @@ img {
     gap: 10px;
   }
 }
+/* ============================================================
+   MOBILE PAGE STABILITY
+   Prevent horizontal floating / sideways movement
+   ============================================================ */
+
+html,
+body,
+#root {
+  width: 100%;
+  max-width: 100%;
+  min-height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* Prevent mobile browsers from enlarging text unexpectedly */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* ============================================================
+   INFO PAGES
+   ============================================================ */
+
+.info-page,
+.info-wrapper,
+.info-container {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: hidden;
+}
+
+/* Images/content cannot push page sideways */
+img,
+video,
+iframe {
+  max-width: 100%;
+  height: auto;
+}
+
+/* ============================================================
+   MOBILE
+   ============================================================ */
+
+@media (max-width: 480px) {
+  html,
+  body {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  body {
+    position: relative;
+  }
+
+  #root {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  .info-page,
+  .info-wrapper,
+  .info-container {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    margin: 0;
+    padding-left: 12px;
+    padding-right: 12px;
+    overflow-x: hidden;
+  }
+
+  .info-page *,
+  .info-wrapper *,
+  .info-container * {
+    max-width: 100%;
+  }
+
+  /* Prevent long text/buttons from creating horizontal overflow */
+  .info-page p,
+  .info-page h1,
+  .info-page h2,
+  .info-page h3,
+  .info-page li {
+    overflow-wrap: anywhere;
+    word-break: normal;
+  }
+
+  .info-list {
+    width: 100%;
+    margin-left: 0;
+    padding-left: 20px;
+  }
+
+  .info-cta {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+}
+
+/* ============================================================
+   FORM INPUTS — IMPORTANT FOR MOBILE ZOOM
+   ============================================================ */
+
+@media (max-width: 480px) {
+  input,
+  select,
+  textarea {
+    max-width: 100%;
+    box-sizing: border-box;
+
+    /*
+      16px prevents iPhone Safari from automatically
+      zooming into an input when the user taps it.
+    */
+    font-size: 16px !important;
+  }
+}
