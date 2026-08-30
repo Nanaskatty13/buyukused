@@ -56,18 +56,25 @@ if (missing.length > 0) {
 // ============================================================
 // TRUST PROXY
 // ============================================================
-//
-// Render sits behind a proxy/load balancer.
-//
-// This allows express-rate-limit to correctly identify
-// the originating client IP.
-//
 
 app.set("trust proxy", 1);
 
 // ============================================================
 // BASE URL
 // ============================================================
+//
+// IMPORTANT:
+//
+// BASE_URL is the BACKEND URL.
+//
+// Production:
+// https://buyukused.onrender.com
+//
+// FRONTEND_URL is:
+// https://buyukused.com
+//
+// Do NOT use the frontend URL as BASE_URL.
+//
 
 app.use((req, res, next) => {
   req.baseUrl =
@@ -106,10 +113,27 @@ app.use(
 // ============================================================
 // CORS
 // ============================================================
+//
+// PRODUCTION FRONTEND:
+//
+// https://buyukused.com
+// https://www.buyukused.com
+//
+// LOCAL DEVELOPMENT:
+//
+// http://localhost:3000
+// http://127.0.0.1:3000
+// http://localhost:5173
+// http://127.0.0.1:5173
+//
+// Vercel URLs are kept temporarily for development/testing.
+// You can remove them later once you are completely finished
+// using Vercel preview deployments.
+//
 
 const allowedOrigins = [
   // ----------------------------------------------------------
-  // PRODUCTION
+  // PRIMARY PRODUCTION WEBSITE
   // ----------------------------------------------------------
 
   "https://buyukused.com",
@@ -119,11 +143,11 @@ const allowedOrigins = [
   // LOCAL DEVELOPMENT
   // ----------------------------------------------------------
 
-  "http://localhost:5173",
-  "http://127.0.0.1:5173",
-
   "http://localhost:3000",
   "http://127.0.0.1:3000",
+
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
 
   // ----------------------------------------------------------
   // MAIN VERCEL DEPLOYMENT
@@ -132,7 +156,7 @@ const allowedOrigins = [
   "https://buyukused.vercel.app",
 
   // ----------------------------------------------------------
-  // KNOWN VERCEL DEPLOYMENTS
+  // KNOWN VERCEL PREVIEWS
   // ----------------------------------------------------------
 
   "https://buyukused-ggapyipm3-nanaskatty13s-projects.vercel.app",
@@ -140,7 +164,7 @@ const allowedOrigins = [
   "https://buyukused-2w4b8fl3w-nanaskatty13s-projects.vercel.app",
 
   // ----------------------------------------------------------
-  // PREVIOUS PROJECT DEPLOYMENT
+  // PREVIOUS VERCEL PROJECT
   // ----------------------------------------------------------
 
   "https://sell-platform2.vercel.app",
@@ -162,6 +186,10 @@ const uniqueAllowedOrigins = [
   ...new Set(allowedOrigins),
 ];
 
+// ============================================================
+// LOG CORS CONFIGURATION
+// ============================================================
+
 console.log(
   "🟢 Allowed CORS Origins:"
 );
@@ -176,13 +204,14 @@ console.log(
 
 const isAllowedOrigin = (origin) => {
   // ----------------------------------------------------------
-  // Requests without Origin are allowed.
+  // Requests without Origin
+  // ----------------------------------------------------------
   //
   // Examples:
-  // - curl
   // - Render health checks
+  // - curl
   // - server-to-server requests
-  // ----------------------------------------------------------
+  //
 
   if (!origin) {
     return true;
@@ -221,6 +250,10 @@ const isAllowedOrigin = (origin) => {
   ) {
     return true;
   }
+
+  // ----------------------------------------------------------
+  // Everything else is blocked
+  // ----------------------------------------------------------
 
   return false;
 };
@@ -296,7 +329,10 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 
-app.options("*", cors(corsOptions));
+app.options(
+  "*",
+  cors(corsOptions)
+);
 
 // ============================================================
 // BODY PARSERS
@@ -351,52 +387,31 @@ console.log(
 // PASSPORT
 // ============================================================
 
-app.use(passport.initialize());
+app.use(
+  passport.initialize()
+);
 
 // ============================================================
 // ACTIVITY TRACKING
 // ============================================================
 
-app.use(activityMiddleware);
+app.use(
+  activityMiddleware
+);
 
 console.log(
   "🟢 Seller/user activity tracking enabled"
 );
 
 // ============================================================
-// RATE LIMITING
-// ============================================================
-//
-// RATE-LIMITING STRATEGY
-//
-// 1. Admin users
-//    - Bypass rate limiting.
-//
-// 2. Development
-//    - Rate limiting effectively disabled.
-//
-// 3. Normal API traffic
-//    - 500 requests / 15 minutes / IP.
-//
-// 4. Public product GET requests
-//    - 1000 requests / 15 minutes / IP.
-//
-// 5. Public review GET requests
-//    - 1000 requests / 15 minutes / IP.
-//
-// 6. Authentication
-//    - 30 requests / 15 minutes / IP.
-//
-// This prevents normal product pages from accidentally
-// hitting 429 Too Many Requests while still protecting
-// sensitive endpoints.
-//
-
-// ============================================================
 // ADMIN RATE-LIMIT BYPASS
 // ============================================================
 
-const skipIfAdmin = (req, res, next) => {
+const skipIfAdmin = (
+  req,
+  res,
+  next
+) => {
   const authHeader =
     req.headers.authorization;
 
@@ -411,40 +426,37 @@ const skipIfAdmin = (req, res, next) => {
     authHeader.split(" ")[1];
 
   try {
-    const decoded = jwt.verify(
-      token,
-      process.env.JWT_SECRET
-    );
+    const decoded =
+      jwt.verify(
+        token,
+        process.env.JWT_SECRET
+      );
 
-    if (decoded.role === "admin") {
+    if (
+      decoded.role === "admin"
+    ) {
       req.skipRateLimit = true;
     }
   } catch {
-    // --------------------------------------------------------
     // Invalid JWT.
-    //
-    // Do not reject here.
-    // Normal authentication middleware will handle it.
-    // --------------------------------------------------------
+    // Normal authentication middleware
+    // will handle it.
   }
 
   next();
 };
 
-app.use(skipIfAdmin);
+app.use(
+  skipIfAdmin
+);
 
 // ============================================================
 // GLOBAL API RATE LIMITER
 // ============================================================
-//
-// Applies to /api/* requests.
-//
-// Public product and review GET requests are skipped here
-// because they receive their own higher-limit limiter below.
-//
 
 const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
+  windowMs:
+    15 * 60 * 1000,
 
   max:
     process.env.NODE_ENV === "production"
@@ -456,7 +468,9 @@ const apiLimiter = rateLimit({
     // Admin bypass
     // --------------------------------------------------------
 
-    if (req.skipRateLimit) {
+    if (
+      req.skipRateLimit
+    ) {
       return true;
     }
 
@@ -473,33 +487,26 @@ const apiLimiter = rateLimit({
 
     // --------------------------------------------------------
     // Public product GET requests
-    //
-    // Because apiLimiter is mounted at /api,
-    // req.path here will be:
-    //
-    // /products
-    //
     // --------------------------------------------------------
 
     if (
       req.method === "GET" &&
-      req.path.startsWith("/products")
+      req.path.startsWith(
+        "/products"
+      )
     ) {
       return true;
     }
 
     // --------------------------------------------------------
     // Public review GET requests
-    //
-    // req.path:
-    //
-    // /reviews
-    //
     // --------------------------------------------------------
 
     if (
       req.method === "GET" &&
-      req.path.startsWith("/reviews")
+      req.path.startsWith(
+        "/reviews"
+      )
     ) {
       return true;
     }
@@ -534,76 +541,62 @@ app.use(
 // ============================================================
 // PUBLIC READ RATE LIMITER
 // ============================================================
-//
-// Product browsing and review reading are normal website
-// activity.
-//
-// Production:
-// 1000 requests / 15 minutes / IP
-//
-// Development:
-// 5000 requests / 15 minutes / IP
-//
 
-const publicReadLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
+const publicReadLimiter =
+  rateLimit({
+    windowMs:
+      15 * 60 * 1000,
 
-  max:
-    process.env.NODE_ENV === "production"
-      ? 1000
-      : 5000,
+    max:
+      process.env.NODE_ENV ===
+      "production"
+        ? 1000
+        : 5000,
 
-  standardHeaders: true,
+    standardHeaders: true,
 
-  legacyHeaders: false,
+    legacyHeaders: false,
 
-  message: {
-    success: false,
+    message: {
+      success: false,
 
-    message:
-      "Too many requests. Please try again later.",
+      message:
+        "Too many requests. Please try again later.",
 
-    errorCode:
-      "RATE_LIMITED",
-  },
-});
+      errorCode:
+        "RATE_LIMITED",
+    },
+  });
 
 // ============================================================
 // AUTHENTICATION RATE LIMITER
 // ============================================================
-//
-// Authentication endpoints are intentionally stricter because
-// they are common brute-force targets.
-//
-// Production:
-// 30 requests / 15 minutes / IP
-//
-// Development:
-// 200 requests / 15 minutes / IP
-//
 
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
+const authLimiter =
+  rateLimit({
+    windowMs:
+      15 * 60 * 1000,
 
-  max:
-    process.env.NODE_ENV === "production"
-      ? 30
-      : 200,
+    max:
+      process.env.NODE_ENV ===
+      "production"
+        ? 30
+        : 200,
 
-  standardHeaders: true,
+    standardHeaders: true,
 
-  legacyHeaders: false,
+    legacyHeaders: false,
 
-  message: {
-    success: false,
+    message: {
+      success: false,
 
-    message:
-      "Too many authentication attempts. Please try again later.",
+      message:
+        "Too many authentication attempts. Please try again later.",
 
-    errorCode:
-      "AUTH_RATE_LIMITED",
-  },
-});
+      errorCode:
+        "AUTH_RATE_LIMITED",
+    },
+  });
 
 // ============================================================
 // AUTH RATE LIMITER
@@ -621,19 +614,23 @@ app.use(
 app.use(
   "/api/deliveries",
   (req, res, next) => {
-    const startedAt = Date.now();
+    const startedAt =
+      Date.now();
 
     console.log(
       `🚴 DELIVERY REQUEST → ${req.method} ${req.originalUrl}`
     );
 
-    res.on("finish", () => {
-      console.log(
-        `🚴 DELIVERY RESPONSE ← ${req.method} ${req.originalUrl} | ${res.statusCode} | ${
-          Date.now() - startedAt
-        }ms`
-      );
-    });
+    res.on(
+      "finish",
+      () => {
+        console.log(
+          `🚴 DELIVERY RESPONSE ← ${req.method} ${req.originalUrl} | ${res.statusCode} | ${
+            Date.now() - startedAt
+          }ms`
+        );
+      }
+    );
 
     next();
   }
@@ -642,15 +639,12 @@ app.use(
 // ============================================================
 // REVIEW REQUEST LOGGER
 // ============================================================
-//
-// IMPORTANT:
-// Never log Authorization headers or JWT tokens.
-//
 
 app.use(
   "/api/reviews",
   (req, res, next) => {
-    const startedAt = Date.now();
+    const startedAt =
+      Date.now();
 
     console.log(
       "\n⭐ ============================================================"
@@ -662,7 +656,8 @@ app.use(
 
     console.log(
       "⭐ Origin:",
-      req.headers.origin || "undefined"
+      req.headers.origin ||
+        "undefined"
     );
 
     console.log(
@@ -696,7 +691,8 @@ app.use(
 
           commentLength:
             String(
-              req.body.comment || ""
+              req.body.comment ||
+                ""
             ).length,
 
           comment:
@@ -707,17 +703,20 @@ app.use(
       );
     }
 
-    res.on("finish", () => {
-      console.log(
-        `⭐ REVIEW RESPONSE ← ${req.method} ${req.originalUrl} | ${res.statusCode} | ${
-          Date.now() - startedAt
-        }ms`
-      );
+    res.on(
+      "finish",
+      () => {
+        console.log(
+          `⭐ REVIEW RESPONSE ← ${req.method} ${req.originalUrl} | ${res.statusCode} | ${
+            Date.now() - startedAt
+          }ms`
+        );
 
-      console.log(
-        "⭐ ============================================================\n"
-      );
-    });
+        console.log(
+          "⭐ ============================================================\n"
+        );
+      }
+    );
 
     next();
   }
@@ -727,33 +726,37 @@ app.use(
 // ROOT
 // ============================================================
 
-app.get("/", (req, res) => {
-  res.status(200).json({
-    success: true,
+app.get(
+  "/",
+  (req, res) => {
+    res.status(200).json({
+      success: true,
 
-    message:
-      "BuyUKUsed API is running",
+      message:
+        "BuyUKUsed API is running",
 
-    environment:
-      process.env.NODE_ENV ||
-      "development",
-  });
-});
+      environment:
+        process.env.NODE_ENV ||
+        "development",
+    });
+  }
+);
 
 // ============================================================
 // HEALTH
 // ============================================================
 
-const healthResponse = (req, res) => {
-  res.status(200).json({
-    success: true,
+const healthResponse =
+  (req, res) => {
+    res.status(200).json({
+      success: true,
 
-    status: "ok",
+      status: "ok",
 
-    timestamp:
-      new Date().toISOString(),
-  });
-};
+      timestamp:
+        new Date().toISOString(),
+    });
+  };
 
 app.get(
   "/health",
@@ -845,17 +848,13 @@ app.use(
 // ============================================================
 // PRODUCTS
 // ============================================================
-//
-// Public GET requests receive the higher public-read limit.
-//
-// POST/PUT/PATCH/DELETE continue through the global API
-// limiter.
-//
 
 app.use(
   "/api/products",
   (req, res, next) => {
-    if (req.method === "GET") {
+    if (
+      req.method === "GET"
+    ) {
       return publicReadLimiter(
         req,
         res,
@@ -871,24 +870,13 @@ app.use(
 // ============================================================
 // REVIEWS
 // ============================================================
-//
-// Public GET requests receive the higher public-read limit.
-//
-// POST/PUT/PATCH/DELETE continue through the global API
-// limiter.
-//
-// IMPORTANT:
-// This rate limiter does NOT decide whether a user is allowed
-// to create a review.
-//
-// The review backend still decides whether the user has already
-// reviewed the seller/product/order.
-//
 
 app.use(
   "/api/reviews",
   (req, res, next) => {
-    if (req.method === "GET") {
+    if (
+      req.method === "GET"
+    ) {
       return publicReadLimiter(
         req,
         res,
@@ -1018,33 +1006,35 @@ console.log(
 // 404 HANDLER
 // ============================================================
 
-app.use((req, res) => {
-  console.log(
-    `❌ 404: ${req.method} ${req.originalUrl}`
-  );
+app.use(
+  (req, res) => {
+    console.log(
+      `❌ 404: ${req.method} ${req.originalUrl}`
+    );
 
-  if (
-    req.path.startsWith("/api") ||
-    req.path.startsWith("/auth") ||
-    req.path.startsWith("/sellers")
-  ) {
+    if (
+      req.path.startsWith("/api") ||
+      req.path.startsWith("/auth") ||
+      req.path.startsWith("/sellers")
+    ) {
+      return res
+        .status(404)
+        .json({
+          success: false,
+
+          message:
+            "API endpoint not found",
+
+          path:
+            req.originalUrl,
+        });
+    }
+
     return res
       .status(404)
-      .json({
-        success: false,
-
-        message:
-          "API endpoint not found",
-
-        path:
-          req.originalUrl,
-      });
+      .send("Not Found");
   }
-
-  return res
-    .status(404)
-    .send("Not Found");
-});
+);
 
 // ============================================================
 // GLOBAL ERROR HANDLER
@@ -1076,7 +1066,8 @@ app.use(
 
     console.error(
       "Origin:",
-      req.headers.origin || "undefined"
+      req.headers.origin ||
+        "undefined"
     );
 
     console.error(
@@ -1117,7 +1108,8 @@ app.use(
         .json({
           success: false,
 
-          message: err.message,
+          message:
+            err.message,
 
           errorCode:
             "CORS_ERROR",
@@ -1130,7 +1122,8 @@ app.use(
 
     if (
       err &&
-      err.name === "MulterError"
+      err.name ===
+        "MulterError"
     ) {
       if (
         err.code ===
@@ -1320,7 +1313,8 @@ process.on(
 // ============================================================
 
 const PORT =
-  process.env.PORT || 5000;
+  process.env.PORT ||
+  5000;
 
 // ============================================================
 // DEFAULT ADMIN
@@ -1386,7 +1380,8 @@ const createDefaultAdmin =
       } else if (
         user.role !== "admin"
       ) {
-        user.role = "admin";
+        user.role =
+          "admin";
 
         await user.save();
 
@@ -1410,200 +1405,203 @@ const createDefaultAdmin =
 // START SERVER
 // ============================================================
 
-const start = async () => {
-  try {
-    const connection =
-      await connectDB();
+const start =
+  async () => {
+    try {
+      const connection =
+        await connectDB();
 
-    console.log(
-      `✅ MongoDB connected to: ${connection.name}`
-    );
-
-    await ensureDefaultCategories();
-
-    console.log(
-      "✅ Default categories check completed"
-    );
-
-    await createDefaultAdmin();
-
-    const server =
-      app.listen(
-        PORT,
-        () => {
-          console.log(
-            "============================================================"
-          );
-
-          console.log(
-            `🚀 Server running on port ${PORT}`
-          );
-
-          console.log(
-            `🌍 Environment: ${
-              process.env.NODE_ENV ||
-              "development"
-            }`
-          );
-
-          console.log(
-            `🔗 Base URL: ${
-              process.env.BASE_URL ||
-              "(auto-detected)"
-            }`
-          );
-
-          console.log(
-            `📁 Uploads: ${uploadsDirectory}`
-          );
-
-          console.log(
-            "🔐 Admin API: /api/admin"
-          );
-
-          console.log(
-            "🚴 Delivery API: /api/deliveries"
-          );
-
-          console.log(
-            "📤 Upload API: /api/upload"
-          );
-
-          console.log(
-            "🛒 Seller API: /sellers"
-          );
-
-          console.log(
-            "📂 Categories API: /api/categories"
-          );
-
-          console.log(
-            "🖼️ Visual Search API: /api/visual-search"
-          );
-
-          console.log(
-            "⭐ Reviews API: /api/reviews"
-          );
-
-          console.log(
-            "🔐 Review authentication: ENABLED"
-          );
-
-          console.log(
-            "👤 Review owner-only edit/delete: ENABLED"
-          );
-
-          console.log(
-            "🟢 Activity tracking: ENABLED"
-          );
-
-          console.log(
-            "🟢 CORS: ENABLED"
-          );
-
-          console.log(
-            "🛡️ Global API rate limit: 500 / 15 min"
-          );
-
-          console.log(
-            "🛡️ Public product/review reads: 1000 / 15 min"
-          );
-
-          console.log(
-            "🔐 Authentication rate limit: 30 / 15 min"
-          );
-
-          console.log(
-            "🌐 Production frontend: https://buyukused.com"
-          );
-
-          console.log(
-            "============================================================"
-          );
-        }
-      );
-
-    // --------------------------------------------------------
-    // SERVER TIMEOUTS
-    // --------------------------------------------------------
-
-    server.timeout = 120000;
-
-    server.keepAliveTimeout = 65000;
-
-    server.headersTimeout = 66000;
-
-    // --------------------------------------------------------
-    // GRACEFUL SHUTDOWN
-    // --------------------------------------------------------
-
-    const shutdown = async (
-      signal
-    ) => {
       console.log(
-        `\n🛑 ${signal} received. Shutting down server...`
+        `✅ MongoDB connected to: ${connection.name}`
       );
 
-      server.close(
-        async () => {
-          console.log(
-            "🛑 HTTP server closed."
-          );
+      await ensureDefaultCategories();
 
-          try {
-            const mongoose =
-              require("mongoose");
+      console.log(
+        "✅ Default categories check completed"
+      );
 
-            await mongoose.connection.close();
+      await createDefaultAdmin();
+
+      const server =
+        app.listen(
+          PORT,
+          () => {
+            console.log(
+              "============================================================"
+            );
 
             console.log(
-              "🛑 MongoDB connection closed."
+              `🚀 Server running on port ${PORT}`
             );
 
-            process.exit(0);
-          } catch (error) {
-            console.error(
-              "❌ Error closing MongoDB:",
-              error
+            console.log(
+              `🌍 Environment: ${
+                process.env.NODE_ENV ||
+                "development"
+              }`
             );
 
-            process.exit(1);
+            console.log(
+              `🔗 Backend URL: ${
+                process.env.BASE_URL ||
+                "(auto-detected)"
+              }`
+            );
+
+            console.log(
+              `🌐 Production frontend: https://buyukused.com`
+            );
+
+            console.log(
+              `📁 Uploads: ${uploadsDirectory}`
+            );
+
+            console.log(
+              "🔐 Admin API: /api/admin"
+            );
+
+            console.log(
+              "🚴 Delivery API: /api/deliveries"
+            );
+
+            console.log(
+              "📤 Upload API: /api/upload"
+            );
+
+            console.log(
+              "🛒 Seller API: /sellers"
+            );
+
+            console.log(
+              "📂 Categories API: /api/categories"
+            );
+
+            console.log(
+              "🖼️ Visual Search API: /api/visual-search"
+            );
+
+            console.log(
+              "⭐ Reviews API: /api/reviews"
+            );
+
+            console.log(
+              "🔐 Review authentication: ENABLED"
+            );
+
+            console.log(
+              "👤 Review owner-only edit/delete: ENABLED"
+            );
+
+            console.log(
+              "🟢 Activity tracking: ENABLED"
+            );
+
+            console.log(
+              "🟢 CORS: ENABLED"
+            );
+
+            console.log(
+              "🛡️ Global API rate limit: 500 / 15 min"
+            );
+
+            console.log(
+              "🛡️ Public product/review reads: 1000 / 15 min"
+            );
+
+            console.log(
+              "🔐 Authentication rate limit: 30 / 15 min"
+            );
+
+            console.log(
+              "============================================================"
+            );
           }
-        }
-      );
+        );
 
-      setTimeout(
-        () => {
-          console.error(
-            "❌ Forced shutdown after timeout."
+      // --------------------------------------------------------
+      // SERVER TIMEOUTS
+      // --------------------------------------------------------
+
+      server.timeout =
+        120000;
+
+      server.keepAliveTimeout =
+        65000;
+
+      server.headersTimeout =
+        66000;
+
+      // --------------------------------------------------------
+      // GRACEFUL SHUTDOWN
+      // --------------------------------------------------------
+
+      const shutdown =
+        async (signal) => {
+          console.log(
+            `\n🛑 ${signal} received. Shutting down server...`
           );
 
-          process.exit(1);
-        },
-        10000
+          server.close(
+            async () => {
+              console.log(
+                "🛑 HTTP server closed."
+              );
+
+              try {
+                const mongoose =
+                  require("mongoose");
+
+                await mongoose.connection.close();
+
+                console.log(
+                  "🛑 MongoDB connection closed."
+                );
+
+                process.exit(0);
+              } catch (error) {
+                console.error(
+                  "❌ Error closing MongoDB:",
+                  error
+                );
+
+                process.exit(1);
+              }
+            }
+          );
+
+          setTimeout(
+            () => {
+              console.error(
+                "❌ Forced shutdown after timeout."
+              );
+
+              process.exit(1);
+            },
+            10000
+          );
+        };
+
+      process.once(
+        "SIGTERM",
+        () =>
+          shutdown("SIGTERM")
       );
-    };
 
-    process.once(
-      "SIGTERM",
-      () =>
-        shutdown("SIGTERM")
-    );
+      process.once(
+        "SIGINT",
+        () =>
+          shutdown("SIGINT")
+      );
+    } catch (error) {
+      console.error(
+        "❌ Server failed:",
+        error
+      );
 
-    process.once(
-      "SIGINT",
-      () =>
-        shutdown("SIGINT")
-    );
-  } catch (error) {
-    console.error(
-      "❌ Server failed:",
-      error
-    );
-
-    process.exit(1);
-  }
-};
+      process.exit(1);
+    }
+  };
 
 // ============================================================
 // START

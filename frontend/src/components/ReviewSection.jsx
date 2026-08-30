@@ -1,3 +1,4 @@
+
 // ============================================================
 // frontend/src/components/ReviewSection.jsx
 // BuyUKUsed – Review Section
@@ -43,7 +44,9 @@ const EMPTY_SUMMARY = {
 // ============================================================
 
 const getId = (value) => {
-  if (!value) return null;
+  if (!value) {
+    return null;
+  }
 
   if (typeof value === "object") {
     return value._id || value.id || null;
@@ -56,7 +59,9 @@ const sameId = (a, b) => {
   const idA = getId(a);
   const idB = getId(b);
 
-  if (!idA || !idB) return false;
+  if (!idA || !idB) {
+    return false;
+  }
 
   return String(idA) === String(idB);
 };
@@ -102,7 +107,7 @@ const Stars = ({
       {[1, 2, 3, 4, 5].map((star) => (
         <button
           key={star}
-          type={interactive ? "button" : "button"}
+          type="button"
           onClick={() => {
             if (interactive) {
               onChange?.(star);
@@ -140,7 +145,9 @@ const Stars = ({
 // ============================================================
 
 const formatDate = (date) => {
-  if (!date) return "";
+  if (!date) {
+    return "";
+  }
 
   const parsed = new Date(date);
 
@@ -169,7 +176,9 @@ const getInitials = (name) => {
   return value
     .split(/\s+/)
     .slice(0, 2)
-    .map((part) => part.charAt(0).toUpperCase())
+    .map((part) =>
+      part.charAt(0).toUpperCase()
+    )
     .join("");
 };
 
@@ -188,10 +197,13 @@ const getAvatar = (reviewer) => {
 };
 
 // ============================================================
-// ERROR MESSAGE HELPER
+// ERROR MESSAGE
 // ============================================================
 
-const getErrorMessage = (error, fallback) => {
+const getErrorMessage = (
+  error,
+  fallback
+) => {
   return (
     error?.response?.data?.message ||
     error?.data?.message ||
@@ -216,31 +228,57 @@ const ReviewSection = ({
   // ==========================================================
 
   const [reviews, setReviews] = useState([]);
-  const [summary, setSummary] = useState(EMPTY_SUMMARY);
 
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
+  const [summary, setSummary] =
+    useState(EMPTY_SUMMARY);
 
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  const [loading, setLoading] =
+    useState(true);
 
-  const [selectedRating, setSelectedRating] = useState(0);
-  const [comment, setComment] = useState("");
+  const [submitting, setSubmitting] =
+    useState(false);
 
-  const [showForm, setShowForm] = useState(false);
-  const [editingReviewId, setEditingReviewId] = useState(null);
+  const [error, setError] =
+    useState("");
 
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
+  const [success, setSuccess] =
+    useState("");
 
-  const [filterRating, setFilterRating] = useState("");
+  const [selectedRating, setSelectedRating] =
+    useState(0);
 
-  const [reportingId, setReportingId] = useState(null);
-  const [helpfulId, setHelpfulId] = useState(null);
+  const [comment, setComment] =
+    useState("");
 
-  const [replyingId, setReplyingId] = useState(null);
-  const [replyText, setReplyText] = useState("");
-  const [replying, setReplying] = useState(false);
+  const [showForm, setShowForm] =
+    useState(false);
+
+  const [editingReviewId, setEditingReviewId] =
+    useState(null);
+
+  const [page, setPage] =
+    useState(1);
+
+  const [totalPages, setTotalPages] =
+    useState(1);
+
+  const [filterRating, setFilterRating] =
+    useState("");
+
+  const [reportingId, setReportingId] =
+    useState(null);
+
+  const [helpfulId, setHelpfulId] =
+    useState(null);
+
+  const [replyingId, setReplyingId] =
+    useState(null);
+
+  const [replyText, setReplyText] =
+    useState("");
+
+  const [replying, setReplying] =
+    useState(false);
 
   // ==========================================================
   // CURRENT USER ID
@@ -255,27 +293,36 @@ const ReviewSection = ({
   // SELLER CHECK
   // ==========================================================
 
-  const isCurrentUserSeller = Boolean(
-    currentUserId &&
-      sellerId &&
-      sameId(currentUserId, sellerId)
-  );
+  const isCurrentUserSeller =
+    Boolean(
+      currentUserId &&
+        sellerId &&
+        sameId(
+          currentUserId,
+          sellerId
+        )
+    );
 
   // ==========================================================
   // REVIEW TYPE
   // ==========================================================
 
-  const isProductReviewSection = Boolean(productId);
+  const isProductReviewSection =
+    Boolean(productId);
+
+  const reviewType =
+    isProductReviewSection
+      ? "PRODUCT"
+      : "SELLER";
 
   // ==========================================================
   // FIND CURRENT USER REVIEW
   //
-  // IMPORTANT:
-  // A PRODUCT REVIEW must belong to THIS product.
+  // PRODUCT REVIEW:
+  //   Must belong to THIS product.
   //
-  // A SELLER REVIEW must NOT have a productId.
-  //
-  // We never treat a seller review as a product review.
+  // SELLER REVIEW:
+  //   Must NOT have a productId.
   // ==========================================================
 
   const userReview = useMemo(() => {
@@ -283,19 +330,31 @@ const ReviewSection = ({
       return null;
     }
 
-    if (!Array.isArray(reviews) || reviews.length === 0) {
+    if (
+      !Array.isArray(reviews) ||
+      reviews.length === 0
+    ) {
       return null;
     }
 
     return (
       reviews.find((review) => {
-        const reviewerId = getReviewUserId(review);
+        const reviewerId =
+          getReviewUserId(review);
 
-        if (!sameId(reviewerId, currentUserId)) {
+        if (
+          !sameId(
+            reviewerId,
+            currentUserId
+          )
+        ) {
           return false;
         }
 
-        const reviewProductId = getReviewProductId(review);
+        const reviewProductId =
+          getReviewProductId(
+            review
+          );
 
         // ------------------------------------------------------
         // PRODUCT REVIEW
@@ -303,8 +362,11 @@ const ReviewSection = ({
 
         if (productId) {
           return (
-            reviewProductId &&
-            sameId(reviewProductId, productId)
+            Boolean(reviewProductId) &&
+            sameId(
+              reviewProductId,
+              productId
+            )
           );
         }
 
@@ -315,19 +377,21 @@ const ReviewSection = ({
         return !reviewProductId;
       }) || null
     );
-  }, [reviews, currentUserId, productId]);
+  }, [
+    reviews,
+    currentUserId,
+    productId,
+  ]);
 
-  const hasUserReviewed = Boolean(userReview);
+  const hasUserReviewed =
+    Boolean(userReview);
 
   // ==========================================================
   // LOAD REVIEWS
   // ==========================================================
 
   const loadReviews = useCallback(
-    async (options = {}) => {
-      const requestedPage =
-        Number(options.page) || page;
-
+    async (requestedPage = 1) => {
       if (!sellerId && !productId) {
         setReviews([]);
         setSummary(EMPTY_SUMMARY);
@@ -342,43 +406,51 @@ const ReviewSection = ({
 
         let response;
 
-        // ------------------------------------------------------
+        // ====================================================
         // PRODUCT REVIEWS
-        // ------------------------------------------------------
+        // ====================================================
 
         if (productId) {
-          response = await getProductReviews(
-            productId,
-            {
-              page: requestedPage,
-              limit: 10,
-              ...(filterRating
-                ? { rating: filterRating }
-                : {}),
-            }
-          );
+          response =
+            await getProductReviews(
+              productId,
+              {
+                page: requestedPage,
+                limit: 10,
+                ...(filterRating
+                  ? {
+                      rating:
+                        filterRating,
+                    }
+                  : {}),
+              }
+            );
         }
 
-        // ------------------------------------------------------
+        // ====================================================
         // SELLER REVIEWS
-        // ------------------------------------------------------
+        // ====================================================
 
         else if (sellerId) {
-          response = await getSellerReviews(
-            sellerId,
-            {
-              page: requestedPage,
-              limit: 10,
-              ...(filterRating
-                ? { rating: filterRating }
-                : {}),
-            }
-          );
+          response =
+            await getSellerReviews(
+              sellerId,
+              {
+                page: requestedPage,
+                limit: 10,
+                ...(filterRating
+                  ? {
+                      rating:
+                        filterRating,
+                    }
+                  : {}),
+              }
+            );
         }
 
-        // ------------------------------------------------------
+        // ====================================================
         // INVALID
-        // ------------------------------------------------------
+        // ====================================================
 
         else {
           setReviews([]);
@@ -387,30 +459,34 @@ const ReviewSection = ({
           return;
         }
 
-        const data = response || {};
+        const data =
+          response || {};
 
-        const loadedReviews = Array.isArray(
-          data.reviews
-        )
-          ? data.reviews
-          : [];
+        const loadedReviews =
+          Array.isArray(
+            data.reviews
+          )
+            ? data.reviews
+            : [];
 
-        setReviews(loadedReviews);
+        setReviews(
+          loadedReviews
+        );
 
         setSummary(
-          data.summary || EMPTY_SUMMARY
+          data.summary ||
+            EMPTY_SUMMARY
         );
 
         const returnedTotalPages =
           Number(
-            data.pagination?.totalPages
+            data.pagination
+              ?.totalPages
           ) || 1;
 
-        setTotalPages(returnedTotalPages);
-
-        if (requestedPage !== page) {
-          setPage(requestedPage);
-        }
+        setTotalPages(
+          returnedTotalPages
+        );
 
         console.log(
           "📝 Reviews loaded:",
@@ -419,19 +495,19 @@ const ReviewSection = ({
 
         console.log(
           "📝 Review type:",
-          productId
-            ? "PRODUCT"
-            : "SELLER"
+          reviewType
         );
 
         console.log(
           "📝 Product ID:",
-          productId || "none"
+          productId ||
+            "none"
         );
 
         console.log(
           "📝 Seller ID:",
-          sellerId || "none"
+          sellerId ||
+            "none"
         );
       } catch (err) {
         console.error(
@@ -452,22 +528,41 @@ const ReviewSection = ({
     [
       sellerId,
       productId,
-      page,
       filterRating,
+      reviewType,
     ]
   );
 
   // ==========================================================
-  // LOAD WHEN IDENTIFIERS CHANGE
+  // RESET WHEN PRODUCT / SELLER CHANGES
   // ==========================================================
 
   useEffect(() => {
     setPage(1);
-  }, [sellerId, productId]);
+    setReviews([]);
+    setSummary(EMPTY_SUMMARY);
+    setTotalPages(1);
+    setShowForm(false);
+    setEditingReviewId(null);
+    setSelectedRating(0);
+    setComment("");
+    setError("");
+    setSuccess("");
+  }, [
+    sellerId,
+    productId,
+  ]);
+
+  // ==========================================================
+  // LOAD WHEN PAGE / FILTER / IDs CHANGE
+  // ==========================================================
 
   useEffect(() => {
-    loadReviews();
-  }, [loadReviews]);
+    loadReviews(page);
+  }, [
+    loadReviews,
+    page,
+  ]);
 
   // ==========================================================
   // DEBUG
@@ -504,17 +599,23 @@ const ReviewSection = ({
   // START EDITING
   // ==========================================================
 
-  const startEditingReview = (review) => {
+  const startEditingReview = (
+    review
+  ) => {
     if (!review?._id) {
       return;
     }
 
     clearMessages();
 
-    setEditingReviewId(review._id);
+    setEditingReviewId(
+      review._id
+    );
 
     setSelectedRating(
-      Number(review.rating) || 0
+      Number(
+        review.rating
+      ) || 0
     );
 
     setComment(
@@ -524,42 +625,60 @@ const ReviewSection = ({
     setShowForm(true);
 
     window.setTimeout(() => {
-      const form = document.getElementById(
-        "buyukused-review-section-form"
-      );
+      const form =
+        document.getElementById(
+          "buyukused-review-section-form"
+        );
 
       if (form) {
         form.scrollIntoView({
-          behavior: "smooth",
-          block: "center",
+          behavior:
+            "smooth",
+          block:
+            "center",
         });
       }
     }, 50);
   };
 
   // ==========================================================
-  // OPEN NEW REVIEW FORM
+  // OPEN REVIEW FORM
   // ==========================================================
 
   const openReviewForm = () => {
     clearMessages();
 
-    if (hasUserReviewed && userReview) {
-      startEditingReview(userReview);
+    if (
+      hasUserReviewed &&
+      userReview
+    ) {
+      startEditingReview(
+        userReview
+      );
+
       return;
     }
 
-    setEditingReviewId(null);
+    setEditingReviewId(
+      null
+    );
+
     setSelectedRating(0);
+
     setComment("");
-    setShowForm(true);
+
+    setShowForm(
+      (value) => !value
+    );
   };
 
   // ==========================================================
   // SUBMIT REVIEW
   // ==========================================================
 
-  const handleSubmit = async (event) => {
+  const handleSubmit = async (
+    event
+  ) => {
     event.preventDefault();
 
     if (submitting) {
@@ -568,100 +687,121 @@ const ReviewSection = ({
 
     clearMessages();
 
-    // --------------------------------------------------------
+    // ========================================================
     // AUTH
-    // --------------------------------------------------------
+    // ========================================================
 
     if (!currentUser) {
       setError(
         "Please log in to write a review."
       );
+
       return;
     }
 
-    const token = getToken();
+    const token =
+      getToken();
 
     if (!token) {
       setError(
         "Your login session has expired. Please log in again."
       );
+
       return;
     }
 
-    // --------------------------------------------------------
+    // ========================================================
     // SELLER
-    // --------------------------------------------------------
+    // ========================================================
 
     if (!sellerId) {
       setError(
         "Seller information is missing."
       );
+
       return;
     }
 
-    // --------------------------------------------------------
+    // ========================================================
     // SELLER CANNOT REVIEW SELF
-    // --------------------------------------------------------
+    // ========================================================
 
-    if (isCurrentUserSeller) {
+    if (
+      isCurrentUserSeller
+    ) {
       setError(
         "You cannot review your own seller account."
       );
+
       return;
     }
 
-    // --------------------------------------------------------
+    // ========================================================
     // RATING
-    // --------------------------------------------------------
+    // ========================================================
 
-    const rating = Number(
-      selectedRating
-    );
+    const rating =
+      Number(
+        selectedRating
+      );
 
     if (
-      !Number.isInteger(rating) ||
+      !Number.isInteger(
+        rating
+      ) ||
       rating < 1 ||
       rating > 5
     ) {
       setError(
         "Please select a star rating."
       );
+
       return;
     }
 
-    // --------------------------------------------------------
+    // ========================================================
     // COMMENT
-    // --------------------------------------------------------
+    // ========================================================
 
     const cleanComment =
-      String(comment || "").trim();
+      String(
+        comment || ""
+      ).trim();
 
-    if (cleanComment.length < 3) {
+    if (
+      cleanComment.length <
+      3
+    ) {
       setError(
         "Please write at least 3 characters."
       );
+
       return;
     }
 
-    if (cleanComment.length > 2000) {
+    if (
+      cleanComment.length >
+      2000
+    ) {
       setError(
         "Review cannot exceed 2000 characters."
       );
+
       return;
     }
 
-    // --------------------------------------------------------
+    // ========================================================
     // CLIENT DUPLICATE CHECK
-    //
-    // Only use a review that belongs to THIS review type.
-    // --------------------------------------------------------
+    // ========================================================
 
     if (
       !editingReviewId &&
       hasUserReviewed &&
       userReview
     ) {
-      startEditingReview(userReview);
+      startEditingReview(
+        userReview
+      );
 
       setSuccess(
         productId
@@ -676,10 +816,12 @@ const ReviewSection = ({
       setSubmitting(true);
 
       // ======================================================
-      // EDIT
+      // EDIT EXISTING REVIEW
       // ======================================================
 
-      if (editingReviewId) {
+      if (
+        editingReviewId
+      ) {
         console.log(
           "✏️ Updating review:",
           editingReviewId
@@ -690,12 +832,14 @@ const ReviewSection = ({
             editingReviewId,
             {
               rating,
-              comment: cleanComment,
+              comment:
+                cleanComment,
             },
             token
           );
 
-        const data = response || {};
+        const data =
+          response || {};
 
         setSuccess(
           data.message ||
@@ -706,64 +850,85 @@ const ReviewSection = ({
 
         setPage(1);
 
-        await loadReviews({
-          page: 1,
-        });
+        await loadReviews(1);
 
         return;
       }
 
       // ======================================================
-      // CREATE
+      // CREATE NEW REVIEW
+      //
+      // IMPORTANT:
+      //
+      // The backend requires:
+      //
+      // type: "PRODUCT"
+      //
+      // OR
+      //
+      // type: "SELLER"
+      //
       // ======================================================
 
       const payload = {
+        type: reviewType,
         sellerId,
         rating,
-        comment: cleanComment,
+        comment:
+          cleanComment,
       };
 
       // ------------------------------------------------------
-      // IMPORTANT:
-      //
-      // Only send productId when this is actually a product
-      // review.
+      // PRODUCT REVIEW
       // ------------------------------------------------------
+      //
+      // Only include productId when this is a product review.
+      //
 
-      if (productId) {
-        payload.productId = productId;
+      if (
+        reviewType ===
+        "PRODUCT"
+      ) {
+        if (!productId) {
+          setError(
+            "Product information is missing."
+          );
+
+          return;
+        }
+
+        payload.productId =
+          productId;
       }
 
+      // ======================================================
+      // DEBUG
+      // ======================================================
+
       console.log(
-        "⭐ Creating review..."
+        "⭐ Creating review"
       );
 
       console.log(
-        "⭐ Review type:",
-        productId
-          ? "PRODUCT"
-          : "SELLER"
+        "⭐ Review payload:",
+        {
+          type:
+            payload.type,
+          sellerId:
+            payload.sellerId,
+          productId:
+            payload.productId ||
+            "none",
+          rating:
+            payload.rating,
+          comment:
+            payload.comment,
+        }
       );
 
-      console.log(
-        "⭐ Seller ID:",
-        sellerId
-      );
-
-      console.log(
-        "⭐ Product ID:",
-        productId || "none"
-      );
-
-      console.log(
-        "⭐ Rating:",
-        rating
-      );
-
-      console.log(
-        "⭐ Comment:",
-        cleanComment
-      );
+      // ======================================================
+      // CREATE
+      // ======================================================
 
       const response =
         await createReview(
@@ -771,7 +936,8 @@ const ReviewSection = ({
           token
         );
 
-      const data = response || {};
+      const data =
+        response || {};
 
       setSuccess(
         data.message ||
@@ -782,9 +948,7 @@ const ReviewSection = ({
 
       setPage(1);
 
-      await loadReviews({
-        page: 1,
-      });
+      await loadReviews(1);
     } catch (err) {
       console.error(
         "❌ Submit review error:",
@@ -792,11 +956,13 @@ const ReviewSection = ({
       );
 
       const status =
-        err?.response?.status ||
+        err?.response
+          ?.status ||
         err?.status;
 
       const responseData =
-        err?.response?.data ||
+        err?.response
+          ?.data ||
         err?.data ||
         {};
 
@@ -806,48 +972,45 @@ const ReviewSection = ({
         "";
 
       // ======================================================
+      // 401
+      // ======================================================
+
+      if (
+        status === 401
+      ) {
+        setError(
+          "Your login session has expired. Please log in again."
+        );
+
+        return;
+      }
+
+      // ======================================================
+      // 403
+      // ======================================================
+
+      if (
+        status === 403
+      ) {
+        setError(
+          serverMessage ||
+            "You are not allowed to submit this review."
+        );
+
+        return;
+      }
+
+      // ======================================================
       // 409 CONFLICT
       // ======================================================
 
-      if (status === 409) {
+      if (
+        status === 409
+      ) {
         console.warn(
           "⚠️ Review conflict:",
           serverMessage
         );
-
-        // ----------------------------------------------------
-        // VERY IMPORTANT:
-        //
-        // Do NOT replace the product review list with seller
-        // reviews.
-        //
-        // A seller duplicate is not automatically a product
-        // duplicate.
-        // ----------------------------------------------------
-
-        if (
-          /already reviewed this seller/i.test(
-            serverMessage
-          )
-        ) {
-          setError(
-            productId
-              ? "This seller account already has a review from you. The server is currently preventing another review for this seller. Product reviews need to be enabled separately in the backend."
-              : "You have already reviewed this seller. You can edit your existing seller review."
-          );
-
-          // --------------------------------------------------
-          // If this is a seller review, reload seller reviews.
-          // --------------------------------------------------
-
-          if (!productId) {
-            await loadReviews({
-              page: 1,
-            });
-          }
-
-          return;
-        }
 
         // ----------------------------------------------------
         // PRODUCT DUPLICATE
@@ -862,9 +1025,47 @@ const ReviewSection = ({
             "You have already reviewed this product. Your existing review can be edited."
           );
 
-          await loadReviews({
-            page: 1,
-          });
+          setPage(1);
+
+          await loadReviews(1);
+
+          return;
+        }
+
+        // ----------------------------------------------------
+        // SELLER DUPLICATE
+        // ----------------------------------------------------
+
+        if (
+          /already reviewed this seller/i.test(
+            serverMessage
+          )
+        ) {
+          if (
+            reviewType ===
+            "SELLER"
+          ) {
+            setError(
+              "You have already reviewed this seller. You can edit your existing seller review."
+            );
+
+            setPage(1);
+
+            await loadReviews(1);
+
+            return;
+          }
+
+          // --------------------------------------------------
+          // PRODUCT REVIEW
+          //
+          // Do NOT turn this into a seller-review duplicate
+          // on the frontend.
+          // --------------------------------------------------
+
+          setError(
+            "The server says you have already reviewed this seller. Product reviews require a separate product-review duplicate rule in the backend."
+          );
 
           return;
         }
@@ -878,9 +1079,9 @@ const ReviewSection = ({
             "You already submitted this review."
         );
 
-        await loadReviews({
-          page: 1,
-        });
+        setPage(1);
+
+        await loadReviews(1);
 
         return;
       }
@@ -911,17 +1112,21 @@ const ReviewSection = ({
 
     clearMessages();
 
-    const token = getToken();
+    const token =
+      getToken();
 
     if (!token) {
       setError(
         "Please log in to mark a review helpful."
       );
+
       return;
     }
 
     try {
-      setHelpfulId(reviewId);
+      setHelpfulId(
+        reviewId
+      );
 
       const response =
         await toggleReviewHelpful(
@@ -929,33 +1134,37 @@ const ReviewSection = ({
           token
         );
 
-      const data = response || {};
+      const data =
+        response || {};
 
-      setReviews((previous) =>
-        previous.map((review) => {
-          if (
-            !sameId(
-              review?._id,
-              reviewId
-            )
-          ) {
-            return review;
-          }
+      setReviews(
+        (previous) =>
+          previous.map(
+            (review) => {
+              if (
+                !sameId(
+                  review?._id,
+                  reviewId
+                )
+              ) {
+                return review;
+              }
 
-          return {
-            ...review,
+              return {
+                ...review,
 
-            helpfulCount:
-              data.helpfulCount ??
-              review.helpfulCount ??
-              0,
+                helpfulCount:
+                  data.helpfulCount ??
+                  review.helpfulCount ??
+                  0,
 
-            hasHelpful:
-              data.helpful ??
-              review.hasHelpful ??
-              false,
-          };
-        })
+                hasHelpful:
+                  data.helpful ??
+                  review.hasHelpful ??
+                  false,
+              };
+            }
+          )
       );
     } catch (err) {
       console.error(
@@ -970,7 +1179,9 @@ const ReviewSection = ({
         )
       );
     } finally {
-      setHelpfulId(null);
+      setHelpfulId(
+        null
+      );
     }
   };
 
@@ -987,17 +1198,21 @@ const ReviewSection = ({
 
     clearMessages();
 
-    const token = getToken();
+    const token =
+      getToken();
 
     if (!token) {
       setError(
         "Please log in to report a review."
       );
+
       return;
     }
 
     try {
-      setReportingId(reviewId);
+      setReportingId(
+        reviewId
+      );
 
       await reportReview(
         reviewId,
@@ -1021,7 +1236,9 @@ const ReviewSection = ({
         )
       );
     } finally {
-      setReportingId(null);
+      setReportingId(
+        null
+      );
     }
   };
 
@@ -1038,29 +1255,41 @@ const ReviewSection = ({
 
     clearMessages();
 
-    const token = getToken();
+    const token =
+      getToken();
 
     if (!token) {
       setError(
         "Please log in to reply."
       );
+
       return;
     }
 
     const cleanReply =
-      String(replyText || "").trim();
+      String(
+        replyText || ""
+      ).trim();
 
-    if (cleanReply.length < 2) {
+    if (
+      cleanReply.length <
+      2
+    ) {
       setError(
         "Please write a reply."
       );
+
       return;
     }
 
-    if (cleanReply.length > 2000) {
+    if (
+      cleanReply.length >
+      2000
+    ) {
       setError(
         "Reply cannot exceed 2000 characters."
       );
+
       return;
     }
 
@@ -1074,30 +1303,38 @@ const ReviewSection = ({
           token
         );
 
-      const data = response || {};
+      const data =
+        response || {};
 
-      setReviews((previous) =>
-        previous.map((review) => {
-          if (
-            !sameId(
-              review?._id,
-              reviewId
-            )
-          ) {
-            return review;
-          }
+      setReviews(
+        (previous) =>
+          previous.map(
+            (review) => {
+              if (
+                !sameId(
+                  review?._id,
+                  reviewId
+                )
+              ) {
+                return review;
+              }
 
-          return {
-            ...review,
-            sellerReply:
-              data.sellerReply ||
-              review.sellerReply,
-          };
-        })
+              return {
+                ...review,
+
+                sellerReply:
+                  data.sellerReply ||
+                  review.sellerReply,
+              };
+            }
+          )
       );
 
       setReplyText("");
-      setReplyingId(null);
+
+      setReplyingId(
+        null
+      );
 
       setSuccess(
         data.message ||
@@ -1128,7 +1365,9 @@ const ReviewSection = ({
     rating
   ) => {
     const total =
-      Number(summary.totalReviews) || 0;
+      Number(
+        summary.totalReviews
+      ) || 0;
 
     if (!total) {
       return 0;
@@ -1136,11 +1375,14 @@ const ReviewSection = ({
 
     const count =
       Number(
-        summary.breakdown?.[rating]
+        summary.breakdown?.[
+          rating
+        ]
       ) || 0;
 
     return Math.round(
-      (count / total) * 100
+      (count / total) *
+        100
     );
   };
 
@@ -1148,9 +1390,10 @@ const ReviewSection = ({
   // EMPTY MESSAGE
   // ==========================================================
 
-  const emptyMessage = productId
-    ? "No reviews for this product yet."
-    : `No reviews for ${sellerName} yet.`;
+  const emptyMessage =
+    productId
+      ? "No reviews for this product yet."
+      : `No reviews for ${sellerName} yet.`;
 
   // ==========================================================
   // RENDER
@@ -1173,20 +1416,27 @@ const ReviewSection = ({
       <div
         style={{
           display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
+          justifyContent:
+            "space-between",
+          alignItems:
+            "center",
           gap: "20px",
-          flexWrap: "wrap",
-          marginBottom: "24px",
+          flexWrap:
+            "wrap",
+          marginBottom:
+            "24px",
         }}
       >
         <div>
           <h2
             style={{
               margin: 0,
-              fontSize: "24px",
-              fontWeight: 800,
-              color: "#111827",
+              fontSize:
+                "24px",
+              fontWeight:
+                800,
+              color:
+                "#111827",
             }}
           >
             Reviews
@@ -1194,9 +1444,12 @@ const ReviewSection = ({
 
           <p
             style={{
-              margin: "6px 0 0",
-              color: "#6b7280",
-              fontSize: "14px",
+              margin:
+                "6px 0 0",
+              color:
+                "#6b7280",
+              fontSize:
+                "14px",
             }}
           >
             Real customer experiences
@@ -1208,15 +1461,22 @@ const ReviewSection = ({
           !isCurrentUserSeller && (
             <button
               type="button"
-              onClick={openReviewForm}
+              onClick={
+                openReviewForm
+              }
               style={{
                 border: "none",
-                borderRadius: "999px",
-                padding: "11px 18px",
-                background: "#111827",
+                borderRadius:
+                  "999px",
+                padding:
+                  "11px 18px",
+                background:
+                  "#111827",
                 color: "#fff",
-                fontWeight: 700,
-                cursor: "pointer",
+                fontWeight:
+                  700,
+                cursor:
+                  "pointer",
               }}
             >
               {hasUserReviewed
@@ -1236,13 +1496,20 @@ const ReviewSection = ({
         <div
           role="alert"
           style={{
-            marginBottom: "16px",
-            padding: "12px 14px",
-            borderRadius: "10px",
-            background: "#fee2e2",
-            color: "#991b1b",
-            fontSize: "14px",
-            lineHeight: 1.5,
+            marginBottom:
+              "16px",
+            padding:
+              "12px 14px",
+            borderRadius:
+              "10px",
+            background:
+              "#fee2e2",
+            color:
+              "#991b1b",
+            fontSize:
+              "14px",
+            lineHeight:
+              1.5,
           }}
         >
           {error}
@@ -1253,13 +1520,20 @@ const ReviewSection = ({
         <div
           role="status"
           style={{
-            marginBottom: "16px",
-            padding: "12px 14px",
-            borderRadius: "10px",
-            background: "#dcfce7",
-            color: "#166534",
-            fontSize: "14px",
-            lineHeight: 1.5,
+            marginBottom:
+              "16px",
+            padding:
+              "12px 14px",
+            borderRadius:
+              "10px",
+            background:
+              "#dcfce7",
+            color:
+              "#166534",
+            fontSize:
+              "14px",
+            lineHeight:
+              1.5,
           }}
         >
           {success}
@@ -1273,21 +1547,31 @@ const ReviewSection = ({
       {showForm && (
         <form
           id="buyukused-review-section-form"
-          onSubmit={handleSubmit}
+          onSubmit={
+            handleSubmit
+          }
           style={{
-            marginBottom: "28px",
-            padding: "20px",
-            borderRadius: "14px",
-            background: "#f9fafb",
-            border: "1px solid #e5e7eb",
+            marginBottom:
+              "28px",
+            padding:
+              "20px",
+            borderRadius:
+              "14px",
+            background:
+              "#f9fafb",
+            border:
+              "1px solid #e5e7eb",
           }}
         >
           <h3
             style={{
               marginTop: 0,
-              fontSize: "18px",
-              fontWeight: 800,
-              color: "#111827",
+              fontSize:
+                "18px",
+              fontWeight:
+                800,
+              color:
+                "#111827",
             }}
           >
             {editingReviewId
@@ -1299,11 +1583,14 @@ const ReviewSection = ({
 
           <div
             style={{
-              marginBottom: "16px",
+              marginBottom:
+                "16px",
             }}
           >
             <Stars
-              value={selectedRating}
+              value={
+                selectedRating
+              }
               size={30}
               interactive
               onChange={
@@ -1313,9 +1600,12 @@ const ReviewSection = ({
 
             <div
               style={{
-                marginTop: "6px",
-                color: "#6b7280",
-                fontSize: "13px",
+                marginTop:
+                  "6px",
+                color:
+                  "#6b7280",
+                fontSize:
+                  "13px",
               }}
             >
               {selectedRating
@@ -1327,26 +1617,42 @@ const ReviewSection = ({
           {/* COMMENT */}
 
           <textarea
-            value={comment}
-            onChange={(event) =>
+            value={
+              comment
+            }
+            onChange={(
+              event
+            ) =>
               setComment(
-                event.target.value
+                event.target
+                  .value
               )
             }
             placeholder="Tell other buyers about your experience..."
             maxLength={2000}
             rows={5}
-            disabled={submitting}
+            disabled={
+              submitting
+            }
             style={{
-              width: "100%",
-              boxSizing: "border-box",
-              padding: "13px 14px",
-              border: "1px solid #d1d5db",
-              borderRadius: "10px",
-              resize: "vertical",
-              fontFamily: "inherit",
-              fontSize: "14px",
-              outline: "none",
+              width:
+                "100%",
+              boxSizing:
+                "border-box",
+              padding:
+                "13px 14px",
+              border:
+                "1px solid #d1d5db",
+              borderRadius:
+                "10px",
+              resize:
+                "vertical",
+              fontFamily:
+                "inherit",
+              fontSize:
+                "14px",
+              outline:
+                "none",
             }}
           />
 
@@ -1354,44 +1660,65 @@ const ReviewSection = ({
 
           <div
             style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginTop: "10px",
-              gap: "12px",
-              flexWrap: "wrap",
+              display:
+                "flex",
+              justifyContent:
+                "space-between",
+              alignItems:
+                "center",
+              marginTop:
+                "10px",
+              gap:
+                "12px",
+              flexWrap:
+                "wrap",
             }}
           >
             <span
               style={{
-                color: "#6b7280",
-                fontSize: "12px",
+                color:
+                  "#6b7280",
+                fontSize:
+                  "12px",
               }}
             >
-              {comment.length}/2000
+              {comment.length}
+              /2000
             </span>
 
             <div
               style={{
-                display: "flex",
-                gap: "8px",
+                display:
+                  "flex",
+                gap:
+                  "8px",
               }}
             >
               <button
                 type="button"
-                onClick={resetForm}
-                disabled={submitting}
+                onClick={
+                  resetForm
+                }
+                disabled={
+                  submitting
+                }
                 style={{
                   border:
                     "1px solid #d1d5db",
-                  borderRadius: "999px",
-                  padding: "12px 20px",
-                  background: "#fff",
-                  color: "#374151",
-                  fontWeight: 600,
-                  cursor: submitting
-                    ? "not-allowed"
-                    : "pointer",
+                  borderRadius:
+                    "999px",
+                  padding:
+                    "12px 20px",
+                  background:
+                    "#fff",
+                  color:
+                    "#374151",
+                  fontWeight:
+                    600,
+                  cursor:
+                    submitting
+                      ? "not-allowed"
+                      : "pointer",
                 }}
               >
                 Cancel
@@ -1399,20 +1726,30 @@ const ReviewSection = ({
 
               <button
                 type="submit"
-                disabled={submitting}
+                disabled={
+                  submitting
+                }
                 style={{
-                  border: "none",
-                  borderRadius: "999px",
-                  padding: "12px 20px",
-                  background: "#111827",
-                  color: "#fff",
-                  fontWeight: 700,
-                  cursor: submitting
-                    ? "not-allowed"
-                    : "pointer",
-                  opacity: submitting
-                    ? 0.6
-                    : 1,
+                  border:
+                    "none",
+                  borderRadius:
+                    "999px",
+                  padding:
+                    "12px 20px",
+                  background:
+                    "#111827",
+                  color:
+                    "#fff",
+                  fontWeight:
+                    700,
+                  cursor:
+                    submitting
+                      ? "not-allowed"
+                      : "pointer",
+                  opacity:
+                    submitting
+                      ? 0.6
+                      : 1,
                 }}
               >
                 {submitting
@@ -1434,11 +1771,14 @@ const ReviewSection = ({
 
       <div
         style={{
-          display: "grid",
+          display:
+            "grid",
           gridTemplateColumns:
             "minmax(150px, 220px) 1fr",
-          gap: "28px",
-          paddingBottom: "28px",
+          gap:
+            "28px",
+          paddingBottom:
+            "28px",
           borderBottom:
             "1px solid #e5e7eb",
         }}
@@ -1447,19 +1787,25 @@ const ReviewSection = ({
 
         <div
           style={{
-            textAlign: "center",
+            textAlign:
+              "center",
           }}
         >
           <div
             style={{
-              fontSize: "48px",
-              lineHeight: 1,
-              fontWeight: 800,
-              color: "#111827",
+              fontSize:
+                "48px",
+              lineHeight:
+                1,
+              fontWeight:
+                800,
+              color:
+                "#111827",
             }}
           >
             {Number(
-              summary.averageRating || 0
+              summary.averageRating ||
+                0
             ).toFixed(1)}
           </div>
 
@@ -1472,14 +1818,19 @@ const ReviewSection = ({
 
           <div
             style={{
-              marginTop: "7px",
-              color: "#6b7280",
-              fontSize: "14px",
+              marginTop:
+                "7px",
+              color:
+                "#6b7280",
+              fontSize:
+                "14px",
             }}
           >
-            {summary.totalReviews || 0}{" "}
+            {summary.totalReviews ||
+              0}{" "}
             {Number(
-              summary.totalReviews || 0
+              summary.totalReviews ||
+                0
             ) === 1
               ? "review"
               : "reviews"}
@@ -1493,41 +1844,60 @@ const ReviewSection = ({
             (rating) => {
               const active =
                 filterRating ===
-                String(rating);
+                String(
+                  rating
+                );
 
               return (
                 <button
-                  key={rating}
+                  key={
+                    rating
+                  }
                   type="button"
                   onClick={() => {
                     setFilterRating(
                       active
                         ? ""
-                        : String(rating)
+                        : String(
+                            rating
+                          )
                     );
-                    setPage(1);
+
+                    setPage(
+                      1
+                    );
                   }}
                   style={{
-                    display: "grid",
+                    display:
+                      "grid",
                     gridTemplateColumns:
                       "35px 1fr 42px",
-                    alignItems: "center",
-                    width: "100%",
-                    border: "none",
-                    background: active
-                      ? "#f9fafb"
-                      : "transparent",
+                    alignItems:
+                      "center",
+                    width:
+                      "100%",
+                    border:
+                      "none",
+                    background:
+                      active
+                        ? "#f9fafb"
+                        : "transparent",
                     padding:
                       "4px 6px",
-                    borderRadius: "6px",
-                    cursor: "pointer",
-                    textAlign: "left",
+                    borderRadius:
+                      "6px",
+                    cursor:
+                      "pointer",
+                    textAlign:
+                      "left",
                   }}
                 >
                   <span
                     style={{
-                      fontSize: "13px",
-                      color: "#374151",
+                      fontSize:
+                        "13px",
+                      color:
+                        "#374151",
                       fontWeight:
                         active
                           ? 700
@@ -1539,17 +1909,20 @@ const ReviewSection = ({
 
                   <div
                     style={{
-                      height: "8px",
+                      height:
+                        "8px",
                       background:
                         "#e5e7eb",
                       borderRadius:
                         "999px",
-                      overflow: "hidden",
+                      overflow:
+                        "hidden",
                     }}
                   >
                     <div
                       style={{
-                        height: "100%",
+                        height:
+                          "100%",
                         width: `${ratingPercentage(
                           rating
                         )}%`,
@@ -1563,8 +1936,10 @@ const ReviewSection = ({
 
                   <span
                     style={{
-                      fontSize: "12px",
-                      color: "#6b7280",
+                      fontSize:
+                        "12px",
+                      color:
+                        "#6b7280",
                       textAlign:
                         "right",
                     }}
@@ -1572,7 +1947,8 @@ const ReviewSection = ({
                     {summary
                       .breakdown?.[
                       rating
-                    ] || 0}
+                    ] ||
+                      0}
                   </span>
                 </button>
               );
@@ -1583,18 +1959,29 @@ const ReviewSection = ({
             <button
               type="button"
               onClick={() => {
-                setFilterRating("");
-                setPage(1);
+                setFilterRating(
+                  ""
+                );
+
+                setPage(
+                  1
+                );
               }}
               style={{
-                marginTop: "8px",
-                border: "none",
+                marginTop:
+                  "8px",
+                border:
+                  "none",
                 background:
                   "transparent",
-                color: "#2563eb",
-                fontSize: "13px",
-                fontWeight: 700,
-                cursor: "pointer",
+                color:
+                  "#2563eb",
+                fontSize:
+                  "13px",
+                fontWeight:
+                  700,
+                cursor:
+                  "pointer",
               }}
             >
               Clear rating filter
@@ -1609,431 +1996,266 @@ const ReviewSection = ({
 
       <div
         style={{
-          marginTop: "24px",
+          marginTop:
+            "24px",
         }}
       >
         {loading ? (
           <div
             style={{
-              padding: "40px 0",
-              textAlign: "center",
-              color: "#6b7280",
+              padding:
+                "40px 0",
+              textAlign:
+                "center",
+              color:
+                "#6b7280",
             }}
           >
             Loading reviews...
           </div>
-        ) : reviews.length === 0 ? (
+        ) : reviews.length ===
+          0 ? (
           <div
             style={{
-              padding: "40px 0",
-              textAlign: "center",
-              color: "#6b7280",
+              padding:
+                "40px 0",
+              textAlign:
+                "center",
+              color:
+                "#6b7280",
             }}
           >
             {emptyMessage}
           </div>
         ) : (
-          reviews.map((review) => {
-            const reviewer =
-              review?.reviewer;
+          reviews.map(
+            (review) => {
+              const reviewer =
+                review?.reviewer;
 
-            const reviewerName =
-              reviewer?.name ||
-              review?.reviewerName ||
-              "Buyer";
+              const reviewerName =
+                reviewer?.name ||
+                review?.reviewerName ||
+                "Buyer";
 
-            const avatar =
-              getAvatar(reviewer) ||
-              review?.reviewerAvatar ||
-              "";
+              const avatar =
+                getAvatar(
+                  reviewer
+                ) ||
+                review?.reviewerAvatar ||
+                "";
 
-            const reviewOwner =
-              currentUserId &&
-              sameId(
-                getReviewUserId(review),
-                currentUserId
-              );
+              const reviewOwner =
+                currentUserId &&
+                sameId(
+                  getReviewUserId(
+                    review
+                  ),
+                  currentUserId
+                );
 
-            const canEdit = Boolean(
-              reviewOwner &&
-                !isCurrentUserSeller
-            );
+              const canEdit =
+                Boolean(
+                  reviewOwner &&
+                    !isCurrentUserSeller
+                );
 
-            const reviewSellerId =
-              getReviewSellerId(
-                review
-              );
+              const reviewSellerId =
+                getReviewSellerId(
+                  review
+                );
 
-            const canReply =
-              isCurrentUserSeller &&
-              sameId(
-                reviewSellerId,
-                sellerId
-              );
+              const canReply =
+                isCurrentUserSeller &&
+                sameId(
+                  reviewSellerId,
+                  sellerId
+                );
 
-            const helpfulCount =
-              Number(
-                review?.helpfulCount
-              ) || 0;
+              const helpfulCount =
+                Number(
+                  review?.helpfulCount
+                ) || 0;
 
-            return (
-              <article
-                key={review?._id}
-                style={{
-                  padding:
-                    "22px 0",
-                  borderBottom:
-                    "1px solid #e5e7eb",
-                }}
-              >
-                {/* REVIEW HEADER */}
-
-                <div
+              return (
+                <article
+                  key={
+                    review?._id
+                  }
                   style={{
-                    display: "flex",
-                    justifyContent:
-                      "space-between",
-                    gap: "16px",
+                    padding:
+                      "22px 0",
+                    borderBottom:
+                      "1px solid #e5e7eb",
                   }}
                 >
+                  {/* REVIEW HEADER */}
+
                   <div
                     style={{
-                      display: "flex",
-                      gap: "12px",
+                      display:
+                        "flex",
+                      justifyContent:
+                        "space-between",
+                      gap:
+                        "16px",
                     }}
                   >
-                    {avatar ? (
-                      <img
-                        src={avatar}
-                        alt={
-                          reviewerName
-                        }
-                        style={{
-                          width: "44px",
-                          height: "44px",
-                          borderRadius:
-                            "50%",
-                          objectFit:
-                            "cover",
-                          flexShrink: 0,
-                        }}
-                      />
-                    ) : (
-                      <div
-                        style={{
-                          width: "44px",
-                          height: "44px",
-                          borderRadius:
-                            "50%",
-                          background:
-                            "#111827",
-                          color: "#fff",
-                          display:
-                            "flex",
-                          alignItems:
-                            "center",
-                          justifyContent:
-                            "center",
-                          fontWeight: 800,
-                          fontSize:
-                            "14px",
-                          flexShrink: 0,
-                        }}
-                      >
-                        {getInitials(
-                          reviewerName
-                        )}
-                      </div>
-                    )}
-
-                    <div>
-                      <div
-                        style={{
-                          display:
-                            "flex",
-                          alignItems:
-                            "center",
-                          gap: "8px",
-                          flexWrap:
-                            "wrap",
-                        }}
-                      >
-                        <strong
-                          style={{
-                            color:
-                              "#111827",
-                            fontSize:
-                              "15px",
-                          }}
-                        >
-                          {
+                    <div
+                      style={{
+                        display:
+                          "flex",
+                        gap:
+                          "12px",
+                      }}
+                    >
+                      {avatar ? (
+                        <img
+                          src={
+                            avatar
+                          }
+                          alt={
                             reviewerName
                           }
-                        </strong>
-
-                        {review
-                          ?.verifiedPurchase && (
-                          <span
-                            style={{
-                              padding:
-                                "3px 8px",
-                              borderRadius:
-                                "999px",
-                              background:
-                                "#dcfce7",
-                              color:
-                                "#166534",
-                              fontSize:
-                                "11px",
-                              fontWeight:
-                                700,
-                            }}
-                          >
-                            ✓ Verified
-                            purchase
-                          </span>
-                        )}
-                      </div>
-
-                      <div
-                        style={{
-                          display:
-                            "flex",
-                          alignItems:
-                            "center",
-                          gap: "8px",
-                          marginTop:
-                            "4px",
-                        }}
-                      >
-                        <Stars
-                          value={
-                            review?.rating
-                          }
-                          size={16}
-                        />
-
-                        <span
                           style={{
+                            width:
+                              "44px",
+                            height:
+                              "44px",
+                            borderRadius:
+                              "50%",
+                            objectFit:
+                              "cover",
+                            flexShrink:
+                              0,
+                          }}
+                        />
+                      ) : (
+                        <div
+                          style={{
+                            width:
+                              "44px",
+                            height:
+                              "44px",
+                            borderRadius:
+                              "50%",
+                            background:
+                              "#111827",
                             color:
-                              "#9ca3af",
+                              "#fff",
+                            display:
+                              "flex",
+                            alignItems:
+                              "center",
+                            justifyContent:
+                              "center",
+                            fontWeight:
+                              800,
                             fontSize:
-                              "12px",
+                              "14px",
+                            flexShrink:
+                              0,
                           }}
                         >
-                          {formatDate(
-                            review?.createdAt
+                          {getInitials(
+                            reviewerName
                           )}
-                        </span>
+                        </div>
+                      )}
+
+                      <div>
+                        <div
+                          style={{
+                            display:
+                              "flex",
+                            alignItems:
+                              "center",
+                            gap:
+                              "8px",
+                            flexWrap:
+                              "wrap",
+                          }}
+                        >
+                          <strong
+                            style={{
+                              color:
+                                "#111827",
+                              fontSize:
+                                "15px",
+                            }}
+                          >
+                            {
+                              reviewerName
+                            }
+                          </strong>
+
+                          {review
+                            ?.verifiedPurchase && (
+                            <span
+                              style={{
+                                padding:
+                                  "3px 8px",
+                                borderRadius:
+                                  "999px",
+                                background:
+                                  "#dcfce7",
+                                color:
+                                  "#166534",
+                                fontSize:
+                                  "11px",
+                                fontWeight:
+                                  700,
+                              }}
+                            >
+                              ✓ Verified
+                              purchase
+                            </span>
+                          )}
+                        </div>
+
+                        <div
+                          style={{
+                            display:
+                              "flex",
+                            alignItems:
+                              "center",
+                            gap:
+                              "8px",
+                            marginTop:
+                              "4px",
+                          }}
+                        >
+                          <Stars
+                            value={
+                              review?.rating
+                            }
+                            size={16}
+                          />
+
+                          <span
+                            style={{
+                              color:
+                                "#9ca3af",
+                              fontSize:
+                                "12px",
+                            }}
+                          >
+                            {formatDate(
+                              review?.createdAt
+                            )}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  {canEdit && (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        startEditingReview(
-                          review
-                        )
-                      }
-                      style={{
-                        border: "none",
-                        background:
-                          "transparent",
-                        color:
-                          "#2563eb",
-                        fontSize:
-                          "13px",
-                        fontWeight:
-                          700,
-                        cursor:
-                          "pointer",
-                        padding: 0,
-                      }}
-                    >
-                      Edit
-                    </button>
-                  )}
-                </div>
-
-                {/* COMMENT */}
-
-                <p
-                  style={{
-                    margin:
-                      "14px 0",
-                    color:
-                      "#374151",
-                    fontSize:
-                      "14px",
-                    lineHeight:
-                      1.7,
-                    whiteSpace:
-                      "pre-wrap",
-                  }}
-                >
-                  {review?.comment}
-                </p>
-
-                {/* SELLER REPLY */}
-
-                {review
-                  ?.sellerReply
-                  ?.text && (
-                  <div
-                    style={{
-                      margin:
-                        "14px 0",
-                      padding:
-                        "14px 16px",
-                      background:
-                        "#f3f4f6",
-                      borderRadius:
-                        "10px",
-                      borderLeft:
-                        "3px solid #111827",
-                    }}
-                  >
-                    <div
-                      style={{
-                        fontWeight:
-                          800,
-                        fontSize:
-                          "13px",
-                        color:
-                          "#111827",
-                        marginBottom:
-                          "5px",
-                      }}
-                    >
-                      Seller response
-                    </div>
-
-                    <div
-                      style={{
-                        color:
-                          "#4b5563",
-                        fontSize:
-                          "13px",
-                        lineHeight:
-                          1.6,
-                      }}
-                    >
-                      {
-                        review
-                          .sellerReply
-                          .text
-                      }
-                    </div>
-                  </div>
-                )}
-
-                {/* ACTIONS */}
-
-                <div
-                  style={{
-                    display:
-                      "flex",
-                    alignItems:
-                      "center",
-                    gap: "16px",
-                    flexWrap:
-                      "wrap",
-                  }}
-                >
-                  <button
-                    type="button"
-                    onClick={() =>
-                      handleHelpful(
-                        review?._id
-                      )
-                    }
-                    disabled={
-                      helpfulId ===
-                      review?._id
-                    }
-                    style={{
-                      border: "none",
-                      background:
-                        "transparent",
-                      color:
-                        review?.hasHelpful
-                          ? "#111827"
-                          : "#6b7280",
-                      fontWeight:
-                        review?.hasHelpful
-                          ? 800
-                          : 500,
-                      cursor:
-                        helpfulId ===
-                        review?._id
-                          ? "not-allowed"
-                          : "pointer",
-                      padding: 0,
-                    }}
-                  >
-                    {helpfulId ===
-                    review?._id
-                      ? "Updating..."
-                      : "👍 Helpful"}
-
-                    {helpfulCount >
-                    0
-                      ? ` (${helpfulCount})`
-                      : ""}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() =>
-                      handleReport(
-                        review?._id
-                      )
-                    }
-                    disabled={
-                      reportingId ===
-                      review?._id
-                    }
-                    style={{
-                      border: "none",
-                      background:
-                        "transparent",
-                      color:
-                        "#9ca3af",
-                      cursor:
-                        reportingId ===
-                        review?._id
-                          ? "not-allowed"
-                          : "pointer",
-                      padding: 0,
-                      fontSize:
-                        "13px",
-                    }}
-                  >
-                    {reportingId ===
-                    review?._id
-                      ? "Reporting..."
-                      : "Report"}
-                  </button>
-
-                  {canReply &&
-                    !review
-                      ?.sellerReply
-                      ?.text && (
+                    {canEdit && (
                       <button
                         type="button"
-                        onClick={() => {
-                          clearMessages();
-
-                          setReplyingId(
-                            review?._id
-                          );
-
-                          setReplyText(
-                            ""
-                          );
-                        }}
+                        onClick={() =>
+                          startEditingReview(
+                            review
+                          )
+                        }
                         style={{
                           border:
                             "none",
@@ -2041,153 +2263,364 @@ const ReviewSection = ({
                             "transparent",
                           color:
                             "#2563eb",
+                          fontSize:
+                            "13px",
                           fontWeight:
                             700,
                           cursor:
                             "pointer",
-                          padding: 0,
+                          padding:
+                            0,
                         }}
                       >
-                        Reply
+                        Edit
                       </button>
                     )}
-                </div>
+                  </div>
 
-                {/* REPLY FORM */}
+                  {/* COMMENT */}
 
-                {replyingId ===
-                  review?._id && (
-                  <div
+                  <p
                     style={{
-                      marginTop:
+                      margin:
+                        "14px 0",
+                      color:
+                        "#374151",
+                      fontSize:
                         "14px",
+                      lineHeight:
+                        1.7,
+                      whiteSpace:
+                        "pre-wrap",
                     }}
                   >
-                    <textarea
-                      value={
-                        replyText
-                      }
-                      onChange={(
-                        event
-                      ) =>
-                        setReplyText(
-                          event.target
-                            .value
-                        )
-                      }
-                      rows={3}
-                      maxLength={
-                        2000
-                      }
-                      placeholder="Write a professional response..."
-                      disabled={
-                        replying
-                      }
-                      style={{
-                        width:
-                          "100%",
-                        boxSizing:
-                          "border-box",
-                        padding:
-                          "11px",
-                        border:
-                          "1px solid #d1d5db",
-                        borderRadius:
-                          "8px",
-                        fontFamily:
-                          "inherit",
-                        resize:
-                          "vertical",
-                      }}
-                    />
+                    {
+                      review?.comment
+                    }
+                  </p>
 
+                  {/* SELLER REPLY */}
+
+                  {review
+                    ?.sellerReply
+                    ?.text && (
                     <div
                       style={{
-                        display:
-                          "flex",
-                        gap: "8px",
-                        marginTop:
-                          "8px",
+                        margin:
+                          "14px 0",
+                        padding:
+                          "14px 16px",
+                        background:
+                          "#f3f4f6",
+                        borderRadius:
+                          "10px",
+                        borderLeft:
+                          "3px solid #111827",
                       }}
                     >
-                      <button
-                        type="button"
-                        onClick={() =>
-                          handleReply(
-                            review?._id
-                          )
-                        }
-                        disabled={
-                          replying
-                        }
+                      <div
                         style={{
-                          border:
-                            "none",
-                          borderRadius:
-                            "999px",
-                          padding:
-                            "9px 16px",
-                          background:
-                            "#111827",
-                          color:
-                            "#fff",
                           fontWeight:
-                            700,
-                          cursor:
-                            replying
-                              ? "not-allowed"
-                              : "pointer",
-                          opacity:
-                            replying
-                              ? 0.6
-                              : 1,
+                            800,
+                          fontSize:
+                            "13px",
+                          color:
+                            "#111827",
+                          marginBottom:
+                            "5px",
                         }}
                       >
-                        {replying
-                          ? "Posting..."
-                          : "Post reply"}
-                      </button>
+                        Seller response
+                      </div>
 
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setReplyingId(
-                            null
-                          );
-                          setReplyText(
-                            ""
-                          );
+                      <div
+                        style={{
+                          color:
+                            "#4b5563",
+                          fontSize:
+                            "13px",
+                          lineHeight:
+                            1.6,
                         }}
+                      >
+                        {
+                          review
+                            .sellerReply
+                            .text
+                        }
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ACTIONS */}
+
+                  <div
+                    style={{
+                      display:
+                        "flex",
+                      alignItems:
+                        "center",
+                      gap:
+                        "16px",
+                      flexWrap:
+                        "wrap",
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleHelpful(
+                          review?._id
+                        )
+                      }
+                      disabled={
+                        helpfulId ===
+                        review?._id
+                      }
+                      style={{
+                        border:
+                          "none",
+                        background:
+                          "transparent",
+                        color:
+                          review?.hasHelpful
+                            ? "#111827"
+                            : "#6b7280",
+                        fontWeight:
+                          review?.hasHelpful
+                            ? 800
+                            : 500,
+                        cursor:
+                          helpfulId ===
+                          review?._id
+                            ? "not-allowed"
+                            : "pointer",
+                        padding:
+                          0,
+                      }}
+                    >
+                      {helpfulId ===
+                      review?._id
+                        ? "Updating..."
+                        : "👍 Helpful"}
+
+                      {helpfulCount >
+                      0
+                        ? ` (${helpfulCount})`
+                        : ""}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleReport(
+                          review?._id
+                        )
+                      }
+                      disabled={
+                        reportingId ===
+                        review?._id
+                      }
+                      style={{
+                        border:
+                          "none",
+                        background:
+                          "transparent",
+                        color:
+                          "#9ca3af",
+                        cursor:
+                          reportingId ===
+                          review?._id
+                            ? "not-allowed"
+                            : "pointer",
+                        padding:
+                          0,
+                        fontSize:
+                          "13px",
+                      }}
+                    >
+                      {reportingId ===
+                      review?._id
+                        ? "Reporting..."
+                        : "Report"}
+                    </button>
+
+                    {canReply &&
+                      !review
+                        ?.sellerReply
+                        ?.text && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            clearMessages();
+
+                            setReplyingId(
+                              review?._id
+                            );
+
+                            setReplyText(
+                              ""
+                            );
+                          }}
+                          style={{
+                            border:
+                              "none",
+                            background:
+                              "transparent",
+                            color:
+                              "#2563eb",
+                            fontWeight:
+                              700,
+                            cursor:
+                              "pointer",
+                            padding:
+                              0,
+                          }}
+                        >
+                          Reply
+                        </button>
+                      )}
+                  </div>
+
+                  {/* REPLY FORM */}
+
+                  {replyingId ===
+                    review?._id && (
+                    <div
+                      style={{
+                        marginTop:
+                          "14px",
+                      }}
+                    >
+                      <textarea
+                        value={
+                          replyText
+                        }
+                        onChange={(
+                          event
+                        ) =>
+                          setReplyText(
+                            event
+                              .target
+                              .value
+                          )
+                        }
+                        rows={3}
+                        maxLength={
+                          2000
+                        }
+                        placeholder="Write a professional response..."
                         disabled={
                           replying
                         }
                         style={{
+                          width:
+                            "100%",
+                          boxSizing:
+                            "border-box",
+                          padding:
+                            "11px",
                           border:
                             "1px solid #d1d5db",
                           borderRadius:
-                            "999px",
-                          padding:
-                            "9px 16px",
-                          background:
-                            "#fff",
-                          color:
-                            "#374151",
-                          fontWeight:
-                            600,
-                          cursor:
-                            replying
-                              ? "not-allowed"
-                              : "pointer",
+                            "8px",
+                          fontFamily:
+                            "inherit",
+                          resize:
+                            "vertical",
+                        }}
+                      />
+
+                      <div
+                        style={{
+                          display:
+                            "flex",
+                          gap:
+                            "8px",
+                          marginTop:
+                            "8px",
                         }}
                       >
-                        Cancel
-                      </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleReply(
+                              review?._id
+                            )
+                          }
+                          disabled={
+                            replying
+                          }
+                          style={{
+                            border:
+                              "none",
+                            borderRadius:
+                              "999px",
+                            padding:
+                              "9px 16px",
+                            background:
+                              "#111827",
+                            color:
+                              "#fff",
+                            fontWeight:
+                              700,
+                            cursor:
+                              replying
+                                ? "not-allowed"
+                                : "pointer",
+                            opacity:
+                              replying
+                                ? 0.6
+                                : 1,
+                          }}
+                        >
+                          {replying
+                            ? "Posting..."
+                            : "Post reply"}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setReplyingId(
+                              null
+                            );
+
+                            setReplyText(
+                              ""
+                            );
+                          }}
+                          disabled={
+                            replying
+                          }
+                          style={{
+                            border:
+                              "1px solid #d1d5db",
+                            borderRadius:
+                              "999px",
+                            padding:
+                              "9px 16px",
+                            background:
+                              "#fff",
+                            color:
+                              "#374151",
+                            fontWeight:
+                              600,
+                            cursor:
+                              replying
+                                ? "not-allowed"
+                                : "pointer",
+                          }}
+                        >
+                          Cancel
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                )}
-              </article>
-            );
-          })
+                  )}
+                </article>
+              );
+            }
+          )
         )}
       </div>
 
@@ -2204,20 +2637,24 @@ const ReviewSection = ({
               "center",
             alignItems:
               "center",
-            gap: "12px",
+            gap:
+              "12px",
             marginTop:
               "24px",
           }}
         >
           <button
             type="button"
-            disabled={page <= 1}
+            disabled={
+              page <= 1
+            }
             onClick={() =>
-              setPage((value) =>
-                Math.max(
-                  value - 1,
-                  1
-                )
+              setPage(
+                (value) =>
+                  Math.max(
+                    value - 1,
+                    1
+                  )
               )
             }
             style={{
@@ -2261,11 +2698,12 @@ const ReviewSection = ({
               totalPages
             }
             onClick={() =>
-              setPage((value) =>
-                Math.min(
-                  value + 1,
-                  totalPages
-                )
+              setPage(
+                (value) =>
+                  Math.min(
+                    value + 1,
+                    totalPages
+                  )
               )
             }
             style={{

@@ -1,6 +1,6 @@
 // frontend/src/pages/ProductDetails.jsx
 
-import React, { useState, useEffect, useRef, useMemo, memo } from "react";
+import React, { useState, useEffect, useRef, useMemo, memo, useCallback } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 
 import { FaMotorcycle } from "react-icons/fa";
@@ -407,6 +407,13 @@ const ProductDetails = () => {
   // ================================================================
 
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  // ================================================================
+  // LIGHTBOX STATE
+  // ================================================================
+
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
 
   // ================================================================
   // EDIT MODAL STATE
@@ -987,6 +994,17 @@ const ProductDetails = () => {
     return url;
   };
 
+  // ─── Lightbox image URL (optimised for fast loading) ──────────
+  const getLightboxImageUrl = (path) => {
+    if (!path) return "https://placehold.co/1200x1200?text=No+Image";
+    let url = getImageUrl(path);
+    if (url.includes('res.cloudinary.com')) {
+      // Use c_limit to avoid cropping, set max 1200px, auto format & quality
+      url = url.replace('/image/upload/', '/image/upload/w_1200,h_1200,c_limit,f_auto,q_auto/');
+    }
+    return url;
+  };
+
   const handlePrev = (e) => {
     e.stopPropagation();
 
@@ -1037,6 +1055,66 @@ const ProductDetails = () => {
 
     return "https://placehold.co/600x600?text=No+Image";
   };
+
+  // ================================================================
+  // LIGHTBOX HANDLERS
+  // ================================================================
+
+  const openLightbox = (index) => {
+    if (totalImages > 0) {
+      setLightboxIndex(index);
+      setLightboxOpen(true);
+    }
+  };
+
+  const closeLightbox = () => setLightboxOpen(false);
+
+  const prevLightboxImage = () => {
+    setLightboxIndex((prev) => (prev - 1 + totalImages) % totalImages);
+  };
+
+  const nextLightboxImage = () => {
+    setLightboxIndex((prev) => (prev + 1) % totalImages);
+  };
+
+  // ─── Preload adjacent images for faster flipping ──────────────
+  const preloadImages = useCallback((urls) => {
+    urls.forEach(url => {
+      if (!url) return;
+      const img = new Image();
+      img.src = url;
+    });
+  }, []);
+
+  useEffect(() => {
+    if (lightboxOpen && hasImages) {
+      // Preload current, next, and previous
+      const indices = [
+        lightboxIndex,
+        (lightboxIndex + 1) % totalImages,
+        (lightboxIndex - 1 + totalImages) % totalImages,
+      ];
+      const urls = indices.map(idx => {
+        const path = images[idx];
+        return path ? getLightboxImageUrl(path) : null;
+      }).filter(Boolean);
+      preloadImages(urls);
+    }
+  }, [lightboxOpen, lightboxIndex, images, totalImages, preloadImages]);
+
+  // ─── Keyboard listener for lightbox ──────────────────────────
+  useEffect(() => {
+    if (!lightboxOpen) return;
+
+    const handler = (e) => {
+      if (e.key === 'Escape') closeLightbox();
+      if (e.key === 'ArrowLeft') prevLightboxImage();
+      if (e.key === 'ArrowRight') nextLightboxImage();
+    };
+
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [lightboxOpen]);
 
   // ================================================================
   // WHATSAPP CONTACT SELLER
@@ -1730,6 +1808,140 @@ const ProductDetails = () => {
               gap: 10px;
             }
           }
+
+          /* ----- Lightbox styles (updated close button position) ----- */
+          .lightbox-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.92);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10002;
+            padding: 16px;
+            cursor: pointer;
+          }
+
+          .lightbox-image {
+            max-width: 90vw;
+            max-height: 90vh;
+            object-fit: contain;
+            cursor: default;
+            border-radius: 4px;
+            box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+          }
+
+          /* Close button - moved down from top */
+          .lightbox-close {
+            position: fixed;
+            top: 70px; /* previously 20px - moved down */
+            right: 20px;
+            background: rgba(255,255,255,0.95);
+            color: #1a1a1a;
+            border: 2px solid rgba(0,0,0,0.2);
+            border-radius: 50%;
+            width: 48px;
+            height: 48px;
+            font-size: 28px;
+            cursor: pointer;
+            z-index: 10004; /* higher than navbar */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+            backdrop-filter: blur(4px);
+            line-height: 1;
+          }
+
+          .lightbox-close:hover {
+            background: #ffffff;
+            transform: scale(1.05);
+            border-color: #333;
+          }
+
+          .lightbox-nav {
+            position: fixed;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(0,0,0,0.6);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 52px;
+            height: 52px;
+            font-size: 24px;
+            cursor: pointer;
+            z-index: 10003;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+            backdrop-filter: blur(4px);
+          }
+
+          .lightbox-nav:hover {
+            background: rgba(255,255,255,0.2);
+          }
+
+          .lightbox-prev {
+            left: 16px;
+          }
+          .lightbox-next {
+            right: 16px;
+          }
+
+          .lightbox-counter {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            background: rgba(0,0,0,0.5);
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            backdrop-filter: blur(4px);
+            z-index: 10003;
+          }
+
+          /* Mobile adjustments */
+          @media (max-width: 600px) {
+            .lightbox-close {
+              top: 60px; /* previously 12px - moved down */
+              right: 12px;
+              width: 44px;
+              height: 44px;
+              font-size: 26px;
+            }
+
+            .lightbox-nav {
+              width: 44px;
+              height: 44px;
+              font-size: 20px;
+            }
+
+            .lightbox-prev {
+              left: 8px;
+            }
+            .lightbox-next {
+              right: 8px;
+            }
+
+            .lightbox-image {
+              max-width: 95vw;
+              max-height: 80vh;
+            }
+
+            .lightbox-counter {
+              bottom: 16px;
+              font-size: 12px;
+              padding: 4px 12px;
+            }
+          }
         `}
       </style>
 
@@ -1757,7 +1969,9 @@ const ProductDetails = () => {
                 borderRadius: "var(--radius-md)",
                 overflow: "hidden",
                 aspectRatio: "1/1",
+                cursor: hasImages ? "pointer" : "default",
               }}
+              onClick={() => hasImages && openLightbox(currentImageIndex)}
             >
               <img
                 src={getCurrentImage()}
@@ -2034,6 +2248,7 @@ const ProductDetails = () => {
                 display: 'flex',
                 alignItems: 'center',
                 gap: '10px',
+                flexWrap: 'wrap',
               }}
             >
               <div
@@ -2120,25 +2335,56 @@ const ProductDetails = () => {
                 />
               </div>
 
-              <div style={{ flex: 1 }}>
-                <Link
-                  to={`/seller/${sellerId}`}
-                  style={{
-                    fontWeight: 700,
-                    fontSize: '14px',
-                    marginBottom: '1px',
-                    color: 'var(--primary)',
-                    textDecoration: 'underline',
-                    textDecorationColor: 'var(--primary)',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                  }}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <i className="fas fa-user" />
-                  {sellerName}
-                </Link>
+              <div style={{ flex: 1, minWidth: '120px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '6px' }}>
+                  <Link
+                    to={`/seller/${sellerId}`}
+                    style={{
+                      fontWeight: 700,
+                      fontSize: '14px',
+                      color: 'var(--primary)',
+                      textDecoration: 'underline',
+                      textDecorationColor: 'var(--primary)',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <i className="fas fa-user" />
+                    {sellerName}
+                  </Link>
+
+                  <Link
+                    to={`/seller/${sellerId}`}
+                    style={{
+                      padding: '2px 10px',
+                      fontSize: '10px',
+                      fontStyle: 'italic',
+                      fontWeight: 600,
+                      borderRadius: '20px',
+                      background: '#e8f0fe',
+                      color: '#1a56db',
+                      border: '1px solid #c5d5f0',
+                      textDecoration: 'none',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      transition: 'background 0.2s, color 0.2s, border-color 0.2s',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = '#d2e0fd';
+                      e.currentTarget.style.borderColor = '#1a56db';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = '#e8f0fe';
+                      e.currentTarget.style.borderColor = '#c5d5f0';
+                    }}
+                  >
+                    <i className="fas fa-external-link-alt" style={{ fontSize: '8px' }} />
+                    VIEW PROFILE
+                  </Link>
+                </div>
 
                 {user ? (
                   product.sellerPhone && (
@@ -2179,7 +2425,7 @@ const ProductDetails = () => {
               </div>
             </div>
 
-            {/* ACTIONS – Chat button added next to WhatsApp */}
+            {/* ACTIONS */}
             <div
               className="actions"
               style={{
@@ -2237,7 +2483,7 @@ const ProductDetails = () => {
                       Contact Seller
                     </button>
 
-                    {/* Chat button – visible if user is NOT the seller */}
+                    {/* Chat button */}
                     {!isSeller && (
                       <button
                         type="button"
@@ -2322,7 +2568,7 @@ const ProductDetails = () => {
                 BOOK A BIKE RIDER
               </button>
 
-              {/* Edit & Mark Sold buttons (for owners) */}
+              {/* Edit & Mark Sold buttons */}
               {canEdit && (
                 <button
                   type="button"
@@ -2426,7 +2672,7 @@ const ProductDetails = () => {
         </div>
 
         {/* ============================================================
-            REVIEW SECTION – compact spacing
+            REVIEW SECTION
         ============================================================ */}
         <div style={{ marginTop: "20px", paddingTop: "16px", borderTop: "1px solid #e5e7eb" }}>
           <ReviewSection
@@ -2439,7 +2685,7 @@ const ProductDetails = () => {
         </div>
 
         {/* ============================================================
-            RELATED PRODUCTS – compact spacing
+            RELATED PRODUCTS
         ============================================================ */}
         {relatedProducts.length > 0 && (
           <div
@@ -2476,7 +2722,7 @@ const ProductDetails = () => {
           </div>
         )}
 
-        {/* EDIT MODAL */}
+        {/* EDIT MODAL (unchanged) */}
         {showEditModal && (
           <div
             style={{
@@ -2557,7 +2803,7 @@ const ProductDetails = () => {
           </div>
         )}
 
-        {/* CHAT MODAL */}
+        {/* CHAT MODAL (unchanged) */}
         {showChatModal && (
           <div
             style={{
@@ -2749,7 +2995,7 @@ const ProductDetails = () => {
           </div>
         )}
 
-        {/* LIGHTBOX */}
+        {/* LIGHTBOX for chat images */}
         {viewingImage && (
           <div
             style={{
@@ -2775,6 +3021,67 @@ const ProductDetails = () => {
                 maxHeight: "90%",
                 objectFit: "contain",
               }}
+            />
+          </div>
+        )}
+
+        {/* ============================================================
+            PRODUCT GALLERY LIGHTBOX (with moved close button)
+        ============================================================ */}
+        {lightboxOpen && (
+          <div
+            className="lightbox-overlay"
+            onClick={closeLightbox}
+          >
+            <button
+              type="button"
+              className="lightbox-close"
+              onClick={closeLightbox}
+              aria-label="Close fullscreen image"
+            >
+              ✕
+            </button>
+
+            {totalImages > 1 && (
+              <>
+                <button
+                  type="button"
+                  className="lightbox-nav lightbox-prev"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    prevLightboxImage();
+                  }}
+                  aria-label="Previous image"
+                >
+                  ‹
+                </button>
+
+                <button
+                  type="button"
+                  className="lightbox-nav lightbox-next"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    nextLightboxImage();
+                  }}
+                  aria-label="Next image"
+                >
+                  ›
+                </button>
+
+                <div className="lightbox-counter">
+                  {lightboxIndex + 1} / {totalImages}
+                </div>
+              </>
+            )}
+
+            <img
+              className="lightbox-image"
+              src={(() => {
+                const path = images[lightboxIndex] || product?.image;
+                return getLightboxImageUrl(path);
+              })()}
+              alt={product.title}
+              onClick={(e) => e.stopPropagation()}
             />
           </div>
         )}

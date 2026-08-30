@@ -951,7 +951,9 @@ const ProductCard = ({ product }) => {
           </span>
         </div>
 
-        {/* DESCRIPTION */}
+        {/* ========================================================
+            DESCRIPTION – FULL TEXT (no truncation)
+        ======================================================== */}
 
         {description &&
           String(
@@ -966,13 +968,6 @@ const ProductCard = ({ product }) => {
                 lineHeight: 1.4,
                 color:
                   "#6b7280",
-                display:
-                  "-webkit-box",
-                WebkitLineClamp: 2,
-                WebkitBoxOrient:
-                  "vertical",
-                overflow:
-                  "hidden",
                 wordBreak:
                   "break-word",
               }}
@@ -1460,6 +1455,26 @@ const Products = () => {
     useState("recommended");
 
   // ==============================================================
+  // SCROLL RESTORATION (fix back navigation)
+  // ==============================================================
+
+  useEffect(() => {
+    const scrollKey = `scroll_${location.pathname}`;
+
+    const saved = sessionStorage.getItem(scrollKey);
+    if (saved) {
+      const y = parseInt(saved, 10);
+      requestAnimationFrame(() => {
+        window.scrollTo(0, y);
+      });
+    }
+
+    return () => {
+      sessionStorage.setItem(scrollKey, window.scrollY);
+    };
+  }, [location.pathname]);
+
+  // ==============================================================
   // KEEP URL FILTERS IN SYNC
   // ==============================================================
 
@@ -1794,11 +1809,11 @@ const Products = () => {
               font-size: 12px !important;
             }
 
+            /* Description now shows full text – remove clamp */
             .product-description {
               font-size: 10px !important;
               line-height: 1.3 !important;
               margin: 2px 0 4px !important;
-              -webkit-line-clamp: 2 !important;
             }
 
             .specs-row {

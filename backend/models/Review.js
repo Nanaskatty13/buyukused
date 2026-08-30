@@ -64,6 +64,19 @@ const sellerReplySchema = new mongoose.Schema(
 const reviewSchema = new mongoose.Schema(
   {
     // ========================================================
+    // REVIEW TYPE
+    // ========================================================
+
+    type: {
+      type: String,
+      enum: ["PRODUCT", "SELLER"],
+      required: true,
+      uppercase: true,
+      trim: true,
+      index: true,
+    },
+
+    // ========================================================
     // REVIEWER
     // ========================================================
 
@@ -108,15 +121,6 @@ const reviewSchema = new mongoose.Schema(
     // ========================================================
     // PRODUCT
     // ========================================================
-
-    // IMPORTANT:
-    // This is OPTIONAL.
-    //
-    // Seller review:
-    // productId = undefined
-    //
-    // Product review:
-    // productId = ObjectId
 
     productId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -245,48 +249,70 @@ const reviewSchema = new mongoose.Schema(
 );
 
 // ============================================================
-// INDEXES
+// VALIDATION: PRODUCT VS SELLER
+// ============================================================
+
+reviewSchema.pre("validate", function (next) {
+  // ----------------------------------------------------------
+  // PRODUCT REVIEW
+  // ----------------------------------------------------------
+
+  if (this.type === "PRODUCT") {
+    if (!this.productId) {
+      return next(
+        new Error(
+          "Product ID is required for a product review."
+        )
+      );
+    }
+  }
+
+  // ----------------------------------------------------------
+  // SELLER REVIEW
+  // ----------------------------------------------------------
+
+  if (this.type === "SELLER") {
+    // Seller reviews must not belong to a product.
+    this.productId = undefined;
+  }
+
+  next();
+});
+
+// ============================================================
+// UNIQUE INDEXES
 // ============================================================
 //
 // IMPORTANT:
-// Do NOT use:
 //
-// { reviewer: 1, sellerId: 1, productId: 1 }
+// PRODUCT REVIEW:
+// one buyer can review the same product once.
 //
-// as a normal unique index.
+// SELLER REVIEW:
+// one buyer can review the same seller once.
 //
-// MongoDB can treat missing/null productId values as the same
-// value and cause seller-only reviews to conflict.
-//
-// We therefore use PARTIAL UNIQUE indexes.
-//
+// Removed reviews are excluded so they can be recreated.
 // ============================================================
 
 // ------------------------------------------------------------
-// ONE SELLER REVIEW PER BUYER
-// ------------------------------------------------------------
-//
-// Applies ONLY to reviews where productId does NOT exist.
-//
-// Example:
-//
-// reviewer A -> seller A = allowed once
-// reviewer A -> seller B = allowed
-// reviewer B -> seller A = allowed
-//
+// PRODUCT REVIEW UNIQUE INDEX
 // ------------------------------------------------------------
 
 reviewSchema.index(
   {
     reviewer: 1,
     sellerId: 1,
+    productId: 1,
+    type: 1,
   },
   {
     unique: true,
-    name: "unique_seller_review_per_buyer",
+    name: "unique_product_review_per_buyer",
+
     partialFilterExpression: {
+      type: "PRODUCT",
       productId: {
-        $exists: false,
+        $type: "objectId",
       },
       status: {
         $ne: "removed",
@@ -296,29 +322,21 @@ reviewSchema.index(
 );
 
 // ------------------------------------------------------------
-// ONE PRODUCT REVIEW PER BUYER
-// ------------------------------------------------------------
-//
-// Example:
-//
-// reviewer A -> product A = allowed once
-// reviewer A -> product B = allowed
-//
+// SELLER REVIEW UNIQUE INDEX
 // ------------------------------------------------------------
 
 reviewSchema.index(
   {
     reviewer: 1,
     sellerId: 1,
-    productId: 1,
+    type: 1,
   },
   {
     unique: true,
-    name: "unique_product_review_per_buyer",
+    name: "unique_seller_review_per_buyer",
+
     partialFilterExpression: {
-      productId: {
-        $type: "objectId",
-      },
+      type: "SELLER",
       status: {
         $ne: "removed",
       },
@@ -331,13 +349,15 @@ reviewSchema.index(
 // ============================================================
 
 reviewSchema.index({
-  sellerId: 1,
+  productId: 1,
+  type: 1,
   status: 1,
   createdAt: -1,
 });
 
 reviewSchema.index({
-  productId: 1,
+  sellerId: 1,
+  type: 1,
   status: 1,
   createdAt: -1,
 });
@@ -360,10 +380,14 @@ reviewSchema.index({
 });
 
 // ============================================================
-// KEEP HELPFUL COUNT CORRECT
+// KEEP COUNTS CORRECT
 // ============================================================
 
 reviewSchema.pre("save", function (next) {
+  // ----------------------------------------------------------
+  // HELPFUL COUNT
+  // ----------------------------------------------------------
+
   if (Array.isArray(this.helpfulBy)) {
     const uniqueIds = [];
 
@@ -384,7 +408,7 @@ reviewSchema.pre("save", function (next) {
   }
 
   // ----------------------------------------------------------
-  // KEEP REPORT COUNT CORRECT
+  // REPORT COUNT
   // ----------------------------------------------------------
 
   if (Array.isArray(this.reportedBy)) {

@@ -62,7 +62,7 @@ const getHeaders = (token = getToken()) => {
 // FILE / FORMDATA HEADERS
 // IMPORTANT:
 // Do NOT set Content-Type manually for FormData.
-// Browser must set multipart/form-data boundary.
+// Browser sets the multipart boundary automatically.
 // ================================================================
 
 const getFileHeaders = (token = getToken()) => {
@@ -149,11 +149,6 @@ const sleep = (ms) =>
 // ================================================================
 // REQUEST HELPER
 // ================================================================
-//
-// IMPORTANT:
-// The token is read HERE, immediately before fetch().
-// This prevents an old token captured earlier from being used.
-// ================================================================
 
 const request = async (
   url,
@@ -171,7 +166,7 @@ const request = async (
     }, REQUEST_TIMEOUT);
 
     // ============================================================
-    // ALWAYS GET THE LATEST TOKEN
+    // ALWAYS GET LATEST TOKEN
     // ============================================================
 
     const latestToken = getToken();
@@ -184,6 +179,7 @@ const request = async (
       options.headers || {};
 
     const isFormData =
+      typeof FormData !== "undefined" &&
       options.body instanceof FormData;
 
     let headers;
@@ -193,17 +189,15 @@ const request = async (
         ...incomingHeaders,
       };
 
-      // If caller didn't provide Authorization,
-      // use the latest stored token.
       if (
         !headers.Authorization &&
+        !headers.authorization &&
         hasUsableToken(latestToken)
       ) {
         headers.Authorization =
           `Bearer ${latestToken.trim()}`;
       }
 
-      // Never manually set Content-Type for FormData.
       delete headers["Content-Type"];
       delete headers["content-type"];
     } else {
@@ -211,7 +205,6 @@ const request = async (
         ...incomingHeaders,
       };
 
-      // Add JSON Content-Type if not already present.
       if (
         !headers["Content-Type"] &&
         !headers["content-type"]
@@ -228,10 +221,6 @@ const request = async (
           "application/json";
       }
 
-      // ==========================================================
-      // MOST IMPORTANT AUTH FIX
-      // ==========================================================
-
       if (
         !headers.Authorization &&
         !headers.authorization &&
@@ -243,28 +232,49 @@ const request = async (
     }
 
     // ============================================================
-    // DEBUG AUTH
+    // REVIEW DEBUG
     // ============================================================
 
     if (url.includes("/reviews")) {
       console.log("⭐ Review API request");
       console.log("➡️ URL:", url);
+
       console.log(
         "🔐 Token available:",
         hasUsableToken(latestToken)
       );
+
       console.log(
         "🔐 Token length:",
         hasUsableToken(latestToken)
           ? latestToken.length
           : 0
       );
+
       console.log(
         "🔐 Authorization header:",
-        headers.Authorization
+        headers.Authorization ||
+          headers.authorization
           ? "Bearer [PRESENT]"
           : "[MISSING]"
       );
+
+      if (
+        options.body &&
+        typeof options.body === "string"
+      ) {
+        try {
+          console.log(
+            "⭐ Review request body:",
+            JSON.parse(options.body)
+          );
+        } catch {
+          console.log(
+            "⭐ Review request body:",
+            options.body
+          );
+        }
+      }
     }
 
     // ============================================================
@@ -296,12 +306,6 @@ const request = async (
         "🔐 Token available:",
         hasUsableToken(latestToken)
       );
-
-      // Don't immediately clear auth data here.
-      // The caller may need to inspect the error.
-      //
-      // This is especially useful while debugging
-      // login/session problems.
     }
 
     return await handleResponse(response);
@@ -722,6 +726,7 @@ export const products = {
       );
 
       error.status = 401;
+
       throw error;
     }
 
@@ -748,6 +753,7 @@ export const products = {
       );
 
       error.status = 401;
+
       throw error;
     }
 
@@ -1089,6 +1095,19 @@ export const notifications = {
       }
     );
   },
+
+  unreadCount: async (
+    token = getToken()
+  ) => {
+    return request(
+      `${API_URL}/api/notifications/unread-count`,
+      {
+        method: "GET",
+        headers:
+          getHeaders(token),
+      }
+    );
+  },
 };
 
 // ================================================================
@@ -1327,6 +1346,19 @@ export const messages = {
       }
     );
   },
+
+  unreadCount: async (
+    token = getToken()
+  ) => {
+    return request(
+      `${API_URL}/api/messages/unread-count`,
+      {
+        method: "GET",
+        headers:
+          getHeaders(token),
+      }
+    );
+  },
 };
 
 // ================================================================
@@ -1486,11 +1518,11 @@ export const reviews = {
   // ==============================================================
 
   create: async (
-    reviewData,
+    reviewData = {},
     token = getToken()
   ) => {
     // ============================================================
-    // VALIDATE AUTH
+    // AUTH
     // ============================================================
 
     if (!hasUsableToken(token)) {
@@ -1509,31 +1541,137 @@ export const reviews = {
     }
 
     // ============================================================
-    // VALIDATE SELLER
+    // SAFELY ACCEPT REVIEW DATA
     // ============================================================
 
-    if (!reviewData?.sellerId) {
+    const data =
+      reviewData &&
+      typeof reviewData === "object"
+        ? reviewData
+        : {};
+
+    // ============================================================
+    // NORMALIZE REVIEW TYPE
+    //
+    // Supports:
+    //   type
+    //   reviewType
+    //   review_type
+    //
+    // Accepts:
+    //   PRODUCT
+    //   product
+    //   SELLER
+    //   seller
+    // ============================================================
+
+    const rawReviewType =
+      data.type ??
+      data.reviewType ??
+      data.review_type ??
+      "";
+
+    const reviewType = String(
+      rawReviewType
+    )
+      .trim()
+      .toUpperCase();
+
+    console.log(
+      "🔎 Raw review type:",
+      rawReviewType
+    );
+
+    console.log(
+      "🔎 Normalized review type:",
+      reviewType
+    );
+
+    // ============================================================
+    // VALIDATE REVIEW TYPE
+    // ============================================================
+
+    if (
+      reviewType !== "PRODUCT" &&
+      reviewType !== "SELLER"
+    ) {
+      const error = new Error(
+        "Review type must be PRODUCT or SELLER."
+      );
+
+      error.code =
+        "INVALID_REVIEW_TYPE";
+
+      error.data = {
+        received:
+          rawReviewType,
+        normalized:
+          reviewType,
+        reviewData: data,
+      };
+
+      console.error(
+        "❌ Invalid review type:",
+        error.data
+      );
+
+      throw error;
+    }
+
+    // ============================================================
+    // SELLER ID
+    // ============================================================
+
+    const sellerId =
+      data.sellerId ??
+      data.seller_id ??
+      "";
+
+    if (
+      !sellerId ||
+      String(sellerId).trim() === ""
+    ) {
       throw new Error(
         "Seller ID is required"
       );
     }
 
     // ============================================================
-    // VALIDATE RATING
+    // PRODUCT ID
     // ============================================================
 
+    const productId =
+      data.productId ??
+      data.product_id ??
+      null;
+
     if (
-      reviewData.rating ===
+      reviewType === "PRODUCT" &&
+      (!productId ||
+        String(productId).trim() === "")
+    ) {
+      throw new Error(
+        "Product ID is required for a product review."
+      );
+    }
+
+    // ============================================================
+    // RATING
+    // ============================================================
+
+    const rating =
+      Number(data.rating);
+
+    if (
+      data.rating ===
         undefined ||
-      reviewData.rating === null
+      data.rating === null ||
+      data.rating === ""
     ) {
       throw new Error(
         "Rating is required"
       );
     }
-
-    const rating =
-      Number(reviewData.rating);
 
     if (
       !Number.isFinite(rating) ||
@@ -1546,12 +1684,14 @@ export const reviews = {
     }
 
     // ============================================================
-    // VALIDATE COMMENT
+    // COMMENT
     // ============================================================
 
     const comment =
       String(
-        reviewData.comment || ""
+        data.comment ??
+        data.text ??
+        ""
       ).trim();
 
     if (!comment) {
@@ -1561,26 +1701,42 @@ export const reviews = {
     }
 
     // ============================================================
-    // PAYLOAD
+    // ORDER ID
+    // ============================================================
+
+    const orderId =
+      data.orderId ??
+      data.order_id ??
+      null;
+
+    // ============================================================
+    // FINAL PAYLOAD
+    //
+    // Backend receives a clean, predictable structure.
     // ============================================================
 
     const payload = {
+      type: reviewType,
       sellerId:
-        reviewData.sellerId,
-
+        String(sellerId).trim(),
       rating,
-
       comment,
     };
 
-    if (reviewData.productId) {
+    if (
+      productId &&
+      String(productId).trim()
+    ) {
       payload.productId =
-        reviewData.productId;
+        String(productId).trim();
     }
 
-    if (reviewData.orderId) {
+    if (
+      orderId &&
+      String(orderId).trim()
+    ) {
       payload.orderId =
-        reviewData.orderId;
+        String(orderId).trim();
     }
 
     // ============================================================
@@ -1588,7 +1744,12 @@ export const reviews = {
     // ============================================================
 
     console.log(
-      "⭐ Creating seller review..."
+      "⭐ Creating review"
+    );
+
+    console.log(
+      "⭐ Review type:",
+      payload.type
     );
 
     console.log(
@@ -1625,6 +1786,11 @@ export const reviews = {
         : "MISSING"
     );
 
+    console.log(
+      "⭐ FINAL REVIEW PAYLOAD:",
+      payload
+    );
+
     // ============================================================
     // SEND
     // ============================================================
@@ -1648,7 +1814,7 @@ export const reviews = {
 
   update: async (
     id,
-    reviewData,
+    reviewData = {},
     token = getToken()
   ) => {
     if (!id) {
@@ -1663,10 +1829,22 @@ export const reviews = {
       reviewData?.rating !==
       undefined
     ) {
-      payload.rating =
+      const rating =
         Number(
           reviewData.rating
         );
+
+      if (
+        !Number.isFinite(rating) ||
+        rating < 1 ||
+        rating > 5
+      ) {
+        throw new Error(
+          "Rating must be between 1 and 5"
+        );
+      }
+
+      payload.rating = rating;
     }
 
     if (
@@ -1761,6 +1939,12 @@ export const reviews = {
       );
     }
 
+    const cleanReason =
+      String(
+        reason ||
+          "Inappropriate content"
+      ).trim();
+
     return request(
       `${API_URL}/api/reviews/${encodeURIComponent(
         id
@@ -1771,10 +1955,7 @@ export const reviews = {
           getHeaders(token),
         body: JSON.stringify({
           reason:
-            String(
-              reason ||
-                "Inappropriate content"
-            ).trim(),
+            cleanReason,
         }),
       }
     );
@@ -1903,7 +2084,6 @@ export const reviews = {
 // ================================================================
 
 export const admin = {
-  // Dashboard
   getDashboardStats: async (
     token = getToken()
   ) => {
@@ -1917,7 +2097,6 @@ export const admin = {
     );
   },
 
-  // Users
   getUsers: async (
     params = {},
     token = getToken()
@@ -2005,7 +2184,6 @@ export const admin = {
     );
   },
 
-  // Products
   getProducts: async (
     params = {},
     token = getToken()
@@ -2045,7 +2223,6 @@ export const admin = {
     );
   },
 
-  // Orders
   getOrders: async (
     params = {},
     token = getToken()
@@ -2089,7 +2266,6 @@ export const admin = {
     );
   },
 
-  // Riders
   getRiders: async (
     params = {},
     token = getToken()
@@ -2222,7 +2398,6 @@ export const admin = {
     );
   },
 
-  // Deliveries
   getDeliveries: async (
     params = {},
     token = getToken()
@@ -2288,7 +2463,6 @@ export const admin = {
     );
   },
 
-  // Seller verification
   getUnverifiedSellers: async (
     token = getToken()
   ) => {
@@ -2659,6 +2833,9 @@ export const markNotificationRead =
 export const deleteNotification =
   notifications.delete;
 
+export const getNotificationUnreadCount =
+  notifications.unreadCount;
+
 // ================================================================
 // ORDER EXPORTS
 // ================================================================
@@ -2699,6 +2876,9 @@ export const markMessageRead =
 
 export const deleteMessage =
   messages.delete;
+
+export const getMessageUnreadCount =
+  messages.unreadCount;
 
 // ================================================================
 // FAVORITES
@@ -2930,6 +3110,7 @@ const api = {
   createNotification,
   markNotificationRead,
   deleteNotification,
+  getNotificationUnreadCount,
 
   // Orders
   getOrders,
@@ -2945,6 +3126,7 @@ const api = {
   sendMessage,
   markMessageRead,
   deleteMessage,
+  getMessageUnreadCount,
 
   // Favorites
   getFavorites,

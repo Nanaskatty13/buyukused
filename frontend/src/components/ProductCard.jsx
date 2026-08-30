@@ -1078,6 +1078,29 @@ const ProductCard = ({
         </div>
 
         {/* ==================================================
+            ✨ DESCRIPTION (NEW)
+        ================================================== */}
+
+        {product.description && (
+          <div
+            className="product-description"
+            style={{
+              margin: "4px 0 6px",
+              fontSize: "13px",
+              lineHeight: 1.4,
+              color: "#6b7280",
+              display: "-webkit-box",
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: "vertical",
+              overflow: "hidden",
+              wordBreak: "break-word",
+            }}
+          >
+            {product.description}
+          </div>
+        )}
+
+        {/* ==================================================
             SELLER INFORMATION
         ================================================== */}
 
