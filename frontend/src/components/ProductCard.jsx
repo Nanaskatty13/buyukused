@@ -444,6 +444,33 @@ const ProductCard = ({
   };
 
   // ============================================================
+  // EXTRACT CITY FROM LOCATION
+  // ============================================================
+
+  const getCityOnly = (locationStr) => {
+    if (!locationStr) return "";
+    const parts = String(locationStr).split(",").map((s) => s.trim());
+    return parts[0] || locationStr;
+  };
+
+  const cityOnly = getCityOnly(product.location);
+
+  // ============================================================
+  // HANDLE LOCATION FILTER CLICK
+  // ============================================================
+
+  const handleLocationFilter = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!cityOnly) return;
+
+    const params = new URLSearchParams(location.search);
+    params.set("location", cityOnly);
+    navigate(`/products?${params.toString()}`);
+  };
+
+  // ============================================================
   // FAVORITE HANDLER
   // ============================================================
 
@@ -451,7 +478,6 @@ const ProductCard = ({
     e.preventDefault();
     e.stopPropagation();
 
-    // User must login
     if (!user) {
       navigate("/login", {
         state: {
@@ -469,7 +495,6 @@ const ProductCard = ({
       return;
     }
 
-    // Toggle favorite
     toggleFavorite(productId);
   };
 
@@ -993,7 +1018,7 @@ const ProductCard = ({
         </div>
 
         {/* ==================================================
-            LOCATION / CONDITION
+            LOCATION / CONDITION (UPDATED)
         ================================================== */}
 
         <div
@@ -1005,12 +1030,44 @@ const ProductCard = ({
             fontSize: "13px",
             color: "#6b7280",
             marginTop: "2px",
+            flexWrap: "wrap",
           }}
         >
-          <span>
-            {product.location ||
-              "Ghana"}
-          </span>
+          {/* ─── CLICKABLE LOCATION BADGE ─── */}
+          {cityOnly && (
+            <button
+              type="button"
+              onClick={handleLocationFilter}
+              style={{
+                background: "#eef2ff",
+                color: "#4f46e5",
+                border: "1px solid #c7d2fe",
+                borderRadius: "9999px",
+                padding: "1px 10px",
+                fontSize: "10px",
+                fontWeight: 600,
+                cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "4px",
+                transition: "background 0.15s, transform 0.1s",
+                fontFamily: "inherit",
+                lineHeight: "1.6",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "#e0e7ff";
+                e.currentTarget.style.transform = "scale(1.02)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "#eef2ff";
+                e.currentTarget.style.transform = "scale(1)";
+              }}
+              title={`Filter by ${cityOnly}`}
+            >
+              <i className="fas fa-map-pin" style={{ fontSize: "9px" }} />
+              Loc:{cityOnly}
+            </button>
+          )}
 
           <span>•</span>
 

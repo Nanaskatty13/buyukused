@@ -172,6 +172,311 @@ const CATEGORY_ALIASES = {
 };
 
 // ============================================================
+// LOCATION TERMS (Ghana regions + cities)
+// ============================================================
+
+const REGIONS = [
+  "Ahafo",
+  "Ashanti",
+  "Bono",
+  "Bono East",
+  "Central",
+  "Eastern",
+  "Greater Accra",
+  "North East",
+  "Northern",
+  "Oti",
+  "Savannah",
+  "Upper East",
+  "Upper West",
+  "Volta",
+  "Western",
+  "Western North",
+];
+
+const CITIES_BY_REGION = {
+  Ahafo: [
+    "Goaso",
+    "Mim",
+    "Hwidiem",
+    "Bechem",
+    "Kenyasi",
+    "Duayaw Nkwanta",
+    "Tepa",
+  ],
+
+  Ashanti: [
+    "Kumasi",
+    "Obuasi",
+    "Tafo",
+    "Bekwai",
+    "Mampong",
+    "Konongo",
+    "Ejura",
+    "Agogo",
+    "Offinso",
+    "Nkawie",
+    "Oforikrom",
+    "Asokore Mampong",
+    "Suame",
+    "Atwima",
+    "Kwadaso",
+    "Bantama",
+    "Adum",
+    "Bohyen",
+    "Domeabra",
+    "Mpatuam",
+    "Effiduase",
+    "Juaso",
+    "Nhyiaeso",
+    "Tepa",
+    "Duayaw Nkwanta",
+    "Kenyasi",
+    "Kukuom",
+    "Fomena",
+    "Ahensan",
+  ],
+
+  Bono: [
+    "Sunyani",
+    "Berekum",
+    "Dormaa Ahenkro",
+    "Kintampo",
+    "Japekrom",
+    "Nsoatre",
+    "Odumase",
+    "Drobo",
+  ],
+
+  "Bono East": [
+    "Techiman",
+    "Yeji",
+    "Kintampo",
+    "Atebubu",
+    "Pru",
+    "Kwame Danso",
+    "Sampa",
+    "Badu",
+    "Tuobodom",
+  ],
+
+  Central: [
+    "Cape Coast",
+    "Elmina",
+    "Kasoa",
+    "Winneba",
+    "Mfantseman",
+    "Abura Dunkwa",
+    "Assin Fosu",
+    "Asikuma",
+    "Ajumako",
+    "Awutu",
+    "Bawjiase",
+    "Senya Beraku",
+    "Gomoa Fetteh",
+    "Budumburam",
+  ],
+
+  Eastern: [
+    "Koforidua",
+    "Nkawkaw",
+    "Oda",
+    "Asamankese",
+    "Akwatia",
+    "Kibi",
+    "Suhum",
+    "Mpraeso",
+    "Somanya",
+    "Odumase",
+    "Aburi",
+    "Nsawam",
+    "Akropong",
+    "Begoro",
+    "Hohoe",
+    "Kpando",
+    "Ho",
+    "Peki",
+    "Denu",
+    "Aflao",
+    "Keta",
+  ],
+
+  "Greater Accra": [
+    "Accra",
+    "Tema",
+    "Ashaiman",
+    "Madina",
+    "Adenta",
+    "Dansoman",
+    "Kaneshie",
+    "Osu",
+    "Labone",
+    "Labadi",
+    "Dzorwulu",
+    "Achimota",
+    "Legon",
+    "Okponglo",
+    "Bawaleshie",
+    "Nungua",
+    "Teshie",
+    "Sakumono",
+    "Spintex",
+    "Lashibi",
+    "East Legon",
+    "West Legon",
+    "Dodowa",
+    "Prampram",
+    "Afienya",
+    "Tema New Town",
+    "Amasaman",
+    "Weija",
+    "Gbawe",
+    "Mallam",
+    "Bortianor",
+    "Ablekuma",
+    "Korle Bu",
+    "Mamprobi",
+    "Chorkor",
+    "James Town",
+    "Ussher Town",
+    "Adabraka",
+    "Asylum Down",
+    "Cantoments",
+    "Airport",
+  ],
+
+  "North East": [
+    "Nalerigu",
+    "Walewale",
+    "Bawku",
+    "Gambaga",
+    "Bunkpurugu",
+    "Yunyoo",
+    "Chereponi",
+  ],
+
+  Northern: [
+    "Tamale",
+    "Savelugu",
+    "Yendi",
+    "Dalun",
+    "Kpatinga",
+    "Gushegu",
+    "Karaga",
+    "Zabzugu",
+    "Tolon",
+    "Kumbungu",
+  ],
+
+  Oti: [
+    "Dambai",
+    "Kpando",
+    "Jasikan",
+    "Nkwanta",
+    "Brewaniase",
+    "Worawora",
+    "Gbi",
+    "Apesokubi",
+  ],
+
+  Savannah: [
+    "Damongo",
+    "Bole",
+    "Salaga",
+    "Yapei",
+    "Sawla",
+    "Larabanga",
+    "Daboya",
+  ],
+
+  "Upper East": [
+    "Bolgatanga",
+    "Bawku",
+    "Navrongo",
+    "Paga",
+    "Sandema",
+    "Zuarungu",
+    "Tongo",
+    "Garu",
+    "Tempane",
+    "Pusiga",
+  ],
+
+  "Upper West": [
+    "Wa",
+    "Jirapa",
+    "Lawra",
+    "Nandom",
+    "Tumu",
+    "Gwollu",
+    "Kaleo",
+    "Dere",
+    "Duori",
+  ],
+
+  Volta: [
+    "Ho",
+    "Hohoe",
+    "Keta",
+    "Aflao",
+    "Kpando",
+    "Sogakope",
+    "Anloga",
+    "Kpedze",
+    "Denu",
+    "Akatsi",
+    "Abor",
+    "Dzodze",
+    "Anyako",
+    "Togoville",
+    "Kedzi",
+    "Agbledomi",
+    "Klikor",
+  ],
+
+  Western: [
+    "Sekondi",
+    "Takoradi",
+    "Tarkwa",
+    "Shama",
+    "Essikado",
+    "Aboadze",
+    "Fijai",
+    "Effiakuma",
+    "Kwesimintim",
+    "Nkroful",
+    "Axim",
+    "Half Assini",
+    "Agona",
+    "Anyinam",
+    "Enchi",
+    "Juaboso",
+  ],
+
+  "Western North": [
+    "Sefwi Wiawso",
+    "Sefwi Debiso",
+    "Bibiani",
+    "Awiaso",
+    "Asafo",
+    "Sefwi Bekwai",
+    "Akontombra",
+  ],
+};
+
+// ─── Flatten all location terms ──────────────────────────────────
+const LOCATION_TERMS = [
+  ...REGIONS,
+  ...Object.values(CITIES_BY_REGION).flat(),
+];
+
+// Remove duplicates (case‑insensitive but we keep original casing)
+const locationSet = new Set(
+  LOCATION_TERMS.map((term) => term.toLowerCase())
+);
+const UNIQUE_LOCATION_TERMS = Array.from(locationSet);
+
+// ============================================================
 // HELPERS
 // ============================================================
 
@@ -658,6 +963,71 @@ const parseJsonArray = (
 };
 
 // ============================================================
+// HELPER – EXTRACT LOCATION FROM SEARCH
+// ============================================================
+
+const extractLocationFromSearch = (
+  searchString
+) => {
+  if (
+    !searchString ||
+    typeof searchString !== "string"
+  ) {
+    return {
+      locationTerm: null,
+      remainingSearch: "",
+    };
+  }
+
+  let trimmed = searchString.trim();
+
+  if (!trimmed) {
+    return {
+      locationTerm: null,
+      remainingSearch: "",
+    };
+  }
+
+  const lowerTrimmed = trimmed.toLowerCase();
+
+  // Check if any location term is present as a whole word (or substring)
+  let matchedTerm = null;
+
+  // First, try to find exact multi‑word match (e.g. "Greater Accra")
+  // Sort terms by length descending to match longer phrases first.
+  const sortedTerms = [...UNIQUE_LOCATION_TERMS].sort(
+    (a, b) => b.length - a.length
+  );
+
+  for (const term of sortedTerms) {
+    if (lowerTrimmed.includes(term)) {
+      matchedTerm = term;
+      break;
+    }
+  }
+
+  if (!matchedTerm) {
+    return {
+      locationTerm: null,
+      remainingSearch: trimmed,
+    };
+  }
+
+  // Remove the matched location term from the search string
+  // Use a case‑insensitive regex to replace all occurrences
+  const regex = new RegExp(matchedTerm, "gi");
+  let remaining = trimmed.replace(regex, "").trim();
+
+  // Clean up extra spaces
+  remaining = remaining.replace(/\s+/g, " ").trim();
+
+  return {
+    locationTerm: matchedTerm,
+    remainingSearch: remaining,
+  };
+};
+
+// ============================================================
 // GET SUPPORTED CATEGORIES
 // ============================================================
 
@@ -690,7 +1060,7 @@ router.get(
 );
 
 // ============================================================
-// GET ALL PRODUCTS – with smart search
+// GET ALL PRODUCTS – with smart search + location extraction
 // ============================================================
 
 router.get(
@@ -739,7 +1109,7 @@ router.get(
       }
 
       // --------------------------------------------------------
-      // Location
+      // Explicit Location (from query param)
       // --------------------------------------------------------
 
       if (
@@ -793,19 +1163,44 @@ router.get(
       }
 
       // --------------------------------------------------------
-      // SMART SEARCH – full‑text with weights
+      // SMART SEARCH – full‑text with location extraction
       // --------------------------------------------------------
 
-      const searchText =
+      let searchText =
         search && String(search).trim();
+
+      let locationFilter = null;
+
+      // If we have a search string, try to extract a location
+      if (searchText) {
+        const extraction =
+          extractLocationFromSearch(
+            searchText
+          );
+
+        if (extraction.locationTerm) {
+          locationFilter =
+            extraction.locationTerm;
+          searchText =
+            extraction.remainingSearch;
+        }
+      }
+
+      // If locationFilter is found, add it to filter
+      if (locationFilter) {
+        // Use case‑insensitive regex to match the location term anywhere in the location field
+        filter.location = {
+          $regex: locationFilter,
+          $options: "i",
+        };
+      }
 
       // Build the base query
       let query =
         Product.find(filter);
 
-      // If we have a search term, use $text with scoring
-      if (searchText) {
-        // Use $text search (index must exist on Product model)
+      // If we have remaining search text, use $text
+      if (searchText && searchText.length > 0) {
         query =
           Product.find({
             ...filter,
@@ -828,7 +1223,7 @@ router.get(
             createdAt: -1,
           });
       } else {
-        // No search: sort by newest first
+        // No text search: sort by newest first
         query.sort({
           createdAt: -1,
         });
@@ -868,7 +1263,6 @@ router.get(
         .limit(parsedLimit)
         .populate(
           "sellerId",
-          // All possible image fields
           "name phone email location avatar profileImage photo photoURL role isVerified"
         )
         .lean();
@@ -885,28 +1279,9 @@ router.get(
           ),
         ]);
 
-      // If we used $text, we cannot count with the same filter
-      // because countDocuments doesn't support $text?
-      // Actually countDocuments with $text works if we pass the same filter
-      // but we used filter without $text. We need to count with the full filter including $text.
-      // Let's fix: we'll count using the same filter object.
-
-      // We'll build a separate count filter
-      let countFilter = { ...filter };
-      if (searchText) {
-        countFilter.$text = {
-          $search: searchText,
-        };
-      }
-
-      const totalCount =
-        await Product.countDocuments(
-          countFilter
-        );
-
       const totalPages =
         Math.ceil(
-          totalCount /
+          total /
             parsedLimit
         );
 
@@ -915,7 +1290,7 @@ router.get(
 
         products,
 
-        total: totalCount,
+        total,
 
         page:
           parsedPage,
@@ -932,7 +1307,7 @@ router.get(
           totalPages,
 
           totalProducts:
-            totalCount,
+            total,
 
           limit:
             parsedLimit,
@@ -980,8 +1355,6 @@ router.get(
           id
         ).populate(
           "sellerId",
-          // ─── UPDATED ────────────────────────────────────────
-          // Now includes all possible image fields.
           "name phone email location avatar profileImage photo photoURL role isVerified"
         );
 
@@ -1025,7 +1398,7 @@ router.get(
 router.post(
   "/",
   verifyToken,
-  isSeller,   // ← now allows neutral roles (user, buyer, seller, admin)
+  isSeller,
   upload.array(
     "files",
     MAX_UPLOAD_FILES
