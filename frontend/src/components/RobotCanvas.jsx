@@ -94,7 +94,8 @@ function RobotBody() {
       ===================================================== */}
 
       <mesh position={[0, 0.78, 0]}>
-        <cylinderGeometry args={[0.18, 0.18, 0.25, 32]} />
+        {/* OPTIMIZED: 32 -> 16 segments */}
+        <cylinderGeometry args={[0.18, 0.18, 0.25, 16]} />
         <meshStandardMaterial
           color="#6b7280"
           metalness={0.8}
@@ -135,7 +136,8 @@ function RobotBody() {
         ================================================= */}
 
         <mesh position={[-0.2, 0.03, 0.47]}>
-          <sphereGeometry args={[0.09, 24, 24]} />
+          {/* OPTIMIZED: 24 -> 16 segments */}
+          <sphereGeometry args={[0.09, 16, 16]} />
           <meshStandardMaterial
             color="#38bdf8"
             emissive="#38bdf8"
@@ -148,7 +150,8 @@ function RobotBody() {
         ================================================= */}
 
         <mesh position={[0.2, 0.03, 0.47]}>
-          <sphereGeometry args={[0.09, 24, 24]} />
+          {/* OPTIMIZED: 24 -> 16 segments */}
+          <sphereGeometry args={[0.09, 16, 16]} />
           <meshStandardMaterial
             color="#38bdf8"
             emissive="#38bdf8"
@@ -204,7 +207,8 @@ function RobotBody() {
 
         {/* Hand */}
         <mesh position={[0, -0.58, 0]}>
-          <sphereGeometry args={[0.18, 24, 24]} />
+          {/* OPTIMIZED: 24 -> 16 segments */}
+          <sphereGeometry args={[0.18, 16, 16]} />
 
           <meshStandardMaterial
             color="#9ca3af"
@@ -235,7 +239,8 @@ function RobotBody() {
 
         {/* Hand */}
         <mesh position={[0, -0.58, 0]}>
-          <sphereGeometry args={[0.18, 24, 24]} />
+          {/* OPTIMIZED: 24 -> 16 segments */}
+          <sphereGeometry args={[0.18, 16, 16]} />
 
           <meshStandardMaterial
             color="#9ca3af"
@@ -289,25 +294,23 @@ export default function RobotCanvas() {
         position: [0, 0.4, 5],
         fov: 42,
       }}
-      dpr={[1, 2]}
+      // OPTIMIZED: Lower DPR from [1,2] to [1,1.5]
+      dpr={[1, 1.5]}
       gl={{
         antialias: true,
         alpha: true,
       }}
+      // OPTIMIZED: Pause rendering when not in view
+      frameloop="demand"
     >
 
-      {/* Background lighting */}
+      {/* OPTIMIZED: Removed pointLight, reduced ambient intensity */}
 
-      <ambientLight intensity={1.2} />
+      <ambientLight intensity={0.8} />
 
       <directionalLight
-        position={[4, 6, 5]}
-        intensity={2}
-      />
-
-      <pointLight
-        position={[-4, 2, 4]}
-        intensity={1}
+        position={[5, 8, 6]}
+        intensity={1.8}
       />
 
       {/* Robot */}

@@ -72,10 +72,10 @@ const Hero = ({ onSearch }) => {
           .hero-shopglowsy::before {
             content: '';
             position: absolute;
-            top: 0;
+            top: -80px;
             left: 0;
             right: 0;
-            bottom: 0;
+            height: calc(100% + 80px);
             background-image: url('https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=1600&q=80');
             background-size: cover;
             background-position: center;
@@ -87,10 +87,10 @@ const Hero = ({ onSearch }) => {
           .hero-shopglowsy::after {
             content: '';
             position: absolute;
-            top: 0;
+            top: -80px;
             left: 0;
             right: 0;
-            bottom: 0;
+            height: calc(100% + 80px);
             background: linear-gradient(
               135deg,
               rgba(15, 23, 42, 0.35) 0%,
@@ -361,7 +361,6 @@ const Hero = ({ onSearch }) => {
               align-items: center;
             }
 
-            /* ─── INCREASED HEIGHT on tablet ─── */
             .hero-carousel .slide {
               height: 300px;
             }
@@ -379,7 +378,6 @@ const Hero = ({ onSearch }) => {
               justify-content: center;
             }
 
-            /* ─── INCREASED HEIGHT on mobile ─── */
             .hero-carousel .slide {
               height: 260px;
             }
@@ -400,7 +398,6 @@ const Hero = ({ onSearch }) => {
           }
 
           @media (max-width: 380px) {
-            /* ─── INCREASED HEIGHT on very small screens ─── */
             .hero-carousel .slide {
               height: 220px;
             }
@@ -426,9 +423,6 @@ const Hero = ({ onSearch }) => {
             {/* ─── CTA Buttons ─── */}
             <div className="hero-shopglowsy-actions">
 
-              {/* IMPORTANT:
-                  App.jsx uses /post-ad, so this must match exactly.
-              */}
               <Link to="/post-ad" className="btn-primary">
                 <i className="fas fa-plus-circle"></i>
                 Start Selling
@@ -471,13 +465,15 @@ const Hero = ({ onSearch }) => {
                 transform: `translateX(-${currentSlide * 100}%)`,
               }}
             >
-              {slides.map((slide) => (
+              {slides.map((slide, index) => (
                 <div key={slide.id} className="slide">
 
+                  {/* FIX: use lowercase `fetchpriority` */}
                   <img
                     src={slide.image}
                     alt={slide.title}
-                    loading="lazy"
+                    loading={index === 0 ? "eager" : "lazy"}
+                    fetchpriority={index === 0 ? "high" : "auto"}
                   />
 
                   <div className="slide-overlay">

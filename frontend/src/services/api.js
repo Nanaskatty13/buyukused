@@ -78,7 +78,7 @@ const getFileHeaders = (token = getToken()) => {
 };
 
 // ================================================================
-// RESPONSE HANDLER
+// RESPONSE HANDLER (ENHANCED)
 // ================================================================
 
 const handleResponse = async (response) => {
@@ -97,11 +97,8 @@ const handleResponse = async (response) => {
         data = await response.json();
       } else {
         const text = await response.text();
-
         if (text) {
-          data = {
-            message: text,
-          };
+          data = { message: text, raw: text };
         }
       }
     } catch (parseError) {
@@ -109,20 +106,31 @@ const handleResponse = async (response) => {
         "⚠️ Could not parse API response:",
         parseError
       );
-
       data = {};
     }
   }
 
   if (!response.ok) {
+    // ─── ENHANCED: Detailed logging for 400 errors ──────────
+    if (response.status === 400) {
+      console.error(
+        "❌ 400 Bad Request - Full response:",
+        {
+          status: response.status,
+          url: response.url,
+          data: data,
+        }
+      );
+    }
+
     const message =
       data?.message ||
       data?.error ||
       data?.errors?.[0]?.message ||
+      data?.raw ||
       `HTTP ${response.status}`;
 
     const error = new Error(message);
-
     error.status = response.status;
     error.data = data;
     error.url = response.url;
@@ -1514,7 +1522,7 @@ export const reviews = {
   },
 
   // ==============================================================
-  // CREATE REVIEW
+  // CREATE REVIEW (UPDATED)
   // ==============================================================
 
   create: async (
@@ -1552,17 +1560,6 @@ export const reviews = {
 
     // ============================================================
     // NORMALIZE REVIEW TYPE
-    //
-    // Supports:
-    //   type
-    //   reviewType
-    //   review_type
-    //
-    // Accepts:
-    //   PRODUCT
-    //   product
-    //   SELLER
-    //   seller
     // ============================================================
 
     const rawReviewType =
@@ -1711,33 +1708,41 @@ export const reviews = {
 
     // ============================================================
     // FINAL PAYLOAD
-    //
-    // Backend receives a clean, predictable structure.
+    // ✅ Sends all possible field names to match backend expectations
     // ============================================================
 
     const payload = {
+      // Type fields
       type: reviewType,
-      sellerId:
-        String(sellerId).trim(),
+      reviewType: reviewType,
+      review_type: reviewType,
+
+      // Seller
+      sellerId: String(sellerId).trim(),
+      seller: String(sellerId).trim(), // some backends use 'seller'
+
+      // Rating & content
       rating,
       comment,
+      text: comment, // some backends use 'text'
+
+      // Optional fields
+      ...(productId && String(productId).trim()
+        ? {
+            productId: String(productId).trim(),
+            product: String(productId).trim(), // some backends use 'product'
+            product_id: String(productId).trim(),
+          }
+        : {}),
+
+      ...(orderId && String(orderId).trim()
+        ? {
+            orderId: String(orderId).trim(),
+            order: String(orderId).trim(),
+            order_id: String(orderId).trim(),
+          }
+        : {}),
     };
-
-    if (
-      productId &&
-      String(productId).trim()
-    ) {
-      payload.productId =
-        String(productId).trim();
-    }
-
-    if (
-      orderId &&
-      String(orderId).trim()
-    ) {
-      payload.orderId =
-        String(orderId).trim();
-    }
 
     // ============================================================
     // DEBUG

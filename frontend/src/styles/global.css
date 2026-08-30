@@ -177,12 +177,15 @@ img {
 }
 
 /* ================================================================
-   NAVBAR
+   NAVBAR – FIXED z-index to sit above hero background
    ================================================================ */
 .header {
   background: rgba(255,255,255,0.85) !important;
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
+  /* FIX: Keep navbar above hero background */
+  position: relative;
+  z-index: 100;
 }
 
 .header .container {

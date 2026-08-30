@@ -133,7 +133,7 @@ export default function RobotGreeter() {
   }, []);
 
   // ==========================================================
-  // PRELOAD PANDA
+  // PRELOAD PANDA (KEPT AS PANDA.PNG)
   // ==========================================================
 
   useEffect(() => {
@@ -155,7 +155,7 @@ export default function RobotGreeter() {
   }, []);
 
   // ==========================================================
-  // LOAD BROWSER VOICES
+  // LOAD BROWSER VOICES (SIMPLIFIED)
   // ==========================================================
 
   useEffect(() => {
@@ -166,60 +166,27 @@ export default function RobotGreeter() {
       return;
     }
 
-    const speech =
-      window.speechSynthesis;
+    const speech = window.speechSynthesis;
 
-    // Force browser to initialize voices.
-    try {
-      speech.getVoices();
-    } catch (error) {
-      console.warn(
-        "Could not initialize speech voices:",
-        error
-      );
-    }
-
-    const handleVoicesChanged = () => {
+    // Simple voice loader without duplicate listeners
+    const loadVoices = () => {
       try {
         speech.getVoices();
       } catch (error) {
-        console.warn(
-          "Could not refresh speech voices:",
-          error
-        );
+        console.warn("Could not load voices:", error);
       }
     };
 
-    if (
-      typeof speech.addEventListener ===
-      "function"
-    ) {
-      speech.addEventListener(
-        "voiceschanged",
-        handleVoicesChanged
-      );
-    } else {
-      speech.onvoiceschanged =
-        handleVoicesChanged;
+    // Use the legacy property to avoid duplicate events
+    if (speech.onvoiceschanged !== undefined) {
+      speech.onvoiceschanged = loadVoices;
     }
 
-    return () => {
-      if (
-        typeof speech.removeEventListener ===
-        "function"
-      ) {
-        speech.removeEventListener(
-          "voiceschanged",
-          handleVoicesChanged
-        );
-      }
+    // Also try immediately
+    setTimeout(loadVoices, 100);
 
-      if (
-        speech.onvoiceschanged ===
-        handleVoicesChanged
-      ) {
-        speech.onvoiceschanged = null;
-      }
+    return () => {
+      speech.onvoiceschanged = null;
     };
   }, []);
 
@@ -581,6 +548,7 @@ export default function RobotGreeter() {
     // --------------------------------------------------------
     // FINAL SAFETY TIMER
     //
+    // OPTIMIZED: Reduced from 7000ms to 4000ms
     // Prevents panda from remaining forever on phones
     // if speech is blocked.
     // --------------------------------------------------------
@@ -597,7 +565,7 @@ export default function RobotGreeter() {
 
           hidePanda();
         }
-      }, 7000);
+      }, 4000);
 
     return () => {
       clearAllTimers();
@@ -607,7 +575,7 @@ export default function RobotGreeter() {
   }, [visible]);
 
   // ==========================================================
-  // EXTRA VOICE RETRY WHEN BROWSER LOADS VOICES
+  // EXTRA VOICE RETRY WHEN BROWSER LOADS VOICES (SIMPLIFIED)
   // ==========================================================
 
   useEffect(() => {
@@ -618,8 +586,7 @@ export default function RobotGreeter() {
       return;
     }
 
-    const speech =
-      window.speechSynthesis;
+    const speech = window.speechSynthesis;
 
     const handleVoicesChanged = () => {
       if (
@@ -651,40 +618,35 @@ export default function RobotGreeter() {
         }, 100);
     };
 
-    if (
-      typeof speech.addEventListener ===
-      "function"
-    ) {
-      speech.addEventListener(
-        "voiceschanged",
-        handleVoicesChanged
-      );
-    } else {
-      speech.onvoiceschanged =
-        handleVoicesChanged;
+    // Use the legacy property to avoid duplicates
+    if (speech.onvoiceschanged !== undefined) {
+      speech.onvoiceschanged = handleVoicesChanged;
     }
 
     return () => {
-      if (
-        typeof speech.removeEventListener ===
-        "function"
-      ) {
-        speech.removeEventListener(
-          "voiceschanged",
-          handleVoicesChanged
-        );
-      }
-
-      if (
-        speech.onvoiceschanged ===
-        handleVoicesChanged
-      ) {
+      if (speech.onvoiceschanged === handleVoicesChanged) {
         speech.onvoiceschanged = null;
       }
     };
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible]);
+
+  // ==========================================================
+  // CLEANUP ANIMATIONS ON UNMOUNT
+  // ==========================================================
+
+  useEffect(() => {
+    return () => {
+      // Reset animations to prevent memory leaks
+      if (typeof document !== "undefined") {
+        const elements = document.querySelectorAll('.buyukused-panda-greeter *');
+        elements.forEach(el => {
+          el.style.animation = 'none';
+        });
+      }
+    };
+  }, []);
 
   // ==========================================================
   // CLEANUP
@@ -814,7 +776,7 @@ export default function RobotGreeter() {
           </div>
         )}
 
-        {/* Panda */}
+        {/* Panda (KEPT AS PANDA.PNG) */}
 
         <img
           src="/panda.png"

@@ -96,7 +96,37 @@ app.use(
   })
 );
 
-app.use(compression());
+// ============================================================
+// OPTIMIZED: COMPRESSION with better settings
+// ============================================================
+
+app.use(
+  compression({
+    // Compress all responses, including small ones
+    threshold: 0,
+
+    // Maximum compression level (9 = best compression)
+    level: 9,
+
+    // Filter: compress all applicable content types
+    filter: (req, res) => {
+      // Skip compression for already-compressed formats
+      if (req.headers["x-no-compression"]) {
+        return false;
+      }
+
+      // Use compression for all responses by default
+      return compression.filter(req, res);
+    },
+
+    // Set Vary header for proper caching behavior
+    // (compression already does this by default)
+  })
+);
+
+console.log(
+  "🗜️ Compression enabled: threshold=0, level=9"
+);
 
 // ============================================================
 // REQUEST LOGGING
@@ -352,7 +382,7 @@ app.use(
 );
 
 // ============================================================
-// STATIC UPLOADS
+// OPTIMIZED: STATIC UPLOADS with caching headers
 // ============================================================
 
 const uploadsDirectory = path.join(
@@ -364,7 +394,8 @@ const uploadsDirectory = path.join(
 app.use(
   "/uploads",
   express.static(uploadsDirectory, {
-    setHeaders: (res) => {
+    setHeaders: (res, filePath) => {
+      // Allow cross-origin access
       res.setHeader(
         "Access-Control-Allow-Origin",
         "*"
@@ -374,6 +405,35 @@ app.use(
         "Cross-Origin-Resource-Policy",
         "cross-origin"
       );
+
+      // ─── CACHE CONTROL ──────────────────────────────────────
+      // Cache static assets for 1 year (immutable) for images
+      // that rarely change, or 1 day for others
+      const ext = path.extname(filePath).toLowerCase();
+
+      if (
+        [".jpg", ".jpeg", ".png", ".webp", ".gif", ".svg", ".ico"].includes(ext)
+      ) {
+        // Images: cache for 1 year
+        res.setHeader(
+          "Cache-Control",
+          "public, max-age=31536000, immutable"
+        );
+      } else if (
+        [".css", ".js", ".woff2", ".woff", ".ttf", ".eot"].includes(ext)
+      ) {
+        // Fonts and static assets: cache for 1 year
+        res.setHeader(
+          "Cache-Control",
+          "public, max-age=31536000, immutable"
+        );
+      } else {
+        // Everything else: cache for 1 day
+        res.setHeader(
+          "Cache-Control",
+          "public, max-age=86400"
+        );
+      }
     },
   })
 );
@@ -381,6 +441,10 @@ app.use(
 console.log(
   "📁 Static uploads directory:",
   uploadsDirectory
+);
+
+console.log(
+  "🗄️ Static file caching: ENABLED (images: 1 year, others: 1 day)"
 );
 
 // ============================================================
@@ -1458,6 +1522,10 @@ const start =
             );
 
             console.log(
+              "🗄️ Static file caching: ENABLED (1 year for images/fonts)"
+            );
+
+            console.log(
               "🔐 Admin API: /api/admin"
             );
 
@@ -1499,6 +1567,10 @@ const start =
 
             console.log(
               "🟢 CORS: ENABLED"
+            );
+
+            console.log(
+              "🗜️ Compression: ENABLED (threshold=0, level=9)"
             );
 
             console.log(

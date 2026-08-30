@@ -18,7 +18,7 @@ import {
   getSellerReviews,
   createReview,
   toggleReviewHelpful,
-  updateReview, // ✅ added for editing
+  updateReview,
 } from "../services/api";
 
 import {
@@ -214,7 +214,7 @@ const SellerPage = () => {
   const currentUserId = user?._id || user?.id;
 
   // ==========================================================
-  // ✅ DETECT EXISTING SELLER REVIEW (with debug logs)
+  // ✅ DETECT EXISTING SELLER REVIEW
   // ==========================================================
 
   const userReview = useMemo(() => {
@@ -224,15 +224,13 @@ const SellerPage = () => {
     }
 
     const found = reviews.find((r) => {
-      // Extract reviewer ID robustly
       const reviewerId = r.reviewer?._id || r.reviewer?.id || r.reviewer;
       if (!reviewerId) return false;
 
       const isSameUser = String(reviewerId) === String(currentUserId);
       if (!isSameUser) return false;
 
-      // Seller review: no productId (undefined, null, or missing)
-      // Also check for null or empty productId
+      // Seller review: no productId
       const hasProductId = r.productId !== undefined && r.productId !== null && r.productId !== "";
       return !hasProductId;
     });
@@ -690,7 +688,6 @@ const SellerPage = () => {
             response.message || "Your review has been updated successfully."
           );
           resetForm();
-          // setPage is not defined in this scope? We need to fix – use fetchReviews directly.
           await fetchReviews(1, false);
         } else {
           throw new Error(response.message || "Failed to update review.");
@@ -700,10 +697,12 @@ const SellerPage = () => {
 
       // ─── CREATE MODE ────────────────────────────────────────
 
+      // ✅ FIX: Add type: 'SELLER' to the payload
       const response = await createReview({
         sellerId,
         rating: selectedRating,
         comment: cleanComment,
+        type: 'SELLER', // <-- THIS WAS MISSING
       });
 
       console.log("⭐ Review created:", response);

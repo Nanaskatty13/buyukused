@@ -220,6 +220,99 @@ const getSellerReviews = async (req, res) => {
 };
 
 // ============================================================
+// GET USER REVIEWS (NEW)
+// ============================================================
+
+const getUserReviews = async (req, res) => {
+  try {
+    const { userId } = req.query;
+
+    const page = Math.max(
+      parseInt(req.query.page, 10) || 1,
+      1
+    );
+
+    const limit = Math.min(
+      Math.max(
+        parseInt(req.query.limit, 10) || 10,
+        1
+      ),
+      50
+    );
+
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: "User ID is required.",
+      });
+    }
+
+    if (!isValidObjectId(userId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid user ID.",
+      });
+    }
+
+    const skip = (page - 1) * limit;
+
+    const filter = {
+      targetUserId: userId,
+      type: "USER",
+      isActive: true,
+    };
+
+    const [reviews, total] =
+      await Promise.all([
+        Review.find(filter)
+          .populate(
+            "userId",
+            "name email profileImage avatar"
+          )
+          .sort({
+            createdAt: -1,
+          })
+          .skip(skip)
+          .limit(limit)
+          .lean(),
+
+        Review.countDocuments(filter),
+      ]);
+
+    const totalPages =
+      Math.ceil(total / limit) || 1;
+
+    return res.status(200).json({
+      success: true,
+
+      reviews,
+
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+        hasNextPage:
+          page < totalPages,
+        hasPreviousPage:
+          page > 1,
+      },
+    });
+  } catch (error) {
+    console.error(
+      "❌ getUserReviews:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message:
+        "Failed to load user reviews.",
+    });
+  }
+};
+
+// ============================================================
 // GET SINGLE REVIEW
 // ============================================================
 
@@ -249,6 +342,10 @@ const getReviewById = async (req, res) => {
         )
         .populate(
           "sellerId",
+          "name email profileImage avatar"
+        )
+        .populate(
+          "targetUserId",
           "name email profileImage avatar"
         );
 
@@ -317,6 +414,9 @@ const createReview = async (req, res) => {
     const sellerId =
       req.body.sellerId || null;
 
+    const targetUserId =
+      req.body.targetUserId || req.body.userId || null; // for USER type
+
     const orderId =
       req.body.orderId || null;
 
@@ -333,12 +433,12 @@ const createReview = async (req, res) => {
     // --------------------------------------------------------
 
     if (
-      !["PRODUCT", "SELLER"].includes(type)
+      !["PRODUCT", "SELLER", "USER"].includes(type)
     ) {
       return res.status(400).json({
         success: false,
         message:
-          "Review type must be PRODUCT or SELLER.",
+          "Review type must be PRODUCT, SELLER, or USER.",
       });
     }
 
@@ -482,21 +582,9 @@ const createReview = async (req, res) => {
         });
       }
 
-      // ======================================================
-      // IMPORTANT FIX
-      // ======================================================
-      //
-      // DO NOT check:
-      //
-      // userId + sellerId
-      //
-      // for a PRODUCT review.
-      //
-      // The uniqueness rule for a PRODUCT review is:
-      //
-      // userId + productId + type
-      //
-      // ======================================================
+      // ------------------------------------------------------
+      // UNIQUENESS
+      // ------------------------------------------------------
 
       const existingProductReview =
         await Review.findOne({
@@ -642,13 +730,7 @@ const createReview = async (req, res) => {
       }
 
       // ------------------------------------------------------
-      // SELLER REVIEW UNIQUENESS
-      // ------------------------------------------------------
-      //
-      // Seller reviews ARE unique by:
-      //
-      // userId + sellerId + type
-      //
+      // UNIQUENESS
       // ------------------------------------------------------
 
       const existingSellerReview =
@@ -717,6 +799,150 @@ const createReview = async (req, res) => {
       });
     }
 
+    // ========================================================
+    // USER REVIEW (NEW)
+    // ========================================================
+
+    if (type === "USER") {
+      console.log(
+        "⭐ Creating USER review"
+      );
+
+      console.log(
+        "⭐ User (reviewer):",
+        userId
+      );
+
+      console.log(
+        "⭐ Target user:",
+        targetUserId
+      );
+
+      // ------------------------------------------------------
+      // TARGET USER REQUIRED
+      // ------------------------------------------------------
+
+      if (!targetUserId) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Target user ID is required for a user review.",
+        });
+      }
+
+      if (
+        !isValidObjectId(targetUserId)
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Invalid target user ID.",
+        });
+      }
+
+      // ------------------------------------------------------
+      // TARGET USER EXISTS
+      // ------------------------------------------------------
+
+      const targetUser =
+        await User.findById(targetUserId)
+          .select("_id name role")
+          .lean();
+
+      if (!targetUser) {
+        return res.status(404).json({
+          success: false,
+          message:
+            "Target user not found.",
+        });
+      }
+
+      // ------------------------------------------------------
+      // DON'T REVIEW YOURSELF
+      // ------------------------------------------------------
+
+      if (
+        String(targetUserId) ===
+        String(userId)
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "You cannot review yourself.",
+        });
+      }
+
+      // ------------------------------------------------------
+      // UNIQUENESS
+      // ------------------------------------------------------
+
+      const existingUserReview =
+        await Review.findOne({
+          userId,
+          targetUserId,
+          type: "USER",
+        })
+          .select("_id")
+          .lean();
+
+      if (existingUserReview) {
+        return res.status(409).json({
+          success: false,
+          message:
+            "You have already reviewed this user.",
+          errorCode:
+            "USER_REVIEW_EXISTS",
+          reviewId:
+            existingUserReview._id,
+        });
+      }
+
+      // ------------------------------------------------------
+      // CREATE USER REVIEW
+      // ------------------------------------------------------
+
+      const review =
+        await Review.create({
+          userId,
+          type: "USER",
+          targetUserId,
+          productId: null,
+          sellerId: null,
+          orderId:
+            orderId &&
+            isValidObjectId(orderId)
+              ? orderId
+              : null,
+          rating,
+          comment,
+          isActive: true,
+        });
+
+      // ------------------------------------------------------
+      // RETURN
+      // ------------------------------------------------------
+
+      const populatedReview =
+        await Review.findById(
+          review._id
+        )
+          .populate(
+            "userId",
+            "name email profileImage avatar"
+          )
+          .populate(
+            "targetUserId",
+            "name email profileImage avatar"
+          );
+
+      return res.status(201).json({
+        success: true,
+        message:
+          "User review created successfully.",
+        review: populatedReview,
+      });
+    }
+
     return res.status(400).json({
       success: false,
       message: "Invalid review type.",
@@ -770,6 +996,24 @@ const createReview = async (req, res) => {
             "You have already reviewed this seller.",
           errorCode:
             "SELLER_REVIEW_EXISTS",
+        });
+      }
+
+      // ------------------------------------------------------
+      // USER DUPLICATE
+      // ------------------------------------------------------
+
+      if (
+        duplicateFields.includes(
+          "targetUserId"
+        )
+      ) {
+        return res.status(409).json({
+          success: false,
+          message:
+            "You have already reviewed this user.",
+          errorCode:
+            "USER_REVIEW_EXISTS",
         });
       }
 
@@ -937,6 +1181,10 @@ const updateReview = async (req, res) => {
         .populate(
           "sellerId",
           "name email profileImage avatar"
+        )
+        .populate(
+          "targetUserId",
+          "name email profileImage avatar"
         );
 
     return res.status(200).json({
@@ -1059,8 +1307,11 @@ const checkUserReview = async (
     const sellerId =
       req.query.sellerId;
 
+    const targetUserId =
+      req.query.targetUserId || req.query.userId;
+
     if (
-      !["PRODUCT", "SELLER"].includes(type)
+      !["PRODUCT", "SELLER", "USER"].includes(type)
     ) {
       return res.status(400).json({
         success: false,
@@ -1119,6 +1370,30 @@ const checkUserReview = async (
       };
     }
 
+    // --------------------------------------------------------
+    // USER
+    // --------------------------------------------------------
+
+    if (type === "USER") {
+      if (
+        !targetUserId ||
+        !isValidObjectId(targetUserId)
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Valid target user ID is required.",
+        });
+      }
+
+      filter = {
+        userId,
+        targetUserId,
+        type: "USER",
+        isActive: true,
+      };
+    }
+
     const review =
       await Review.findOne(filter)
         .populate(
@@ -1127,6 +1402,10 @@ const checkUserReview = async (
         )
         .populate(
           "sellerId",
+          "name email profileImage avatar"
+        )
+        .populate(
+          "targetUserId",
           "name email profileImage avatar"
         )
         .lean();
@@ -1157,6 +1436,7 @@ const checkUserReview = async (
 module.exports = {
   getProductReviews,
   getSellerReviews,
+  getUserReviews,       // <-- NEW
   getReviewById,
   createReview,
   updateReview,
