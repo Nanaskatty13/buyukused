@@ -1,6 +1,4 @@
-// ============================================================
 // frontend/src/pages/PostAd.jsx
-// ============================================================
 
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -2716,7 +2714,7 @@ const PostAd = () => {
             </div>
 
             {/* ==================================================
-                DESCRIPTION
+                DESCRIPTION – UPDATED for longer text
             ================================================== */}
 
             <div className="form-group">
@@ -2733,22 +2731,22 @@ const PostAd = () => {
                 onChange={
                   handleChange
                 }
-                rows="5"
-                maxLength={5000}
+                rows="8" // increased from 5
+                maxLength={10000} // increased from 5000
                 placeholder={
                   isCarSpareParts
-                    ? "Describe the spare part, compatible vehicles, condition, OEM information, installation details, etc."
+                    ? "Describe the spare part, compatible vehicles, condition, OEM information, installation details, etc. (max 10,000 characters)"
                     : isAccessory
-                    ? "Describe the accessory, compatibility, condition, what's included, etc."
+                    ? "Describe the accessory, compatibility, condition, what's included, etc. (max 10,000 characters)"
                     : isGameConsole
-                    ? "Describe the console, condition, included games/accessories, etc."
+                    ? "Describe the console, condition, included games/accessories, etc. (max 10,000 characters)"
                     : isSmartwatch
-                    ? "Describe the smartwatch, condition, battery life, included strap, etc."
+                    ? "Describe the smartwatch, condition, battery life, included strap, etc. (max 10,000 characters)"
                     : isTV
-                    ? "Describe the TV, screen quality, smart features, connectivity, included accessories, etc."
+                    ? "Describe the TV, screen quality, smart features, connectivity, included accessories, etc. (max 10,000 characters)"
                     : isCar
-                    ? "Describe the car, condition, features, maintenance history, etc."
-                    : "Describe your item..."
+                    ? "Describe the car, condition, features, maintenance history, etc. (max 10,000 characters)"
+                    : "Describe your item in detail – condition, features, what's included, etc. (max 10,000 characters)"
                 }
               />
 
@@ -2757,7 +2755,7 @@ const PostAd = () => {
                   formData.description
                     .length
                 }
-                /5000
+                /10000
               </span>
 
             </div>

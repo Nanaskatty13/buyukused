@@ -1,6 +1,4 @@
-// ============================================================
 // backend/routes/products.js
-// ============================================================
 
 const express = require("express");
 const mongoose = require("mongoose");
@@ -692,7 +690,7 @@ router.get(
 );
 
 // ============================================================
-// GET ALL PRODUCTS
+// GET ALL PRODUCTS – with smart search
 // ============================================================
 
 router.get(
@@ -795,58 +793,45 @@ router.get(
       }
 
       // --------------------------------------------------------
-      // Search
+      // SMART SEARCH – full‑text with weights
       // --------------------------------------------------------
 
-      if (
-        search &&
-        String(search).trim()
-      ) {
-        const escapedSearch =
-          String(search)
-            .trim()
-            .replace(
-              /[.*+?^${}()|[\]\\]/g,
-              "\\$&"
-            );
+      const searchText =
+        search && String(search).trim();
 
-        filter.$or = [
-          {
-            title: {
-              $regex:
-                escapedSearch,
-              $options: "i",
+      // Build the base query
+      let query =
+        Product.find(filter);
+
+      // If we have a search term, use $text with scoring
+      if (searchText) {
+        // Use $text search (index must exist on Product model)
+        query =
+          Product.find({
+            ...filter,
+            $text: {
+              $search: searchText,
             },
-          },
-          {
-            description: {
-              $regex:
-                escapedSearch,
-              $options: "i",
+          });
+
+        // Select the text score and sort by it (descending)
+        query
+          .select({
+            score: {
+              $meta: "textScore",
             },
-          },
-          {
-            brand: {
-              $regex:
-                escapedSearch,
-              $options: "i",
+          })
+          .sort({
+            score: {
+              $meta: "textScore",
             },
-          },
-          {
-            model: {
-              $regex:
-                escapedSearch,
-              $options: "i",
-            },
-          },
-          {
-            category: {
-              $regex:
-                escapedSearch,
-              $options: "i",
-            },
-          },
-        ];
+            createdAt: -1,
+          });
+      } else {
+        // No search: sort by newest first
+        query.sort({
+          createdAt: -1,
+        });
       }
 
       // --------------------------------------------------------
@@ -878,42 +863,50 @@ router.get(
         (parsedPage - 1) *
         parsedLimit;
 
+      query
+        .skip(skip)
+        .limit(parsedLimit)
+        .populate(
+          "sellerId",
+          // All possible image fields
+          "name phone email location avatar profileImage photo photoURL role isVerified"
+        )
+        .lean();
+
       // --------------------------------------------------------
-      // Query
+      // Execute query & count
       // --------------------------------------------------------
 
-      const [
-        products,
-        total,
-      ] =
+      const [products, total] =
         await Promise.all([
-          Product.find(
-            filter
-          )
-            .populate(
-              "sellerId",
-              // ─── UPDATED ────────────────────────────────────
-              // Now includes all possible image fields so the
-              // seller's profile picture appears on the frontend.
-              "name phone email location avatar profileImage photo photoURL role isVerified"
-            )
-            .sort({
-              createdAt: -1,
-            })
-            .skip(skip)
-            .limit(
-              parsedLimit
-            )
-            .lean(),
-
+          query.exec(),
           Product.countDocuments(
             filter
           ),
         ]);
 
+      // If we used $text, we cannot count with the same filter
+      // because countDocuments doesn't support $text?
+      // Actually countDocuments with $text works if we pass the same filter
+      // but we used filter without $text. We need to count with the full filter including $text.
+      // Let's fix: we'll count using the same filter object.
+
+      // We'll build a separate count filter
+      let countFilter = { ...filter };
+      if (searchText) {
+        countFilter.$text = {
+          $search: searchText,
+        };
+      }
+
+      const totalCount =
+        await Product.countDocuments(
+          countFilter
+        );
+
       const totalPages =
         Math.ceil(
-          total /
+          totalCount /
             parsedLimit
         );
 
@@ -922,7 +915,7 @@ router.get(
 
         products,
 
-        total,
+        total: totalCount,
 
         page:
           parsedPage,
@@ -939,7 +932,7 @@ router.get(
           totalPages,
 
           totalProducts:
-            total,
+            totalCount,
 
           limit:
             parsedLimit,

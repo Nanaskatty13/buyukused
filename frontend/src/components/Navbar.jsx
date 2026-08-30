@@ -1,7 +1,5 @@
-// ============================================================
 // frontend/src/components/Navbar.jsx
 // BuyUKUsed - Fixed Responsive Navbar
-// ============================================================
 
 import React, {
   useState,
@@ -107,6 +105,7 @@ const Navbar = () => {
 
   const dropdownRef = useRef(null);
   const mobileDropdownRef = useRef(null);
+  const pollIntervalRef = useRef(null); // ← store interval ID
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -157,7 +156,7 @@ const Navbar = () => {
   }, [location.pathname]);
 
   // ==========================================================
-  // FETCH UNREAD COUNTS
+  // FETCH UNREAD COUNTS – with token guard & interval stop on 401
   // ==========================================================
 
   useEffect(() => {
@@ -165,38 +164,42 @@ const Navbar = () => {
 
     const resetCounts = () => {
       if (cancelled) return;
-
       setUnreadNotifications(0);
       setUnreadMessages(0);
     };
 
+    // ─── No user → reset and stop ──────────────────────────
     if (!user) {
       resetCounts();
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+      }
       return;
     }
 
-    const fetchCounts = async () => {
-      if (cancelled) return;
+    const token = getToken();
 
-      const token = getToken();
-
-      if (!token) {
-        resetCounts();
-        return;
+    // ─── No token → reset and stop ──────────────────────────
+    if (!token) {
+      resetCounts();
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
       }
+      return;
+    }
 
-      const apiUrl = getApiUrl();
+    const apiUrl = getApiUrl();
 
-      // ========================================================
-      // NOTIFICATIONS
-      // ========================================================
+    // ========================================================
+    // FETCH NOTIFICATIONS
+    // ========================================================
 
-      let notificationCount = 0;
+    const fetchNotificationCount = async () => {
+      let count = 0;
 
-      // --------------------------------------------------------
-      // ADMIN NOTIFICATIONS
-      // --------------------------------------------------------
-
+      // Admin notifications (if admin)
       if (user.role === "admin") {
         try {
           const data =
@@ -208,7 +211,7 @@ const Navbar = () => {
             [];
 
           if (Array.isArray(notifications)) {
-            notificationCount =
+            count =
               notifications.filter(
                 (notification) =>
                   notification &&
@@ -216,26 +219,11 @@ const Navbar = () => {
               ).length;
           }
         } catch (error) {
-          console.warn(
-            "Admin notification count failed:",
-            error?.message || error
-          );
+          // silently ignore
         }
       }
 
-      // --------------------------------------------------------
-      // NORMAL USER NOTIFICATIONS
-      // --------------------------------------------------------
-      //
-      // If your backend exposes:
-      // GET /api/notifications/unread-count
-      //
-      // the navbar will automatically use it.
-      //
-      // If that endpoint is unavailable, the navbar safely
-      // keeps the notification count at zero.
-      // --------------------------------------------------------
-
+      // Regular notifications endpoint
       try {
         const response = await fetch(
           `${apiUrl}/api/notifications/unread-count`,
@@ -247,6 +235,16 @@ const Navbar = () => {
             },
           }
         );
+
+        if (response.status === 401) {
+          // Token invalid – stop polling and reset
+          if (pollIntervalRef.current) {
+            clearInterval(pollIntervalRef.current);
+            pollIntervalRef.current = null;
+          }
+          setUnreadNotifications(0);
+          return;
+        }
 
         if (response.ok) {
           const data = await response.json();
@@ -261,24 +259,23 @@ const Navbar = () => {
             apiCount !== undefined &&
             apiCount !== null
           ) {
-            notificationCount = safeCount(apiCount);
+            count = safeCount(apiCount);
           }
         }
       } catch (error) {
-        // Do not allow notification failure
-        // to break the navbar.
+        // Ignore network errors
       }
 
       if (!cancelled) {
-        setUnreadNotifications(
-          notificationCount
-        );
+        setUnreadNotifications(count);
       }
+    };
 
-      // ========================================================
-      // MESSAGES
-      // ========================================================
+    // ========================================================
+    // FETCH MESSAGES
+    // ========================================================
 
+    const fetchMessageCount = async () => {
       try {
         const response = await fetch(
           `${apiUrl}/api/messages/unread-count`,
@@ -291,11 +288,18 @@ const Navbar = () => {
           }
         );
 
-        if (!response.ok) {
-          if (!cancelled) {
-            setUnreadMessages(0);
+        if (response.status === 401) {
+          // Token invalid – stop polling and reset
+          if (pollIntervalRef.current) {
+            clearInterval(pollIntervalRef.current);
+            pollIntervalRef.current = null;
           }
+          setUnreadMessages(0);
+          return;
+        }
 
+        if (!response.ok) {
+          setUnreadMessages(0);
           return;
         }
 
@@ -314,25 +318,34 @@ const Navbar = () => {
           );
         }
       } catch (error) {
-        if (!cancelled) {
-          setUnreadMessages(0);
-        }
+        setUnreadMessages(0);
       }
     };
 
-    fetchCounts();
+    // ─── Run both fetches ──────────────────────────────────────
+    fetchNotificationCount();
+    fetchMessageCount();
 
-    // Refresh every 30 seconds.
-    const interval = setInterval(
-      fetchCounts,
-      30000
-    );
+    // Clear any existing interval
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+      pollIntervalRef.current = null;
+    }
+
+    // Refresh every 30 seconds
+    pollIntervalRef.current = setInterval(() => {
+      fetchNotificationCount();
+      fetchMessageCount();
+    }, 30000);
 
     return () => {
       cancelled = true;
-      clearInterval(interval);
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+      }
     };
-  }, [user]);
+  }, [user]); // Re‑run when user changes
 
   // ==========================================================
   // LOGOUT

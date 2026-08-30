@@ -1,9 +1,8 @@
-// ============================================================
 // frontend/src/seller/Products.jsx
 // BuyUKUsed - Seller Products / My Ads
 // ============================================================
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../context/AuthContext";
@@ -27,6 +26,12 @@ const SellerProducts = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [deletingId, setDeletingId] = useState(null);
+
+  // ─── SEARCH STATE ─────────────────────────────────────────────
+  const [searchTerm, setSearchTerm] = useState("");
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const searchInputRef = useRef(null);
+  const suggestionsRef = useRef(null);
 
   // ==========================================================
   // LOAD SELLER PRODUCTS
@@ -118,6 +123,85 @@ const SellerProducts = () => {
       setDeletingId(null);
     }
   };
+
+  // ==========================================================
+  // SEARCH LOGIC
+  // ==========================================================
+
+  const filteredProducts = useMemo(() => {
+    if (!searchTerm.trim()) {
+      return products;
+    }
+
+    const lowerTerm = searchTerm.toLowerCase().trim();
+
+    return products.filter((product) => {
+      const title = (product.title || "").toLowerCase();
+      const brand = (product.brand || "").toLowerCase();
+      const category = (product.category || "").toLowerCase();
+
+      return (
+        title.includes(lowerTerm) ||
+        brand.includes(lowerTerm) ||
+        category.includes(lowerTerm)
+      );
+    });
+  }, [products, searchTerm]);
+
+  // ─── Suggestions (unique product titles matching the search) ──
+  const suggestions = useMemo(() => {
+    if (!searchTerm.trim()) return [];
+
+    const lowerTerm = searchTerm.toLowerCase().trim();
+    const seen = new Set();
+
+    return products
+      .filter((product) => {
+        const title = (product.title || "").toLowerCase();
+        return title.includes(lowerTerm);
+      })
+      .map((product) => product.title)
+      .filter((title) => {
+        if (seen.has(title)) return false;
+        seen.add(title);
+        return true;
+      })
+      .slice(0, 8); // limit suggestions
+  }, [products, searchTerm]);
+
+  // ─── Handle suggestion click ──────────────────────────────────
+  const handleSuggestionClick = (title) => {
+    setSearchTerm(title);
+    setShowSuggestions(false);
+    // Optionally scroll to the matching product
+    const element = document.getElementById(`product-${title}`);
+    if (element) {
+      element.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  };
+
+  // ─── Clear search ─────────────────────────────────────────────
+  const clearSearch = () => {
+    setSearchTerm("");
+    setShowSuggestions(false);
+  };
+
+  // ─── Close suggestions on outside click ──────────────────────
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        suggestionsRef.current &&
+        !suggestionsRef.current.contains(event.target) &&
+        searchInputRef.current &&
+        !searchInputRef.current.contains(event.target)
+      ) {
+        setShowSuggestions(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // ==========================================================
   // SELLER PROFILE IMAGE
@@ -320,6 +404,117 @@ const SellerProducts = () => {
           }
 
           /* =====================================================
+             SEARCH BOX
+             ===================================================== */
+
+          .seller-search-wrapper {
+            position: relative;
+            width: 100%;
+            max-width: 480px;
+            margin-bottom: 16px;
+          }
+
+          .seller-search-input {
+            width: 100%;
+            padding: 10px 40px 10px 16px;
+            border: 1px solid var(--gray-300, #d1d5db);
+            border-radius: 30px;
+            font-size: 15px;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            background: #fff;
+            color: #1a1a1a;
+          }
+
+          .seller-search-input:focus {
+            border-color: var(--primary, #0055a5);
+            box-shadow: 0 0 0 3px rgba(0, 85, 165, 0.15);
+          }
+
+          .seller-search-icon {
+            position: absolute;
+            right: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--gray-400, #9ca3af);
+            pointer-events: none;
+          }
+
+          .seller-search-clear {
+            position: absolute;
+            right: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: var(--gray-400, #9ca3af);
+            cursor: pointer;
+            font-size: 18px;
+            padding: 4px;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+
+          .seller-search-clear:hover {
+            color: var(--gray-600, #4b5563);
+          }
+
+          /* =====================================================
+             SUGGESTIONS DROPDOWN
+             ===================================================== */
+
+          .seller-suggestions {
+            position: absolute;
+            top: calc(100% + 4px);
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid var(--gray-200, #e5e7eb);
+            border-radius: 12px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+            max-height: 280px;
+            overflow-y: auto;
+            z-index: 1000;
+            padding: 6px 0;
+            list-style: none;
+            margin: 0;
+          }
+
+          .seller-suggestion-item {
+            padding: 10px 16px;
+            cursor: pointer;
+            font-size: 14px;
+            color: #1a1a1a;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: background 0.15s;
+            border-bottom: 1px solid #f3f4f6;
+          }
+
+          .seller-suggestion-item:last-child {
+            border-bottom: none;
+          }
+
+          .seller-suggestion-item:hover {
+            background: #f1f5f9;
+          }
+
+          .seller-suggestion-item .highlight {
+            font-weight: 700;
+            color: var(--primary, #0055a5);
+          }
+
+          .seller-suggestion-no-results {
+            padding: 12px 16px;
+            color: var(--gray-500, #64748b);
+            font-size: 14px;
+            text-align: center;
+          }
+
+          /* =====================================================
              PRODUCT LIST
              ===================================================== */
 
@@ -503,6 +698,26 @@ const SellerProducts = () => {
               padding: 9px 16px;
             }
 
+            .seller-search-wrapper {
+              max-width: 100%;
+              margin-bottom: 12px;
+            }
+
+            .seller-search-input {
+              font-size: 14px;
+              padding: 9px 36px 9px 14px;
+            }
+
+            .seller-suggestions {
+              max-height: 220px;
+              border-radius: 10px;
+            }
+
+            .seller-suggestion-item {
+              padding: 8px 14px;
+              font-size: 13px;
+            }
+
             .seller-product-card {
               gap: 12px;
               padding: 12px;
@@ -570,6 +785,11 @@ const SellerProducts = () => {
               height: 44px;
             }
 
+            .seller-search-input {
+              font-size: 13px;
+              padding: 8px 32px 8px 12px;
+            }
+
             .seller-product-card {
               padding: 10px;
             }
@@ -628,11 +848,11 @@ const SellerProducts = () => {
               </h1>
 
               <div className="seller-products-count">
-                {products.length}{" "}
-                {products.length === 1
+                {filteredProducts.length}{" "}
+                {filteredProducts.length === 1
                   ? "ad"
                   : "ads"}{" "}
-                posted
+                {searchTerm ? `matching "${searchTerm}"` : "posted"}
               </div>
             </div>
 
@@ -646,35 +866,95 @@ const SellerProducts = () => {
           </div>
 
           {/* ====================================================
-              EMPTY STATE
+              SEARCH BOX
           ==================================================== */}
 
-          {products.length === 0 ? (
+          <div className="seller-search-wrapper">
+            <input
+              ref={searchInputRef}
+              type="text"
+              className="seller-search-input"
+              placeholder="Search your ads by title, brand, or category..."
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setShowSuggestions(true);
+              }}
+              onFocus={() => setShowSuggestions(true)}
+            />
+            {searchTerm ? (
+              <button
+                className="seller-search-clear"
+                onClick={clearSearch}
+                aria-label="Clear search"
+              >
+                ✕
+              </button>
+            ) : (
+              <span className="seller-search-icon">
+                <i className="fas fa-search" />
+              </span>
+            )}
+
+            {/* ─── SUGGESTIONS ────────────────────────────────── */}
+            {showSuggestions && searchTerm.trim() && (
+              <ul className="seller-suggestions" ref={suggestionsRef}>
+                {suggestions.length > 0 ? (
+                  suggestions.map((title) => (
+                    <li
+                      key={title}
+                      className="seller-suggestion-item"
+                      onClick={() => handleSuggestionClick(title)}
+                    >
+                      <i className="fas fa-search" style={{ fontSize: "12px", color: "#9ca3af" }} />
+                      <span
+                        dangerouslySetInnerHTML={{
+                          __html: title.replace(
+                            new RegExp(searchTerm, "gi"),
+                            (match) => `<span class="highlight">${match}</span>`
+                          ),
+                        }}
+                      />
+                    </li>
+                  ))
+                ) : (
+                  <li className="seller-suggestion-no-results">
+                    No matching ads found
+                  </li>
+                )}
+              </ul>
+            )}
+          </div>
+
+          {/* ====================================================
+              PRODUCT LIST
+          ==================================================== */}
+
+          {filteredProducts.length === 0 ? (
             <div className="seller-empty-state">
-              You haven't posted any ads yet.
+              {searchTerm
+                ? `No ads match "${searchTerm}".`
+                : "You haven't posted any ads yet."}
 
               <br />
 
-              <Link
-                to="/post-ad"
-                className="btn-primary"
-                style={{
-                  display: "inline-block",
-                  marginTop: "16px",
-                }}
-              >
-                Post Your First Ad
-              </Link>
+              {!searchTerm && (
+                <Link
+                  to="/post-ad"
+                  className="btn-primary"
+                  style={{
+                    display: "inline-block",
+                    marginTop: "16px",
+                  }}
+                >
+                  Post Your First Ad
+                </Link>
+              )}
             </div>
           ) : (
-
-            /* ==================================================
-               PRODUCT LIST
-            ================================================== */
-
             <div className="seller-products-list">
 
-              {products.map((product) => {
+              {filteredProducts.map((product) => {
                 const imageUrl =
                   product.images?.length > 0
                     ? getImageUrl(
@@ -689,6 +969,7 @@ const SellerProducts = () => {
                   <div
                     key={product._id}
                     className="seller-product-card"
+                    id={`product-${product.title}`} // for scrolling
                   >
 
                     {/* PRODUCT IMAGE */}

@@ -1,7 +1,4 @@
-// ============================================================
 // backend/models/Product.js
-// BuyUKUsed Product Model
-// ============================================================
 
 "use strict";
 
@@ -124,21 +121,17 @@ const productSchema = new mongoose.Schema(
     // MEDIA
     // ========================================================
 
-    // Legacy single-image field.
-    // Kept for backwards compatibility.
     image: {
       type: String,
       default: "",
       trim: true,
     },
 
-    // Main product images.
     images: {
       type: [String],
       default: [],
     },
 
-    // Product videos.
     videos: {
       type: [String],
       default: [],
@@ -936,32 +929,55 @@ productSchema.pre("save", function (next) {
 });
 
 // ============================================================
-// TEXT INDEX
+// WEIGHTED TEXT INDEX FOR SMART SEARCH
 // ============================================================
 
-productSchema.index({
-  title: "text",
-  description: "text",
-  brand: "text",
-  model: "text",
-  accessoryType: "text",
-  compatibleWith: "text",
-  compatibility: "text",
-  sparePartType: "text",
-  partNumber: "text",
-  oemNumber: "text",
-  partBrand: "text",
-  vehicleMake: "text",
-  vehicleModel: "text",
-  cosmeticType: "text",
-  cosmeticBrand: "text",
-  skinType: "text",
-  hairType: "text",
-  ingredients: "text",
-  benefits: "text",
-  tvType: "text",
-  consoleType: "text",
-});
+productSchema.index(
+  {
+    title: 'text',
+    brand: 'text',
+    model: 'text',
+    category: 'text',
+    description: 'text',
+    storage: 'text',
+    processor: 'text',
+    ram: 'text',
+    screenSize: 'text',
+    // Additional fields for completeness (default weight 1)
+    accessoryType: 'text',
+    compatibleWith: 'text',
+    compatibility: 'text',
+    sparePartType: 'text',
+    partNumber: 'text',
+    oemNumber: 'text',
+    partBrand: 'text',
+    vehicleMake: 'text',
+    vehicleModel: 'text',
+    cosmeticType: 'text',
+    cosmeticBrand: 'text',
+    skinType: 'text',
+    hairType: 'text',
+    ingredients: 'text',
+    benefits: 'text',
+    tvType: 'text',
+    consoleType: 'text',
+  },
+  {
+    weights: {
+      title: 10,
+      brand: 8,
+      model: 8,
+      description: 5,
+      category: 5,
+      storage: 3,
+      processor: 3,
+      ram: 3,
+      screenSize: 3,
+      // All other fields default to weight 1
+    },
+    name: 'product_text_search_index',
+  }
+);
 
 // ============================================================
 // COMPOUND INDEXES
