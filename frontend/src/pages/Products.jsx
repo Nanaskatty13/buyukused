@@ -179,15 +179,7 @@ const ProductCard = memo(({ product }) => {
     popular = false,
   } = product;
 
-  // ==============================================================
-  // FAVORITE STATE
-  // ==============================================================
-
   const liked = Boolean(isFavorite(_id));
-
-  // ==============================================================
-  // FAVORITE HANDLER
-  // ==============================================================
 
   const handleFavorite = useCallback(
     (e) => {
@@ -208,10 +200,6 @@ const ProductCard = memo(({ product }) => {
     [user, _id, navigate, location.pathname, location.search, toggleFavorite]
   );
 
-  // ==============================================================
-  // NORMALIZED CATEGORY
-  // ==============================================================
-
   const normalizedCategory = useMemo(
     () => normalizeCategory(category),
     [category]
@@ -226,10 +214,6 @@ const ProductCard = memo(({ product }) => {
       normalizedCategory === "Property",
     [normalizedCategory]
   );
-
-  // ==============================================================
-  // SELLER
-  // ==============================================================
 
   const sellerObj = useMemo(() => {
     return sellerId && typeof sellerId === "object"
@@ -267,10 +251,6 @@ const ProductCard = memo(({ product }) => {
   );
   const accountType = useMemo(() => sellerObj?.accountType || "", [sellerObj]);
 
-  // ==============================================================
-  // ACCOUNT BADGE
-  // ==============================================================
-
   const accountBadge = useMemo(() => {
     const type = accountType.toLowerCase();
 
@@ -301,18 +281,10 @@ const ProductCard = memo(({ product }) => {
     return null;
   }, [accountType]);
 
-  // ==============================================================
-  // PRODUCT IMAGE – original URL (for canvas processing)
-  // ==============================================================
-
   const originalImageUrl = useMemo(
     () => images?.[0] || image || "/placeholder.png",
     [images, image]
   );
-
-  // ==============================================================
-  // WATERMARK GENERATION (canvas) – memoised per image
-  // ==============================================================
 
   useEffect(() => {
     if (!originalImageUrl || watermarkedSrc) return;
@@ -356,10 +328,6 @@ const ProductCard = memo(({ product }) => {
     img.src = originalImageUrl;
   }, [originalImageUrl, watermarkedSrc]);
 
-  // ==============================================================
-  // PRICE
-  // ==============================================================
-
   const formattedPrice = useMemo(
     () =>
       new Intl.NumberFormat("en-GH", {
@@ -369,10 +337,6 @@ const ProductCard = memo(({ product }) => {
       }).format(price || 0),
     [price]
   );
-
-  // ==============================================================
-  // CITY
-  // ==============================================================
 
   const getCityOnly = useCallback((locationStr) => {
     if (!locationStr) return "";
@@ -384,10 +348,6 @@ const ProductCard = memo(({ product }) => {
     () => getCityOnly(productLocation),
     [productLocation, getCityOnly]
   );
-
-  // ==============================================================
-  // CATEGORY SPECIFICATIONS
-  // ==============================================================
 
   const categorySpecs = useMemo(() => {
     const specs = [];
@@ -473,10 +433,6 @@ const ProductCard = memo(({ product }) => {
 
   const isSold = useMemo(() => status === "sold", [status]);
 
-  // ==============================================================
-  // CHAT
-  // ==============================================================
-
   const handleChat = useCallback(
     (e) => {
       e.preventDefault();
@@ -485,10 +441,6 @@ const ProductCard = memo(({ product }) => {
     },
     [_id, navigate]
   );
-
-  // ==============================================================
-  // CALL
-  // ==============================================================
 
   const handleCall = useCallback(
     (e) => {
@@ -512,18 +464,10 @@ const ProductCard = memo(({ product }) => {
     [sellerObj?.phone]
   );
 
-  // ==============================================================
-  // DEEP BLUE BORDER FOR VERIFIED SELLERS
-  // ==============================================================
-
   const verifiedBorder = useMemo(
     () => (isVerified ? "2px solid #0055a5" : "1px solid #e5e7eb"),
     [isVerified]
   );
-
-  // ==============================================================
-  // RENDER
-  // ==============================================================
 
   return (
     <div
@@ -542,7 +486,6 @@ const ProductCard = memo(({ product }) => {
         position: "relative",
       }}
     >
-      {/* IMAGE */}
       <Link
         to={`/product/${_id}`}
         className="product-image-wrapper"
@@ -576,7 +519,6 @@ const ProductCard = memo(({ product }) => {
 
         {isSold && <SoldBadge variant="card" />}
 
-        {/* TOP LEFT BADGES */}
         <div
           style={{
             position: "absolute",
@@ -642,7 +584,6 @@ const ProductCard = memo(({ product }) => {
           )}
         </div>
 
-        {/* FAVORITE HEART */}
         <button
           type="button"
           className={`favorite-button ${liked ? "favorite-active" : ""}`}
@@ -687,7 +628,6 @@ const ProductCard = memo(({ product }) => {
         </button>
       </Link>
 
-      {/* PRODUCT INFORMATION */}
       <div
         style={{
           padding: "8px 10px 10px",
@@ -697,7 +637,6 @@ const ProductCard = memo(({ product }) => {
           gap: "2px",
         }}
       >
-        {/* TITLE */}
         <Link
           to={`/product/${_id}`}
           style={{ textDecoration: "none", color: "inherit" }}
@@ -720,7 +659,6 @@ const ProductCard = memo(({ product }) => {
           </div>
         </Link>
 
-        {/* PRICE */}
         <div
           className="price"
           style={{
@@ -749,7 +687,6 @@ const ProductCard = memo(({ product }) => {
           )}
         </div>
 
-        {/* LOCATION */}
         <div
           className="location-condition"
           style={{
@@ -766,7 +703,6 @@ const ProductCard = memo(({ product }) => {
           <span>{condition || "Used"}</span>
         </div>
 
-        {/* SPECS */}
         <div
           className="specs-row"
           style={{
@@ -822,7 +758,6 @@ const ProductCard = memo(({ product }) => {
           </span>
         </div>
 
-        {/* DESCRIPTION */}
         {description && String(description).trim() && (
           <div
             className="product-description"
@@ -838,7 +773,6 @@ const ProductCard = memo(({ product }) => {
           </div>
         )}
 
-        {/* SELLER */}
         <div
           style={{
             marginTop: "auto",
@@ -928,7 +862,6 @@ const ProductCard = memo(({ product }) => {
           )}
         </div>
 
-        {/* CONTACT BUTTONS */}
         {sellerObj?.phone && (
           <div
             className="contact-buttons"
@@ -1004,7 +937,6 @@ const ProductCard = memo(({ product }) => {
           </div>
         )}
 
-        {/* VIEW DETAILS */}
         <Link
           to={`/product/${_id}`}
           style={{
@@ -1120,14 +1052,9 @@ const Products = () => {
   const initialSimStatus = queryParams.get("simStatus") || "";
   const initialLocation = queryParams.get("location") || "all";
 
-  // ─── STATE ──────────────────────────────────────────────────────
-
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState("");
-  const [hasMore, setHasMore] = useState(true);
-  const [page, setPage] = useState(1);
 
   const [filters, setFilters] = useState({
     search: initialSearch,
@@ -1142,8 +1069,6 @@ const Products = () => {
   const [discountOnly, setDiscountOnly] = useState(false);
   const [sortOption, setSortOption] = useState("recommended");
 
-  // ─── CACHE KEY ─────────────────────────────────────────────────
-
   const getCacheKey = useCallback(() => {
     const params = new URLSearchParams({
       search: filters.search || "",
@@ -1156,70 +1081,79 @@ const Products = () => {
       discountOnly: discountOnly ? "true" : "",
       sort: sortOption,
     });
-    return `products_${params.toString()}`;
+    // Changed to v2 to force a fresh fetch and bypass old 20-item cache
+    return `products_v2_${params.toString()}`;
   }, [filters, priceMin, priceMax, verifiedOnly, discountOnly, sortOption]);
 
-  // ─── FETCH PRODUCTS ────────────────────────────────────────────
+  // ─── FETCH PRODUCTS (Loops through all pages) ─────────────────
 
   const fetchProducts = useCallback(
-    async (pageNum = 1, append = false) => {
-      const limit = 20;
+    async () => {
+      const allProducts = [];
+      let currentPage = 1;
+      const pageSize = 20; // Standard backend page size
 
-      const cleanFilters = {
-        ...(filters.search && { search: filters.search }),
-        ...(filters.category && filters.category !== "all" && {
-          category: filters.category,
-        }),
-        ...(filters.location && filters.location !== "all" && {
-          location: filters.location,
-        }),
-        ...(filters.simStatus && { simStatus: filters.simStatus }),
-        ...(priceMin && { priceMin }),
-        ...(priceMax && { priceMax }),
-        ...(verifiedOnly && { verified: true }),
-        ...(discountOnly && { discount: true }),
-        page: pageNum,
-        limit,
-        sort: sortOption,
-      };
+      // Loop to fetch all pages until fewer than pageSize items are returned
+      while (true) {
+        const cleanFilters = {
+          ...(filters.search && { search: filters.search }),
+          ...(filters.category && filters.category !== "all" && {
+            category: filters.category,
+          }),
+          ...(filters.location && filters.location !== "all" && {
+            location: filters.location,
+          }),
+          ...(filters.simStatus && { simStatus: filters.simStatus }),
+          ...(priceMin && { priceMin }),
+          ...(priceMax && { priceMax }),
+          ...(verifiedOnly && { verified: true }),
+          ...(discountOnly && { discount: true }),
+          page: currentPage,
+          limit: pageSize,
+          sort: sortOption,
+        };
 
-      try {
-        const data = await getProducts(cleanFilters);
-        const productList = Array.isArray(data?.products) ? data.products : [];
-        const total = data?.total || 0;
+        try {
+          const data = await getProducts(cleanFilters);
+          const productList = Array.isArray(data?.products) ? data.products : [];
 
-        const processed = productList.map((p) => ({
-          ...p,
-          images: Array.isArray(p.images)
-            ? p.images.filter(Boolean).map((img) => getImageUrl(img))
-            : [],
-          image: p.image ? getImageUrl(p.image) : null,
-        }));
+          const processed = productList.map((p) => ({
+            ...p,
+            images: Array.isArray(p.images)
+              ? p.images.filter(Boolean).map((img) => getImageUrl(img))
+              : [],
+            image: p.image ? getImageUrl(p.image) : null,
+          }));
 
-        if (append) {
-          setProducts((prev) => [...prev, ...processed]);
-        } else {
-          setProducts(processed);
+          allProducts.push(...processed);
+
+          // If we got fewer than 20 items, we've reached the end
+          if (productList.length < pageSize) {
+            break;
+          }
+
+          // Safety break to prevent infinite loops
+          if (currentPage > 1000) break;
+
+          currentPage++;
+        } catch (err) {
+          // If we fail on page 1, throw. If we fail later, break and keep what we have.
+          if (currentPage === 1) throw err;
+          break;
         }
-
-        setHasMore(pageNum * limit < total);
-        return processed;
-      } catch (err) {
-        console.error("❌ Error fetching products:", err);
-        throw err;
       }
+
+      setProducts(allProducts);
+      return allProducts;
     },
     [filters, priceMin, priceMax, verifiedOnly, discountOnly, sortOption]
   );
-
-  // ─── CACHE HELPERS ─────────────────────────────────────────────
 
   const loadFromCache = useCallback((cacheKey) => {
     const cached = sessionStorage.getItem(cacheKey);
     if (!cached) return null;
     try {
       const { data, timestamp } = JSON.parse(cached);
-      // Cache valid for 5 minutes
       if (Date.now() - timestamp > 5 * 60 * 1000) {
         sessionStorage.removeItem(cacheKey);
         return null;
@@ -1244,15 +1178,12 @@ const Products = () => {
     }
   }, []);
 
-  // ─── MAIN EFFECT ───────────────────────────────────────────────
-
   useEffect(() => {
     const cacheKey = getCacheKey();
     const cachedData = loadFromCache(cacheKey);
 
     if (cachedData) {
       setProducts(cachedData);
-      setHasMore(cachedData.length === 20);
       setLoading(false);
       return;
     }
@@ -1260,9 +1191,8 @@ const Products = () => {
     const loadProducts = async () => {
       setLoading(true);
       setError("");
-      setPage(1);
       try {
-        const data = await fetchProducts(1, false);
+        const data = await fetchProducts();
         if (data) {
           saveToCache(cacheKey, data);
         }
@@ -1277,32 +1207,6 @@ const Products = () => {
     loadProducts();
   }, [fetchProducts, getCacheKey, loadFromCache, saveToCache]);
 
-  // ─── LOAD MORE ──────────────────────────────────────────────────
-
-  const handleLoadMore = async () => {
-    if (loadingMore || !hasMore) return;
-    setLoadingMore(true);
-    const nextPage = page + 1;
-    try {
-      const data = await fetchProducts(nextPage, true);
-      if (data) {
-        setPage(nextPage);
-        const cacheKey = getCacheKey();
-        const cached = loadFromCache(cacheKey);
-        if (cached) {
-          const merged = [...cached, ...data];
-          saveToCache(cacheKey, merged);
-        }
-      }
-    } catch (err) {
-      console.error("Failed to load more:", err);
-    } finally {
-      setLoadingMore(false);
-    }
-  };
-
-  // ─── SCROLL RESTORATION ────────────────────────────────────────
-
   useEffect(() => {
     const scrollKey = `scroll_${location.pathname}`;
     const saved = sessionStorage.getItem(scrollKey);
@@ -1316,8 +1220,6 @@ const Products = () => {
       sessionStorage.setItem(scrollKey, window.scrollY);
     };
   }, [location.pathname]);
-
-  // ─── SYNC URL FILTERS ──────────────────────────────────────────
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -1334,20 +1236,14 @@ const Products = () => {
     }));
   }, [location.search]);
 
-  // ─── SEARCH ─────────────────────────────────────────────────────
-
   const handleSearch = useCallback(
     (newFilters = {}) => {
       setFilters((prev) => ({ ...prev, ...newFilters }));
-      setPage(1);
       setProducts([]);
-      setHasMore(true);
       sessionStorage.removeItem(getCacheKey());
     },
     [getCacheKey]
   );
-
-  // ─── CLEAR FILTERS ─────────────────────────────────────────────
 
   const handleClearFilters = useCallback(() => {
     setFilters({
@@ -1360,22 +1256,14 @@ const Products = () => {
     setPriceMax("");
     setVerifiedOnly(false);
     setDiscountOnly(false);
-    setPage(1);
     setProducts([]);
-    setHasMore(true);
     sessionStorage.removeItem(getCacheKey());
   }, [getCacheKey]);
-
-  // ─── SORT ───────────────────────────────────────────────────────
 
   const sortedProducts = useMemo(() => {
     if (!products.length) return [];
     return products;
   }, [products]);
-
-  // ================================================================
-  // RENDER
-  // ================================================================
 
   return (
     <>
@@ -1566,29 +1454,6 @@ const Products = () => {
               font-size: 19px !important;
             }
           }
-
-          .load-more-btn {
-            display: block;
-            margin: 30px auto 10px;
-            padding: 12px 40px;
-            border: none;
-            border-radius: 30px;
-            background: #0066cc;
-            color: white;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background 0.2s, transform 0.1s;
-          }
-
-          .load-more-btn:hover {
-            background: #004d99;
-          }
-
-          .load-more-btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-          }
         `}
       </style>
 
@@ -1602,7 +1467,6 @@ const Products = () => {
           padding: "16px 16px",
         }}
       >
-        {/* FILTER SIDEBAR */}
         <div className="filter-sidebar-wrapper">
           <FilterSidebar
             filters={filters}
@@ -1624,14 +1488,11 @@ const Products = () => {
           />
         </div>
 
-        {/* MAIN CONTENT */}
         <main className="main-content" style={{ flex: 1, minWidth: 0 }}>
-          {/* SEARCH */}
           <div style={{ marginBottom: "20px" }}>
             <SearchBar onSearch={handleSearch} initialQuery={filters} />
           </div>
 
-          {/* HEADER */}
           <div
             style={{
               display: "flex",
@@ -1692,7 +1553,6 @@ const Products = () => {
             </select>
           </div>
 
-          {/* ERROR */}
           {error && !loading && (
             <div
               style={{
@@ -1724,7 +1584,6 @@ const Products = () => {
             </div>
           )}
 
-          {/* LOADING */}
           {loading ? (
             <>
               <LoadingDots />
@@ -1763,18 +1622,6 @@ const Products = () => {
                   <ProductCard key={product._id} product={product} />
                 ))}
               </div>
-
-              {/* LOAD MORE */}
-              {hasMore && (
-                <button
-                  type="button"
-                  className="load-more-btn"
-                  onClick={handleLoadMore}
-                  disabled={loadingMore}
-                >
-                  {loadingMore ? "Loading more..." : "Load More"}
-                </button>
-              )}
             </>
           )}
         </main>
