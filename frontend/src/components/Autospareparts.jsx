@@ -1,8 +1,4 @@
-// ============================================================
 // frontend/src/components/Autospareparts.jsx
-// Controlled spare‑part form for PostAd
-// ============================================================
-
 "use client";
 
 import React, { useMemo } from "react";
@@ -38,7 +34,6 @@ const PART_CATEGORIES = {
     "Supercharger",
     "Other Engine Part",
   ],
-
   "Transmission & Drivetrain": [
     "Transmission",
     "Automatic Transmission",
@@ -59,7 +54,6 @@ const PART_CATEGORIES = {
     "Transfer Case",
     "Other Transmission Part",
   ],
-
   "Electrical & Electronics": [
     "Alternator",
     "Starter Motor",
@@ -88,7 +82,6 @@ const PART_CATEGORIES = {
     "Interior Light",
     "Other Electrical Part",
   ],
-
   "Braking System": [
     "Brake Pad",
     "Brake Disc",
@@ -103,7 +96,6 @@ const PART_CATEGORIES = {
     "Brake Line",
     "Other Brake Part",
   ],
-
   "Suspension & Steering": [
     "Shock Absorber",
     "Strut",
@@ -124,7 +116,6 @@ const PART_CATEGORIES = {
     "Bush",
     "Other Suspension Part",
   ],
-
   "Body Parts": [
     "Bonnet",
     "Hood",
@@ -146,7 +137,6 @@ const PART_CATEGORIES = {
     "Body Kit",
     "Other Body Part",
   ],
-
   "Cooling System": [
     "Radiator",
     "Radiator Fan",
@@ -159,7 +149,6 @@ const PART_CATEGORIES = {
     "Oil Cooler",
     "Other Cooling Part",
   ],
-
   "Air Conditioning & Heating": [
     "AC Compressor",
     "AC Condenser",
@@ -172,7 +161,6 @@ const PART_CATEGORIES = {
     "AC Receiver Drier",
     "Other AC Part",
   ],
-
   "Fuel System": [
     "Fuel Pump",
     "Fuel Injector",
@@ -184,7 +172,6 @@ const PART_CATEGORIES = {
     "Fuel Pressure Regulator",
     "Other Fuel Part",
   ],
-
   "Exhaust System": [
     "Exhaust Manifold",
     "Catalytic Converter",
@@ -196,7 +183,6 @@ const PART_CATEGORIES = {
     "DPF",
     "Other Exhaust Part",
   ],
-
   "Interior Parts": [
     "Dashboard",
     "Instrument Cluster",
@@ -213,7 +199,6 @@ const PART_CATEGORIES = {
     "Interior Trim",
     "Other Interior Part",
   ],
-
   "Wheels & Tyres": [
     "Alloy Wheel",
     "Steel Wheel",
@@ -224,7 +209,6 @@ const PART_CATEGORIES = {
     "Wheel Spacer",
     "Other Wheel Part",
   ],
-
   Accessories: [
     "Roof Rack",
     "Tow Bar",
@@ -241,7 +225,6 @@ const PART_CATEGORIES = {
     "Speakers",
     "Other Accessory",
   ],
-
   "Maintenance Parts": [
     "Oil Filter",
     "Air Filter",
@@ -255,7 +238,6 @@ const PART_CATEGORIES = {
     "Fluids",
     "Other Maintenance Part",
   ],
-
   "Other Spare Parts": ["Other Car Part"],
 };
 
@@ -431,7 +413,7 @@ export default function Autospareparts({
       </div>
 
       {/* ==========================================================
-          PART TYPE
+          PART TYPE (fixed name)
       ========================================================== */}
 
       <div className="form-group">
@@ -440,10 +422,10 @@ export default function Autospareparts({
         </label>
 
         <select
-          name="sparePartPartType"
-          value={formData.sparePartPartType || ""}
+          name="sparePartType" // ✅ matches PostAd
+          value={formData.sparePartType || ""}
           onChange={handleChange}
-          className={inputClass("sparePartPartType")}
+          className={inputClass("sparePartType")}
         >
           <option value="">Select part type</option>
 
@@ -454,7 +436,7 @@ export default function Autospareparts({
           ))}
         </select>
 
-        <FieldError name="sparePartPartType" />
+        <FieldError name="sparePartType" />
       </div>
 
       {/* ==========================================================
