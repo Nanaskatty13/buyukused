@@ -264,7 +264,7 @@ const ProductCard = ({ product }) => {
   };
 
   // ==============================================================
-  // CATEGORY SPECIFICATIONS
+  // CATEGORY SPECIFICATIONS – NOW WITH BACKGROUND PILLS
   // ==============================================================
 
   const renderCategorySpecs = () => {
@@ -468,9 +468,12 @@ const ProductCard = ({ product }) => {
           style={{
             display: "flex",
             alignItems: "center",
-            gap: "4px",
-            fontSize: "12px",
-            color: "#6b7280",
+            gap: "3px",
+            fontSize: "11px",
+            color: "#374151",
+            background: "#f3f4f6", // <-- NEW: subtle gray background
+            padding: "1px 6px",    // <-- NEW: inner spacing
+            borderRadius: "4px",   // <-- NEW: rounded corners
           }}
         >
           {spec.icon} {spec.label}
@@ -586,6 +589,7 @@ const ProductCard = ({ product }) => {
             display: "block",
             transition:
               "transform 0.3s ease",
+            objectFit: "contain",
           }}
           onError={(e) => {
             if (
@@ -610,12 +614,12 @@ const ProductCard = ({ product }) => {
         <div
           style={{
             position: "absolute",
-            top: "8px",
-            left: "8px",
+            top: "6px",
+            left: "6px",
             display: "flex",
             flexDirection:
               "column",
-            gap: "3px",
+            gap: "2px",
             zIndex: 2,
           }}
         >
@@ -628,9 +632,9 @@ const ProductCard = ({ product }) => {
                 fontSize: "8px",
                 fontWeight: 700,
                 padding:
-                  "1px 6px",
+                  "1px 5px",
                 borderRadius:
-                  "8px",
+                  "6px",
                 textTransform:
                   "uppercase",
                 display:
@@ -654,9 +658,9 @@ const ProductCard = ({ product }) => {
                 fontSize: "8px",
                 fontWeight: 700,
                 padding:
-                  "1px 6px",
+                  "1px 5px",
                 borderRadius:
-                  "8px",
+                  "6px",
                 textTransform:
                   "uppercase",
                 display:
@@ -678,9 +682,9 @@ const ProductCard = ({ product }) => {
                 fontSize: "8px",
                 fontWeight: 700,
                 padding:
-                  "1px 6px",
+                  "1px 5px",
                 borderRadius:
-                  "8px",
+                  "6px",
                 textTransform:
                   "uppercase",
                 display:
@@ -691,7 +695,7 @@ const ProductCard = ({ product }) => {
             >
               {yearsOnPlatform}+
               {" "}
-              years on Jiji
+              yrs
             </span>
           )}
         </div>
@@ -722,10 +726,10 @@ const ProductCard = ({ product }) => {
           }
           style={{
             position: "absolute",
-            top: "8px",
-            right: "8px",
-            width: "38px",
-            height: "38px",
+            top: "6px",
+            right: "6px",
+            width: "32px",
+            height: "32px",
             borderRadius: "50%",
             border: "none",
             background:
@@ -740,7 +744,7 @@ const ProductCard = ({ product }) => {
             color: liked
               ? "#e11d48"
               : "#374151",
-            fontSize: "18px",
+            fontSize: "15px",
             boxShadow:
               "0 2px 8px rgba(0,0,0,0.16)",
             transition:
@@ -783,12 +787,12 @@ const ProductCard = ({ product }) => {
       <div
         style={{
           padding:
-            "12px 14px 14px",
+            "8px 10px 10px",
           flex: 1,
           display: "flex",
           flexDirection:
             "column",
-          gap: "4px",
+          gap: "2px",
         }}
       >
 
@@ -806,7 +810,7 @@ const ProductCard = ({ product }) => {
             className="title"
             style={{
               fontWeight: 600,
-              fontSize: "15px",
+              fontSize: "14px",
               lineHeight: 1.3,
               display:
                 "-webkit-box",
@@ -817,7 +821,7 @@ const ProductCard = ({ product }) => {
                 "hidden",
               color: "#111827",
               marginBottom:
-                "2px",
+                "1px",
             }}
           >
             {title ||
@@ -830,7 +834,7 @@ const ProductCard = ({ product }) => {
         <div
           className="price"
           style={{
-            fontSize: "20px",
+            fontSize: "18px",
             fontWeight: 700,
             color: isSold
               ? "#9ca3af"
@@ -838,7 +842,7 @@ const ProductCard = ({ product }) => {
             display: "flex",
             alignItems:
               "center",
-            gap: "8px",
+            gap: "4px",
           }}
         >
           {formattedPrice}
@@ -846,16 +850,16 @@ const ProductCard = ({ product }) => {
           {isSold && (
             <span
               style={{
-                fontSize: "11px",
+                fontSize: "10px",
                 fontWeight: 700,
                 color:
                   "#dc2626",
                 background:
                   "#fee2e2",
                 padding:
-                  "2px 8px",
+                  "1px 6px",
                 borderRadius:
-                  "4px",
+                  "3px",
               }}
             >
               SOLD
@@ -871,10 +875,10 @@ const ProductCard = ({ product }) => {
             display: "flex",
             alignItems:
               "center",
-            gap: "8px",
-            fontSize: "13px",
+            gap: "4px",
+            fontSize: "11px",
             color: "#6b7280",
-            marginTop: "2px",
+            marginTop: "0px",
           }}
         >
           <span className="location-text">
@@ -891,18 +895,18 @@ const ProductCard = ({ product }) => {
           </span>
         </div>
 
-        {/* SPECS */}
+        {/* SPECS – now rendered as background pills */}
 
         <div
           className="specs-row"
           style={{
             display: "flex",
             flexWrap: "wrap",
-            gap: "4px 10px",
-            fontSize: "12px",
+            gap: "4px 6px", // slightly more gap for the new pill style
+            fontSize: "11px",
             color: "#6b7280",
             margin:
-              "6px 0 8px",
+              "2px 0 4px",
           }}
         >
           {renderCategorySpecs()}
@@ -914,7 +918,11 @@ const ProductCard = ({ product }) => {
                   "flex",
                 alignItems:
                   "center",
-                gap: "3px",
+                gap: "2px",
+                background: "#f3f4f6",
+                padding: "1px 6px",
+                borderRadius: "4px",
+                color: "#374151",
               }}
             >
               <i className="fas fa-shield-alt" />
@@ -931,7 +939,10 @@ const ProductCard = ({ product }) => {
                     "flex",
                   alignItems:
                     "center",
-                  gap: "3px",
+                  gap: "2px",
+                  background: "#e0f2fe",
+                  padding: "1px 6px",
+                  borderRadius: "4px",
                   color:
                     "#0055a5",
                   fontWeight: 600,
@@ -944,7 +955,14 @@ const ProductCard = ({ product }) => {
               </span>
             )}
 
-          <span>
+          <span
+            style={{
+              background: "#f3f4f6",
+              padding: "1px 6px",
+              borderRadius: "4px",
+              color: "#374151",
+            }}
+          >
             {swapAccepted
               ? "🔄 Swap OK"
               : "🚫 No swap"}
@@ -952,7 +970,7 @@ const ProductCard = ({ product }) => {
         </div>
 
         {/* ========================================================
-            DESCRIPTION – FULL TEXT (no truncation)
+            DESCRIPTION – FULL TEXT
         ======================================================== */}
 
         {description &&
@@ -963,11 +981,11 @@ const ProductCard = ({ product }) => {
               className="product-description"
               style={{
                 margin:
-                  "4px 0 6px",
-                fontSize: "12px",
+                  "2px 0 4px",
+                fontSize: "13px",
                 lineHeight: 1.4,
                 color:
-                  "#6b7280",
+                  "#4b5563",
                 wordBreak:
                   "break-word",
               }}
@@ -984,9 +1002,9 @@ const ProductCard = ({ product }) => {
             display: "flex",
             alignItems:
               "center",
-            gap: "8px",
+            gap: "6px",
             paddingTop:
-              "10px",
+              "6px",
             borderTop:
               "1px solid #f3f4f6",
           }}
@@ -1000,8 +1018,8 @@ const ProductCard = ({ product }) => {
                 sellerName
               }
               style={{
-                width: "28px",
-                height: "28px",
+                width: "24px",
+                height: "24px",
                 borderRadius:
                   "50%",
                 objectFit:
@@ -1013,8 +1031,8 @@ const ProductCard = ({ product }) => {
           ) : (
             <div
               style={{
-                width: "28px",
-                height: "28px",
+                width: "24px",
+                height: "24px",
                 borderRadius:
                   "50%",
                 background:
@@ -1025,7 +1043,7 @@ const ProductCard = ({ product }) => {
                   "center",
                 justifyContent:
                   "center",
-                fontSize: "12px",
+                fontSize: "10px",
                 color:
                   "#9ca3af",
               }}
@@ -1046,7 +1064,7 @@ const ProductCard = ({ product }) => {
                   "flex",
                 alignItems:
                   "center",
-                gap: "4px",
+                gap: "3px",
                 flexWrap:
                   "wrap",
               }}
@@ -1054,7 +1072,7 @@ const ProductCard = ({ product }) => {
               <span
                 style={{
                   fontSize:
-                    "13px",
+                    "12px",
                   fontWeight:
                     500,
                   color:
@@ -1066,7 +1084,7 @@ const ProductCard = ({ product }) => {
 
               {isVerified && (
                 <VerifiedBadge
-                  size={12}
+                  size={10}
                 />
               )}
             </div>
@@ -1075,7 +1093,7 @@ const ProductCard = ({ product }) => {
               <span
                 style={{
                   fontSize:
-                    "10px",
+                    "9px",
                   fontWeight:
                     700,
                   color:
@@ -1083,13 +1101,13 @@ const ProductCard = ({ product }) => {
                   background:
                     accountBadge.bg,
                   padding:
-                    "1px 6px",
+                    "1px 5px",
                   borderRadius:
-                    "10px",
+                    "8px",
                   display:
                     "inline-block",
                   marginTop:
-                    "2px",
+                    "1px",
                 }}
               >
                 {
@@ -1104,7 +1122,7 @@ const ProductCard = ({ product }) => {
             <span
               style={{
                 fontSize:
-                  "10px",
+                  "9px",
                 color:
                   "#6b7280",
                 whiteSpace:
@@ -1128,11 +1146,11 @@ const ProductCard = ({ product }) => {
                 "flex",
               alignItems:
                 "center",
-              gap: "8px",
+              gap: "5px",
               marginTop:
-                "8px",
+                "5px",
               paddingTop:
-                "8px",
+                "5px",
               borderTop:
                 "1px solid #f3f4f6",
             }}
@@ -1149,18 +1167,18 @@ const ProductCard = ({ product }) => {
                   "center",
                 justifyContent:
                   "center",
-                gap: "4px",
+                gap: "3px",
                 padding:
-                  "5px 12px",
+                  "4px 10px",
                 borderRadius:
-                  "16px",
+                  "12px",
                 border:
                   "none",
                 background:
                   "#25D366",
                 color: "white",
                 fontSize:
-                  "12px",
+                  "11px",
                 fontWeight:
                   600,
                 cursor:
@@ -1169,7 +1187,7 @@ const ProductCard = ({ product }) => {
                   "background 0.2s",
                 flex: 1,
                 minHeight:
-                  "28px",
+                  "22px",
               }}
               onMouseEnter={(
                 e
@@ -1188,7 +1206,7 @@ const ProductCard = ({ product }) => {
                 className="fas fa-comment-dots"
                 style={{
                   fontSize:
-                    "13px",
+                    "10px",
                 }}
               />
 
@@ -1207,18 +1225,18 @@ const ProductCard = ({ product }) => {
                   "center",
                 justifyContent:
                   "center",
-                gap: "4px",
+                gap: "3px",
                 padding:
-                  "5px 12px",
+                  "4px 10px",
                 borderRadius:
-                  "16px",
+                  "12px",
                 border:
                   "none",
                 background:
                   "#3b82f6",
                 color: "white",
                 fontSize:
-                  "12px",
+                  "11px",
                 fontWeight:
                   600,
                 cursor:
@@ -1227,7 +1245,7 @@ const ProductCard = ({ product }) => {
                   "background 0.2s",
                 flex: 1,
                 minHeight:
-                  "28px",
+                  "22px",
               }}
               onMouseEnter={(
                 e
@@ -1246,7 +1264,7 @@ const ProductCard = ({ product }) => {
                 className="fas fa-phone"
                 style={{
                   fontSize:
-                    "13px",
+                    "10px",
                 }}
               />
 
@@ -1261,13 +1279,13 @@ const ProductCard = ({ product }) => {
           to={`/product/${_id}`}
           style={{
             marginTop:
-              "8px",
+              "6px",
             padding:
-              "6px 0",
+              "4px 0",
             textAlign:
               "center",
             fontSize:
-              "13px",
+              "12px",
             fontWeight:
               600,
             color:
@@ -1277,7 +1295,7 @@ const ProductCard = ({ product }) => {
             borderTop:
               "1px solid #f3f4f6",
             paddingTop:
-              "8px",
+              "5px",
             display:
               "block",
           }}
@@ -1311,54 +1329,65 @@ const ProductSkeleton = () => {
         className="product-image-wrapper"
         style={{
           width: "100%",
-          paddingBottom:
-            "75%",
-          background:
-            "#f4f5f7",
-          position:
-            "relative",
+          background: "#f4f5f7",
+          padding: "0",
+          height: "200px",
+          position: "relative",
         }}
       />
 
       <div
         style={{
-          padding: "14px",
+          padding: "10px",
         }}
       >
         <div
           style={{
             width: "80%",
-            height: "18px",
+            height: "16px",
             background:
               "#e5e7eb",
             borderRadius:
-              "4px",
+              "3px",
             marginBottom:
-              "10px",
+              "6px",
           }}
         />
 
         <div
           style={{
             width: "45%",
-            height: "20px",
+            height: "18px",
             background:
               "#e5e7eb",
             borderRadius:
-              "4px",
+              "3px",
             marginBottom:
-              "10px",
+              "6px",
           }}
         />
 
         <div
           style={{
             width: "60%",
-            height: "14px",
+            height: "12px",
             background:
               "#e5e7eb",
             borderRadius:
-              "4px",
+              "3px",
+            marginBottom:
+              "6px",
+          }}
+        />
+
+        <div
+          style={{
+            width: "90%",
+            height: "40px",
+            background:
+              "#e5e7eb",
+            borderRadius:
+              "3px",
             marginBottom:
               "10px",
           }}
@@ -1366,25 +1395,12 @@ const ProductSkeleton = () => {
 
         <div
           style={{
-            width: "80%",
-            height: "38px",
-            background:
-              "#e5e7eb",
-            borderRadius:
-              "4px",
-            marginBottom:
-              "18px",
-          }}
-        />
-
-        <div
-          style={{
             width: "100%",
-            height: "34px",
+            height: "26px",
             background:
               "#e5e7eb",
             borderRadius:
-              "4px",
+              "3px",
           }}
         />
       </div>
@@ -1771,10 +1787,25 @@ const Products = () => {
           .products-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            gap: 20px;
+            gap: 16px;
             width: 100%;
             max-width: 1400px;
             margin: 0 auto;
+          }
+
+          .product-card .product-image-wrapper {
+            display: block;
+            overflow: hidden;
+            background: #f4f5f7;
+            position: relative;
+            width: 100%;
+          }
+
+          .product-card .product-image-wrapper img {
+            width: 100% !important;
+            height: auto !important;
+            display: block;
+            object-fit: contain !important;
           }
 
           .favorite-button:hover {
@@ -1785,17 +1816,44 @@ const Products = () => {
             transform: scale(0.94) !important;
           }
 
+          /* ========== CATEGORY SIDEBAR BG COLOR OVERRIDES ========== */
+          .filter-sidebar-wrapper .category-item {
+            border-radius: 6px;
+            transition: all 0.2s ease;
+            cursor: pointer;
+          }
+
+          .filter-sidebar-wrapper .category-item:hover {
+            background: #e0f2fe !important;
+            color: #0066cc !important;
+          }
+
+          .filter-sidebar-wrapper .category-item.active,
+          .filter-sidebar-wrapper .category-item.selected {
+            background: #0066cc !important;
+            color: white !important;
+            font-weight: 600;
+          }
+
+          /* If your sidebar uses buttons or links, target them too */
+          .filter-sidebar-wrapper button.active,
+          .filter-sidebar-wrapper a.active {
+            background: #0066cc !important;
+            color: white !important;
+            border-radius: 6px !important;
+          }
+
           @media (max-width: 1100px) {
             .products-grid {
               grid-template-columns: repeat(3, 1fr);
-              gap: 16px;
+              gap: 14px;
             }
           }
 
           @media (max-width: 800px) {
             .products-grid {
               grid-template-columns: repeat(2, 1fr);
-              gap: 14px;
+              gap: 12px;
             }
           }
 
@@ -1806,20 +1864,19 @@ const Products = () => {
             }
 
             .location-text {
-              font-size: 12px !important;
+              font-size: 10px !important;
             }
 
-            /* Description now shows full text – remove clamp */
             .product-description {
-              font-size: 10px !important;
+              font-size: 12px !important;
               line-height: 1.3 !important;
               margin: 2px 0 4px !important;
             }
 
             .specs-row {
               font-size: 10px !important;
-              gap: 3px 8px !important;
-              margin: 4px 0 6px !important;
+              gap: 3px 5px !important;
+              margin: 2px 0 3px !important;
             }
 
             .specs-row span {
@@ -1827,46 +1884,46 @@ const Products = () => {
             }
 
             .contact-buttons {
-              gap: 6px !important;
+              gap: 4px !important;
             }
 
             .contact-btn {
-              padding: 4px 8px !important;
+              padding: 3px 6px !important;
               font-size: 10px !important;
-              min-height: 24px !important;
-              border-radius: 12px !important;
+              min-height: 20px !important;
+              border-radius: 10px !important;
             }
 
             .contact-btn i {
-              font-size: 10px !important;
+              font-size: 9px !important;
             }
 
             .product-card .title {
-              font-size: 14px !important;
+              font-size: 13px !important;
             }
 
             .product-card .price {
-              font-size: 17px !important;
+              font-size: 16px !important;
             }
 
             .location-condition {
-              font-size: 11px !important;
+              font-size: 10px !important;
             }
           }
 
           @media (max-width: 380px) {
             .contact-btn {
-              padding: 3px 6px !important;
+              padding: 2px 4px !important;
               font-size: 9px !important;
-              min-height: 22px !important;
+              min-height: 18px !important;
             }
 
             .contact-btn i {
-              font-size: 9px !important;
+              font-size: 8px !important;
             }
 
             .product-description {
-              font-size: 9px !important;
+              font-size: 11px !important;
             }
 
             .specs-row {
@@ -1878,40 +1935,40 @@ const Products = () => {
             }
 
             .favorite-button {
-              width: 34px !important;
-              height: 34px !important;
-              font-size: 16px !important;
+              width: 28px !important;
+              height: 28px !important;
+              font-size: 13px !important;
             }
           }
 
           @media (min-width: 1200px) {
             .products-grid {
-              grid-template-columns: repeat(3, 1fr);
-              gap: 24px;
+              grid-template-columns: repeat(4, 1fr);
+              gap: 16px;
             }
 
             .product-card .title {
-              font-size: 16px !important;
+              font-size: 14px !important;
             }
 
             .product-card .price {
-              font-size: 20px !important;
+              font-size: 18px !important;
             }
           }
 
           @media (min-width: 1600px) {
             .products-grid {
-              grid-template-columns: repeat(3, 1fr);
-              gap: 28px;
+              grid-template-columns: repeat(4, 1fr);
+              gap: 18px;
               max-width: 1600px;
             }
 
             .product-card .title {
-              font-size: 17px !important;
+              font-size: 15px !important;
             }
 
             .product-card .price {
-              font-size: 21px !important;
+              font-size: 19px !important;
             }
           }
         `}
@@ -1921,11 +1978,11 @@ const Products = () => {
         className="products-page"
         style={{
           display: "flex",
-          gap: "24px",
+          gap: "20px",
           maxWidth: "1440px",
           margin: "0 auto",
           padding:
-            "20px 16px",
+            "16px 16px",
         }}
       >
         {/* ======================================================
@@ -1997,7 +2054,7 @@ const Products = () => {
           <div
             style={{
               marginBottom:
-                "24px",
+                "20px",
             }}
           >
             <SearchBar
@@ -2010,7 +2067,7 @@ const Products = () => {
             />
           </div>
 
-          {/* HEADER */}
+          {/* HEADER – Category pill with background */}
 
           <div
             style={{
@@ -2021,15 +2078,15 @@ const Products = () => {
                 "center",
               flexWrap:
                 "wrap",
-              gap: "12px",
+              gap: "10px",
               marginBottom:
-                "20px",
+                "16px",
             }}
           >
             <h1
               style={{
                 fontSize:
-                  "22px",
+                  "20px",
                 fontWeight:
                   700,
                 margin: 0,
@@ -2048,8 +2105,11 @@ const Products = () => {
                   for{" "}
                   <span
                     style={{
-                      color:
-                        "#0066cc",
+                      background: "#e0f2fe", // <-- NEW background
+                      color: "#0066cc",
+                      padding: "2px 10px",
+                      borderRadius: "6px",
+                      fontWeight: 600,
                     }}
                   >
                     {
@@ -2074,13 +2134,13 @@ const Products = () => {
               }
               style={{
                 padding:
-                  "8px 12px",
+                  "6px 10px",
                 border:
                   "1px solid #e5e7eb",
                 borderRadius:
                   "4px",
                 fontSize:
-                  "14px",
+                  "13px",
                 outline:
                   "none",
                 background:
@@ -2118,7 +2178,7 @@ const Products = () => {
                   padding:
                     "30px 20px",
                   marginBottom:
-                    "24px",
+                    "16px",
                   color:
                     "#dc2626",
                   background:
