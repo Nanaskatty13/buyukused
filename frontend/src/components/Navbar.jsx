@@ -156,16 +156,18 @@ const Navbar = () => {
   }, [location.pathname]);
 
   // ==========================================================
-  // FETCH UNREAD COUNTS – with token guard & interval stop on 401
+  // FETCH UNREAD COUNTS – with silent error handling
   // ==========================================================
 
   useEffect(() => {
+    let isMounted = true;
     let cancelled = false;
 
     const resetCounts = () => {
-      if (cancelled) return;
-      setUnreadNotifications(0);
-      setUnreadMessages(0);
+      if (isMounted && !cancelled) {
+        setUnreadNotifications(0);
+        setUnreadMessages(0);
+      }
     };
 
     // ─── No user → reset and stop ──────────────────────────
@@ -193,7 +195,7 @@ const Navbar = () => {
     const apiUrl = getApiUrl();
 
     // ========================================================
-    // FETCH NOTIFICATIONS
+    // FETCH NOTIFICATIONS (silent)
     // ========================================================
 
     const fetchNotificationCount = async () => {
@@ -236,13 +238,15 @@ const Navbar = () => {
           }
         );
 
+        // If 401, stop polling and reset counts (silent)
         if (response.status === 401) {
-          // Token invalid – stop polling and reset
           if (pollIntervalRef.current) {
             clearInterval(pollIntervalRef.current);
             pollIntervalRef.current = null;
           }
-          setUnreadNotifications(0);
+          if (isMounted && !cancelled) {
+            setUnreadNotifications(0);
+          }
           return;
         }
 
@@ -263,16 +267,16 @@ const Navbar = () => {
           }
         }
       } catch (error) {
-        // Ignore network errors
+        // silently ignore
       }
 
-      if (!cancelled) {
+      if (isMounted && !cancelled) {
         setUnreadNotifications(count);
       }
     };
 
     // ========================================================
-    // FETCH MESSAGES
+    // FETCH MESSAGES (silent)
     // ========================================================
 
     const fetchMessageCount = async () => {
@@ -288,18 +292,22 @@ const Navbar = () => {
           }
         );
 
+        // If 401, stop polling and reset counts (silent)
         if (response.status === 401) {
-          // Token invalid – stop polling and reset
           if (pollIntervalRef.current) {
             clearInterval(pollIntervalRef.current);
             pollIntervalRef.current = null;
           }
-          setUnreadMessages(0);
+          if (isMounted && !cancelled) {
+            setUnreadMessages(0);
+          }
           return;
         }
 
         if (!response.ok) {
-          setUnreadMessages(0);
+          if (isMounted && !cancelled) {
+            setUnreadMessages(0);
+          }
           return;
         }
 
@@ -312,13 +320,15 @@ const Navbar = () => {
           data?.totalUnread ??
           0;
 
-        if (!cancelled) {
+        if (isMounted && !cancelled) {
           setUnreadMessages(
             safeCount(messageCount)
           );
         }
       } catch (error) {
-        setUnreadMessages(0);
+        if (isMounted && !cancelled) {
+          setUnreadMessages(0);
+        }
       }
     };
 
@@ -340,6 +350,7 @@ const Navbar = () => {
 
     return () => {
       cancelled = true;
+      isMounted = false;
       if (pollIntervalRef.current) {
         clearInterval(pollIntervalRef.current);
         pollIntervalRef.current = null;

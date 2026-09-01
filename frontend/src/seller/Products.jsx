@@ -72,7 +72,7 @@ const normalizeCategory = (category) => {
 };
 
 // ================================================================
-// PRODUCT CARD – memoised for performance
+// PRODUCT CARD – heavily memoised
 // ================================================================
 
 const ProductCard = memo(({ product }) => {
@@ -117,179 +117,158 @@ const ProductCard = memo(({ product }) => {
   } = product;
 
   // ==============================================================
-  // FAVORITE STATE
+  // FAVORITE
   // ==============================================================
 
   const liked = Boolean(isFavorite(_id));
 
-  // ==============================================================
-  // FAVORITE HANDLER
-  // ==============================================================
-
-  const handleFavorite = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    // Login required
-    if (!user) {
-      navigate("/login", {
-        state: {
-          from: location.pathname + location.search,
-        },
-      });
-      return;
-    }
-
-    toggleFavorite(_id);
-  };
+  const handleFavorite = useCallback(
+    (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!user) {
+        navigate("/login", {
+          state: { from: location.pathname + location.search },
+        });
+        return;
+      }
+      toggleFavorite(_id);
+    },
+    [user, _id, navigate, location.pathname, location.search, toggleFavorite]
+  );
 
   // ==============================================================
-  // NORMALIZED CATEGORY
+  // CATEGORY
   // ==============================================================
 
-  const normalizedCategory = normalizeCategory(category);
+  const normalizedCategory = useMemo(
+    () => normalizeCategory(category),
+    [category]
+  );
 
-  const isPhone = normalizedCategory === "Phones";
-
-  const isProperty =
-    normalizedCategory === "Real Estate" ||
-    normalizedCategory === "Property";
+  const isPhone = useMemo(() => normalizedCategory === "Phones", [normalizedCategory]);
+  const isProperty = useMemo(
+    () => normalizedCategory === "Real Estate" || normalizedCategory === "Property",
+    [normalizedCategory]
+  );
 
   // ==============================================================
-  // SELLER
+  // SELLER – memoised
   // ==============================================================
 
-  const sellerObj =
-    sellerId && typeof sellerId === "object"
+  const sellerObj = useMemo(() => {
+    return sellerId && typeof sellerId === "object"
       ? sellerId
       : seller && typeof seller === "object"
-        ? seller
-        : null;
+      ? seller
+      : null;
+  }, [sellerId, seller]);
 
-  const sellerName =
-    sellerObj?.name ||
-    sellerNameProp ||
-    "Unknown Seller";
+  const sellerName = useMemo(
+    () => sellerObj?.name || sellerNameProp || "Unknown Seller",
+    [sellerObj, sellerNameProp]
+  );
 
-  const sellerImage =
-    sellerObj?.profileImage ||
-    sellerObj?.avatar ||
-    sellerObj?.photo ||
-    sellerObj?.picture ||
-    sellerProfileImageProp ||
-    null;
+  const sellerImage = useMemo(
+    () =>
+      sellerObj?.profileImage ||
+      sellerObj?.avatar ||
+      sellerObj?.photo ||
+      sellerObj?.picture ||
+      sellerProfileImageProp ||
+      null,
+    [sellerObj, sellerProfileImageProp]
+  );
 
-  const sellerImageUrl = sellerImage
-    ? getImageUrl(sellerImage)
-    : null;
+  const sellerImageUrl = useMemo(
+    () => (sellerImage ? getImageUrl(sellerImage) : null),
+    [sellerImage]
+  );
 
-  const isVerified = sellerObj?.isVerified === true;
-
-  const yearsOnPlatform =
-    sellerObj?.yearsOnPlatform || 0;
-
-  const accountType =
-    sellerObj?.accountType || "";
+  const isVerified = useMemo(() => sellerObj?.isVerified === true, [sellerObj]);
+  const yearsOnPlatform = useMemo(() => sellerObj?.yearsOnPlatform || 0, [sellerObj]);
+  const accountType = useMemo(() => sellerObj?.accountType || "", [sellerObj]);
 
   // ==============================================================
-  // ACCOUNT BADGE
+  // ACCOUNT BADGE – memoised
   // ==============================================================
 
-  const getAccountBadge = () => {
+  const accountBadge = useMemo(() => {
     const type = accountType.toLowerCase();
-
     if (type === "diamond") {
-      return {
-        label: "💎 DIAMOND",
-        color: "#0ea5e9",
-        bg: "#e0f2fe",
-      };
+      return { label: "💎 DIAMOND", color: "#0ea5e9", bg: "#e0f2fe" };
     }
-
     if (type === "vip") {
-      return {
-        label: "⭐ VIP",
-        color: "#f59e0b",
-        bg: "#fef3c7",
-      };
+      return { label: "⭐ VIP", color: "#f59e0b", bg: "#fef3c7" };
     }
-
     if (type === "enterprise") {
-      return {
-        label: "🏢 ENTERPRISE",
-        color: "#8b5cf6",
-        bg: "#ede9fe",
-      };
+      return { label: "🏢 ENTERPRISE", color: "#8b5cf6", bg: "#ede9fe" };
     }
-
     return null;
-  };
-
-  const accountBadge = getAccountBadge();
+  }, [accountType]);
 
   // ==============================================================
-  // PRODUCT IMAGE – optimised with Cloudinary
+  // IMAGE – optimised with Cloudinary
   // ==============================================================
 
-  const rawImage = images?.[0] || image || null;
+  const rawImage = useMemo(() => images?.[0] || image || null, [images, image]);
+
   const imageUrl = useMemo(() => {
     if (!rawImage) return "/placeholder.png";
     let url = getImageUrl(rawImage);
-    // Add Cloudinary optimisation for thumbnails
     if (url.includes('res.cloudinary.com')) {
+      // Thumbnail: 400x300, auto format & quality
       url = url.replace('/image/upload/', '/image/upload/w_400,h_300,c_fill,f_auto,q_auto/');
     }
     return url;
   }, [rawImage]);
 
   // ==============================================================
-  // PRICE
+  // PRICE – memoised
   // ==============================================================
 
-  const formattedPrice = new Intl.NumberFormat(
-    "en-GH",
-    {
-      style: "currency",
-      currency: "GHS",
-      minimumFractionDigits: 0,
-    }
-  ).format(price || 0);
+  const formattedPrice = useMemo(
+    () =>
+      new Intl.NumberFormat("en-GH", {
+        style: "currency",
+        currency: "GHS",
+        minimumFractionDigits: 0,
+      }).format(price || 0),
+    [price]
+  );
 
   // ==============================================================
-  // CITY – extract first part of location
+  // CITY – memoised
   // ==============================================================
 
-  const getCityOnly = (locationStr) => {
-    if (!locationStr) return "";
-    const parts = String(locationStr).split(",").map((s) => s.trim());
-    return parts[0] || locationStr;
-  };
-
-  const cityOnly = getCityOnly(productLocation);
+  const cityOnly = useMemo(() => {
+    if (!productLocation) return "";
+    const parts = String(productLocation).split(",").map((s) => s.trim());
+    return parts[0] || productLocation;
+  }, [productLocation]);
 
   // ==============================================================
-  // HANDLE LOCATION FILTER CLICK
+  // LOCATION FILTER – stabilised
   // ==============================================================
 
-  const handleLocationFilter = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    if (!cityOnly) return;
-
-    // Navigate to products with location filter
-    const params = new URLSearchParams(location.search);
-    params.set("location", cityOnly);
-    navigate(`/products?${params.toString()}`);
-  };
+  const handleLocationFilter = useCallback(
+    (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!cityOnly) return;
+      const params = new URLSearchParams(location.search);
+      params.set("location", cityOnly);
+      navigate(`/products?${params.toString()}`);
+    },
+    [cityOnly, location.search, navigate]
+  );
 
   // ==============================================================
-  // CATEGORY SPECIFICATIONS
+  // CATEGORY SPECS – memoised
   // ==============================================================
 
-  const renderCategorySpecs = () => {
+  const categorySpecs = useMemo(() => {
     const specs = [];
-
     if (normalizedCategory === "Laptops") {
       if (brand) specs.push({ icon: "🏷️", label: brand });
       if (model) specs.push({ icon: "📟", label: model });
@@ -326,8 +305,28 @@ const ProductCard = memo(({ product }) => {
       if (storage) specs.push({ icon: "💾", label: storage });
       if (condition) specs.push({ icon: "📋", label: condition });
     }
+    return specs.slice(0, 4);
+  }, [
+    normalizedCategory,
+    brand,
+    model,
+    processor,
+    ram,
+    graphics,
+    screenSize,
+    storage,
+    condition,
+    year,
+    connectivity,
+    batteryHealth,
+    faceId,
+    isProperty,
+    product,
+  ]);
 
-    return specs.slice(0, 4).map((spec, index) => (
+  // Render specs as JSX (memoised via callback)
+  const renderCategorySpecs = useCallback(() => {
+    return categorySpecs.map((spec, index) => (
       <span
         key={`${spec.label}-${index}`}
         style={{
@@ -341,42 +340,40 @@ const ProductCard = memo(({ product }) => {
         {spec.icon} {spec.label}
       </span>
     ));
-  };
+  }, [categorySpecs]);
 
-  const isSold = status === "sold";
-
-  // ==============================================================
-  // CHAT
-  // ==============================================================
-
-  const handleChat = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    navigate(`/product/${_id}?openChat=true`);
-  };
+  const isSold = useMemo(() => status === "sold", [status]);
 
   // ==============================================================
-  // CALL
+  // CHAT / CALL – stabilised
   // ==============================================================
 
-  const handleCall = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const handleChat = useCallback(
+    (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      navigate(`/product/${_id}?openChat=true`);
+    },
+    [_id, navigate]
+  );
 
-    const rawPhone = sellerObj?.phone || "";
-    let phone = String(rawPhone).replace(/\D/g, "");
-
-    if (phone.startsWith("0") && phone.length === 10) {
-      phone = "233" + phone.substring(1);
-    }
-
-    if (!phone || phone.length < 10) {
-      alert("This seller has not provided a valid phone number.");
-      return;
-    }
-
-    window.location.href = `tel:+${phone}`;
-  };
+  const handleCall = useCallback(
+    (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const rawPhone = sellerObj?.phone || "";
+      let phone = String(rawPhone).replace(/\D/g, "");
+      if (phone.startsWith("0") && phone.length === 10) {
+        phone = "233" + phone.substring(1);
+      }
+      if (!phone || phone.length < 10) {
+        alert("This seller has not provided a valid phone number.");
+        return;
+      }
+      window.location.href = `tel:+${phone}`;
+    },
+    [sellerObj?.phone]
+  );
 
   // ==============================================================
   // RENDER
@@ -497,7 +494,7 @@ const ProductCard = memo(({ product }) => {
           )}
         </div>
 
-        {/* FAVORITE HEART */}
+        {/* FAVOURITE HEART */}
         <button
           type="button"
           className={`favorite-button ${liked ? "favorite-active" : ""}`}
@@ -617,7 +614,6 @@ const ProductCard = memo(({ product }) => {
             flexWrap: "wrap",
           }}
         >
-          {/* ─── CLICKABLE LOCATION BADGE ─── */}
           {cityOnly && (
             <button
               type="button"
@@ -652,9 +648,7 @@ const ProductCard = memo(({ product }) => {
               loc:{cityOnly}
             </button>
           )}
-
           <span>•</span>
-
           <span>{condition || "Used"}</span>
         </div>
 
@@ -1021,9 +1015,8 @@ const Products = () => {
 
   const fetchProducts = useCallback(
     async (pageNum = 1, append = false) => {
-      const limit = 20; // Load 20 products per page
+      const limit = 20;
 
-      // Build clean filters
       const cleanFilters = {
         ...(filters.search && { search: filters.search }),
         ...(filters.category && filters.category !== "all" && { category: filters.category }),
@@ -1040,11 +1033,9 @@ const Products = () => {
 
       try {
         const data = await getProducts(cleanFilters);
-
         const productList = Array.isArray(data?.products) ? data.products : [];
         const total = data?.total || 0;
 
-        // Process images
         const processed = productList.map((p) => ({
           ...p,
           images: Array.isArray(p.images)
@@ -1076,8 +1067,8 @@ const Products = () => {
     if (!cached) return null;
     try {
       const { data, timestamp } = JSON.parse(cached);
-      // Cache valid for 2 minutes
-      if (Date.now() - timestamp > 2 * 60 * 1000) {
+      // Cache valid for 5 minutes (increased from 2)
+      if (Date.now() - timestamp > 5 * 60 * 1000) {
         sessionStorage.removeItem(cacheKey);
         return null;
       }
@@ -1144,7 +1135,6 @@ const Products = () => {
       const data = await fetchProducts(nextPage, true);
       if (data) {
         setPage(nextPage);
-        // Update cache with appended data
         const cacheKey = getCacheKey();
         const cached = loadFromCache(cacheKey);
         if (cached) {

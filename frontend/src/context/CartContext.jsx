@@ -41,6 +41,14 @@ const API_URL = (
 ).replace(/\/+$/, "");
 
 // ============================================================
+// FEATURE FLAG
+//
+// Set to true when your backend supports /api/favorites
+// ============================================================
+
+const FAVORITES_API_ENABLED = false; // ← Toggle this when backend is ready
+
+// ============================================================
 // TOKEN HELPER
 // ============================================================
 
@@ -52,7 +60,7 @@ const getToken = () => {
       null
     );
   } catch (error) {
-    console.warn("Unable to read authentication token:", error);
+    // silently ignore
     return null;
   }
 };
@@ -99,34 +107,16 @@ const getResponseJson = async (response) => {
 };
 
 // ============================================================
-// API ERROR MESSAGE
+// API ERROR MESSAGE (only used when API is enabled)
 // ============================================================
 
 const getApiErrorMessage = (response, data = {}) => {
-  if (data?.message) {
-    return data.message;
-  }
-
-  if (data?.error) {
-    return data.error;
-  }
-
-  if (response.status === 401) {
-    return "Your session has expired. Please log in again.";
-  }
-
-  if (response.status === 403) {
-    return "You are not authorized to manage favorites.";
-  }
-
-  if (response.status === 404) {
-    return "Favorites API endpoint not found.";
-  }
-
-  if (response.status >= 500) {
-    return "Server error while saving your favorite.";
-  }
-
+  if (data?.message) return data.message;
+  if (data?.error) return data.error;
+  if (response.status === 401) return "Your session has expired. Please log in again.";
+  if (response.status === 403) return "You are not authorized to manage favorites.";
+  if (response.status === 404) return "Favorites API endpoint not found.";
+  if (response.status >= 500) return "Server error while saving your favorite.";
   return `Favorites request failed (${response.status}).`;
 };
 
@@ -157,11 +147,6 @@ export const CartProvider = ({ children }) => {
 
       return uniqueIds(parsed);
     } catch (error) {
-      console.warn(
-        "Error loading favorites from localStorage:",
-        error
-      );
-
       return [];
     }
   });
@@ -180,14 +165,10 @@ export const CartProvider = ({ children }) => {
 
   // ==========================================================
   // BACKEND AVAILABILITY
-  //
-  // If the deployed backend does not currently have
-  // /api/favorites, do not repeatedly spam the console
-  // with the same 404.
   // ==========================================================
 
   const [favoritesApiAvailable, setFavoritesApiAvailable] =
-    useState(true);
+    useState(FAVORITES_API_ENABLED);
 
   // ==========================================================
   // SAVE FAVORITES TO LOCAL STORAGE
@@ -200,34 +181,25 @@ export const CartProvider = ({ children }) => {
         JSON.stringify(uniqueIds(favorites))
       );
     } catch (error) {
-      console.warn(
-        "Error saving favorites to localStorage:",
-        error
-      );
+      // silently ignore
     }
   }, [favorites]);
 
   // ==========================================================
   // LOAD FAVORITES FROM BACKEND
-  //
-  // GET /api/favorites
   // ==========================================================
 
   const loadFavorites = useCallback(async () => {
-    const token = getToken();
+    // ─── Skip if API is disabled ────────────────────────────
+    if (!FAVORITES_API_ENABLED) {
+      return;
+    }
 
-    // --------------------------------------------------------
-    // Not logged in
-    // --------------------------------------------------------
+    const token = getToken();
 
     if (!user || !token) {
       return;
     }
-
-    // --------------------------------------------------------
-    // If endpoint was previously confirmed missing,
-    // keep local favorites instead.
-    // --------------------------------------------------------
 
     if (!favoritesApiAvailable) {
       return;
@@ -248,54 +220,23 @@ export const CartProvider = ({ children }) => {
         }
       );
 
-      // ------------------------------------------------------
-      // 404 = backend route currently missing
-      // ------------------------------------------------------
-
       if (response.status === 404) {
-        console.warn(
-          "Favorites API is not available on the backend yet. " +
-            "Using local favorites."
-        );
-
+        // Endpoint missing – mark as unavailable and stop calling
         setFavoritesApiAvailable(false);
         return;
       }
 
-      // ------------------------------------------------------
-      // Unauthorized
-      // ------------------------------------------------------
-
       if (response.status === 401) {
-        console.warn(
-          "Favorites request unauthorized."
-        );
-
+        // Unauthorized – silently ignore
         return;
       }
 
-      // ------------------------------------------------------
-      // Other errors
-      // ------------------------------------------------------
-
       if (!response.ok) {
         const data = await getResponseJson(response);
-
-        throw new Error(
-          getApiErrorMessage(response, data)
-        );
+        throw new Error(getApiErrorMessage(response, data));
       }
 
       const data = await getResponseJson(response);
-
-      // ------------------------------------------------------
-      // Support multiple response formats
-      //
-      // { favorites: [...] }
-      // { data: [...] }
-      // { items: [...] }
-      // [...]
-      // ------------------------------------------------------
 
       let backendFavorites = [];
 
@@ -309,16 +250,11 @@ export const CartProvider = ({ children }) => {
         backendFavorites = data.items;
       }
 
-      // ------------------------------------------------------
-      // Convert favorites into product IDs
-      // ------------------------------------------------------
-
       const ids = backendFavorites
         .map((favorite) => {
           if (typeof favorite === "string") {
             return favorite;
           }
-
           return normalizeProductId(
             favorite?.productId ||
               favorite?.product ||
@@ -328,15 +264,9 @@ export const CartProvider = ({ children }) => {
         .filter(Boolean);
 
       setFavorites(uniqueIds(ids));
-
       setFavoritesApiAvailable(true);
     } catch (error) {
-      console.warn(
-        "Failed to load favorites from backend:",
-        error
-      );
-
-      setFavoritesError(error.message);
+      // silently ignore – local storage will be used
     } finally {
       setFavoritesLoading(false);
     }
@@ -354,13 +284,6 @@ export const CartProvider = ({ children }) => {
 
   // ==========================================================
   // ADD FAVORITE
-  //
-  // POST /api/favorites
-  //
-  // Body:
-  // {
-  //   productId: "PRODUCT_ID"
-  // }
   // ==========================================================
 
   const addFavorite = useCallback(
@@ -375,31 +298,18 @@ export const CartProvider = ({ children }) => {
 
       setFavoritesError(null);
 
-      // ------------------------------------------------------
-      // OPTIMISTIC UPDATE
-      // ------------------------------------------------------
-
+      // ─── Optimistic update ──────────────────────────────
       setFavorites((prev) => {
         if (prev.includes(id)) {
           return prev;
         }
-
         return [...prev, id];
       });
 
-      // ------------------------------------------------------
-      // LOCAL ONLY IF NOT LOGGED IN
-      // ------------------------------------------------------
-
-      if (!user || !token) {
+      // ─── Local only if not logged in or API disabled ────
+      if (!user || !token || !FAVORITES_API_ENABLED) {
         return true;
       }
-
-      // ------------------------------------------------------
-      // Backend unavailable
-      //
-      // Keep favorite locally until backend is fixed.
-      // ------------------------------------------------------
 
       if (!favoritesApiAvailable) {
         return true;
@@ -414,82 +324,36 @@ export const CartProvider = ({ children }) => {
               Authorization: `Bearer ${token}`,
               "Content-Type": "application/json",
             },
-            body: JSON.stringify({
-              productId: id,
-            }),
+            body: JSON.stringify({ productId: id }),
           }
         );
 
-        // ----------------------------------------------------
-        // 404
-        // ----------------------------------------------------
-
         if (response.status === 404) {
-          console.warn(
-            "POST /api/favorites is not available on the backend. " +
-              "Favorite saved locally."
-          );
-
           setFavoritesApiAvailable(false);
-
-          // Keep optimistic favorite.
-          return true;
+          return true; // Keep local favorite
         }
 
-        // ----------------------------------------------------
-        // Unauthorized
-        // ----------------------------------------------------
-
         if (response.status === 401) {
-          console.warn(
-            "Unable to save favorite: authentication expired."
-          );
-
-          setFavoritesError(
-            "Please log in again to save favorites."
-          );
-
-          // Roll back because authentication failed.
+          // Rollback
           setFavorites((prev) =>
-            prev.filter(
-              (favoriteId) => favoriteId !== id
-            )
+            prev.filter((favoriteId) => favoriteId !== id)
           );
-
+          setFavoritesError("Please log in again to save favorites.");
           return false;
         }
 
-        // ----------------------------------------------------
-        // Other errors
-        // ----------------------------------------------------
-
         if (!response.ok) {
           const data = await getResponseJson(response);
-
-          throw new Error(
-            getApiErrorMessage(response, data)
-          );
+          throw new Error(getApiErrorMessage(response, data));
         }
 
         return true;
       } catch (error) {
-        console.warn(
-          "Failed to save favorite:",
-          error
-        );
-
-        // ----------------------------------------------------
-        // Roll back optimistic update
-        // ----------------------------------------------------
-
+        // Rollback optimistic update
         setFavorites((prev) =>
-          prev.filter(
-            (favoriteId) => favoriteId !== id
-          )
+          prev.filter((favoriteId) => favoriteId !== id)
         );
-
         setFavoritesError(error.message);
-
         return false;
       }
     },
@@ -498,8 +362,6 @@ export const CartProvider = ({ children }) => {
 
   // ==========================================================
   // REMOVE FAVORITE
-  //
-  // DELETE /api/favorites/:productId
   // ==========================================================
 
   const removeFavorite = useCallback(
@@ -514,27 +376,15 @@ export const CartProvider = ({ children }) => {
 
       setFavoritesError(null);
 
-      // ------------------------------------------------------
-      // Remember previous state for rollback
-      // ------------------------------------------------------
-
+      // ─── Optimistic removal ──────────────────────────────
       setFavorites((prev) =>
-        prev.filter(
-          (favoriteId) => favoriteId !== id
-        )
+        prev.filter((favoriteId) => favoriteId !== id)
       );
 
-      // ------------------------------------------------------
-      // LOCAL ONLY
-      // ------------------------------------------------------
-
-      if (!user || !token) {
+      // ─── Local only ──────────────────────────────────────
+      if (!user || !token || !FAVORITES_API_ENABLED) {
         return true;
       }
-
-      // ------------------------------------------------------
-      // Backend unavailable
-      // ------------------------------------------------------
 
       if (!favoritesApiAvailable) {
         return true;
@@ -542,9 +392,7 @@ export const CartProvider = ({ children }) => {
 
       try {
         const response = await fetch(
-          `${API_URL}/api/favorites/${encodeURIComponent(
-            id
-          )}`,
+          `${API_URL}/api/favorites/${encodeURIComponent(id)}`,
           {
             method: "DELETE",
             headers: {
@@ -554,70 +402,34 @@ export const CartProvider = ({ children }) => {
           }
         );
 
-        // ----------------------------------------------------
-        // 404
-        // ----------------------------------------------------
-
         if (response.status === 404) {
-          console.warn(
-            "DELETE /api/favorites/:productId is not available " +
-              "on the backend. Favorite removed locally."
-          );
-
           setFavoritesApiAvailable(false);
-
-          return true;
+          return true; // Already removed locally
         }
 
-        // ----------------------------------------------------
-        // Unauthorized
-        // ----------------------------------------------------
-
         if (response.status === 401) {
-          console.warn(
-            "Unable to remove favorite: authentication expired."
-          );
-
-          setFavoritesError(
-            "Please log in again to manage favorites."
-          );
-
+          // Restore favorite
+          setFavorites((prev) => {
+            if (prev.includes(id)) return prev;
+            return [...prev, id];
+          });
+          setFavoritesError("Please log in again to manage favorites.");
           return false;
         }
 
-        // ----------------------------------------------------
-        // Other errors
-        // ----------------------------------------------------
-
         if (!response.ok) {
           const data = await getResponseJson(response);
-
-          throw new Error(
-            getApiErrorMessage(response, data)
-          );
+          throw new Error(getApiErrorMessage(response, data));
         }
 
         return true;
       } catch (error) {
-        console.warn(
-          "Failed to remove favorite:",
-          error
-        );
-
-        // ----------------------------------------------------
-        // Restore favorite if backend failed
-        // ----------------------------------------------------
-
+        // Restore favorite
         setFavorites((prev) => {
-          if (prev.includes(id)) {
-            return prev;
-          }
-
+          if (prev.includes(id)) return prev;
           return [...prev, id];
         });
-
         setFavoritesError(error.message);
-
         return false;
       }
     },
@@ -671,26 +483,16 @@ export const CartProvider = ({ children }) => {
   const clearFavorites = useCallback(async () => {
     const currentFavorites = [...favorites];
 
-    // --------------------------------------------------------
-    // Clear UI immediately
-    // --------------------------------------------------------
-
+    // ─── Clear UI immediately ──────────────────────────────
     setFavorites([]);
     setFavoritesError(null);
 
     const token = getToken();
 
-    // --------------------------------------------------------
-    // Local only
-    // --------------------------------------------------------
-
-    if (!user || !token) {
+    // ─── Local only ──────────────────────────────────────
+    if (!user || !token || !FAVORITES_API_ENABLED) {
       return true;
     }
-
-    // --------------------------------------------------------
-    // Backend unavailable
-    // --------------------------------------------------------
 
     if (!favoritesApiAvailable) {
       return true;
@@ -701,9 +503,7 @@ export const CartProvider = ({ children }) => {
         currentFavorites.map(async (productId) => {
           try {
             const response = await fetch(
-              `${API_URL}/api/favorites/${encodeURIComponent(
-                productId
-              )}`,
+              `${API_URL}/api/favorites/${encodeURIComponent(productId)}`,
               {
                 method: "DELETE",
                 headers: {
@@ -719,39 +519,22 @@ export const CartProvider = ({ children }) => {
             }
 
             return response.ok;
-          } catch (error) {
-            console.warn(
-              "Failed to remove favorite:",
-              productId,
-              error
-            );
-
+          } catch {
             return false;
           }
         })
       );
 
-      // ------------------------------------------------------
-      // If backend failed for one or more items,
-      // restore the local list.
-      // ------------------------------------------------------
-
+      // If any failed, restore all
       if (results.some((result) => result === false)) {
         setFavorites(currentFavorites);
-
         return false;
       }
 
       return true;
     } catch (error) {
-      console.warn(
-        "Failed to clear favorites:",
-        error
-      );
-
       setFavorites(currentFavorites);
       setFavoritesError(error.message);
-
       return false;
     }
   }, [favorites, user, favoritesApiAvailable]);
@@ -761,12 +544,6 @@ export const CartProvider = ({ children }) => {
   // ==========================================================
 
   useEffect(() => {
-    // --------------------------------------------------------
-    // Do NOT clear localStorage favorites on logout.
-    //
-    // This keeps the user's local wishlist available.
-    // --------------------------------------------------------
-
     if (!user) {
       setFavoritesError(null);
     }
@@ -784,46 +561,17 @@ export const CartProvider = ({ children }) => {
 
   const value = useMemo(
     () => ({
-      // ------------------------------------------------------
-      // Favorites
-      // ------------------------------------------------------
-
       favorites,
-
-      // ------------------------------------------------------
-      // Actions
-      // ------------------------------------------------------
-
       addFavorite,
       removeFavorite,
       toggleFavorite,
       isFavorite,
       clearFavorites,
-
-      // ------------------------------------------------------
-      // Count
-      // ------------------------------------------------------
-
       count: favoriteCount,
       favoriteCount,
-
-      // ------------------------------------------------------
-      // Loading / error
-      // ------------------------------------------------------
-
       favoritesLoading,
       favoritesError,
-
-      // ------------------------------------------------------
-      // Backend status
-      // ------------------------------------------------------
-
       favoritesApiAvailable,
-
-      // ------------------------------------------------------
-      // Reload
-      // ------------------------------------------------------
-
       loadFavorites,
     }),
     [
