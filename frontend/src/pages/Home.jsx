@@ -7,6 +7,7 @@ import React, {
   useEffect,
   useState,
   useCallback,
+  useMemo,
 } from "react";
 
 import Hero from "../components/Hero";
@@ -15,7 +16,7 @@ import FeaturedProducts from "../components/FeaturedProducts";
 import FeaturedSellers from "../components/FeaturedSellers";
 import Footer from "../components/Footer";
 
-import { getProducts } from "../services/api";
+import { getProducts, getImageUrl } from "../services/api";
 
 // ============================================================
 // HOME PAGE
@@ -39,30 +40,15 @@ const Home = () => {
   // ==========================================================
 
   const extractProducts = useCallback((data) => {
-    // --------------------------------------------------------
-    // Standard response
-    // --------------------------------------------------------
-
     if (Array.isArray(data?.products)) {
       return data.products;
     }
-
-    // --------------------------------------------------------
-    // Some APIs return data.products
-    // --------------------------------------------------------
-
     if (Array.isArray(data?.data?.products)) {
       return data.data.products;
     }
-
-    // --------------------------------------------------------
-    // Some APIs return the array directly
-    // --------------------------------------------------------
-
     if (Array.isArray(data)) {
       return data;
     }
-
     return [];
   }, []);
 
@@ -73,22 +59,11 @@ const Home = () => {
   const removeDuplicateProducts = useCallback(
     (products = []) => {
       const seen = new Set();
-
       return products.filter((product) => {
         if (!product) return false;
-
-        const id =
-          product._id ||
-          product.id ||
-          product.slug ||
-          `${product.title}-${product.price}`;
-
-        if (seen.has(id)) {
-          return false;
-        }
-
+        const id = product._id || product.id || product.slug || `${product.title}-${product.price}`;
+        if (seen.has(id)) return false;
         seen.add(id);
-
         return true;
       });
     },
@@ -96,59 +71,82 @@ const Home = () => {
   );
 
   // ==========================================================
+  // EXTRACT TOP SELLERS FROM PRODUCTS
+  // ==========================================================
+
+  const topSellers = useMemo(() => {
+    const sellerMap = new Map();
+
+    allProducts.forEach((product) => {
+      // Try to get seller object from multiple possible locations
+      let seller = product.seller || product.sellerId || null;
+      // If seller is a string (just an ID), we cannot get the name, so skip
+      if (typeof seller === 'string') return;
+      if (!seller || !seller._id) return;
+
+      const sellerId = seller._id.toString();
+      const existing = sellerMap.get(sellerId);
+
+      // Build avatar URL – handle both Cloudinary paths and full URLs
+      let avatar = null;
+      const imageField = seller.profileImage || seller.avatar || seller.photo || seller.picture || null;
+      if (imageField) {
+        if (typeof imageField === 'string' && (imageField.startsWith('http://') || imageField.startsWith('https://'))) {
+          avatar = imageField; // Full URL – use as is
+        } else {
+          avatar = getImageUrl(imageField); // Path – prepend base URL
+        }
+      }
+
+      if (existing) {
+        // Increment product count
+        existing.productCount += 1;
+      } else {
+        // New seller – store name and profile image
+        const name = seller.name || seller.shopName || 'Unknown Seller';
+        sellerMap.set(sellerId, {
+          _id: sellerId,
+          name,
+          avatar,
+          productCount: 1,
+          orders: 0, // Not available from product data – keep as 0
+          country: '', // Not available – add later if needed
+        });
+      }
+    });
+
+    // Convert map to array, sort by product count descending, take top 8
+    const sorted = Array.from(sellerMap.values())
+      .sort((a, b) => b.productCount - a.productCount)
+      .slice(0, 8);
+
+    // Add rank and ensure orders field
+    return sorted.map((seller, index) => ({
+      ...seller,
+      rank: index + 1,
+      orders: seller.productCount, // Using product count as "orders" for demo
+      products: seller.productCount,
+    }));
+  }, [allProducts]);
+
+  // ==========================================================
   // LOAD HOMEPAGE PRODUCTS
   // ==========================================================
 
   const loadProducts = useCallback(async () => {
     setLoading(true);
-
     try {
-      console.log("========================================");
-      console.log("🏠 LOADING HOMEPAGE PRODUCTS");
-
       const data = await getProducts({
         page: 1,
         limit: 100,
       });
-
-      console.log("📦 HOMEPAGE API RESPONSE:", data);
-
       const receivedProducts = extractProducts(data);
-
-      const products =
-        removeDuplicateProducts(receivedProducts);
-
-      console.log(
-        "📦 PRODUCTS RECEIVED:",
-        receivedProducts.length
-      );
-
-      console.log(
-        "✅ UNIQUE PRODUCTS:",
-        products.length
-      );
-
-      console.log(
-        "📋 PRODUCT TITLES:",
-        products.map((product) => ({
-          id: product._id,
-          title: product.title,
-          category: product.category,
-          price: product.price,
-        }))
-      );
-
-      console.log("========================================");
-
+      const products = removeDuplicateProducts(receivedProducts);
       setAllProducts(products);
       setFilteredProducts(products);
       setActiveCategory(null);
     } catch (error) {
-      console.error(
-        "❌ Failed to load homepage products:",
-        error
-      );
-
+      console.error("❌ Failed to load homepage products:", error);
       setAllProducts([]);
       setFilteredProducts([]);
     } finally {
@@ -170,90 +168,34 @@ const Home = () => {
 
   const handleCategorySelect = useCallback(
     async (category) => {
-      const selectedCategory =
-        String(category || "").trim();
+      const selectedCategory = String(category || "").trim();
 
-      // ------------------------------------------------------
-      // ALL / RESET
-      // ------------------------------------------------------
-
-      if (
-        !selectedCategory ||
-        selectedCategory.toLowerCase() === "all"
-      ) {
+      if (!selectedCategory || selectedCategory.toLowerCase() === "all") {
         setActiveCategory(null);
-
         setFilteredProducts(allProducts);
-
         return;
       }
-
-      // ------------------------------------------------------
-      // ACTIVE CATEGORY
-      // ------------------------------------------------------
 
       setActiveCategory(selectedCategory);
       setSearching(true);
 
       try {
-        console.log("========================================");
-        console.log(
-          "🔎 CATEGORY REQUEST:",
-          selectedCategory
-        );
-
         const data = await getProducts({
           category: selectedCategory,
           page: 1,
           limit: 100,
         });
-
-        console.log(
-          "📦 CATEGORY RESPONSE:",
-          data
-        );
-
-        const receivedProducts =
-          extractProducts(data);
-
-        const products =
-          removeDuplicateProducts(
-            receivedProducts
-          );
-
-        console.log(
-          `✅ ${selectedCategory}: ${products.length} unique products`
-        );
-
-        console.log(
-          "📋 CATEGORY PRODUCTS:",
-          products.map((product) => ({
-            id: product._id,
-            title: product.title,
-            category: product.category,
-            price: product.price,
-          }))
-        );
-
-        console.log("========================================");
-
+        const receivedProducts = extractProducts(data);
+        const products = removeDuplicateProducts(receivedProducts);
         setFilteredProducts(products);
       } catch (error) {
-        console.error(
-          `❌ Failed to load ${selectedCategory}:`,
-          error
-        );
-
+        console.error(`❌ Failed to load ${selectedCategory}:`, error);
         setFilteredProducts([]);
       } finally {
         setSearching(false);
       }
     },
-    [
-      allProducts,
-      extractProducts,
-      removeDuplicateProducts,
-    ]
+    [allProducts, extractProducts, removeDuplicateProducts]
   );
 
   // ==========================================================
@@ -263,52 +205,16 @@ const Home = () => {
   const handleSearch = useCallback(
     async (params = {}) => {
       setSearching(true);
-
       try {
-        const searchParams = {
-          ...params,
-          page: 1,
-          limit: 100,
-        };
-
-        console.log("========================================");
-        console.log(
-          "🔎 SEARCH REQUEST:",
-          searchParams
-        );
-
-        const data =
-          await getProducts(searchParams);
-
-        console.log(
-          "📦 SEARCH RESPONSE:",
-          data
-        );
-
-        const receivedProducts =
-          extractProducts(data);
-
-        const products =
-          removeDuplicateProducts(
-            receivedProducts
-          );
-
-        console.log(
-          "✅ SEARCH PRODUCTS:",
-          products.length
-        );
-
-        console.log("========================================");
-
+        const searchParams = { ...params, page: 1, limit: 100 };
+        const data = await getProducts(searchParams);
+        const receivedProducts = extractProducts(data);
+        const products = removeDuplicateProducts(receivedProducts);
         setAllProducts(products);
         setFilteredProducts(products);
         setActiveCategory(null);
       } catch (error) {
-        console.error(
-          "❌ Search failed:",
-          error
-        );
-
+        console.error("❌ Search failed:", error);
         setAllProducts([]);
         setFilteredProducts([]);
       } finally {
@@ -319,33 +225,6 @@ const Home = () => {
   );
 
   // ==========================================================
-  // FEATURED SELLERS
-  // ==========================================================
-
-  const sellers = [
-    {
-      _id: "1",
-      name: "KN Auto Dealer",
-      productCount: 12,
-    },
-    {
-      _id: "2",
-      name: "Compuville Systems",
-      productCount: 8,
-    },
-    {
-      _id: "3",
-      name: "KN Properties",
-      productCount: 5,
-    },
-    {
-      _id: "4",
-      name: "KN Fashion Store",
-      productCount: 15,
-    },
-  ];
-
-  // ==========================================================
   // TITLE
   // ==========================================================
 
@@ -354,41 +233,17 @@ const Home = () => {
     : "Featured Products";
 
   // ==========================================================
-  // DEBUG
-  // ==========================================================
-
-  console.log("🏠 HOME STATE:", {
-    allProducts: allProducts.length,
-    filteredProducts: filteredProducts.length,
-    activeCategory,
-    loading,
-    searching,
-  });
-
-  // ==========================================================
   // RENDER
   // ==========================================================
 
   return (
     <>
-      {/* ======================================================
-          HERO
-      ====================================================== */}
-
       <Hero onSearch={handleSearch} />
-
-      {/* ======================================================
-          CATEGORIES
-      ====================================================== */}
 
       <Categories
         products={allProducts}
         onCategorySelect={handleCategorySelect}
       />
-
-      {/* ======================================================
-          PRODUCTS
-      ====================================================== */}
 
       <FeaturedProducts
         products={filteredProducts}
@@ -397,15 +252,10 @@ const Home = () => {
         link="/products"
       />
 
-      {/* ======================================================
-          FEATURED SELLERS
-      ====================================================== */}
-
-      <FeaturedSellers sellers={sellers} />
-
-      {/* ======================================================
-          FOOTER
-      ====================================================== */}
+      {/* ─── Top Sellers with real data and profile pictures ─── */}
+      {topSellers.length > 0 && (
+        <FeaturedSellers sellers={topSellers} />
+      )}
 
       <Footer />
     </>

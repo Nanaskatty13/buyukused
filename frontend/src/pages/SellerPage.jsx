@@ -29,6 +29,59 @@ import {
 import ProductCard from "../components/ProductCard";
 
 // ============================================================
+// LOADING DOTS COMPONENT (3 swinging dots)
+// ============================================================
+
+const LoadingDots = () => {
+  return (
+    <div className="loading-dots-wrapper">
+      <div className="loading-dots">
+        <span></span>
+        <span></span>
+        <span></span>
+      </div>
+      <style>
+        {`
+          .loading-dots-wrapper {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 40px 20px;
+            width: 100%;
+          }
+          .loading-dots {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+          }
+          .loading-dots span {
+            display: block;
+            width: 14px;
+            height: 14px;
+            background: #0066cc;
+            border-radius: 50%;
+            animation: loading-dot-bounce 1.2s ease-in-out infinite;
+          }
+          .loading-dots span:nth-child(1) {
+            animation-delay: 0s;
+          }
+          .loading-dots span:nth-child(2) {
+            animation-delay: 0.2s;
+          }
+          .loading-dots span:nth-child(3) {
+            animation-delay: 0.4s;
+          }
+          @keyframes loading-dot-bounce {
+            0%, 80%, 100% { transform: translateY(0) scale(0.8); opacity: 0.4; }
+            40% { transform: translateY(-20px) scale(1); opacity: 1; }
+          }
+        `}
+      </style>
+    </div>
+  );
+};
+
+// ============================================================
 // TIME AGO
 // ============================================================
 
@@ -242,13 +295,13 @@ const SellerPage = () => {
   const hasUserReviewed = Boolean(userReview);
 
   // ==========================================================
-  // FETCH SELLER
+  // FETCH SELLER DATA – OPTIMISED (parallel fetches)
   // ==========================================================
 
   useEffect(() => {
     let cancelled = false;
 
-    const fetchSellerData = async () => {
+    const fetchAllData = async () => {
       if (!sellerId) {
         setError("No seller ID provided.");
         setLoading(false);
@@ -264,306 +317,118 @@ const SellerPage = () => {
         setLoading(true);
         setError("");
         setImageError(false);
+        setReviewsLoading(true);
 
-        // ==================================================
-        // PROFILE
-        // ==================================================
+        // ─── Parallel fetch: profile, products, and reviews ───
+        const [profileResult, productsResult, reviewsResult] = await Promise.all([
+          getPublicSellerProfile(sellerId).catch((err) => {
+            console.error("Profile fetch error:", err);
+            return { success: false, message: err.message || "Profile fetch failed" };
+          }),
+          getPublicSellerProducts(sellerId, {
+            page: 1,
+            limit: 20,
+            sort: "-createdAt",
+          }).catch((err) => {
+            console.error("Products fetch error:", err);
+            return { success: false, message: err.message || "Products fetch failed" };
+          }),
+          getSellerReviews(sellerId, { page: 1, limit: 10 }).catch((err) => {
+            console.error("Reviews fetch error:", err);
+            return { success: false, message: err.message || "Reviews fetch failed" };
+          }),
+        ]);
 
-        const profileData =
-          await getPublicSellerProfile(sellerId);
+        if (cancelled) return;
 
-        console.log("👤 Seller profile:", profileData);
-
-        if (
-          !profileData?.success ||
-          !profileData?.seller
-        ) {
-          throw new Error(
-            profileData?.message ||
-              "Failed to load seller profile."
-          );
-        }
-
-        const sellerData = profileData.seller;
-
-        const normalizedSeller = {
-          _id: sellerData._id || sellerId,
-
-          name:
-            sellerData.name ||
-            "Seller",
-
-          shopName:
-            sellerData.shopName ||
-            sellerData.name ||
-            "Seller",
-
-          phone:
-            sellerData.phone ||
-            "",
-
-          email:
-            sellerData.email ||
-            "",
-
-          location:
-            sellerData.location ||
-            "",
-
-          avatar:
-            sellerData.avatar ||
-            sellerData.profileImage ||
-            sellerData.photo ||
-            sellerData.photoURL ||
-            null,
-
-          profileImage:
-            sellerData.profileImage ||
-            "",
-
-          photo:
-            sellerData.photo ||
-            "",
-
-          photoURL:
-            sellerData.photoURL ||
-            "",
-
-          createdAt:
-            sellerData.createdAt ||
-            "",
-
-          sellerSince:
-            sellerData.sellerSince ||
-            "",
-
-          memberSince:
-            sellerData.memberSince ||
-            sellerData.sellerSince ||
-            sellerData.createdAt ||
-            "",
-
-          lastActive:
-            sellerData.lastActive ||
-            sellerData.lastSeen ||
-            "",
-
-          lastSeen:
-            sellerData.lastSeen ||
-            sellerData.lastActive ||
-            "",
-
-          role:
-            sellerData.role ||
-            "seller",
-
-          rating:
-            Number(sellerData.rating || 0),
-
-          reviewCount:
-            Number(sellerData.reviewCount || 0),
-
-          productsCount:
-            Number(sellerData.productsCount || 0),
-        };
-
-        if (!cancelled) {
+        // ─── Process profile ──────────────────────────────────
+        if (profileResult.success && profileResult.seller) {
+          const sellerData = profileResult.seller;
+          const normalizedSeller = {
+            _id: sellerData._id || sellerId,
+            name: sellerData.name || "Seller",
+            shopName: sellerData.shopName || sellerData.name || "Seller",
+            phone: sellerData.phone || "",
+            email: sellerData.email || "",
+            location: sellerData.location || "",
+            avatar: sellerData.avatar || sellerData.profileImage || sellerData.photo || sellerData.photoURL || null,
+            profileImage: sellerData.profileImage || "",
+            photo: sellerData.photo || "",
+            photoURL: sellerData.photoURL || "",
+            createdAt: sellerData.createdAt || "",
+            sellerSince: sellerData.sellerSince || "",
+            memberSince: sellerData.memberSince || sellerData.sellerSince || sellerData.createdAt || "",
+            lastActive: sellerData.lastActive || sellerData.lastSeen || "",
+            lastSeen: sellerData.lastSeen || sellerData.lastActive || "",
+            role: sellerData.role || "seller",
+            rating: Number(sellerData.rating || 0),
+            reviewCount: Number(sellerData.reviewCount || 0),
+            productsCount: Number(sellerData.productsCount || 0),
+          };
           setSeller(normalizedSeller);
+        } else {
+          throw new Error(profileResult.message || "Failed to load seller profile.");
         }
 
-        // ==================================================
-        // PRODUCTS
-        // ==================================================
-
-        const productsData =
-          await getPublicSellerProducts(
-            sellerId,
-            {
-              page: 1,
-              limit: 20,
-              sort: "-createdAt",
-            }
-          );
-
-        console.log(
-          "📦 Seller products:",
-          productsData
-        );
-
-        if (cancelled) {
-          return;
-        }
-
-        if (productsData?.success) {
-          setProducts(
-            Array.isArray(productsData.products)
-              ? productsData.products
-              : []
-          );
-
-          setPagination(
-            productsData.pagination || null
-          );
+        // ─── Process products ──────────────────────────────────
+        if (productsResult.success && Array.isArray(productsResult.products)) {
+          setProducts(productsResult.products);
+          setPagination(productsResult.pagination || null);
         } else {
           setProducts([]);
           setPagination(null);
         }
+
+        // ─── Process reviews ──────────────────────────────────
+        if (reviewsResult.success) {
+          const incomingReviews = Array.isArray(reviewsResult.reviews) ? reviewsResult.reviews : [];
+          setReviews(incomingReviews);
+
+          if (reviewsResult.summary) {
+            setReviewSummary({
+              averageRating: Number(reviewsResult.summary.averageRating || 0),
+              totalReviews: Number(reviewsResult.summary.totalReviews || 0),
+              breakdown: {
+                5: Number(reviewsResult.summary.breakdown?.[5] || 0),
+                4: Number(reviewsResult.summary.breakdown?.[4] || 0),
+                3: Number(reviewsResult.summary.breakdown?.[3] || 0),
+                2: Number(reviewsResult.summary.breakdown?.[2] || 0),
+                1: Number(reviewsResult.summary.breakdown?.[1] || 0),
+              },
+            });
+          }
+          if (reviewsResult.pagination) {
+            setReviewsPagination(reviewsResult.pagination);
+          }
+          setReviewError("");
+        } else {
+          setReviewError(reviewsResult.message || "Unable to load reviews.");
+          setReviews([]);
+        }
       } catch (err) {
-        console.error(
-          "❌ Error fetching seller data:",
-          err
-        );
+        console.error("❌ Error fetching seller data:", err);
+        if (cancelled) return;
 
-        if (cancelled) {
+        if (err?.response?.status === 401 || err?.status === 401) {
+          navigate("/login", { state: { from: `/seller/${sellerId}` } });
           return;
         }
 
-        if (
-          err?.response?.status === 401 ||
-          err?.status === 401
-        ) {
-          navigate("/login", {
-            state: {
-              from: `/seller/${sellerId}`,
-            },
-          });
-
-          return;
-        }
-
-        setError(
-          err?.message ||
-            "An error occurred while loading seller profile."
-        );
+        setError(err?.message || "An error occurred while loading seller profile.");
       } finally {
         if (!cancelled) {
           setLoading(false);
+          setReviewsLoading(false);
         }
       }
     };
 
-    fetchSellerData();
+    fetchAllData();
 
     return () => {
       cancelled = true;
     };
   }, [sellerId, user, navigate]);
-
-  // ==========================================================
-  // FETCH REVIEWS
-  // ==========================================================
-
-  const fetchReviews = async (
-    page = 1,
-    append = false
-  ) => {
-    if (!sellerId) {
-      return;
-    }
-
-    try {
-      setReviewsLoading(true);
-      setReviewError("");
-
-      const response =
-        await getSellerReviews(
-          sellerId,
-          {
-            page,
-            limit: 10,
-          }
-        );
-
-      console.log(
-        "⭐ Seller reviews:",
-        response
-      );
-
-      if (!response?.success) {
-        throw new Error(
-          response?.message ||
-            "Unable to load reviews."
-        );
-      }
-
-      const incomingReviews =
-        Array.isArray(response.reviews)
-          ? response.reviews
-          : [];
-
-      setReviews((previous) =>
-        append
-          ? [
-              ...previous,
-              ...incomingReviews,
-            ]
-          : incomingReviews
-      );
-
-      if (response.summary) {
-        setReviewSummary({
-          averageRating:
-            Number(
-              response.summary.averageRating || 0
-            ),
-
-          totalReviews:
-            Number(
-              response.summary.totalReviews || 0
-            ),
-
-          breakdown: {
-            5: Number(
-              response.summary.breakdown?.[5] || 0
-            ),
-            4: Number(
-              response.summary.breakdown?.[4] || 0
-            ),
-            3: Number(
-              response.summary.breakdown?.[3] || 0
-            ),
-            2: Number(
-              response.summary.breakdown?.[2] || 0
-            ),
-            1: Number(
-              response.summary.breakdown?.[1] || 0
-            ),
-          },
-        });
-      }
-
-      if (response.pagination) {
-        setReviewsPagination(
-          response.pagination
-        );
-      }
-    } catch (err) {
-      console.error(
-        "❌ Error loading reviews:",
-        err
-      );
-
-      setReviewError(
-        err?.message ||
-          "Unable to load seller reviews."
-      );
-    } finally {
-      setReviewsLoading(false);
-    }
-  };
-
-  // ==========================================================
-  // INITIAL REVIEWS
-  // ==========================================================
-
-  useEffect(() => {
-    if (user && sellerId) {
-      fetchReviews(1, false);
-    } else {
-      setReviews([]);
-      setReviewsPagination(null);
-    }
-  }, [sellerId, user]);
 
   // ==========================================================
   // RESET FORM
@@ -688,7 +553,12 @@ const SellerPage = () => {
             response.message || "Your review has been updated successfully."
           );
           resetForm();
-          await fetchReviews(1, false);
+          // Refresh reviews
+          const refreshed = await getSellerReviews(sellerId, { page: 1, limit: 10 });
+          if (refreshed.success) {
+            setReviews(refreshed.reviews || []);
+            if (refreshed.summary) setReviewSummary(refreshed.summary);
+          }
         } else {
           throw new Error(response.message || "Failed to update review.");
         }
@@ -719,7 +589,12 @@ const SellerPage = () => {
 
       resetForm();
 
-      await fetchReviews(1, false);
+      // Refresh reviews
+      const refreshed = await getSellerReviews(sellerId, { page: 1, limit: 10 });
+      if (refreshed.success) {
+        setReviews(refreshed.reviews || []);
+        if (refreshed.summary) setReviewSummary(refreshed.summary);
+      }
     } catch (err) {
       console.error("❌ Create review error:", err);
 
@@ -729,30 +604,37 @@ const SellerPage = () => {
 
       if (err?.response?.status === 409) {
         // Reload reviews to get the latest list
-        await fetchReviews(1, false);
+        const refreshed = await getSellerReviews(sellerId, { page: 1, limit: 10 });
+        if (refreshed.success) {
+          setReviews(refreshed.reviews || []);
+          if (refreshed.summary) setReviewSummary(refreshed.summary);
+          // After reload, check if we can find the user's review
+          const updatedUserReview = refreshed.reviews?.find((r) => {
+            const reviewerId = r.reviewer?._id || r.reviewer?.id || r.reviewer;
+            return (
+              reviewerId &&
+              String(reviewerId) === String(currentUserId) &&
+              !r.productId
+            );
+          });
 
-        // After reload, check if we can find the user's review
-        const updatedUserReview = reviews.find((r) => {
-          const reviewerId = r.reviewer?._id || r.reviewer?.id || r.reviewer;
-          return (
-            reviewerId &&
-            String(reviewerId) === String(currentUserId) &&
-            !r.productId
-          );
-        });
-
-        if (updatedUserReview) {
-          setEditingReviewId(updatedUserReview._id);
-          setSelectedRating(updatedUserReview.rating);
-          setReviewComment(updatedUserReview.comment || "");
-          setIsEditing(true);
-          setReviewError("");
-          setReviewSuccess(
-            "You already have a review. You can edit it below."
-          );
+          if (updatedUserReview) {
+            setEditingReviewId(updatedUserReview._id);
+            setSelectedRating(updatedUserReview.rating);
+            setReviewComment(updatedUserReview.comment || "");
+            setIsEditing(true);
+            setReviewError("");
+            setReviewSuccess(
+              "You already have a review. You can edit it below."
+            );
+          } else {
+            setReviewError(
+              "You have already reviewed this seller, but we couldn't find your review. Please refresh and try again."
+            );
+          }
         } else {
           setReviewError(
-            "You have already reviewed this seller, but we couldn't find your review. Please refresh and try again."
+            "Conflict: you may have already reviewed this seller."
           );
         }
       } else {
@@ -953,7 +835,7 @@ const SellerPage = () => {
   }
 
   // ==========================================================
-  // LOADING
+  // LOADING – now uses LoadingDots
   // ==========================================================
 
   if (loading) {
@@ -965,14 +847,7 @@ const SellerPage = () => {
           textAlign: "center",
         }}
       >
-        <i
-          className="fas fa-spinner fa-spin"
-          style={{
-            marginRight: "8px",
-          }}
-        />
-
-        Loading seller profile...
+        <LoadingDots />
       </div>
     );
   }
@@ -1160,10 +1035,25 @@ const SellerPage = () => {
         return;
       }
 
-      await fetchReviews(
-        currentPage + 1,
-        true
-      );
+      try {
+        setReviewsLoading(true);
+        const response = await getSellerReviews(
+          sellerId,
+          {
+            page: currentPage + 1,
+            limit: 10,
+          }
+        );
+        if (response.success) {
+          const newReviews = Array.isArray(response.reviews) ? response.reviews : [];
+          setReviews((prev) => [...prev, ...newReviews]);
+          if (response.pagination) setReviewsPagination(response.pagination);
+        }
+      } catch (err) {
+        console.error("❌ Load more reviews error:", err);
+      } finally {
+        setReviewsLoading(false);
+      }
     };
 
   // ==========================================================

@@ -1,6 +1,4 @@
-// ============================================================
 // frontend/src/pages/Profile.jsx
-// ============================================================
 
 import React, {
   useState,
@@ -28,6 +26,44 @@ import {
 } from "../services/api";
 
 import { messages } from "../services/messages";
+
+// ============================================================
+// LOADING DOTS COMPONENT (3 swinging dots)
+// ============================================================
+
+const LoadingDots = ({ size = 14, color = "#0066cc" }) => {
+  return (
+    <span className="loading-dots-inline">
+      <span></span>
+      <span></span>
+      <span></span>
+      <style>
+        {`
+          .loading-dots-inline {
+            display: inline-flex;
+            gap: 6px;
+            align-items: center;
+          }
+          .loading-dots-inline span {
+            display: block;
+            width: ${size}px;
+            height: ${size}px;
+            background: ${color};
+            border-radius: 50%;
+            animation: loading-dot-bounce-inline 1.2s ease-in-out infinite;
+          }
+          .loading-dots-inline span:nth-child(1) { animation-delay: 0s; }
+          .loading-dots-inline span:nth-child(2) { animation-delay: 0.2s; }
+          .loading-dots-inline span:nth-child(3) { animation-delay: 0.4s; }
+          @keyframes loading-dot-bounce-inline {
+            0%, 80%, 100% { transform: translateY(0) scale(0.8); opacity: 0.4; }
+            40% { transform: translateY(-12px) scale(1); opacity: 1; }
+          }
+        `}
+      </style>
+    </span>
+  );
+};
 
 // ============================================================
 // PROFILE
@@ -1449,13 +1485,15 @@ const Profile = () => {
         )}
 
         {/* ====================================================
-            LOADING
+            LOADING – now uses LoadingDots
         ==================================================== */}
 
         {reviewsLoading ? (
           <div className="profile-loading">
-            <span className="profile-spinner" />
-            Loading reviews...
+            <LoadingDots size={20} color="#0066cc" />
+            <span style={{ marginLeft: "10px", color: "#6b7280", fontSize: "14px" }}>
+              Loading reviews...
+            </span>
           </div>
         ) : reviews.length === 0 ? (
 
@@ -1967,11 +2005,10 @@ const Profile = () => {
                     editLoading
                   }
                 >
-
                   {editLoading ? (
                     <>
-                      <span className="button-spinner" />
-                      Saving...
+                      <LoadingDots size={16} color="#ffffff" />
+                      <span style={{ marginLeft: "6px" }}>Saving...</span>
                     </>
                   ) : (
                     <>
@@ -1979,7 +2016,6 @@ const Profile = () => {
                       Save Changes
                     </>
                   )}
-
                 </button>
 
               </div>
@@ -2580,6 +2616,10 @@ const Profile = () => {
             text-align: center;
             color: var(--gray-500);
             font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
           }
 
           .profile-spinner {

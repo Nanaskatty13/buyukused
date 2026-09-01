@@ -105,7 +105,7 @@ const Navbar = () => {
 
   const dropdownRef = useRef(null);
   const mobileDropdownRef = useRef(null);
-  const pollIntervalRef = useRef(null); // ← store interval ID
+  const pollIntervalRef = useRef(null);
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -156,52 +156,64 @@ const Navbar = () => {
   }, [location.pathname]);
 
   // ==========================================================
-  // FETCH UNREAD COUNTS – with silent error handling
+  // FETCH UNREAD COUNTS
   // ==========================================================
 
   useEffect(() => {
-    let isMounted = true;
     let cancelled = false;
 
     const resetCounts = () => {
-      if (isMounted && !cancelled) {
-        setUnreadNotifications(0);
-        setUnreadMessages(0);
-      }
+      if (cancelled) return;
+
+      setUnreadNotifications(0);
+      setUnreadMessages(0);
     };
 
-    // ─── No user → reset and stop ──────────────────────────
+    // --------------------------------------------------------
+    // NO USER
+    // --------------------------------------------------------
+
     if (!user) {
       resetCounts();
+
       if (pollIntervalRef.current) {
         clearInterval(pollIntervalRef.current);
         pollIntervalRef.current = null;
       }
+
       return;
     }
 
     const token = getToken();
 
-    // ─── No token → reset and stop ──────────────────────────
+    // --------------------------------------------------------
+    // NO TOKEN
+    // --------------------------------------------------------
+
     if (!token) {
       resetCounts();
+
       if (pollIntervalRef.current) {
         clearInterval(pollIntervalRef.current);
         pollIntervalRef.current = null;
       }
+
       return;
     }
 
     const apiUrl = getApiUrl();
 
     // ========================================================
-    // FETCH NOTIFICATIONS (silent)
+    // FETCH NOTIFICATION COUNT
     // ========================================================
 
     const fetchNotificationCount = async () => {
       let count = 0;
 
-      // Admin notifications (if admin)
+      // ------------------------------------------------------
+      // ADMIN NOTIFICATIONS
+      // ------------------------------------------------------
+
       if (user.role === "admin") {
         try {
           const data =
@@ -221,16 +233,20 @@ const Navbar = () => {
               ).length;
           }
         } catch (error) {
-          // silently ignore
+          // Silently ignore admin notification errors
         }
       }
 
-      // Regular notifications endpoint
+      // ------------------------------------------------------
+      // REGULAR NOTIFICATIONS
+      // ------------------------------------------------------
+
       try {
         const response = await fetch(
           `${apiUrl}/api/notifications/unread-count`,
           {
             method: "GET",
+
             headers: {
               Authorization: `Bearer ${token}`,
               Accept: "application/json",
@@ -238,17 +254,24 @@ const Navbar = () => {
           }
         );
 
-        // If 401, stop polling and reset counts (silent)
+        // ----------------------------------------------------
+        // INVALID TOKEN
+        // ----------------------------------------------------
+
         if (response.status === 401) {
           if (pollIntervalRef.current) {
             clearInterval(pollIntervalRef.current);
             pollIntervalRef.current = null;
           }
-          if (isMounted && !cancelled) {
-            setUnreadNotifications(0);
-          }
+
+          setUnreadNotifications(0);
+
           return;
         }
+
+        // ----------------------------------------------------
+        // SUCCESS
+        // ----------------------------------------------------
 
         if (response.ok) {
           const data = await response.json();
@@ -267,16 +290,16 @@ const Navbar = () => {
           }
         }
       } catch (error) {
-        // silently ignore
+        // Ignore network errors
       }
 
-      if (isMounted && !cancelled) {
+      if (!cancelled) {
         setUnreadNotifications(count);
       }
     };
 
     // ========================================================
-    // FETCH MESSAGES (silent)
+    // FETCH MESSAGE COUNT
     // ========================================================
 
     const fetchMessageCount = async () => {
@@ -285,6 +308,7 @@ const Navbar = () => {
           `${apiUrl}/api/messages/unread-count`,
           {
             method: "GET",
+
             headers: {
               Authorization: `Bearer ${token}`,
               Accept: "application/json",
@@ -292,24 +316,33 @@ const Navbar = () => {
           }
         );
 
-        // If 401, stop polling and reset counts (silent)
+        // ----------------------------------------------------
+        // INVALID TOKEN
+        // ----------------------------------------------------
+
         if (response.status === 401) {
           if (pollIntervalRef.current) {
             clearInterval(pollIntervalRef.current);
             pollIntervalRef.current = null;
           }
-          if (isMounted && !cancelled) {
-            setUnreadMessages(0);
-          }
+
+          setUnreadMessages(0);
+
           return;
         }
 
+        // ----------------------------------------------------
+        // FAILED REQUEST
+        // ----------------------------------------------------
+
         if (!response.ok) {
-          if (isMounted && !cancelled) {
-            setUnreadMessages(0);
-          }
+          setUnreadMessages(0);
           return;
         }
+
+        // ----------------------------------------------------
+        // SUCCESS
+        // ----------------------------------------------------
 
         const data = await response.json();
 
@@ -320,43 +353,54 @@ const Navbar = () => {
           data?.totalUnread ??
           0;
 
-        if (isMounted && !cancelled) {
+        if (!cancelled) {
           setUnreadMessages(
             safeCount(messageCount)
           );
         }
       } catch (error) {
-        if (isMounted && !cancelled) {
-          setUnreadMessages(0);
-        }
+        setUnreadMessages(0);
       }
     };
 
-    // ─── Run both fetches ──────────────────────────────────────
+    // ========================================================
+    // INITIAL FETCH
+    // ========================================================
+
     fetchNotificationCount();
     fetchMessageCount();
 
-    // Clear any existing interval
+    // ========================================================
+    // CLEAR EXISTING INTERVAL
+    // ========================================================
+
     if (pollIntervalRef.current) {
       clearInterval(pollIntervalRef.current);
       pollIntervalRef.current = null;
     }
 
-    // Refresh every 30 seconds
+    // ========================================================
+    // REFRESH EVERY 30 SECONDS
+    // ========================================================
+
     pollIntervalRef.current = setInterval(() => {
       fetchNotificationCount();
       fetchMessageCount();
     }, 30000);
 
+    // ========================================================
+    // CLEANUP
+    // ========================================================
+
     return () => {
       cancelled = true;
-      isMounted = false;
+
       if (pollIntervalRef.current) {
         clearInterval(pollIntervalRef.current);
         pollIntervalRef.current = null;
       }
     };
-  }, [user]); // Re‑run when user changes
+  }, [user]);
 
   // ==========================================================
   // LOGOUT
@@ -373,6 +417,7 @@ const Navbar = () => {
     } finally {
       setDropdownOpen(false);
       setMobileDropdownOpen(false);
+
       navigate("/");
     }
   };
@@ -452,11 +497,10 @@ const Navbar = () => {
   // FAVORITES
   // ==========================================================
 
-  const favoriteCount = Array.isArray(
-    favorites
-  )
-    ? favorites.length
-    : 0;
+  const favoriteCount =
+    Array.isArray(favorites)
+      ? favorites.length
+      : 0;
 
   const handleHeartClick = (event) => {
     if (!user) {
@@ -502,7 +546,7 @@ const Navbar = () => {
             -webkit-backdrop-filter: blur(14px);
 
             border-bottom:
-              1px solid rgba(229, 231, 235, 0.8);
+              1px solid rgba(253, 254, 255, 0.8);
 
             box-shadow:
               0 2px 10px rgba(0, 0, 0, 0.05);
@@ -545,7 +589,7 @@ const Navbar = () => {
 
             font-weight: 800;
 
-            color: #0055a5;
+            color: #0b2a52;
 
             text-decoration: none;
 
@@ -553,13 +597,45 @@ const Navbar = () => {
 
             align-items: center;
 
-            gap: 6px;
+            justify-content: flex-start;
+
+            gap: 7px;
 
             flex-shrink: 1;
 
             min-width: 0;
 
             white-space: nowrap;
+
+            overflow: hidden;
+          }
+
+          .navbar-logo-text {
+            display: flex;
+
+            align-items: center;
+
+            line-height: 1;
+
+            font-size: 20px;
+
+            font-weight: 800;
+
+            flex-shrink: 0;
+          }
+
+          .navbar-logo img {
+            height: 34px;
+
+            width: 34px;
+
+            max-width: 34px;
+
+            object-fit: contain;
+
+            display: block;
+
+            flex-shrink: 0;
           }
 
           .navbar-logo i {
@@ -584,11 +660,12 @@ const Navbar = () => {
 
           .navbar-avatar {
             width: 28px;
+
             height: 28px;
 
             border-radius: 50%;
 
-            background: #0055a5;
+            background: #0b2a52;
 
             color: white;
 
@@ -635,6 +712,7 @@ const Navbar = () => {
             position: relative;
 
             width: 24px;
+
             height: 24px;
 
             color: #475569;
@@ -661,7 +739,7 @@ const Navbar = () => {
           .navbar-heart:hover,
           .navbar-bell:hover,
           .navbar-envelope:hover {
-            color: #0055a5;
+            color: #2ecc71;
 
             transform: translateY(-1px);
           }
@@ -674,9 +752,11 @@ const Navbar = () => {
             position: absolute;
 
             top: -8px;
+
             right: -8px;
 
             min-width: 16px;
+
             height: 16px;
 
             padding: 0 4px;
@@ -718,12 +798,16 @@ const Navbar = () => {
           @keyframes dropdownFade {
             from {
               opacity: 0;
-              transform: translateY(-8px);
+
+              transform:
+                translateY(-8px);
             }
 
             to {
               opacity: 1;
-              transform: translateY(0);
+
+              transform:
+                translateY(0);
             }
           }
 
@@ -742,11 +826,26 @@ const Navbar = () => {
           @media (max-width: 1024px) {
             .navbar-container {
               padding: 8px 12px;
+
               gap: 8px;
             }
 
             .navbar-logo {
               font-size: 18px;
+
+              gap: 6px;
+            }
+
+            .navbar-logo-text {
+              font-size: 18px;
+            }
+
+            .navbar-logo img {
+              width: 30px;
+
+              height: 30px;
+
+              max-width: 30px;
             }
 
             .navbar-logo i {
@@ -776,6 +875,20 @@ const Navbar = () => {
               font-size: 17px;
 
               gap: 4px;
+
+              min-width: 0;
+            }
+
+            .navbar-logo-text {
+              font-size: 17px;
+            }
+
+            .navbar-logo img {
+              width: 28px;
+
+              height: 28px;
+
+              max-width: 28px;
             }
 
             .navbar-logo i {
@@ -802,6 +915,7 @@ const Navbar = () => {
             .navbar-bell,
             .navbar-envelope {
               width: 21px;
+
               height: 21px;
 
               font-size: 15px;
@@ -809,6 +923,7 @@ const Navbar = () => {
 
             .navbar-avatar {
               width: 23px;
+
               height: 23px;
 
               font-size: 9px;
@@ -816,9 +931,11 @@ const Navbar = () => {
 
             .navbar-badge {
               top: -6px;
+
               right: -6px;
 
               min-width: 13px;
+
               height: 13px;
 
               padding:
@@ -854,6 +971,18 @@ const Navbar = () => {
               gap: 3px;
             }
 
+            .navbar-logo-text {
+              font-size: 15px;
+            }
+
+            .navbar-logo img {
+              width: 25px;
+
+              height: 25px;
+
+              max-width: 25px;
+            }
+
             .navbar-logo i {
               font-size: 13px;
             }
@@ -874,6 +1003,7 @@ const Navbar = () => {
             .navbar-bell,
             .navbar-envelope {
               width: 19px;
+
               height: 19px;
 
               font-size: 13px;
@@ -881,6 +1011,7 @@ const Navbar = () => {
 
             .navbar-avatar {
               width: 20px;
+
               height: 20px;
 
               font-size: 8px;
@@ -888,9 +1019,11 @@ const Navbar = () => {
 
             .navbar-badge {
               top: -5px;
+
               right: -5px;
 
               min-width: 11px;
+
               height: 11px;
 
               padding:
@@ -912,6 +1045,20 @@ const Navbar = () => {
 
             .navbar-logo {
               font-size: 14px;
+
+              gap: 2px;
+            }
+
+            .navbar-logo-text {
+              font-size: 14px;
+            }
+
+            .navbar-logo img {
+              width: 22px;
+
+              height: 22px;
+
+              max-width: 22px;
             }
 
             .navbar-logo i {
@@ -931,6 +1078,7 @@ const Navbar = () => {
             .navbar-bell,
             .navbar-envelope {
               width: 18px;
+
               height: 18px;
 
               font-size: 12px;
@@ -938,6 +1086,7 @@ const Navbar = () => {
 
             .navbar-avatar {
               width: 19px;
+
               height: 19px;
             }
           }
@@ -968,7 +1117,7 @@ const Navbar = () => {
         <div className="navbar-container">
 
           {/* ====================================================
-              LOGO
+              LOGO — FIRST / FAR LEFT
           ==================================================== */}
 
           <Link
@@ -976,10 +1125,22 @@ const Navbar = () => {
             className="navbar-logo"
             aria-label="BuyUKUsed home"
           >
-            <i className="fas fa-tag" />
+            {/* LOGO IMAGE FIRST */}
+            <img
+              src="/buyukused-logo.png"
+              alt="BuyUKUsed"
+            />
 
-            <span>
-              BuyUk{" "}
+            {/* BRAND NAME AFTER LOGO */}
+            <span className="navbar-logo-text">
+              <span
+                style={{
+                  color: "#0b2a52",
+                }}
+              >
+                BuyUK
+              </span>
+
               <span
                 style={{
                   color: "#2ecc71",
@@ -999,20 +1160,33 @@ const Navbar = () => {
             className="navbar-post-ad-btn"
             style={{
               background: "#2ecc71",
+
               color: "white",
+
               padding: "6px 16px",
+
               borderRadius: "9999px",
+
               fontWeight: 700,
+
               fontSize: "13px",
+
               textDecoration: "none",
+
               display: "inline-flex",
+
               alignItems: "center",
+
               justifyContent: "center",
+
               gap: "6px",
+
               transition:
                 "all 0.2s ease",
+
               boxShadow:
                 "0 2px 4px rgba(46, 204, 113, 0.3)",
+
               whiteSpace: "nowrap",
             }}
             onMouseEnter={(event) => {
@@ -1065,7 +1239,9 @@ const Navbar = () => {
             >
               <i className="fas fa-heart" />
 
-              <Badge count={favoriteCount} />
+              <Badge
+                count={favoriteCount}
+              />
             </Link>
 
             {/* ==================================================
@@ -1086,7 +1262,9 @@ const Navbar = () => {
                 <i className="fas fa-bell" />
 
                 <Badge
-                  count={unreadNotifications}
+                  count={
+                    unreadNotifications
+                  }
                 />
               </Link>
             )}
@@ -1109,7 +1287,9 @@ const Navbar = () => {
                 <i className="fas fa-envelope" />
 
                 <Badge
-                  count={unreadMessages}
+                  count={
+                    unreadMessages
+                  }
                 />
               </Link>
             )}
@@ -1136,15 +1316,24 @@ const Navbar = () => {
                   aria-label="Open account menu"
                   style={{
                     display: "flex",
+
                     alignItems: "center",
+
                     gap: "6px",
+
                     cursor: "pointer",
+
                     padding: "4px 7px",
-                    borderRadius: "9999px",
+
+                    borderRadius:
+                      "9999px",
+
                     background:
                       "rgba(241, 245, 249, 0.8)",
+
                     border:
                       "1px solid transparent",
+
                     transition:
                       "all 0.2s ease",
                   }}
@@ -1154,6 +1343,7 @@ const Navbar = () => {
                       event.key === " "
                     ) {
                       event.preventDefault();
+
                       toggleDropdown();
                     }
                   }}
@@ -1179,13 +1369,20 @@ const Navbar = () => {
                       <img
                         src={profileImageUrl}
                         alt={
-                          user.name || "User"
+                          user.name ||
+                          "User"
                         }
                         style={{
                           width: "100%",
+
                           height: "100%",
-                          borderRadius: "50%",
-                          objectFit: "cover",
+
+                          borderRadius:
+                            "50%",
+
+                          objectFit:
+                            "cover",
+
                           display: "block",
                         }}
                         onError={(event) => {
@@ -1201,15 +1398,26 @@ const Navbar = () => {
                       <span
                         style={{
                           position: "absolute",
+
                           top: "-2px",
+
                           right: "-2px",
+
                           background:
                             "#f59e0b",
+
                           color: "white",
+
                           fontSize: "7px",
+
                           fontWeight: 700,
-                          borderRadius: "50%",
-                          padding: "1px 3px",
+
+                          borderRadius:
+                            "50%",
+
+                          padding:
+                            "1px 3px",
+
                           border:
                             "1px solid white",
                         }}
@@ -1225,13 +1433,20 @@ const Navbar = () => {
                     className="desktop-only"
                     style={{
                       fontSize: "13px",
+
                       color: "#334155",
+
                       fontWeight: 500,
+
                       maxWidth: "120px",
+
                       overflow: "hidden",
+
                       textOverflow:
                         "ellipsis",
-                      whiteSpace: "nowrap",
+
+                      whiteSpace:
+                        "nowrap",
                     }}
                   >
                     {user.name}
@@ -1247,6 +1462,7 @@ const Navbar = () => {
                     }`}
                     style={{
                       fontSize: "9px",
+
                       color: "#94a3b8",
                     }}
                   />
@@ -1261,25 +1477,38 @@ const Navbar = () => {
                     className="navbar-dropdown"
                     style={{
                       position: "absolute",
+
                       top:
                         "calc(100% + 8px)",
+
                       right: 0,
+
                       minWidth: "190px",
+
                       background:
                         "rgba(255, 255, 255, 0.98)",
+
                       backdropFilter:
                         "blur(14px)",
+
                       WebkitBackdropFilter:
                         "blur(14px)",
+
                       border:
                         "1px solid #e5e7eb",
+
                       borderRadius: "12px",
+
                       boxShadow:
                         "0 10px 35px rgba(0,0,0,0.14)",
+
                       padding: "4px 0",
+
                       zIndex: 100000,
                     }}
                   >
+                    {/* SELL */}
+
                     <Link
                       to="/post-ad"
                       onClick={() =>
@@ -1287,18 +1516,30 @@ const Navbar = () => {
                       }
                       style={{
                         display: "flex",
+
                         alignItems: "center",
+
                         gap: "10px",
-                        padding: "9px 14px",
+
+                        padding:
+                          "9px 14px",
+
                         color: "#2ecc71",
+
                         fontWeight: 600,
+
                         fontSize: "13px",
-                        textDecoration: "none",
+
+                        textDecoration:
+                          "none",
                       }}
                     >
                       <i className="fas fa-plus-circle" />
+
                       SELL
                     </Link>
+
+                    {/* MY SHOP */}
 
                     <Link
                       to="/profile"
@@ -1307,17 +1548,28 @@ const Navbar = () => {
                       }
                       style={{
                         display: "flex",
+
                         alignItems: "center",
+
                         gap: "10px",
-                        padding: "9px 14px",
+
+                        padding:
+                          "9px 14px",
+
                         color: "#334155",
+
                         fontSize: "13px",
-                        textDecoration: "none",
+
+                        textDecoration:
+                          "none",
                       }}
                     >
                       <i className="fas fa-user" />
+
                       My Shop
                     </Link>
+
+                    {/* MY ADS */}
 
                     <Link
                       to="/my-ads"
@@ -1326,17 +1578,28 @@ const Navbar = () => {
                       }
                       style={{
                         display: "flex",
+
                         alignItems: "center",
+
                         gap: "10px",
-                        padding: "9px 14px",
+
+                        padding:
+                          "9px 14px",
+
                         color: "#334155",
+
                         fontSize: "13px",
-                        textDecoration: "none",
+
+                        textDecoration:
+                          "none",
                       }}
                     >
                       <i className="fas fa-box" />
+
                       My Ads
                     </Link>
+
+                    {/* FAVORITES */}
 
                     <Link
                       to="/wishlist"
@@ -1345,22 +1608,35 @@ const Navbar = () => {
                       }
                       style={{
                         display: "flex",
+
                         alignItems: "center",
+
                         gap: "10px",
-                        padding: "9px 14px",
+
+                        padding:
+                          "9px 14px",
+
                         color: "#334155",
+
                         fontSize: "13px",
-                        textDecoration: "none",
+
+                        textDecoration:
+                          "none",
                       }}
                     >
                       <i className="fas fa-heart" />
+
                       Favorites
 
                       {favoriteCount > 0 && (
                         <span
                           style={{
-                            marginLeft: "auto",
-                            color: "#e74c3c",
+                            marginLeft:
+                              "auto",
+
+                            color:
+                              "#e74c3c",
+
                             fontWeight: 700,
                           }}
                         >
@@ -1368,6 +1644,8 @@ const Navbar = () => {
                         </span>
                       )}
                     </Link>
+
+                    {/* ADMIN */}
 
                     {user.role === "admin" && (
                       <Link
@@ -1377,15 +1655,24 @@ const Navbar = () => {
                         }
                         style={{
                           display: "flex",
+
                           alignItems: "center",
+
                           gap: "10px",
-                          padding: "9px 14px",
+
+                          padding:
+                            "9px 14px",
+
                           color: "#334155",
+
                           fontSize: "13px",
-                          textDecoration: "none",
+
+                          textDecoration:
+                            "none",
                         }}
                       >
                         <i className="fas fa-user-shield" />
+
                         Admin Dashboard
                       </Link>
                     )}
@@ -1393,30 +1680,46 @@ const Navbar = () => {
                     <hr
                       style={{
                         margin: "4px 0",
+
                         border: "none",
+
                         borderTop:
                           "1px solid #e5e7eb",
                       }}
                     />
+
+                    {/* LOGOUT */}
 
                     <button
                       type="button"
                       onClick={handleLogout}
                       style={{
                         display: "flex",
+
                         alignItems: "center",
+
                         gap: "10px",
+
                         width: "100%",
-                        padding: "9px 14px",
+
+                        padding:
+                          "9px 14px",
+
                         background: "none",
+
                         border: "none",
+
                         color: "#dc2626",
+
                         fontSize: "13px",
+
                         cursor: "pointer",
+
                         textAlign: "left",
                       }}
                     >
                       <i className="fas fa-sign-out-alt" />
+
                       Logout
                     </button>
                   </div>
@@ -1431,7 +1734,9 @@ const Navbar = () => {
               <div
                 style={{
                   display: "flex",
+
                   alignItems: "center",
+
                   gap: "6px",
                 }}
               >
@@ -1442,13 +1747,20 @@ const Navbar = () => {
                   className="desktop-only"
                   style={{
                     border:
-                      "1px solid #0055a5",
-                    color: "#0055a5",
-                    padding: "4px 10px",
+                      "1px solid #0b2a52",
+
+                    color: "#0b2a52",
+
+                    padding:
+                      "4px 10px",
+
                     borderRadius:
                       "9999px",
+
                     fontWeight: 600,
+
                     fontSize: "12px",
+
                     textDecoration:
                       "none",
                   }}
@@ -1462,13 +1774,21 @@ const Navbar = () => {
                   to="/register"
                   className="desktop-only"
                   style={{
-                    background: "#0055a5",
+                    background:
+                      "#0b2a52",
+
                     color: "white",
-                    padding: "4px 10px",
+
+                    padding:
+                      "4px 10px",
+
                     borderRadius:
                       "9999px",
+
                     fontWeight: 600,
+
                     fontSize: "12px",
+
                     textDecoration:
                       "none",
                   }}
@@ -1484,6 +1804,8 @@ const Navbar = () => {
                     position: "relative",
                   }}
                 >
+                  {/* MOBILE ACCOUNT BUTTON */}
+
                   <div
                     onClick={
                       toggleMobileDropdown
@@ -1496,11 +1818,16 @@ const Navbar = () => {
                     aria-label="Open account menu"
                     style={{
                       display: "flex",
+
                       alignItems: "center",
+
                       cursor: "pointer",
+
                       padding: "3px",
+
                       borderRadius:
                         "9999px",
+
                       background:
                         "rgba(241, 245, 249, 0.8)",
                     }}
@@ -1510,6 +1837,7 @@ const Navbar = () => {
                         event.key === " "
                       ) {
                         event.preventDefault();
+
                         toggleMobileDropdown();
                       }
                     }}
@@ -1526,26 +1854,39 @@ const Navbar = () => {
                       className="navbar-dropdown"
                       style={{
                         position: "absolute",
+
                         top:
                           "calc(100% + 8px)",
+
                         right: 0,
+
                         minWidth: "180px",
+
                         background:
                           "rgba(255, 255, 255, 0.98)",
+
                         backdropFilter:
                           "blur(14px)",
+
                         WebkitBackdropFilter:
                           "blur(14px)",
+
                         border:
                           "1px solid #e5e7eb",
+
                         borderRadius:
                           "12px",
+
                         boxShadow:
                           "0 10px 35px rgba(0,0,0,0.14)",
+
                         padding: "4px 0",
+
                         zIndex: 100000,
                       }}
                     >
+                      {/* FAVORITES */}
+
                       <Link
                         to="/wishlist"
                         onClick={() =>
@@ -1555,13 +1896,19 @@ const Navbar = () => {
                         }
                         style={{
                           display: "flex",
+
                           alignItems:
                             "center",
+
                           gap: "10px",
+
                           padding:
                             "9px 14px",
+
                           color: "#334155",
+
                           fontSize: "13px",
+
                           textDecoration:
                             "none",
                         }}
@@ -1575,8 +1922,10 @@ const Navbar = () => {
                             style={{
                               marginLeft:
                                 "auto",
+
                               color:
                                 "#e74c3c",
+
                               fontWeight: 700,
                             }}
                           >
@@ -1584,6 +1933,8 @@ const Navbar = () => {
                           </span>
                         )}
                       </Link>
+
+                      {/* LOGIN */}
 
                       <Link
                         to="/login"
@@ -1594,21 +1945,30 @@ const Navbar = () => {
                         }
                         style={{
                           display: "flex",
+
                           alignItems:
                             "center",
+
                           gap: "10px",
+
                           padding:
                             "9px 14px",
+
                           color:
-                            "#0055a5",
+                            "#0b2a52",
+
                           fontSize: "13px",
+
                           textDecoration:
                             "none",
                         }}
                       >
                         <i className="fas fa-sign-in-alt" />
+
                         Log In
                       </Link>
+
+                      {/* SIGN UP */}
 
                       <Link
                         to="/register"
@@ -1619,19 +1979,26 @@ const Navbar = () => {
                         }
                         style={{
                           display: "flex",
+
                           alignItems:
                             "center",
+
                           gap: "10px",
+
                           padding:
                             "9px 14px",
+
                           color:
-                            "#0055a5",
+                            "#0b2a52",
+
                           fontSize: "13px",
+
                           textDecoration:
                             "none",
                         }}
                       >
                         <i className="fas fa-user-plus" />
+
                         Sign Up
                       </Link>
                     </div>

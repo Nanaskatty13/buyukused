@@ -354,7 +354,7 @@ const Categories = ({
     );
 
   // ==============================================================
-  // CATEGORY CLICK
+  // CATEGORY CLICK – navigates to products page
   // ==============================================================
 
   const handleCategoryClick = (
@@ -373,7 +373,7 @@ const Categories = ({
     }
 
     // ------------------------------------------------------------
-    // Otherwise go directly to products
+    // Otherwise go directly to products page with category filter
     // ------------------------------------------------------------
 
     navigate(
@@ -556,7 +556,7 @@ const Categories = ({
                 }}
               >
                 {/* ==================================================
-                    CATEGORY IMAGE
+                    CATEGORY IMAGE – increased height
                 ================================================== */}
 
                 <div
@@ -564,7 +564,7 @@ const Categories = ({
                     width:
                       "100%",
                     height:
-                      "120px",
+                      "160px", // Increased from 120px
                     margin:
                       "0 auto 12px",
                     background:
@@ -594,7 +594,7 @@ const Categories = ({
                       height:
                         "100%",
                       objectFit:
-                        "cover",
+                        "cover", // Ensures full picture fits
                       display:
                         "block",
                     }}
@@ -723,6 +723,22 @@ const Categories = ({
                 ) !important;
 
               gap: 10px !important;
+            }
+          }
+
+          /* ======================================================
+             MOBILE – reduce image height
+          ====================================================== */
+
+          @media (max-width: 600px) {
+            .categories-grid > div > div:first-child {
+              height: 140px !important;
+            }
+          }
+
+          @media (max-width: 380px) {
+            .categories-grid > div > div:first-child {
+              height: 120px !important;
             }
           }
         `}

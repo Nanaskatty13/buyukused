@@ -1,13 +1,11 @@
 // frontend/src/components/FeaturedProducts.jsx
-// BuyUKUsed Featured Products – Large Card Slider
-// ============================================================
+// BuyUKUsed Featured Products – Continuous Marquee (Minimal Cards)
 
-import React, { useState, useEffect, useRef, useCallback } from "react";
-import ProductCard from "./ProductCard";
+import React from "react";
 
-// ============================================================
+// ================================================================
 // FEATURED PRODUCTS COMPONENT
-// ============================================================
+// ================================================================
 
 const FeaturedProducts = ({
   products = [],
@@ -15,92 +13,21 @@ const FeaturedProducts = ({
   link = "/products",
   loading = false,
 }) => {
-  // ==========================================================
+  // ============================================================
   // SAFETY – use ALL products
-  // ==========================================================
+  // ============================================================
 
   const displayProducts = Array.isArray(products) ? products : [];
 
-  // ==========================================================
-  // SLIDER STATE
-  // ==========================================================
+  // ============================================================
+  // DUPLICATE LIST FOR SEAMLESS INFINITE SCROLL
+  // ============================================================
 
-  const [currentSlide, setCurrentSlide] = useState(0);
-  const [itemsPerSlide, setItemsPerSlide] = useState(4);
-  const trackRef = useRef(null);
+  const duplicatedProducts = [...displayProducts, ...displayProducts];
 
-  // ==========================================================
-  // GROUP PRODUCTS INTO SLIDES
-  // ==========================================================
-
-  const getSlides = useCallback(() => {
-    const slides = [];
-    for (let i = 0; i < displayProducts.length; i += itemsPerSlide) {
-      slides.push(displayProducts.slice(i, i + itemsPerSlide));
-    }
-    return slides;
-  }, [displayProducts, itemsPerSlide]);
-
-  const slides = getSlides();
-
-  // ==========================================================
-  // UPDATE ITEMS PER SLIDE BASED ON WINDOW WIDTH
-  // ==========================================================
-
-  useEffect(() => {
-    const updateItemsPerSlide = () => {
-      const width = window.innerWidth;
-      if (width < 640) setItemsPerSlide(1);
-      else if (width < 1024) setItemsPerSlide(2);
-      else setItemsPerSlide(4);
-    };
-
-    updateItemsPerSlide();
-    window.addEventListener("resize", updateItemsPerSlide);
-    return () => window.removeEventListener("resize", updateItemsPerSlide);
-  }, []);
-
-  // ==========================================================
-  // RESET SLIDE INDEX WHEN PRODUCTS OR ITEMS PER SLIDE CHANGE
-  // ==========================================================
-
-  useEffect(() => {
-    setCurrentSlide(0);
-  }, [slides.length]);
-
-  // ==========================================================
-  // AUTO‑SLIDE (slow, 6 seconds per slide)
-  // ==========================================================
-
-  useEffect(() => {
-    if (slides.length <= 1) return;
-
-    const interval = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % slides.length);
-    }, 6000);
-
-    return () => clearInterval(interval);
-  }, [slides.length]);
-
-  // ==========================================================
-  // NAVIGATION
-  // ==========================================================
-
-  const goToSlide = (index) => {
-    setCurrentSlide(index);
-  };
-
-  const goToPrev = () => {
-    setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
-  };
-
-  const goToNext = () => {
-    setCurrentSlide((prev) => (prev + 1) % slides.length);
-  };
-
-  // ==========================================================
+  // ============================================================
   // LOADING STATE
-  // ==========================================================
+  // ============================================================
 
   if (loading) {
     return (
@@ -116,9 +43,9 @@ const FeaturedProducts = ({
     );
   }
 
-  // ==========================================================
+  // ============================================================
   // EMPTY STATE
-  // ==========================================================
+  // ============================================================
 
   if (displayProducts.length === 0) {
     return (
@@ -134,9 +61,20 @@ const FeaturedProducts = ({
     );
   }
 
-  // ==========================================================
+  // ============================================================
+  // EXTRACT SELLER NAME
+  // ============================================================
+
+  const getSellerName = (product) => {
+    if (product.seller?.name) return product.seller.name;
+    if (product.sellerName) return product.sellerName;
+    if (product.sellerId?.name) return product.sellerId.name;
+    return "Unknown Seller";
+  };
+
+  // ============================================================
   // RENDER
-  // ==========================================================
+  // ============================================================
 
   return (
     <>
@@ -145,6 +83,7 @@ const FeaturedProducts = ({
         {`
           .featured-apple {
             padding: 20px 0 40px;
+            overflow: hidden;
           }
 
           .featured-apple-header {
@@ -177,117 +116,78 @@ const FeaturedProducts = ({
             text-decoration: underline;
           }
 
-          /* ─── Slider Container ─── */
-          .featured-slider-wrapper {
+          /* ─── Marquee Container ─── */
+          .featured-marquee-wrapper {
             position: relative;
             overflow: hidden;
             border-radius: 16px;
             margin: 0 -8px;
+            padding: 8px 0;
           }
 
-          .featured-slider-track {
+          .featured-marquee-track {
             display: flex;
-            transition: transform 0.8s ease-in-out;
-            will-change: transform;
+            gap: 20px;
+            width: max-content;
+            animation: marquee-scroll 28s linear infinite;
           }
 
-          .featured-slide {
-            min-width: 100%;
-            display: grid;
-            gap: 16px;
-            padding: 0 8px;
-            box-sizing: border-box;
+          /* Pause on hover */
+          .featured-marquee-wrapper:hover .featured-marquee-track {
+            animation-play-state: paused;
           }
 
-          /* Desktop: 4 columns */
-          .featured-slide {
-            grid-template-columns: repeat(4, 1fr);
+          @keyframes marquee-scroll {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
           }
 
-          /* Tablet: 2 columns */
-          @media (max-width: 1024px) {
-            .featured-slide {
-              grid-template-columns: repeat(2, 1fr);
-            }
-          }
-
-          /* Mobile: 1 column */
-          @media (max-width: 640px) {
-            .featured-slide {
-              grid-template-columns: 1fr;
-              gap: 12px;
-            }
-          }
-
-          /* ─── Product Cards inside slider (larger) ─── */
-          .featured-slide .product-card {
-            max-width: 100% !important;
-            height: auto !important;
-            transform: scale(1);
-            transition: transform 0.3s ease;
-          }
-
-          .featured-slide .product-card:hover {
-            transform: scale(1.02);
-            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.08);
-          }
-
-          /* ─── Slider Controls ─── */
-          .slider-controls {
+          /* ─── Individual Mini Card ─── */
+          .featured-mini-card {
+            flex: 0 0 auto;
+            width: 220px;
+            background: white;
+            border: 2px solid #0055a5;      /* Deep blue border */
+            border-radius: 16px;            /* Rounded corners */
+            padding: 16px 14px;
+            box-shadow: 0 4px 12px rgba(0, 85, 165, 0.08);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
             display: flex;
-            justify-content: center;
+            flex-direction: column;
             align-items: center;
-            gap: 16px;
-            margin-top: 24px;
+            text-align: center;
+            min-height: 90px;
+            justify-content: center;
           }
 
-          .slider-dots {
-            display: flex;
-            gap: 8px;
+          .featured-mini-card:hover {
+            transform: translateY(-4px) scale(1.02);
+            box-shadow: 0 8px 24px rgba(0, 85, 165, 0.15);
           }
 
-          .slider-dot {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            background: #d1d5db;
-            border: none;
-            cursor: pointer;
-            transition: background 0.3s ease, transform 0.2s ease;
-            padding: 0;
+          .featured-mini-card .product-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #0f172a;
+            margin: 0 0 4px;
+            line-height: 1.3;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
           }
 
-          .slider-dot.active {
-            background: #2ecc71;
-            transform: scale(1.2);
-          }
-
-          .slider-dot:hover {
-            background: #9ca3af;
-          }
-
-          .slider-arrow {
-            background: rgba(0, 0, 0, 0.05);
-            border: 1px solid #e5e7eb;
-            border-radius: 50%;
-            width: 36px;
-            height: 36px;
+          .featured-mini-card .seller-name {
+            font-size: 13px;
+            color: #475569;
             display: flex;
             align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: background 0.2s ease, transform 0.2s ease;
-            font-size: 18px;
-            color: #374151;
+            gap: 4px;
           }
 
-          .slider-arrow:hover {
-            background: #f3f4f6;
-            transform: scale(1.05);
-          }
-
-          .slider-arrow:active {
-            transform: scale(0.95);
+          .featured-mini-card .seller-name::before {
+            content: "👤";
+            font-size: 12px;
           }
 
           /* ─── Responsive ─── */
@@ -295,14 +195,27 @@ const FeaturedProducts = ({
             .featured-apple-title {
               font-size: 22px;
             }
-            .slider-arrow {
-              width: 30px;
-              height: 30px;
+            .featured-mini-card {
+              width: 160px;
+              padding: 12px 10px;
+              min-height: 70px;
+            }
+            .featured-mini-card .product-title {
               font-size: 14px;
             }
-            .slider-dot {
-              width: 8px;
-              height: 8px;
+            .featured-mini-card .seller-name {
+              font-size: 12px;
+            }
+          }
+
+          @media (max-width: 480px) {
+            .featured-mini-card {
+              width: 140px;
+              padding: 10px 8px;
+              min-height: 60px;
+            }
+            .featured-mini-card .product-title {
+              font-size: 13px;
             }
           }
         `}
@@ -310,6 +223,7 @@ const FeaturedProducts = ({
 
       {/* ─── Section ─── */}
       <section className="featured-apple">
+
         {/* Header */}
         <div className="featured-apple-header">
           <h2 className="featured-apple-title">
@@ -323,48 +237,17 @@ const FeaturedProducts = ({
           {displayProducts.length} {displayProducts.length === 1 ? 'product' : 'products'}
         </div>
 
-        {/* ─── Slider ─── */}
-        {slides.length > 0 && (
-          <div className="featured-slider-wrapper">
-            <div
-              className="featured-slider-track"
-              ref={trackRef}
-              style={{ transform: `translateX(-${currentSlide * 100}%)` }}
-            >
-              {slides.map((slide, slideIndex) => (
-                <div key={slideIndex} className="featured-slide">
-                  {slide.map((product) => (
-                    <div key={product._id || product.id} className="featured-slide-item">
-                      <ProductCard product={product} appleStyle videoPreview />
-                    </div>
-                  ))}
-                </div>
-              ))}
-            </div>
+        {/* ─── Marquee ─── */}
+        <div className="featured-marquee-wrapper">
+          <div className="featured-marquee-track">
+            {duplicatedProducts.map((product, index) => (
+              <div key={`${product._id || product.id}-${index}`} className="featured-mini-card">
+                <div className="product-title">{product.title || "Untitled"}</div>
+                <div className="seller-name">{getSellerName(product)}</div>
+              </div>
+            ))}
           </div>
-        )}
-
-        {/* ─── Controls ─── */}
-        {slides.length > 1 && (
-          <div className="slider-controls">
-            <button className="slider-arrow" onClick={goToPrev} aria-label="Previous slide">
-              ‹
-            </button>
-            <div className="slider-dots">
-              {slides.map((_, index) => (
-                <button
-                  key={index}
-                  className={`slider-dot ${index === currentSlide ? 'active' : ''}`}
-                  onClick={() => goToSlide(index)}
-                  aria-label={`Go to slide ${index + 1}`}
-                />
-              ))}
-            </div>
-            <button className="slider-arrow" onClick={goToNext} aria-label="Next slide">
-              ›
-            </button>
-          </div>
-        )}
+        </div>
       </section>
     </>
   );

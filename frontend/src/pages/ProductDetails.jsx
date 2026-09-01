@@ -380,6 +380,59 @@ const RelatedProductCard = memo(({ product }) => {
 });
 
 // ================================================================
+// LOADING DOTS COMPONENT (3 swinging dots)
+// ================================================================
+
+const LoadingDots = () => {
+  return (
+    <div className="loading-dots-wrapper">
+      <div className="loading-dots">
+        <span></span>
+        <span></span>
+        <span></span>
+      </div>
+      <style>
+        {`
+          .loading-dots-wrapper {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 40px 20px;
+            width: 100%;
+          }
+          .loading-dots {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+          }
+          .loading-dots span {
+            display: block;
+            width: 14px;
+            height: 14px;
+            background: #0066cc;
+            border-radius: 50%;
+            animation: loading-dot-bounce 1.2s ease-in-out infinite;
+          }
+          .loading-dots span:nth-child(1) {
+            animation-delay: 0s;
+          }
+          .loading-dots span:nth-child(2) {
+            animation-delay: 0.2s;
+          }
+          .loading-dots span:nth-child(3) {
+            animation-delay: 0.4s;
+          }
+          @keyframes loading-dot-bounce {
+            0%, 80%, 100% { transform: translateY(0) scale(0.8); opacity: 0.4; }
+            40% { transform: translateY(-20px) scale(1); opacity: 1; }
+          }
+        `}
+      </style>
+    </div>
+  );
+};
+
+// ================================================================
 // MAIN COMPONENT
 // ================================================================
 
@@ -1597,7 +1650,7 @@ const ProductDetails = () => {
   }, []);
 
   // ================================================================
-  // LOADING / ERROR
+  // LOADING / ERROR – now uses LoadingDots
   // ================================================================
 
   if (loading) {
@@ -1609,7 +1662,7 @@ const ProductDetails = () => {
           textAlign: "center",
         }}
       >
-        Loading...
+        <LoadingDots />
       </div>
     );
   }
