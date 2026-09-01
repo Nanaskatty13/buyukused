@@ -409,6 +409,12 @@ const ProductDetails = () => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   // ================================================================
+  // WATERMARKED IMAGES STATE (baked into image)
+  // ================================================================
+
+  const [watermarkedImages, setWatermarkedImages] = useState([]);
+
+  // ================================================================
   // LIGHTBOX STATE
   // ================================================================
 
@@ -633,6 +639,70 @@ const ProductDetails = () => {
       fetchProduct();
     }
   }, [id]);
+
+  // ================================================================
+  // GENERATE WATERMARKED IMAGES (canvas‑based, baked into image)
+  // ================================================================
+
+  const imagePaths = useMemo(() => {
+    if (!product) return [];
+    const imgs = Array.isArray(product.images) && product.images.length > 0
+      ? product.images
+      : product.image
+      ? [product.image]
+      : [];
+    return imgs;
+  }, [product]);
+
+  useEffect(() => {
+    if (!imagePaths.length) {
+      setWatermarkedImages([]);
+      return;
+    }
+
+    const generateWatermarked = (path) => {
+      return new Promise((resolve) => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        const img = new Image();
+        img.crossOrigin = 'Anonymous';
+        img.onload = () => {
+          canvas.width = img.width;
+          canvas.height = img.height;
+          ctx.drawImage(img, 0, 0);
+
+          // Watermark text – light & transparent, 45% from top
+          const text = "Posted on buyukused.com";
+          const fontSize = Math.max(16, Math.min(40, img.width / 18));
+          ctx.font = `600 ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          const x = img.width / 2;
+          const y = img.height * 0.45;
+          ctx.shadowColor = "rgba(0,0,0,0.3)";
+          ctx.shadowBlur = 15;
+          ctx.shadowOffsetX = 2;
+          ctx.shadowOffsetY = 2;
+          ctx.fillStyle = "rgba(255,255,255,0.5)";
+          ctx.fillText(text, x, y);
+
+          resolve(canvas.toDataURL('image/png'));
+        };
+        img.onerror = () => {
+          // Fallback: return original URL
+          resolve(getImageUrl(path));
+        };
+        img.src = getImageUrl(path);
+      });
+    };
+
+    const generateAll = async () => {
+      const results = await Promise.all(imagePaths.map(p => generateWatermarked(p)));
+      setWatermarkedImages(results);
+    };
+
+    generateAll();
+  }, [imagePaths]);
 
   // ================================================================
   // RESET IMAGE INDEX
@@ -955,7 +1025,7 @@ const ProductDetails = () => {
   };
 
   // ================================================================
-  // IMAGE GALLERY
+  // IMAGE GALLERY (using watermarked images)
   // ================================================================
 
   const images =
@@ -974,7 +1044,7 @@ const ProductDetails = () => {
       ? images.length
       : 1;
 
-  // ─── Optimised image URL helpers ──────────────────────────────
+  // ─── Optimised image URL helpers (fallbacks) ──────────────────
 
   const getOptimizedImageUrl = (path, width = 800, height = 800) => {
     if (!path) return "https://placehold.co/600x600?text=No+Image";
@@ -994,16 +1064,54 @@ const ProductDetails = () => {
     return url;
   };
 
-  // ─── Lightbox image URL (optimised for fast loading) ──────────
   const getLightboxImageUrl = (path) => {
     if (!path) return "https://placehold.co/1200x1200?text=No+Image";
     let url = getImageUrl(path);
     if (url.includes('res.cloudinary.com')) {
-      // Use c_limit to avoid cropping, set max 1200px, auto format & quality
       url = url.replace('/image/upload/', '/image/upload/w_1200,h_1200,c_limit,f_auto,q_auto/');
     }
     return url;
   };
+
+  // ─── Get current image (main) – prefer watermarked ────────────
+
+  const getCurrentImage = () => {
+    if (watermarkedImages.length > 0 && watermarkedImages[currentImageIndex]) {
+      return watermarkedImages[currentImageIndex];
+    }
+    if (hasImages && images[currentImageIndex]) {
+      return getOptimizedImageUrl(images[currentImageIndex], 800, 800);
+    }
+    if (product?.image) {
+      return getOptimizedImageUrl(product.image, 800, 800);
+    }
+    return "https://placehold.co/600x600?text=No+Image";
+  };
+
+  // ─── Get thumbnail – prefer watermarked ──────────────────────
+
+  const getThumbnail = (index) => {
+    if (watermarkedImages.length > 0 && watermarkedImages[index]) {
+      return watermarkedImages[index];
+    }
+    if (hasImages && images[index]) {
+      return getThumbnailUrl(images[index]);
+    }
+    return "https://placehold.co/100x100?text=No+Image";
+  };
+
+  // ─── Get lightbox image – prefer watermarked ──────────────────
+
+  const getLightboxImage = (index) => {
+    if (watermarkedImages.length > 0 && watermarkedImages[index]) {
+      return watermarkedImages[index];
+    }
+    const path = images[index] || product?.image;
+    if (path) return getLightboxImageUrl(path);
+    return "https://placehold.co/1200x1200?text=No+Image";
+  };
+
+  // ─── Navigation handlers ──────────────────────────────────────
 
   const handlePrev = (e) => {
     e.stopPropagation();
@@ -1031,29 +1139,6 @@ const ProductDetails = () => {
     index
   ) => {
     setCurrentImageIndex(index);
-  };
-
-  const getCurrentImage = () => {
-    if (
-      hasImages &&
-      images[currentImageIndex]
-    ) {
-      return getOptimizedImageUrl(
-        images[currentImageIndex],
-        800,
-        800
-      );
-    }
-
-    if (product?.image) {
-      return getOptimizedImageUrl(
-        product.image,
-        800,
-        800
-      );
-    }
-
-    return "https://placehold.co/600x600?text=No+Image";
   };
 
   // ================================================================
@@ -1094,13 +1179,10 @@ const ProductDetails = () => {
         (lightboxIndex + 1) % totalImages,
         (lightboxIndex - 1 + totalImages) % totalImages,
       ];
-      const urls = indices.map(idx => {
-        const path = images[idx];
-        return path ? getLightboxImageUrl(path) : null;
-      }).filter(Boolean);
+      const urls = indices.map(idx => getLightboxImage(idx));
       preloadImages(urls);
     }
-  }, [lightboxOpen, lightboxIndex, images, totalImages, preloadImages]);
+  }, [lightboxOpen, lightboxIndex, totalImages, preloadImages]);
 
   // ─── Keyboard listener for lightbox ──────────────────────────
   useEffect(() => {
@@ -2078,10 +2160,10 @@ const ProductDetails = () => {
                   paddingBottom: "4px",
                 }}
               >
-                {images.map((img, idx) => (
+                {images.map((_, idx) => (
                   <img
                     key={idx}
-                    src={getThumbnailUrl(img)}
+                    src={getThumbnail(idx)}
                     alt={`Thumb ${idx + 1}`}
                     loading="lazy"
                     onClick={() => handleThumbClick(idx)}
@@ -3076,10 +3158,7 @@ const ProductDetails = () => {
 
             <img
               className="lightbox-image"
-              src={(() => {
-                const path = images[lightboxIndex] || product?.image;
-                return getLightboxImageUrl(path);
-              })()}
+              src={getLightboxImage(lightboxIndex)}
               alt={product.title}
               onClick={(e) => e.stopPropagation()}
             />

@@ -153,6 +153,7 @@ const citiesByRegion = {
 
   "Greater Accra": [
     "Accra",
+    "Kwame Nkrumah Circle",
     "Tema",
     "Ashaiman",
     "Madina",

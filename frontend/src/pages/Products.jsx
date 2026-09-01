@@ -1,6 +1,6 @@
 // frontend/src/pages/Products.jsx
 
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useLocation, Link, useNavigate } from "react-router-dom";
 
 import SearchBar from "../components/SearchBar";
@@ -81,6 +81,9 @@ const ProductCard = ({ product }) => {
 
   const { toggleFavorite, isFavorite } = useCart();
   const { user } = useAuth();
+
+  const [watermarkedSrc, setWatermarkedSrc] = useState(null);
+  const imgRef = useRef(null);
 
   if (!product) return null;
 
@@ -228,13 +231,71 @@ const ProductCard = ({ product }) => {
   const accountBadge = getAccountBadge();
 
   // ==============================================================
-  // PRODUCT IMAGE
+  // PRODUCT IMAGE – original URL (for canvas processing)
   // ==============================================================
 
-  const imageUrl =
+  const originalImageUrl =
     images?.[0] ||
     image ||
     "/placeholder.png";
+
+  // ==============================================================
+  // WATERMARK GENERATION (canvas) – LIGHT, TRANSPARENT, MOVED UP
+  // ==============================================================
+
+  useEffect(() => {
+    // Only run if we have a valid image URL and not already processed
+    if (!originalImageUrl || watermarkedSrc) return;
+
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+
+    const img = new Image();
+    img.crossOrigin = "Anonymous";
+
+    img.onload = () => {
+      // Set canvas size to match image
+      canvas.width = img.width;
+      canvas.height = img.height;
+
+      // Draw the original image
+      ctx.drawImage(img, 0, 0, img.width, img.height);
+
+      // ---- Add watermark overlay ----
+      const text = "Posted on buyukused.com";
+      // Responsive font size: between 16 and 40, based on image width
+      const fontSize = Math.max(16, Math.min(40, img.width / 18));
+      ctx.font = `600 ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle"; // vertically centered
+
+      // Position: 45% from the top (so it's well above the bottom)
+      const x = img.width / 2;
+      const y = img.height * 0.45;
+
+      // Light & transparent text
+      ctx.shadowColor = "rgba(0,0,0,0.3)";
+      ctx.shadowBlur = 15;
+      ctx.shadowOffsetX = 2;
+      ctx.shadowOffsetY = 2;
+      ctx.fillStyle = "rgba(255,255,255,0.5)"; // semi‑transparent white
+      ctx.fillText(text, x, y);
+
+      // Reset shadow (not strictly needed)
+      ctx.shadowColor = "transparent";
+
+      // Convert to data URL and set as source
+      const dataUrl = canvas.toDataURL("image/png");
+      setWatermarkedSrc(dataUrl);
+    };
+
+    img.onerror = () => {
+      // Fallback: use original URL (without watermark)
+      setWatermarkedSrc(originalImageUrl);
+    };
+
+    img.src = originalImageUrl;
+  }, [originalImageUrl, watermarkedSrc]);
 
   // ==============================================================
   // PRICE
@@ -471,9 +532,9 @@ const ProductCard = ({ product }) => {
             gap: "3px",
             fontSize: "11px",
             color: "#374151",
-            background: "#f3f4f6", // <-- NEW: subtle gray background
-            padding: "1px 6px",    // <-- NEW: inner spacing
-            borderRadius: "4px",   // <-- NEW: rounded corners
+            background: "#f3f4f6",
+            padding: "1px 6px",
+            borderRadius: "4px",
           }}
         >
           {spec.icon} {spec.label}
@@ -536,6 +597,14 @@ const ProductCard = ({ product }) => {
   };
 
   // ==============================================================
+  // DEEP BLUE BORDER FOR VERIFIED SELLERS (JIJI STYLE)
+  // ==============================================================
+
+  const verifiedBorder = isVerified
+    ? "2px solid #0055a5"   // Deep blue
+    : "1px solid #e5e7eb";  // Default light grey
+
+  // ==============================================================
   // RENDER
   // ==============================================================
 
@@ -546,8 +615,7 @@ const ProductCard = ({ product }) => {
         background: "#fff",
         borderRadius: "12px",
         overflow: "hidden",
-        border:
-          "1px solid #e5e7eb",
+        border: verifiedBorder,
         transition:
           "all 0.2s ease",
         boxShadow:
@@ -561,7 +629,7 @@ const ProductCard = ({ product }) => {
     >
 
       {/* ========================================================
-          IMAGE
+          IMAGE – Now uses watermarked source
       ======================================================== */}
 
       <Link
@@ -576,7 +644,8 @@ const ProductCard = ({ product }) => {
         }}
       >
         <img
-          src={imageUrl}
+          ref={imgRef}
+          src={watermarkedSrc || originalImageUrl}
           alt={
             title ||
             "Product"
@@ -592,13 +661,9 @@ const ProductCard = ({ product }) => {
             objectFit: "contain",
           }}
           onError={(e) => {
-            if (
-              e.currentTarget.src !==
-              window.location.origin +
-                "/placeholder.png"
-            ) {
-              e.currentTarget.src =
-                "/placeholder.png";
+            // Fallback if canvas fails
+            if (e.currentTarget.src !== originalImageUrl) {
+              e.currentTarget.src = originalImageUrl;
             }
           }}
         />
@@ -902,7 +967,7 @@ const ProductCard = ({ product }) => {
           style={{
             display: "flex",
             flexWrap: "wrap",
-            gap: "4px 6px", // slightly more gap for the new pill style
+            gap: "4px 6px",
             fontSize: "11px",
             color: "#6b7280",
             margin:
@@ -2105,7 +2170,7 @@ const Products = () => {
                   for{" "}
                   <span
                     style={{
-                      background: "#e0f2fe", // <-- NEW background
+                      background: "#e0f2fe",
                       color: "#0066cc",
                       padding: "2px 10px",
                       borderRadius: "6px",

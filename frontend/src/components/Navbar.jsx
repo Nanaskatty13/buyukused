@@ -1305,7 +1305,7 @@ const Navbar = () => {
                       }}
                     >
                       <i className="fas fa-user" />
-                      My Profile
+                      My Shop
                     </Link>
 
                     <Link
