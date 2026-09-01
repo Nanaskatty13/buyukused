@@ -1056,6 +1056,11 @@ const Products = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+
   const [filters, setFilters] = useState({
     search: initialSearch,
     category: initialCategory,
@@ -1081,73 +1086,80 @@ const Products = () => {
       discountOnly: discountOnly ? "true" : "",
       sort: sortOption,
     });
-    // Changed to v2 to force a fresh fetch and bypass old 20-item cache
-    return `products_v2_${params.toString()}`;
+    return `products_v3_${params.toString()}`;
   }, [filters, priceMin, priceMax, verifiedOnly, discountOnly, sortOption]);
 
-  // ─── FETCH PRODUCTS (Loops through all pages) ─────────────────
+  // ─── FETCH ONE PAGE ──────────────────────────────────────────────
 
-  const fetchProducts = useCallback(
-    async () => {
-      const allProducts = [];
-      let currentPage = 1;
-      const pageSize = 20; // Standard backend page size
+  const fetchPage = useCallback(
+    async (page, append = false) => {
+      const pageSize = 20;
 
-      // Loop to fetch all pages until fewer than pageSize items are returned
-      while (true) {
-        const cleanFilters = {
-          ...(filters.search && { search: filters.search }),
-          ...(filters.category && filters.category !== "all" && {
-            category: filters.category,
-          }),
-          ...(filters.location && filters.location !== "all" && {
-            location: filters.location,
-          }),
-          ...(filters.simStatus && { simStatus: filters.simStatus }),
-          ...(priceMin && { priceMin }),
-          ...(priceMax && { priceMax }),
-          ...(verifiedOnly && { verified: true }),
-          ...(discountOnly && { discount: true }),
-          page: currentPage,
-          limit: pageSize,
-          sort: sortOption,
-        };
+      const cleanFilters = {
+        ...(filters.search && { search: filters.search }),
+        ...(filters.category && filters.category !== "all" && {
+          category: filters.category,
+        }),
+        ...(filters.location && filters.location !== "all" && {
+          location: filters.location,
+        }),
+        ...(filters.simStatus && { simStatus: filters.simStatus }),
+        ...(priceMin && { priceMin }),
+        ...(priceMax && { priceMax }),
+        ...(verifiedOnly && { verified: true }),
+        ...(discountOnly && { discount: true }),
+        page: page,
+        limit: pageSize,
+        sort: sortOption,
+      };
 
-        try {
-          const data = await getProducts(cleanFilters);
-          const productList = Array.isArray(data?.products) ? data.products : [];
+      try {
+        const data = await getProducts(cleanFilters);
+        const productList = Array.isArray(data?.products) ? data.products : [];
 
-          const processed = productList.map((p) => ({
-            ...p,
-            images: Array.isArray(p.images)
-              ? p.images.filter(Boolean).map((img) => getImageUrl(img))
-              : [],
-            image: p.image ? getImageUrl(p.image) : null,
-          }));
+        const processed = productList.map((p) => ({
+          ...p,
+          images: Array.isArray(p.images)
+            ? p.images.filter(Boolean).map((img) => getImageUrl(img))
+            : [],
+          image: p.image ? getImageUrl(p.image) : null,
+        }));
 
-          allProducts.push(...processed);
+        const more = productList.length === pageSize;
 
-          // If we got fewer than 20 items, we've reached the end
-          if (productList.length < pageSize) {
-            break;
-          }
-
-          // Safety break to prevent infinite loops
-          if (currentPage > 1000) break;
-
-          currentPage++;
-        } catch (err) {
-          // If we fail on page 1, throw. If we fail later, break and keep what we have.
-          if (currentPage === 1) throw err;
-          break;
+        if (append) {
+          setProducts((prev) => [...prev, ...processed]);
+        } else {
+          setProducts(processed);
         }
-      }
+        setHasMore(more);
 
-      setProducts(allProducts);
-      return allProducts;
+        return { products: processed, hasMore: more };
+      } catch (err) {
+        throw err;
+      }
     },
     [filters, priceMin, priceMax, verifiedOnly, discountOnly, sortOption]
   );
+
+  // ─── LOAD MORE ────────────────────────────────────────────────────
+
+  const loadMore = useCallback(async () => {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    try {
+      const nextPage = currentPage + 1;
+      await fetchPage(nextPage, true);
+      setCurrentPage(nextPage);
+    } catch (err) {
+      console.error("Failed to load more products", err);
+      setError("Failed to load more products. Please try again.");
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [currentPage, hasMore, loadingMore, fetchPage]);
+
+  // ─── CACHE HELPERS ──────────────────────────────────────────────
 
   const loadFromCache = useCallback((cacheKey) => {
     const cached = sessionStorage.getItem(cacheKey);
@@ -1178,23 +1190,30 @@ const Products = () => {
     }
   }, []);
 
+  // ─── INITIAL LOAD ────────────────────────────────────────────────
+
   useEffect(() => {
     const cacheKey = getCacheKey();
     const cachedData = loadFromCache(cacheKey);
 
     if (cachedData) {
       setProducts(cachedData);
+      setHasMore(false);
+      setCurrentPage(1);
       setLoading(false);
       return;
     }
 
-    const loadProducts = async () => {
+    const loadFirstPage = async () => {
       setLoading(true);
       setError("");
+      setProducts([]);
+      setHasMore(false);
+      setCurrentPage(1);
       try {
-        const data = await fetchProducts();
-        if (data) {
-          saveToCache(cacheKey, data);
+        const { products, hasMore } = await fetchPage(1, false);
+        if (!hasMore) {
+          saveToCache(cacheKey, products);
         }
       } catch (err) {
         setError(err?.message || "Unable to load products. Please try again.");
@@ -1204,8 +1223,10 @@ const Products = () => {
       }
     };
 
-    loadProducts();
-  }, [fetchProducts, getCacheKey, loadFromCache, saveToCache]);
+    loadFirstPage();
+  }, [fetchPage, getCacheKey, loadFromCache, saveToCache]);
+
+  // ─── SCROLL RESTORE ──────────────────────────────────────────────
 
   useEffect(() => {
     const scrollKey = `scroll_${location.pathname}`;
@@ -1220,6 +1241,8 @@ const Products = () => {
       sessionStorage.setItem(scrollKey, window.scrollY);
     };
   }, [location.pathname]);
+
+  // ─── SYNC FILTERS FROM URL ──────────────────────────────────────
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -1236,10 +1259,14 @@ const Products = () => {
     }));
   }, [location.search]);
 
+  // ─── HANDLERS ────────────────────────────────────────────────────
+
   const handleSearch = useCallback(
     (newFilters = {}) => {
       setFilters((prev) => ({ ...prev, ...newFilters }));
       setProducts([]);
+      setCurrentPage(1);
+      setHasMore(false);
       sessionStorage.removeItem(getCacheKey());
     },
     [getCacheKey]
@@ -1257,6 +1284,8 @@ const Products = () => {
     setVerifiedOnly(false);
     setDiscountOnly(false);
     setProducts([]);
+    setCurrentPage(1);
+    setHasMore(false);
     sessionStorage.removeItem(getCacheKey());
   }, [getCacheKey]);
 
@@ -1264,6 +1293,8 @@ const Products = () => {
     if (!products.length) return [];
     return products;
   }, [products]);
+
+  // ─── RENDER ──────────────────────────────────────────────────────
 
   return (
     <>
@@ -1622,6 +1653,36 @@ const Products = () => {
                   <ProductCard key={product._id} product={product} />
                 ))}
               </div>
+
+              {/* Load More Button */}
+              {!loading && (
+                <div style={{ textAlign: "center", marginTop: "24px" }}>
+                  {hasMore ? (
+                    <button
+                      onClick={loadMore}
+                      disabled={loadingMore}
+                      style={{
+                        padding: "10px 28px",
+                        background: loadingMore ? "#9ca3af" : "#0066cc",
+                        color: "#fff",
+                        border: "none",
+                        borderRadius: "8px",
+                        fontSize: "15px",
+                        fontWeight: 600,
+                        cursor: loadingMore ? "default" : "pointer",
+                        transition: "background 0.2s",
+                        boxShadow: "0 2px 6px rgba(0,0,0,0.1)",
+                      }}
+                    >
+                      {loadingMore ? "Loading..." : "Load More"}
+                    </button>
+                  ) : (
+                    <p style={{ color: "#6b7280", fontSize: "14px" }}>
+                      All products loaded
+                    </p>
+                  )}
+                </div>
+              )}
             </>
           )}
         </main>
