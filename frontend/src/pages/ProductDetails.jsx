@@ -413,6 +413,8 @@ const ProductDetails = () => {
   // ================================================================
 
   const [watermarkedImages, setWatermarkedImages] = useState([]);
+  // Cache watermarks per product ID to avoid re‑processing
+  const watermarkCache = useRef({});
 
   // ================================================================
   // LIGHTBOX STATE
@@ -641,7 +643,7 @@ const ProductDetails = () => {
   }, [id]);
 
   // ================================================================
-  // GENERATE WATERMARKED IMAGES (canvas‑based, baked into image)
+  // GENERATE WATERMARKED IMAGES (optimised: incremental, downscaled)
   // ================================================================
 
   const imagePaths = useMemo(() => {
@@ -660,49 +662,96 @@ const ProductDetails = () => {
       return;
     }
 
-    const generateWatermarked = (path) => {
-      return new Promise((resolve) => {
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        const img = new Image();
-        img.crossOrigin = 'Anonymous';
-        img.onload = () => {
-          canvas.width = img.width;
-          canvas.height = img.height;
-          ctx.drawImage(img, 0, 0);
+    // Use cache to avoid re‑processing
+    const cacheKey = product?._id || id;
+    if (watermarkCache.current[cacheKey]?.length === imagePaths.length) {
+      setWatermarkedImages(watermarkCache.current[cacheKey]);
+      return;
+    }
 
-          // Watermark text – light & transparent, 45% from top
-          const text = "Posted on buyukused.com";
-          const fontSize = Math.max(16, Math.min(40, img.width / 18));
-          ctx.font = `600 ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
-          ctx.textAlign = "center";
-          ctx.textBaseline = "middle";
-          const x = img.width / 2;
-          const y = img.height * 0.45;
-          ctx.shadowColor = "rgba(0,0,0,0.3)";
-          ctx.shadowBlur = 15;
-          ctx.shadowOffsetX = 2;
-          ctx.shadowOffsetY = 2;
-          ctx.fillStyle = "rgba(255,255,255,0.5)";
-          ctx.fillText(text, x, y);
+    // Process images one by one, updating state as each completes
+    const watermarked = new Array(imagePaths.length).fill(null);
+    let processedCount = 0;
 
-          resolve(canvas.toDataURL('image/png'));
-        };
-        img.onerror = () => {
-          // Fallback: return original URL
-          resolve(getImageUrl(path));
-        };
-        img.src = getImageUrl(path);
-      });
+    const processImage = (index) => {
+      const path = imagePaths[index];
+      if (!path) {
+        // Use fallback
+        watermarked[index] = getImageUrl(path);
+        processedCount++;
+        if (processedCount === imagePaths.length) {
+          watermarkCache.current[cacheKey] = watermarked;
+          setWatermarkedImages([...watermarked]);
+        }
+        return;
+      }
+
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const img = new Image();
+      img.crossOrigin = 'Anonymous';
+
+      img.onload = () => {
+        // Scale down to max 800px width for performance
+        let width = img.width;
+        let height = img.height;
+        const MAX_SIZE = 800;
+        if (width > MAX_SIZE || height > MAX_SIZE) {
+          const ratio = Math.min(MAX_SIZE / width, MAX_SIZE / height);
+          width = Math.round(width * ratio);
+          height = Math.round(height * ratio);
+        }
+        canvas.width = width;
+        canvas.height = height;
+        ctx.drawImage(img, 0, 0, width, height);
+
+        // Watermark – light & transparent, 45% from top
+        const text = "Posted on buyukused.com";
+        const fontSize = Math.max(14, Math.min(28, width / 18));
+        ctx.font = `600 ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        const x = width / 2;
+        const y = height * 0.45;
+        ctx.shadowColor = "rgba(0,0,0,0.3)";
+        ctx.shadowBlur = 12;
+        ctx.shadowOffsetX = 2;
+        ctx.shadowOffsetY = 2;
+        ctx.fillStyle = "rgba(255,255,255,0.5)";
+        ctx.fillText(text, x, y);
+
+        watermarked[index] = canvas.toDataURL('image/png');
+        processedCount++;
+        if (processedCount === imagePaths.length) {
+          watermarkCache.current[cacheKey] = watermarked;
+          setWatermarkedImages([...watermarked]);
+        } else {
+          // Update state incrementally so UI shows progress
+          setWatermarkedImages([...watermarked]);
+        }
+      };
+
+      img.onerror = () => {
+        // Fallback to original URL
+        watermarked[index] = getImageUrl(path);
+        processedCount++;
+        if (processedCount === imagePaths.length) {
+          watermarkCache.current[cacheKey] = watermarked;
+          setWatermarkedImages([...watermarked]);
+        } else {
+          setWatermarkedImages([...watermarked]);
+        }
+      };
+
+      img.src = getImageUrl(path);
     };
 
-    const generateAll = async () => {
-      const results = await Promise.all(imagePaths.map(p => generateWatermarked(p)));
-      setWatermarkedImages(results);
-    };
-
-    generateAll();
-  }, [imagePaths]);
+    // Start processing images sequentially (not all at once)
+    for (let i = 0; i < imagePaths.length; i++) {
+      // Use setTimeout to avoid blocking the main thread
+      setTimeout(() => processImage(i), i * 50);
+    }
+  }, [imagePaths, id, product?._id]);
 
   // ================================================================
   // RESET IMAGE INDEX
