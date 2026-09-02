@@ -1542,13 +1542,9 @@ const Products = () => {
                 color: "#333",
               }}
             >
-              {loading
-                ? "Loading..."
-                : `${products.length} results`}
-              {filters.category !== "all" && (
+              {filters.category !== "all" ? (
                 <>
-                  {" "}
-                  for{" "}
+                  Products for{" "}
                   <span
                     style={{
                       background: "#e0f2fe",
@@ -1561,6 +1557,8 @@ const Products = () => {
                     {filters.category}
                   </span>
                 </>
+              ) : (
+                "Products"
               )}
             </h1>
 

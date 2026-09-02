@@ -60,9 +60,6 @@ const getHeaders = (token = getToken()) => {
 
 // ================================================================
 // FILE / FORMDATA HEADERS
-// IMPORTANT:
-// Do NOT set Content-Type manually for FormData.
-// Browser sets the multipart boundary automatically.
 // ================================================================
 
 const getFileHeaders = (token = getToken()) => {
@@ -111,7 +108,6 @@ const handleResponse = async (response) => {
   }
 
   if (!response.ok) {
-    // ─── ENHANCED: Detailed logging for 400 errors ──────────
     if (response.status === 400) {
       console.error(
         "❌ 400 Bad Request - Full response:",
@@ -173,15 +169,7 @@ const request = async (
       controller.abort();
     }, REQUEST_TIMEOUT);
 
-    // ============================================================
-    // ALWAYS GET LATEST TOKEN
-    // ============================================================
-
     const latestToken = getToken();
-
-    // ============================================================
-    // MERGE HEADERS
-    // ============================================================
 
     const incomingHeaders =
       options.headers || {};
@@ -239,10 +227,6 @@ const request = async (
       }
     }
 
-    // ============================================================
-    // REVIEW DEBUG
-    // ============================================================
-
     if (url.includes("/reviews")) {
       console.log("⭐ Review API request");
       console.log("➡️ URL:", url);
@@ -285,10 +269,6 @@ const request = async (
       }
     }
 
-    // ============================================================
-    // FETCH
-    // ============================================================
-
     const response = await fetch(url, {
       credentials: "include",
       ...options,
@@ -299,10 +279,6 @@ const request = async (
     });
 
     clearTimeout(timeoutId);
-
-    // ============================================================
-    // HANDLE 401
-    // ============================================================
 
     if (response.status === 401) {
       console.error(
@@ -321,10 +297,6 @@ const request = async (
     if (timeoutId) {
       clearTimeout(timeoutId);
     }
-
-    // ============================================================
-    // ABORT / TIMEOUT
-    // ============================================================
 
     const isAbortError =
       error?.name === "AbortError";
@@ -362,10 +334,6 @@ const request = async (
       throw timeoutError;
     }
 
-    // ============================================================
-    // NETWORK ERROR
-    // ============================================================
-
     const isNetworkError =
       error?.name === "TypeError" ||
       error?.message === "Failed to fetch";
@@ -387,10 +355,6 @@ const request = async (
         retries - 1
       );
     }
-
-    // ============================================================
-    // FINAL ERROR
-    // ============================================================
 
     console.error(
       "❌ API request failed:",
@@ -464,12 +428,10 @@ export const getImageUrl = (path) => {
     return "/placeholder.png";
   }
 
-  // External URL
   if (
     cleanPath.startsWith("http://") ||
     cleanPath.startsWith("https://")
   ) {
-    // Cloudinary optimization
     if (
       cleanPath.includes(
         "res.cloudinary.com"
@@ -487,21 +449,18 @@ export const getImageUrl = (path) => {
     return cleanPath;
   }
 
-  // Base64
   if (
     cleanPath.startsWith("data:")
   ) {
     return cleanPath;
   }
 
-  // Blob
   if (
     cleanPath.startsWith("blob:")
   ) {
     return cleanPath;
   }
 
-  // Backend relative path
   return `${API_URL}${
     cleanPath.startsWith("/")
       ? cleanPath
@@ -1438,10 +1397,6 @@ export const favorites = {
 // ================================================================
 
 export const reviews = {
-  // ==============================================================
-  // GET ALL REVIEWS
-  // ==============================================================
-
   getAll: async (
     params = {},
     token = getToken()
@@ -1458,10 +1413,6 @@ export const reviews = {
       }
     );
   },
-
-  // ==============================================================
-  // GET SELLER REVIEWS
-  // ==============================================================
 
   getSellerReviews: async (
     sellerId,
@@ -1490,10 +1441,6 @@ export const reviews = {
     );
   },
 
-  // ==============================================================
-  // GET PRODUCT REVIEWS
-  // ==============================================================
-
   getProductReviews: async (
     productId,
     params = {},
@@ -1521,18 +1468,10 @@ export const reviews = {
     );
   },
 
-  // ==============================================================
-  // CREATE REVIEW (UPDATED)
-  // ==============================================================
-
   create: async (
     reviewData = {},
     token = getToken()
   ) => {
-    // ============================================================
-    // AUTH
-    // ============================================================
-
     if (!hasUsableToken(token)) {
       const error = new Error(
         "Authentication token is missing."
@@ -1548,19 +1487,11 @@ export const reviews = {
       throw error;
     }
 
-    // ============================================================
-    // SAFELY ACCEPT REVIEW DATA
-    // ============================================================
-
     const data =
       reviewData &&
       typeof reviewData === "object"
         ? reviewData
         : {};
-
-    // ============================================================
-    // NORMALIZE REVIEW TYPE
-    // ============================================================
 
     const rawReviewType =
       data.type ??
@@ -1583,10 +1514,6 @@ export const reviews = {
       "🔎 Normalized review type:",
       reviewType
     );
-
-    // ============================================================
-    // VALIDATE REVIEW TYPE
-    // ============================================================
 
     if (
       reviewType !== "PRODUCT" &&
@@ -1615,10 +1542,6 @@ export const reviews = {
       throw error;
     }
 
-    // ============================================================
-    // SELLER ID
-    // ============================================================
-
     const sellerId =
       data.sellerId ??
       data.seller_id ??
@@ -1632,10 +1555,6 @@ export const reviews = {
         "Seller ID is required"
       );
     }
-
-    // ============================================================
-    // PRODUCT ID
-    // ============================================================
 
     const productId =
       data.productId ??
@@ -1651,10 +1570,6 @@ export const reviews = {
         "Product ID is required for a product review."
       );
     }
-
-    // ============================================================
-    // RATING
-    // ============================================================
 
     const rating =
       Number(data.rating);
@@ -1680,10 +1595,6 @@ export const reviews = {
       );
     }
 
-    // ============================================================
-    // COMMENT
-    // ============================================================
-
     const comment =
       String(
         data.comment ??
@@ -1697,40 +1608,27 @@ export const reviews = {
       );
     }
 
-    // ============================================================
-    // ORDER ID
-    // ============================================================
-
     const orderId =
       data.orderId ??
       data.order_id ??
       null;
 
-    // ============================================================
-    // FINAL PAYLOAD
-    // ✅ Sends all possible field names to match backend expectations
-    // ============================================================
-
     const payload = {
-      // Type fields
       type: reviewType,
       reviewType: reviewType,
       review_type: reviewType,
 
-      // Seller
       sellerId: String(sellerId).trim(),
-      seller: String(sellerId).trim(), // some backends use 'seller'
+      seller: String(sellerId).trim(),
 
-      // Rating & content
       rating,
       comment,
-      text: comment, // some backends use 'text'
+      text: comment,
 
-      // Optional fields
       ...(productId && String(productId).trim()
         ? {
             productId: String(productId).trim(),
-            product: String(productId).trim(), // some backends use 'product'
+            product: String(productId).trim(),
             product_id: String(productId).trim(),
           }
         : {}),
@@ -1743,10 +1641,6 @@ export const reviews = {
           }
         : {}),
     };
-
-    // ============================================================
-    // DEBUG
-    // ============================================================
 
     console.log(
       "⭐ Creating review"
@@ -1796,10 +1690,6 @@ export const reviews = {
       payload
     );
 
-    // ============================================================
-    // SEND
-    // ============================================================
-
     return request(
       `${API_URL}/api/reviews`,
       {
@@ -1812,10 +1702,6 @@ export const reviews = {
       }
     );
   },
-
-  // ==============================================================
-  // UPDATE REVIEW
-  // ==============================================================
 
   update: async (
     id,
@@ -1877,10 +1763,6 @@ export const reviews = {
     );
   },
 
-  // ==============================================================
-  // DELETE REVIEW
-  // ==============================================================
-
   delete: async (
     id,
     token = getToken()
@@ -1903,10 +1785,6 @@ export const reviews = {
     );
   },
 
-  // ==============================================================
-  // HELPFUL
-  // ==============================================================
-
   toggleHelpful: async (
     id,
     token = getToken()
@@ -1928,10 +1806,6 @@ export const reviews = {
       }
     );
   },
-
-  // ==============================================================
-  // REPORT
-  // ==============================================================
 
   report: async (
     id,
@@ -1965,10 +1839,6 @@ export const reviews = {
       }
     );
   },
-
-  // ==============================================================
-  // SELLER REPLY
-  // ==============================================================
 
   reply: async (
     id,
@@ -2005,10 +1875,6 @@ export const reviews = {
     );
   },
 
-  // ==============================================================
-  // DELETE SELLER REPLY
-  // ==============================================================
-
   deleteReply: async (
     id,
     token = getToken()
@@ -2031,10 +1897,6 @@ export const reviews = {
     );
   },
 
-  // ==============================================================
-  // SELLER SUMMARY
-  // ==============================================================
-
   getSellerSummary: async (
     sellerId,
     token = getToken()
@@ -2056,10 +1918,6 @@ export const reviews = {
       }
     );
   },
-
-  // ==============================================================
-  // PRODUCT SUMMARY
-  // ==============================================================
 
   getProductSummary: async (
     productId,
@@ -2502,6 +2360,31 @@ export const admin = {
       }
     );
   },
+
+  // ============================================================
+  // ✅ NEW: Verify a specific user (admin only)
+  // ============================================================
+  verifyUserById: async (
+    userId,
+    token = getToken()
+  ) => {
+    if (!userId) {
+      throw new Error(
+        "User ID is required"
+      );
+    }
+
+    return request(
+      `${API_URL}/api/admin/users/${encodeURIComponent(
+        userId
+      )}/verify`,
+      {
+        method: "PUT",
+        headers:
+          getHeaders(token),
+      }
+    );
+  },
 };
 
 // ================================================================
@@ -2777,10 +2660,6 @@ export const deleteProduct =
 export const updateProductStatus =
   products.updateStatus;
 
-// ================================================================
-// SELLER PRODUCTS
-// ================================================================
-
 export const getSellerProducts =
   async (sellerId) => {
     if (!sellerId) {
@@ -2969,10 +2848,6 @@ export const getAdminOrders =
 export const updateAdminOrderStatus =
   admin.updateOrderStatus;
 
-// ================================================================
-// RIDER ADMIN EXPORTS
-// ================================================================
-
 export const getRiders =
   admin.getRiders;
 
@@ -2991,10 +2866,6 @@ export const updateRiderApproval =
 export const deleteRider =
   admin.deleteRider;
 
-// ================================================================
-// ADMIN DELIVERY EXPORTS
-// ================================================================
-
 export const getAdminDeliveries =
   admin.getDeliveries;
 
@@ -3004,15 +2875,16 @@ export const getAdminDeliveryById =
 export const updateAdminDeliveryStatus =
   admin.updateDeliveryStatus;
 
-// ================================================================
-// SELLER VERIFICATION EXPORTS
-// ================================================================
-
 export const getUnverifiedSellers =
   admin.getUnverifiedSellers;
 
 export const verifySeller =
   admin.verifySeller;
+
+// ================================================================
+// ✅ NEW EXPORT: Admin verification of a user
+// ================================================================
+export const verifyUserById = admin.verifyUserById;
 
 // ================================================================
 // DELIVERY EXPORTS
@@ -3083,13 +2955,11 @@ const api = {
 
   deliveries,
 
-  // Auth
   login,
   register,
   getMe,
   logout,
 
-  // Products
   getProducts,
   getProduct,
   createProduct,
@@ -3100,7 +2970,6 @@ const api = {
   updateProductStatus,
   getSellerProducts,
 
-  // Users
   getUsers,
   getUser,
   updateUser,
@@ -3108,7 +2977,6 @@ const api = {
   deleteUser,
   getUserStats,
 
-  // Notifications
   getNotifications,
   getAdminNotifications,
   getUserNotifications,
@@ -3117,14 +2985,12 @@ const api = {
   deleteNotification,
   getNotificationUnreadCount,
 
-  // Orders
   getOrders,
   getOrder,
   createOrder,
   updateOrder,
   deleteOrder,
 
-  // Messages
   getMessages,
   getConversations,
   getConversation,
@@ -3133,12 +2999,10 @@ const api = {
   deleteMessage,
   getMessageUnreadCount,
 
-  // Favorites
   getFavorites,
   addFavorite,
   removeFavorite,
 
-  // Reviews
   getReviews,
   getSellerReviews,
   getProductReviews,
@@ -3152,7 +3016,6 @@ const api = {
   getSellerReviewSummary,
   getProductReviewSummary,
 
-  // Admin
   getAdminDashboardStats,
   getAdminUsers,
   getAdminUserById,
@@ -3163,7 +3026,6 @@ const api = {
   getAdminOrders,
   updateAdminOrderStatus,
 
-  // Riders
   getRiders,
   getRiderById,
   approveRider,
@@ -3171,16 +3033,15 @@ const api = {
   updateRiderApproval,
   deleteRider,
 
-  // Admin deliveries
   getAdminDeliveries,
   getAdminDeliveryById,
   updateAdminDeliveryStatus,
 
-  // Seller verification
   getUnverifiedSellers,
   verifySeller,
 
-  // Deliveries
+  verifyUserById, // ✅ added
+
   createDelivery,
   getCustomerDeliveries,
   getAvailableDeliveries,
@@ -3194,7 +3055,6 @@ const api = {
   getDelivery,
   cancelDelivery,
 
-  // Utilities
   getImageUrl,
   getToken,
   clearAuthData,
