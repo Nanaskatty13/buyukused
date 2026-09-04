@@ -1,5 +1,4 @@
 // frontend/src/pages/Products.jsx
-// Removed SearchBar component; navbar search is the only search input.
 
 import React, {
   useState,
@@ -11,6 +10,7 @@ import React, {
 } from "react";
 import { useLocation, Link, useNavigate } from "react-router-dom";
 
+import SearchBar from "../components/SearchBar";
 import FilterSidebar from "../components/FilterSidebar";
 import Footer from "../components/Footer";
 
@@ -23,7 +23,7 @@ import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
 
 // ================================================================
-// LOADING DOTS COMPONENT
+// LOADING DOTS COMPONENT (3 swinging dots)
 // ================================================================
 
 const LoadingDots = () => {
@@ -1357,8 +1357,11 @@ const Products = () => {
             border-radius: 6px !important;
           }
 
-          /* Hide filter sidebar on mobile */
+          /* ─── Mobile: hide search bar and filter sidebar ─── */
           @media (max-width: 767px) {
+            .search-bar-wrapper {
+              display: none !important;
+            }
             .filter-sidebar-wrapper {
               display: none !important;
             }
@@ -1531,7 +1534,9 @@ const Products = () => {
         </div>
 
         <main className="main-content" style={{ flex: 1, minWidth: 0 }}>
-          {/* ─── SearchBar removed ────────────────────────── */}
+          <div className="search-bar-wrapper" style={{ marginBottom: "20px" }}>
+            <SearchBar onSearch={handleSearch} initialQuery={filters} />
+          </div>
 
           <div
             style={{

@@ -1,5 +1,5 @@
 // frontend/src/components/Navbar.jsx
-// BuyUKUsed - Fixed Responsive Navbar with Expandable Mobile Search
+// BuyUKUsed - Fixed Responsive Navbar (No Search)
 
 import React, {
   useState,
@@ -105,38 +105,10 @@ const Navbar = () => {
   const [unreadMessages, setUnreadMessages] =
     useState(0);
 
-  // ─── Search state ─────────────────────────────────────────
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchExpanded, setSearchExpanded] = useState(false);
-
   const dropdownRef = useRef(null);
   const mobileDropdownRef = useRef(null);
   const pollIntervalRef = useRef(null);
   const isMountedRef = useRef(true);
-  const searchRef = useRef(null);
-
-  // ─── Sync search query with URL param ─────────────────────
-  useEffect(() => {
-    if (location.pathname === "/products") {
-      const params = new URLSearchParams(location.search);
-      const query = params.get("search") || "";
-      setSearchQuery(query);
-    }
-  }, [location]);
-
-  // ─── Click outside to collapse mobile search ──────────────
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (
-        searchRef.current &&
-        !searchRef.current.contains(e.target)
-      ) {
-        setSearchExpanded(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
 
   // ==========================================================
   // CLOSE DROPDOWNS WHEN CLICKING OUTSIDE
@@ -365,32 +337,6 @@ const Navbar = () => {
       }
     };
   }, [user]);
-
-  // ==========================================================
-  // SEARCH HANDLER
-  // ==========================================================
-
-  const handleSearchSubmit = (e) => {
-    e.preventDefault();
-    const trimmed = searchQuery.trim();
-    if (trimmed) {
-      navigate(`/products?search=${encodeURIComponent(trimmed)}`);
-    } else {
-      navigate("/products");
-    }
-    // Collapse mobile search after submit
-    setSearchExpanded(false);
-  };
-
-  const handleSearchIconClick = () => {
-    // On mobile, expand the search input
-    setSearchExpanded(true);
-    // Focus the input after a small delay
-    setTimeout(() => {
-      const input = searchRef.current?.querySelector('input');
-      if (input) input.focus();
-    }, 100);
-  };
 
   // ==========================================================
   // LOGOUT
@@ -633,96 +579,6 @@ const Navbar = () => {
           }
 
           /* =====================================================
-             SEARCH
-          ===================================================== */
-
-          .navbar-search {
-            flex: 1 1 auto;
-
-            max-width: 420px;
-
-            min-width: 120px;
-
-            margin: 0 8px;
-
-            position: relative;
-          }
-
-          .navbar-search form {
-            display: flex;
-
-            align-items: center;
-
-            width: 100%;
-
-            background: #f1f5f9;
-
-            border-radius: 9999px;
-
-            padding: 0 12px;
-
-            border: 1px solid transparent;
-
-            transition: all 0.2s ease;
-          }
-
-          .navbar-search form:focus-within {
-            background: #ffffff;
-
-            border-color: #2ecc71;
-
-            box-shadow: 0 0 0 3px rgba(46, 204, 113, 0.15);
-          }
-
-          .navbar-search input {
-            flex: 1;
-
-            background: transparent;
-
-            border: none;
-
-            outline: none;
-
-            padding: 7px 0;
-
-            font-size: 14px;
-
-            color: #1f2937;
-
-            min-width: 50px;
-          }
-
-          .navbar-search input::placeholder {
-            color: #94a3b8;
-          }
-
-          .navbar-search button {
-            background: none;
-
-            border: none;
-
-            color: #94a3b8;
-
-            padding: 6px 4px 6px 10px;
-
-            cursor: pointer;
-
-            font-size: 16px;
-
-            transition: color 0.2s ease;
-
-            display: flex;
-
-            align-items: center;
-
-            justify-content: center;
-          }
-
-          .navbar-search button:hover {
-            color: #2ecc71;
-          }
-
-          /* =====================================================
              START SELLING
           ===================================================== */
 
@@ -932,24 +788,13 @@ const Navbar = () => {
               font-size: 16px;
             }
 
-            .navbar-search {
-              max-width: 300px;
-              min-width: 80px;
-              margin: 0 6px;
-            }
-
-            .navbar-search input {
-              font-size: 13px;
-              padding: 5px 0;
-            }
-
             .navbar-right {
               gap: 10px;
             }
           }
 
           /* =====================================================
-             MOBILE (767px and below)
+             MOBILE
           ===================================================== */
 
           @media (max-width: 767px) {
@@ -984,62 +829,6 @@ const Navbar = () => {
 
             .navbar-logo i {
               font-size: 15px;
-            }
-
-            /* ─── Mobile search (collapsed by default) ─────── */
-            .navbar-search {
-              max-width: 40px;
-              min-width: 40px;
-              margin: 0 2px;
-              flex: 0 0 auto;
-              transition: max-width 0.3s ease;
-            }
-
-            .navbar-search.expanded {
-              max-width: 200px;
-              min-width: 120px;
-              flex: 1 1 auto;
-            }
-
-            .navbar-search form {
-              padding: 0 8px;
-              border-radius: 9999px;
-              background: #f1f5f9;
-            }
-
-            .navbar-search input {
-              font-size: 12px;
-              padding: 4px 0;
-              min-width: 0;
-              width: 0;
-              opacity: 0;
-              transition: width 0.3s ease, opacity 0.2s ease;
-            }
-
-            .navbar-search.expanded input {
-              width: 100%;
-              min-width: 60px;
-              opacity: 1;
-            }
-
-            .navbar-search button {
-              padding: 4px 4px 4px 6px;
-              font-size: 14px;
-              flex-shrink: 0;
-            }
-
-            .navbar-search.expanded button {
-              padding: 4px 2px 4px 6px;
-            }
-
-            /* Hide the input's placeholder when collapsed */
-            .navbar-search input::placeholder {
-              opacity: 0;
-              transition: opacity 0.2s ease;
-            }
-
-            .navbar-search.expanded input::placeholder {
-              opacity: 1;
             }
 
             .navbar-post-ad-btn {
@@ -1134,30 +923,6 @@ const Navbar = () => {
               font-size: 13px;
             }
 
-            .navbar-search {
-              max-width: 34px;
-              min-width: 34px;
-            }
-
-            .navbar-search.expanded {
-              max-width: 150px;
-              min-width: 80px;
-            }
-
-            .navbar-search input {
-              font-size: 11px;
-              padding: 3px 0;
-            }
-
-            .navbar-search.expanded input {
-              min-width: 40px;
-            }
-
-            .navbar-search button {
-              font-size: 12px;
-              padding: 3px 2px 3px 4px;
-            }
-
             .navbar-post-ad-btn {
               padding:
                 3px 7px !important;
@@ -1236,30 +1001,6 @@ const Navbar = () => {
               font-size: 12px;
             }
 
-            .navbar-search {
-              max-width: 28px;
-              min-width: 28px;
-            }
-
-            .navbar-search.expanded {
-              max-width: 120px;
-              min-width: 60px;
-            }
-
-            .navbar-search input {
-              font-size: 10px;
-              padding: 2px 0;
-            }
-
-            .navbar-search.expanded input {
-              min-width: 30px;
-            }
-
-            .navbar-search button {
-              font-size: 11px;
-              padding: 2px 0 2px 3px;
-            }
-
             .navbar-post-ad-btn {
               padding:
                 3px 5px !important;
@@ -1300,12 +1041,6 @@ const Navbar = () => {
             .navbar-envelope {
               transition: none;
             }
-
-            .navbar-search,
-            .navbar-search input,
-            .navbar-search input::placeholder {
-              transition: none !important;
-            }
           }
         `}
       </style>
@@ -1334,34 +1069,6 @@ const Navbar = () => {
               <span style={{ color: "#2ecc71" }}>Used</span>
             </span>
           </Link>
-
-          {/* ====================================================
-              SEARCH BAR (expandable on mobile)
-          ==================================================== */}
-
-          <div
-            ref={searchRef}
-            className={`navbar-search ${
-              searchExpanded ? "expanded" : ""
-            }`}
-          >
-            <form onSubmit={handleSearchSubmit}>
-              <input
-                type="text"
-                placeholder="Search products..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                aria-label="Search products"
-              />
-              <button
-                type="button"
-                onClick={handleSearchIconClick}
-                aria-label="Search"
-              >
-                <i className="fas fa-search" />
-              </button>
-            </form>
-          </div>
 
           {/* START SELLING */}
 
