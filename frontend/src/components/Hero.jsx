@@ -997,7 +997,7 @@ const Hero = ({ onSearch }) => {
                         ? "eager"
                         : "lazy"
                     }
-                    fetchPriority={
+                    fetchpriority={   // ✅ fixed: lowercase 'fetchpriority'
                       index === 0
                         ? "high"
                         : "auto"

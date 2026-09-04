@@ -1,6 +1,6 @@
 // ============================================================
 // components/UsersTable.jsx
-// BuyUKUsed - Admin Users Table
+// BuyUKUsed - Premium Admin Users Table
 // ============================================================
 
 import React, { useState } from "react";
@@ -22,10 +22,6 @@ const UsersTable = ({
   refreshData,
   showNotification,
 
-  // ----------------------------------------------------------
-  // VERIFY / UNVERIFY PROPS
-  // ----------------------------------------------------------
-
   onVerifyUser,
   onUnverifyUser,
   verifyingUser,
@@ -42,36 +38,127 @@ const UsersTable = ({
     useState(null);
 
   // ==========================================================
-  // GUARD AGAINST MISSING USERS
+  // VERIFY STATUS
   // ==========================================================
 
-  if (!users) {
-    return (
-      <div
-        style={{
-          padding: "20px",
-          textAlign: "center",
-          color: "var(--gray-500)",
-        }}
-      >
-        No users data
-      </div>
+  const isUserVerified = (user) => {
+    if (!user) return false;
+
+    if (user.isVerified === true) {
+      return true;
+    }
+
+    if (user.verified === true) {
+      return true;
+    }
+
+    if (user.emailVerified === true) {
+      return true;
+    }
+
+    const verificationStatus =
+      String(
+        user.verificationStatus || ""
+      ).toLowerCase();
+
+    return [
+      "verified",
+      "approved",
+    ].includes(
+      verificationStatus
     );
-  }
+  };
+
+  // ==========================================================
+  // USER ID
+  // ==========================================================
+
+  const getUserId = (user) => {
+    return user?._id || user?.id;
+  };
+
+  // ==========================================================
+  // USER INITIALS
+  // ==========================================================
+
+  const getInitials = (user) => {
+    const name =
+      user?.name ||
+      user?.email ||
+      "User";
+
+    const parts = String(name)
+      .trim()
+      .split(/\s+/);
+
+    if (parts.length >= 2) {
+      return (
+        parts[0][0] +
+        parts[parts.length - 1][0]
+      ).toUpperCase();
+    }
+
+    return String(name)
+      .slice(0, 2)
+      .toUpperCase();
+  };
+
+  // ==========================================================
+  // ROLE STYLE
+  // ==========================================================
+
+  const getRoleStyle = (role) => {
+    const normalized =
+      String(role || "buyer").toLowerCase();
+
+    const styles = {
+      admin: {
+        background: "#f3e8ff",
+        color: "#7e22ce",
+        border: "#d8b4fe",
+      },
+
+      seller: {
+        background: "#fff7ed",
+        color: "#c2410c",
+        border: "#fed7aa",
+      },
+
+      rider: {
+        background: "#eff6ff",
+        color: "#1d4ed8",
+        border: "#bfdbfe",
+      },
+
+      buyer: {
+        background: "#ecfdf5",
+        color: "#047857",
+        border: "#a7f3d0",
+      },
+    };
+
+    return (
+      styles[normalized] ||
+      styles.buyer
+    );
+  };
 
   // ==========================================================
   // EDIT USER
   // ==========================================================
 
   const handleEdit = (user) => {
-    setEditingUser(user._id);
+    setEditingUser(
+      getUserId(user)
+    );
 
     setEditForm({
       name: user.name || "",
       email: user.email || "",
       phone: user.phone || "",
       role: user.role || "buyer",
-      isActive: user.isActive !== false,
+      isActive:
+        user.isActive !== false,
     });
   };
 
@@ -81,11 +168,12 @@ const UsersTable = ({
 
   const handleSave = async (id) => {
     try {
-      const result = await updateUser(
-        id,
-        editForm,
-        token
-      );
+      const result =
+        await updateUser(
+          id,
+          editForm,
+          token
+        );
 
       if (result?.success) {
         showNotification?.(
@@ -93,9 +181,9 @@ const UsersTable = ({
           "success"
         );
 
-        refreshData?.();
-
         setEditingUser(null);
+
+        refreshData?.();
       } else {
         showNotification?.(
           result?.message ||
@@ -124,21 +212,22 @@ const UsersTable = ({
   const handleDelete = async (id) => {
     if (
       !window.confirm(
-        "Delete this user?"
+        "Are you sure you want to permanently delete this user?"
       )
     ) {
       return;
     }
 
     try {
-      const result = await deleteUser(
-        id,
-        token
-      );
+      const result =
+        await deleteUser(
+          id,
+          token
+        );
 
       if (result?.success) {
         showNotification?.(
-          "User deleted",
+          "User deleted successfully",
           "success"
         );
 
@@ -165,45 +254,26 @@ const UsersTable = ({
   };
 
   // ==========================================================
-  // VERIFY STATUS HELPER
-  // ==========================================================
-  //
-  // The primary field is:
-  //
-  // user.isVerified
-  //
-  // Additional fields are checked as compatibility fallbacks.
-  //
+  // DATE FORMAT
   // ==========================================================
 
-  const isUserVerified = (user) => {
-    if (!user) {
-      return false;
+  const formatDate = (date) => {
+    if (!date) return "—";
+
+    try {
+      return new Date(
+        date
+      ).toLocaleDateString(
+        undefined,
+        {
+          year: "numeric",
+          month: "short",
+          day: "numeric",
+        }
+      );
+    } catch {
+      return "—";
     }
-
-    if (user.isVerified === true) {
-      return true;
-    }
-
-    if (user.verified === true) {
-      return true;
-    }
-
-    if (user.emailVerified === true) {
-      return true;
-    }
-
-    const verificationStatus =
-      String(
-        user.verificationStatus || ""
-      ).toLowerCase();
-
-    return [
-      "verified",
-      "approved",
-    ].includes(
-      verificationStatus
-    );
   };
 
   // ==========================================================
@@ -214,12 +284,86 @@ const UsersTable = ({
     return (
       <div
         style={{
-          padding: "20px",
+          background: "#ffffff",
+          border:
+            "1px solid #e5e7eb",
+          borderRadius: "18px",
+          padding: "60px 20px",
           textAlign: "center",
-          color: "var(--gray-500)",
+          boxShadow:
+            "0 4px 20px rgba(15,23,42,0.04)",
         }}
       >
-        Loading users...
+        <div
+          style={{
+            width: "38px",
+            height: "38px",
+            border:
+              "3px solid #e5e7eb",
+            borderTop:
+              "3px solid #111827",
+            borderRadius: "50%",
+            margin:
+              "0 auto 16px",
+            animation:
+              "spin 0.8s linear infinite",
+          }}
+        />
+
+        <div
+          style={{
+            fontWeight: 700,
+            color: "#111827",
+          }}
+        >
+          Loading users...
+        </div>
+
+        <div
+          style={{
+            fontSize: "13px",
+            color: "#6b7280",
+            marginTop: "5px",
+          }}
+        >
+          Please wait
+        </div>
+
+        <style>
+          {`
+            @keyframes spin {
+              from {
+                transform: rotate(0deg);
+              }
+
+              to {
+                transform: rotate(360deg);
+              }
+            }
+          `}
+        </style>
+      </div>
+    );
+  }
+
+  // ==========================================================
+  // NO USERS
+  // ==========================================================
+
+  if (!users) {
+    return (
+      <div
+        style={{
+          background: "#ffffff",
+          border:
+            "1px solid #e5e7eb",
+          borderRadius: "18px",
+          padding: "50px 20px",
+          textAlign: "center",
+          color: "#6b7280",
+        }}
+      >
+        No users data available.
       </div>
     );
   }
@@ -229,321 +373,395 @@ const UsersTable = ({
   // ==========================================================
 
   return (
-    <div className="table-container">
-      {/* ======================================================
-          HEADER
-      ====================================================== */}
-
-      <h2>
-        👥 Users ({users.length})
-      </h2>
-
-      {/* ======================================================
-          TABLE
-      ====================================================== */}
-
+    <>
       <div
         style={{
-          overflowX: "auto",
+          background: "#ffffff",
+          border:
+            "1px solid #e5e7eb",
+          borderRadius: "20px",
+          overflow: "hidden",
+          boxShadow:
+            "0 8px 30px rgba(15,23,42,0.05)",
         }}
       >
-        <table
-          className="admin-table"
+        {/* ====================================================
+            TABLE TOP BAR
+        ==================================================== */}
+
+        <div
           style={{
-            width: "100%",
-            borderCollapse:
-              "collapse",
-            minWidth: "950px",
+            padding:
+              "22px 24px",
+            borderBottom:
+              "1px solid #eef0f3",
+            display: "flex",
+            alignItems: "center",
+            justifyContent:
+              "space-between",
+            gap: "15px",
+            flexWrap: "wrap",
           }}
         >
-          {/* ==================================================
-              TABLE HEADER
-              ================================================== */}
-
-          <thead>
-            <tr
+          <div>
+            <div
               style={{
-                background:
-                  "#f3f4f6",
+                display: "flex",
+                alignItems: "center",
+                gap: "10px",
               }}
             >
-              <th
+              <div
                 style={{
-                  padding: "10px",
-                  textAlign:
-                    "left",
-                }}
-              >
-                Name
-              </th>
-
-              <th
-                style={{
-                  padding: "10px",
-                  textAlign:
-                    "left",
-                }}
-              >
-                Email
-              </th>
-
-              <th
-                style={{
-                  padding: "10px",
-                  textAlign:
-                    "left",
-                }}
-              >
-                Role
-              </th>
-
-              <th
-                style={{
-                  padding: "10px",
-                  textAlign:
-                    "left",
-                }}
-              >
-                Status
-              </th>
-
-              <th
-                style={{
-                  padding: "10px",
-                  textAlign:
+                  width: "42px",
+                  height: "42px",
+                  borderRadius: "12px",
+                  background:
+                    "#111827",
+                  color: "#ffffff",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent:
                     "center",
+                  fontSize: "19px",
                 }}
               >
-                Verified
-              </th>
+                👥
+              </div>
 
-              <th
-                style={{
-                  padding: "10px",
-                  textAlign:
-                    "left",
-                }}
-              >
-                Location
-              </th>
-
-              <th
-                style={{
-                  padding: "10px",
-                  textAlign:
-                    "left",
-                }}
-              >
-                Joined
-              </th>
-
-              <th
-                style={{
-                  padding: "10px",
-                  textAlign:
-                    "left",
-                  minWidth: "300px",
-                }}
-              >
-                Actions
-              </th>
-            </tr>
-          </thead>
-
-          {/* ==================================================
-              TABLE BODY
-              ================================================== */}
-
-          <tbody>
-            {users.length === 0 ? (
-              <tr>
-                <td
-                  colSpan="8"
+              <div>
+                <h2
                   style={{
-                    padding:
-                      "40px 20px",
-                    textAlign:
-                      "center",
-                    color:
-                      "var(--gray-500)",
+                    margin: 0,
+                    fontSize: "18px",
+                    fontWeight: 800,
+                    color: "#111827",
                   }}
                 >
-                  No users found.
-                </td>
+                  Users
+                </h2>
+
+                <p
+                  style={{
+                    margin:
+                      "3px 0 0",
+                    fontSize: "13px",
+                    color: "#6b7280",
+                  }}
+                >
+                  Manage marketplace accounts
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* USER COUNT */}
+
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              padding:
+                "8px 13px",
+              background:
+                "#f8fafc",
+              border:
+                "1px solid #e5e7eb",
+              borderRadius: "999px",
+              fontSize: "13px",
+              fontWeight: 700,
+              color: "#374151",
+            }}
+          >
+            <span
+              style={{
+                width: "7px",
+                height: "7px",
+                borderRadius: "50%",
+                background: "#10b981",
+              }}
+            />
+
+            {users.length}{" "}
+            {users.length === 1
+              ? "user"
+              : "users"}
+          </div>
+        </div>
+
+        {/* ====================================================
+            TABLE
+        ==================================================== */}
+
+        <div
+          style={{
+            width: "100%",
+            overflowX: "auto",
+          }}
+        >
+          <table
+            style={{
+              width: "100%",
+              minWidth: "1180px",
+              borderCollapse:
+                "separate",
+              borderSpacing: 0,
+            }}
+          >
+            {/* ==================================================
+                HEADER
+            ================================================== */}
+
+            <thead>
+              <tr
+                style={{
+                  background:
+                    "#f8fafc",
+                }}
+              >
+                {[
+                  "User",
+                  "Role",
+                  "Account",
+                  "Verification",
+                  "Location",
+                  "Joined",
+                  "Actions",
+                ].map(
+                  (
+                    heading,
+                    index
+                  ) => (
+                    <th
+                      key={heading}
+                      style={{
+                        padding:
+                          "13px 18px",
+                        textAlign:
+                          index === 6
+                            ? "right"
+                            : "left",
+                        fontSize:
+                          "11px",
+                        fontWeight:
+                          800,
+                        color:
+                          "#6b7280",
+                        textTransform:
+                          "uppercase",
+                        letterSpacing:
+                          "0.06em",
+                        borderBottom:
+                          "1px solid #e5e7eb",
+                        whiteSpace:
+                          "nowrap",
+                      }}
+                    >
+                      {heading}
+                    </th>
+                  )
+                )}
               </tr>
-            ) : (
-              users.map((user) => {
-                const verified =
-                  isUserVerified(
-                    user
-                  );
+            </thead>
 
-                const userId =
-                  user._id ||
-                  user.id;
+            {/* ==================================================
+                BODY
+            ================================================== */}
 
-                const isVerifying =
-                  Boolean(
-                    verifyingUser?.[
-                      userId
-                    ]
-                  );
-
-                const isAdmin =
-                  String(
-                    user.role || ""
-                  ).toLowerCase() ===
-                  "admin";
-
-                return (
-                  <tr
-                    key={userId}
+            <tbody>
+              {users.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan="7"
                     style={{
-                      borderBottom:
-                        "1px solid #e5e7eb",
+                      padding:
+                        "70px 20px",
+                      textAlign:
+                        "center",
                     }}
                   >
-                    {/* ==================================================
-                        EDIT MODE
-                        ================================================== */}
+                    <div
+                      style={{
+                        fontSize:
+                          "42px",
+                        marginBottom:
+                          "10px",
+                      }}
+                    >
+                      👥
+                    </div>
 
-                    {editingUser ===
-                    userId ? (
-                      <>
-                        {/* NAME */}
+                    <div
+                      style={{
+                        fontWeight:
+                          800,
+                        color:
+                          "#111827",
+                        fontSize:
+                          "15px",
+                      }}
+                    >
+                      No users found
+                    </div>
 
-                        <td
+                    <div
+                      style={{
+                        marginTop:
+                          "5px",
+                        fontSize:
+                          "13px",
+                        color:
+                          "#6b7280",
+                      }}
+                    >
+                      There are no users matching the current filters.
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                users.map(
+                  (user) => {
+                    const userId =
+                      getUserId(user);
+
+                    const verified =
+                      isUserVerified(
+                        user
+                      );
+
+                    const isVerifying =
+                      Boolean(
+                        verifyingUser?.[
+                          userId
+                        ]
+                      );
+
+                    const isAdmin =
+                      String(
+                        user.role ||
+                          ""
+                      ).toLowerCase() ===
+                      "admin";
+
+                    const roleStyle =
+                      getRoleStyle(
+                        user.role
+                      );
+
+                    // ==================================================
+                    // EDIT MODE
+                    // ==================================================
+
+                    if (
+                      editingUser ===
+                      userId
+                    ) {
+                      return (
+                        <tr
+                          key={userId}
                           style={{
-                            padding:
-                              "8px",
+                            background:
+                              "#fafafa",
                           }}
                         >
-                          <input
-                            value={
-                              editForm.name
-                            }
-                            onChange={(
-                              e
-                            ) =>
-                              setEditForm(
-                                {
-                                  ...editForm,
-                                  name: e
-                                    .target
-                                    .value,
-                                }
-                              )
-                            }
+                          {/* USER */}
+
+                          <td
                             style={{
                               padding:
-                                "6px",
-                              width:
-                                "100%",
-                              boxSizing:
-                                "border-box",
-                            }}
-                          />
-                        </td>
-
-                        {/* EMAIL */}
-
-                        <td
-                          style={{
-                            padding:
-                              "8px",
-                          }}
-                        >
-                          <input
-                            value={
-                              editForm.email
-                            }
-                            onChange={(
-                              e
-                            ) =>
-                              setEditForm(
-                                {
-                                  ...editForm,
-                                  email:
-                                    e
-                                      .target
-                                      .value,
-                                }
-                              )
-                            }
-                            style={{
-                              padding:
-                                "6px",
-                              width:
-                                "100%",
-                              boxSizing:
-                                "border-box",
-                            }}
-                          />
-                        </td>
-
-                        {/* ROLE */}
-
-                        <td
-                          style={{
-                            padding:
-                              "8px",
-                          }}
-                        >
-                          <select
-                            value={
-                              editForm.role
-                            }
-                            onChange={(
-                              e
-                            ) =>
-                              setEditForm(
-                                {
-                                  ...editForm,
-                                  role:
-                                    e
-                                      .target
-                                      .value,
-                                }
-                              )
-                            }
-                            style={{
-                              padding:
-                                "6px",
-                              width:
-                                "100%",
+                                "16px 18px",
+                              borderBottom:
+                                "1px solid #eef0f3",
                             }}
                           >
-                            <option value="buyer">
-                              Buyer
-                            </option>
+                            <div
+                              style={{
+                                display:
+                                  "flex",
+                                alignItems:
+                                  "center",
+                                gap: "10px",
+                              }}
+                            >
+                              <div
+                                style={{
+                                  width:
+                                    "38px",
+                                  height:
+                                    "38px",
+                                  borderRadius:
+                                    "11px",
+                                  background:
+                                    "#111827",
+                                  color:
+                                    "#fff",
+                                  display:
+                                    "flex",
+                                  alignItems:
+                                    "center",
+                                  justifyContent:
+                                    "center",
+                                  fontSize:
+                                    "12px",
+                                  fontWeight:
+                                    800,
+                                }}
+                              >
+                                {getInitials(
+                                  user
+                                )}
+                              </div>
 
-                            <option value="seller">
-                              Seller
-                            </option>
+                              <input
+                                value={
+                                  editForm.name
+                                }
+                                onChange={(
+                                  e
+                                ) =>
+                                  setEditForm(
+                                    {
+                                      ...editForm,
+                                      name:
+                                        e
+                                          .target
+                                          .value,
+                                    }
+                                  )
+                                }
+                                placeholder="Name"
+                                style={{
+                                  width:
+                                    "170px",
+                                  padding:
+                                    "9px 10px",
+                                  border:
+                                    "1px solid #d1d5db",
+                                  borderRadius:
+                                    "8px",
+                                  outline:
+                                    "none",
+                                  fontSize:
+                                    "13px",
+                                }}
+                              />
+                            </div>
+                          </td>
 
-                            <option value="rider">
-                              Rider
-                            </option>
+                          {/* ROLE */}
 
-                            <option value="admin">
-                              Admin
-                            </option>
-                          </select>
-                        </td>
-
-                        {/* STATUS */}
-
-                        <td
-                          style={{
-                            padding:
-                              "8px",
-                          }}
-                        >
-                          <label>
-                            <input
-                              type="checkbox"
-                              checked={
-                                editForm.isActive
+                          <td
+                            style={{
+                              padding:
+                                "16px 18px",
+                              borderBottom:
+                                "1px solid #eef0f3",
+                            }}
+                          >
+                            <select
+                              value={
+                                editForm.role
                               }
                               onChange={(
                                 e
@@ -551,180 +769,384 @@ const UsersTable = ({
                                 setEditForm(
                                   {
                                     ...editForm,
-                                    isActive:
+                                    role:
                                       e
                                         .target
-                                        .checked,
+                                        .value,
                                   }
                                 )
                               }
-                            />{" "}
-                            Active
-                          </label>
-                        </td>
+                              style={{
+                                padding:
+                                  "9px 10px",
+                                border:
+                                  "1px solid #d1d5db",
+                                borderRadius:
+                                  "8px",
+                                background:
+                                  "#fff",
+                                outline:
+                                  "none",
+                                fontSize:
+                                  "13px",
+                              }}
+                            >
+                              <option value="buyer">
+                                Buyer
+                              </option>
 
-                        {/* VERIFIED */}
+                              <option value="seller">
+                                Seller
+                              </option>
 
-                        <td
-                          style={{
-                            padding:
-                              "8px",
-                            textAlign:
-                              "center",
-                          }}
-                        >
-                          {verified
-                            ? "✅ Yes"
-                            : "❌ No"}
-                        </td>
+                              <option value="rider">
+                                Rider
+                              </option>
 
-                        {/* LOCATION */}
+                              <option value="admin">
+                                Admin
+                              </option>
+                            </select>
+                          </td>
 
-                        <td
-                          style={{
-                            padding:
-                              "8px",
-                          }}
-                        >
-                          —
-                        </td>
+                          {/* ACCOUNT */}
 
-                        {/* JOINED */}
-
-                        <td
-                          style={{
-                            padding:
-                              "8px",
-                          }}
-                        >
-                          —
-                        </td>
-
-                        {/* ACTIONS */}
-
-                        <td
-                          style={{
-                            padding:
-                              "8px",
-                          }}
-                        >
-                          <button
-                            onClick={() =>
-                              handleSave(
-                                userId
-                              )
-                            }
+                          <td
                             style={{
-                              background:
-                                "#16a34a",
-                              color:
-                                "white",
-                              border:
-                                "none",
                               padding:
-                                "4px 12px",
-                              borderRadius:
-                                "4px",
-                              cursor:
-                                "pointer",
-                              marginRight:
-                                "4px",
+                                "16px 18px",
+                              borderBottom:
+                                "1px solid #eef0f3",
                             }}
                           >
-                            Save
-                          </button>
+                            <label
+                              style={{
+                                display:
+                                  "inline-flex",
+                                alignItems:
+                                  "center",
+                                gap: "8px",
+                                cursor:
+                                  "pointer",
+                                fontSize:
+                                  "13px",
+                                fontWeight:
+                                  700,
+                              }}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={
+                                  editForm.isActive
+                                }
+                                onChange={(
+                                  e
+                                ) =>
+                                  setEditForm(
+                                    {
+                                      ...editForm,
+                                      isActive:
+                                        e
+                                          .target
+                                          .checked,
+                                    }
+                                  )
+                                }
+                              />
 
-                          <button
-                            onClick={() =>
-                              setEditingUser(
-                                null
-                              )
-                            }
+                              Active
+                            </label>
+                          </td>
+
+                          {/* VERIFICATION */}
+
+                          <td
                             style={{
-                              background:
-                                "#6b7280",
-                              color:
-                                "white",
-                              border:
-                                "none",
                               padding:
-                                "4px 12px",
-                              borderRadius:
-                                "4px",
-                              cursor:
-                                "pointer",
+                                "16px 18px",
+                              borderBottom:
+                                "1px solid #eef0f3",
                             }}
                           >
-                            Cancel
-                          </button>
-                        </td>
-                      </>
-                    ) : (
-                      <>
+                            {verified
+                              ? "Verified"
+                              : "Not verified"}
+                          </td>
+
+                          {/* LOCATION */}
+
+                          <td
+                            style={{
+                              padding:
+                                "16px 18px",
+                              borderBottom:
+                                "1px solid #eef0f3",
+                            }}
+                          >
+                            —
+                          </td>
+
+                          {/* JOINED */}
+
+                          <td
+                            style={{
+                              padding:
+                                "16px 18px",
+                              borderBottom:
+                                "1px solid #eef0f3",
+                            }}
+                          >
+                            —
+                          </td>
+
+                          {/* ACTIONS */}
+
+                          <td
+                            style={{
+                              padding:
+                                "16px 18px",
+                              borderBottom:
+                                "1px solid #eef0f3",
+                              textAlign:
+                                "right",
+                            }}
+                          >
+                            <div
+                              style={{
+                                display:
+                                  "flex",
+                                justifyContent:
+                                  "flex-end",
+                                gap: "7px",
+                              }}
+                            >
+                              <button
+                                onClick={() =>
+                                  handleSave(
+                                    userId
+                                  )
+                                }
+                                style={{
+                                  border:
+                                    "none",
+                                  background:
+                                    "#111827",
+                                  color:
+                                    "#fff",
+                                  padding:
+                                    "9px 14px",
+                                  borderRadius:
+                                    "8px",
+                                  fontWeight:
+                                    700,
+                                  cursor:
+                                    "pointer",
+                                  fontSize:
+                                    "12px",
+                                }}
+                              >
+                                Save
+                              </button>
+
+                              <button
+                                onClick={() =>
+                                  setEditingUser(
+                                    null
+                                  )
+                                }
+                                style={{
+                                  border:
+                                    "1px solid #d1d5db",
+                                  background:
+                                    "#fff",
+                                  color:
+                                    "#374151",
+                                  padding:
+                                    "9px 14px",
+                                  borderRadius:
+                                    "8px",
+                                  fontWeight:
+                                    700,
+                                  cursor:
+                                    "pointer",
+                                  fontSize:
+                                    "12px",
+                                }}
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    }
+
+                    // ==================================================
+                    // NORMAL ROW
+                    // ==================================================
+
+                    return (
+                      <tr
+                        key={userId}
+                        onMouseEnter={(
+                          e
+                        ) => {
+                          e.currentTarget.style.background =
+                            "#fafafa";
+                        }}
+                        onMouseLeave={(
+                          e
+                        ) => {
+                          e.currentTarget.style.background =
+                            "#ffffff";
+                        }}
+                        style={{
+                          background:
+                            "#ffffff",
+                          transition:
+                            "background 0.15s ease",
+                        }}
+                      >
                         {/* ==================================================
-                            NAME
-                            ================================================== */}
+                            USER
+                        ================================================== */}
 
                         <td
                           style={{
                             padding:
-                              "8px",
+                              "16px 18px",
+                            borderBottom:
+                              "1px solid #f0f1f3",
                           }}
                         >
-                          {user.name ||
-                            "Unnamed User"}
-                        </td>
+                          <div
+                            style={{
+                              display:
+                                "flex",
+                              alignItems:
+                                "center",
+                              gap: "12px",
+                            }}
+                          >
+                            {/* AVATAR */}
 
-                        {/* ==================================================
-                            EMAIL
-                            ================================================== */}
+                            <div
+                              style={{
+                                width:
+                                  "42px",
+                                height:
+                                  "42px",
+                                flexShrink: 0,
+                                borderRadius:
+                                  "13px",
+                                background:
+                                  "#111827",
+                                color:
+                                  "#ffffff",
+                                display:
+                                  "flex",
+                                alignItems:
+                                  "center",
+                                justifyContent:
+                                  "center",
+                                fontSize:
+                                  "12px",
+                                fontWeight:
+                                  800,
+                                letterSpacing:
+                                  "0.02em",
+                              }}
+                            >
+                              {getInitials(
+                                user
+                              )}
+                            </div>
 
-                        <td
-                          style={{
-                            padding:
-                              "8px",
-                          }}
-                        >
-                          {user.email ||
-                            "—"}
+                            <div
+                              style={{
+                                minWidth:
+                                  0,
+                              }}
+                            >
+                              <div
+                                style={{
+                                  fontWeight:
+                                    750,
+                                  color:
+                                    "#111827",
+                                  fontSize:
+                                    "13px",
+                                  whiteSpace:
+                                    "nowrap",
+                                  overflow:
+                                    "hidden",
+                                  textOverflow:
+                                    "ellipsis",
+                                  maxWidth:
+                                    "210px",
+                                }}
+                              >
+                                {user.name ||
+                                  "Unnamed User"}
+                              </div>
+
+                              <div
+                                style={{
+                                  marginTop:
+                                    "3px",
+                                  fontSize:
+                                    "12px",
+                                  color:
+                                    "#6b7280",
+                                  whiteSpace:
+                                    "nowrap",
+                                  overflow:
+                                    "hidden",
+                                  textOverflow:
+                                    "ellipsis",
+                                  maxWidth:
+                                    "210px",
+                                }}
+                              >
+                                {user.email ||
+                                  "No email"}
+                              </div>
+                            </div>
+                          </div>
                         </td>
 
                         {/* ==================================================
                             ROLE
-                            ================================================== */}
+                        ================================================== */}
 
                         <td
                           style={{
                             padding:
-                              "8px",
+                              "16px 18px",
+                            borderBottom:
+                              "1px solid #f0f1f3",
                           }}
                         >
                           <span
                             style={{
-                              background:
-                                user.role ===
-                                "admin"
-                                  ? "#8b5cf6"
-                                  : user.role ===
-                                    "seller"
-                                  ? "#f59e0b"
-                                  : user.role ===
-                                    "rider"
-                                  ? "#3b82f6"
-                                  : "#10b981",
-
-                              color:
-                                "white",
-
+                              display:
+                                "inline-flex",
+                              alignItems:
+                                "center",
                               padding:
-                                "2px 10px",
-
+                                "6px 10px",
                               borderRadius:
-                                "12px",
-
+                                "999px",
+                              background:
+                                roleStyle.background,
+                              color:
+                                roleStyle.color,
+                              border:
+                                `1px solid ${roleStyle.border}`,
                               fontSize:
-                                "12px",
-
+                                "11px",
+                              fontWeight:
+                                800,
                               textTransform:
                                 "capitalize",
                             }}
@@ -735,333 +1157,506 @@ const UsersTable = ({
                         </td>
 
                         {/* ==================================================
-                            STATUS
-                            ================================================== */}
+                            ACCOUNT STATUS
+                        ================================================== */}
 
                         <td
                           style={{
                             padding:
-                              "8px",
+                              "16px 18px",
+                            borderBottom:
+                              "1px solid #f0f1f3",
                           }}
                         >
-                          <span
+                          <div
                             style={{
+                              display:
+                                "inline-flex",
+                              alignItems:
+                                "center",
+                              gap: "7px",
+                              fontSize:
+                                "12px",
+                              fontWeight:
+                                700,
                               color:
                                 user.isActive !==
                                 false
-                                  ? "#16a34a"
-                                  : "#dc2626",
-                              fontWeight:
-                                600,
+                                  ? "#047857"
+                                  : "#b91c1c",
                             }}
                           >
+                            <span
+                              style={{
+                                width:
+                                  "7px",
+                                height:
+                                  "7px",
+                                borderRadius:
+                                  "50%",
+                                background:
+                                  user.isActive !==
+                                  false
+                                    ? "#10b981"
+                                    : "#ef4444",
+                              }}
+                            />
+
                             {user.isActive !==
                             false
                               ? "Active"
                               : "Inactive"}
-                          </span>
+                          </div>
                         </td>
 
                         {/* ==================================================
-                            VERIFIED
-                            ================================================== */}
+                            VERIFICATION
+                        ================================================== */}
 
                         <td
                           style={{
                             padding:
-                              "8px",
-                            textAlign:
-                              "center",
+                              "16px 18px",
+                            borderBottom:
+                              "1px solid #f0f1f3",
                           }}
                         >
                           {verified ? (
-                            <span
+                            <div
                               style={{
+                                display:
+                                  "inline-flex",
+                                alignItems:
+                                  "center",
+                                gap: "6px",
+                                padding:
+                                  "6px 10px",
+                                borderRadius:
+                                  "999px",
+                                background:
+                                  "#ecfdf5",
                                 color:
-                                  "#16a34a",
+                                  "#047857",
+                                border:
+                                  "1px solid #a7f3d0",
+                                fontSize:
+                                  "11px",
                                 fontWeight:
-                                  700,
+                                  800,
                               }}
                             >
-                              ✅ Yes
-                            </span>
+                              <span>
+                                ✓
+                              </span>
+
+                              Verified
+                            </div>
                           ) : (
-                            <span
+                            <div
                               style={{
+                                display:
+                                  "inline-flex",
+                                alignItems:
+                                  "center",
+                                gap: "6px",
+                                padding:
+                                  "6px 10px",
+                                borderRadius:
+                                  "999px",
+                                background:
+                                  "#fff7ed",
                                 color:
-                                  "#dc2626",
+                                  "#c2410c",
+                                border:
+                                  "1px solid #fed7aa",
+                                fontSize:
+                                  "11px",
                                 fontWeight:
-                                  700,
+                                  800,
                               }}
                             >
-                              ❌ No
-                            </span>
+                              <span>
+                                !
+                              </span>
+
+                              Pending
+                            </div>
                           )}
                         </td>
 
                         {/* ==================================================
                             LOCATION
-                            ================================================== */}
+                        ================================================== */}
 
                         <td
                           style={{
                             padding:
-                              "8px",
+                              "16px 18px",
+                            borderBottom:
+                              "1px solid #f0f1f3",
+                            color:
+                              "#4b5563",
+                            fontSize:
+                              "12px",
                           }}
                         >
-                          {user.location ||
-                            "—"}
+                          <div
+                            style={{
+                              display:
+                                "flex",
+                              alignItems:
+                                "center",
+                              gap: "6px",
+                            }}
+                          >
+                            <span
+                              style={{
+                                fontSize:
+                                  "13px",
+                              }}
+                            >
+                              📍
+                            </span>
+
+                            {user.location ||
+                              "Ghana"}
+                          </div>
                         </td>
 
                         {/* ==================================================
                             JOINED
-                            ================================================== */}
+                        ================================================== */}
 
                         <td
                           style={{
                             padding:
-                              "8px",
+                              "16px 18px",
+                            borderBottom:
+                              "1px solid #f0f1f3",
+                            color:
+                              "#6b7280",
                             fontSize:
                               "12px",
-                            color:
-                              "var(--gray-500)",
+                            whiteSpace:
+                              "nowrap",
                           }}
                         >
-                          {user.createdAt
-                            ? new Date(
-                                user.createdAt
-                              ).toLocaleDateString()
-                            : "—"}
+                          {formatDate(
+                            user.createdAt
+                          )}
                         </td>
 
                         {/* ==================================================
                             ACTIONS
-                            ================================================== */}
+                        ================================================== */}
 
                         <td
                           style={{
                             padding:
-                              "8px",
+                              "16px 18px",
+                            borderBottom:
+                              "1px solid #f0f1f3",
+                            textAlign:
+                              "right",
                           }}
                         >
-                          {/* STATS */}
-
-                          <button
-                            onClick={() =>
-                              setSelectedUser(
-                                user
-                              )
-                            }
+                          <div
                             style={{
-                              background:
-                                "#6b7280",
-                              color:
-                                "white",
-                              border:
-                                "none",
-                              padding:
-                                "4px 10px",
-                              borderRadius:
-                                "4px",
-                              cursor:
-                                "pointer",
-                              marginRight:
-                                "4px",
-                              fontSize:
-                                "12px",
+                              display:
+                                "flex",
+                              alignItems:
+                                "center",
+                              justifyContent:
+                                "flex-end",
+                              gap: "6px",
+                              flexWrap:
+                                "wrap",
                             }}
                           >
-                            Stats
-                          </button>
+                            {/* STATS */}
 
-                          {/* EDIT */}
-
-                          <button
-                            onClick={() =>
-                              handleEdit(
-                                user
-                              )
-                            }
-                            style={{
-                              background:
-                                "#3b82f6",
-                              color:
-                                "white",
-                              border:
-                                "none",
-                              padding:
-                                "4px 12px",
-                              borderRadius:
-                                "4px",
-                              cursor:
-                                "pointer",
-                              marginRight:
-                                "4px",
-                            }}
-                          >
-                            Edit
-                          </button>
-
-                          {/* DELETE */}
-
-                          <button
-                            onClick={() =>
-                              handleDelete(
-                                userId
-                              )
-                            }
-                            style={{
-                              background:
-                                "#dc2626",
-                              color:
-                                "white",
-                              border:
-                                "none",
-                              padding:
-                                "4px 12px",
-                              borderRadius:
-                                "4px",
-                              cursor:
-                                "pointer",
-                              marginRight:
-                                "4px",
-                            }}
-                          >
-                            Delete
-                          </button>
-
-                          {/* ==================================================
-                              VERIFY / UNVERIFY
-                              ================================================== */}
-
-                          {!isAdmin ? (
-                            verified ? (
-                              <button
-                                onClick={() =>
-                                  onUnverifyUser?.(
-                                    userId
-                                  )
-                                }
-                                disabled={
-                                  isVerifying
-                                }
-                                style={{
-                                  background:
-                                    "#dc2626",
-                                  color:
-                                    "white",
-                                  border:
-                                    "none",
-                                  padding:
-                                    "4px 12px",
-                                  borderRadius:
-                                    "4px",
-                                  cursor:
-                                    isVerifying
-                                      ? "not-allowed"
-                                      : "pointer",
-                                  opacity:
-                                    isVerifying
-                                      ? 0.6
-                                      : 1,
-                                  fontSize:
-                                    "12px",
-                                  marginTop:
-                                    "4px",
-                                  display:
-                                    "inline-block",
-                                }}
-                              >
-                                {isVerifying
-                                  ? "Unverifying..."
-                                  : "Unverify"}
-                              </button>
-                            ) : (
-                              <button
-                                onClick={() =>
-                                  onVerifyUser?.(
-                                    userId
-                                  )
-                                }
-                                disabled={
-                                  isVerifying
-                                }
-                                style={{
-                                  background:
-                                    "#16a34a",
-                                  color:
-                                    "white",
-                                  border:
-                                    "none",
-                                  padding:
-                                    "4px 12px",
-                                  borderRadius:
-                                    "4px",
-                                  cursor:
-                                    isVerifying
-                                      ? "not-allowed"
-                                      : "pointer",
-                                  opacity:
-                                    isVerifying
-                                      ? 0.6
-                                      : 1,
-                                  fontSize:
-                                    "12px",
-                                  marginTop:
-                                    "4px",
-                                  display:
-                                    "inline-block",
-                                }}
-                              >
-                                {isVerifying
-                                  ? "Verifying..."
-                                  : "Verify"}
-                              </button>
-                            )
-                          ) : (
-                            <span
+                            <button
+                              onClick={() =>
+                                setSelectedUser(
+                                  user
+                                )
+                              }
+                              title="View user details"
                               style={{
-                                display:
-                                  "inline-block",
-                                marginTop:
-                                  "6px",
+                                background:
+                                  "#f8fafc",
+                                color:
+                                  "#374151",
+                                border:
+                                  "1px solid #e5e7eb",
+                                padding:
+                                  "8px 11px",
+                                borderRadius:
+                                  "8px",
+                                cursor:
+                                  "pointer",
+                                fontWeight:
+                                  700,
                                 fontSize:
                                   "11px",
-                                color:
-                                  "var(--gray-400)",
                               }}
                             >
-                              Admin
-                            </span>
-                          )}
+                              View
+                            </button>
+
+                            {/* EDIT */}
+
+                            <button
+                              onClick={() =>
+                                handleEdit(
+                                  user
+                                )
+                              }
+                              title="Edit user"
+                              style={{
+                                background:
+                                  "#111827",
+                                color:
+                                  "#ffffff",
+                                border:
+                                  "1px solid #111827",
+                                padding:
+                                  "8px 11px",
+                                borderRadius:
+                                  "8px",
+                                cursor:
+                                  "pointer",
+                                fontWeight:
+                                  700,
+                                fontSize:
+                                  "11px",
+                              }}
+                            >
+                              Edit
+                            </button>
+
+                            {/* VERIFY */}
+
+                            {!isAdmin &&
+                              !verified && (
+                                <button
+                                  onClick={() =>
+                                    onVerifyUser?.(
+                                      userId
+                                    )
+                                  }
+                                  disabled={
+                                    isVerifying
+                                  }
+                                  title="Verify user"
+                                  style={{
+                                    background:
+                                      isVerifying
+                                        ? "#d1fae5"
+                                        : "#ecfdf5",
+                                    color:
+                                      "#047857",
+                                    border:
+                                      "1px solid #a7f3d0",
+                                    padding:
+                                      "8px 11px",
+                                    borderRadius:
+                                      "8px",
+                                    cursor:
+                                      isVerifying
+                                        ? "not-allowed"
+                                        : "pointer",
+                                    fontWeight:
+                                      800,
+                                    fontSize:
+                                      "11px",
+                                    opacity:
+                                      isVerifying
+                                        ? 0.65
+                                        : 1,
+                                  }}
+                                >
+                                  {isVerifying
+                                    ? "Verifying..."
+                                    : "Verify"}
+                                </button>
+                              )}
+
+                            {/* UNVERIFY */}
+
+                            {!isAdmin &&
+                              verified && (
+                                <button
+                                  onClick={() =>
+                                    onUnverifyUser?.(
+                                      userId
+                                    )
+                                  }
+                                  disabled={
+                                    isVerifying
+                                  }
+                                  title="Remove verification"
+                                  style={{
+                                    background:
+                                      "#fff7ed",
+                                    color:
+                                      "#c2410c",
+                                    border:
+                                      "1px solid #fed7aa",
+                                    padding:
+                                      "8px 11px",
+                                    borderRadius:
+                                      "8px",
+                                    cursor:
+                                      isVerifying
+                                        ? "not-allowed"
+                                        : "pointer",
+                                    fontWeight:
+                                      800,
+                                    fontSize:
+                                      "11px",
+                                    opacity:
+                                      isVerifying
+                                        ? 0.65
+                                        : 1,
+                                  }}
+                                >
+                                  {isVerifying
+                                    ? "Updating..."
+                                    : "Unverify"}
+                                </button>
+                              )}
+
+                            {/* DELETE */}
+
+                            <button
+                              onClick={() =>
+                                handleDelete(
+                                  userId
+                                )
+                              }
+                              title="Delete user"
+                              style={{
+                                background:
+                                  "#fff1f2",
+                                color:
+                                  "#be123c",
+                                border:
+                                  "1px solid #fecdd3",
+                                padding:
+                                  "8px 11px",
+                                borderRadius:
+                                  "8px",
+                                cursor:
+                                  "pointer",
+                                fontWeight:
+                                  800,
+                                fontSize:
+                                  "11px",
+                              }}
+                            >
+                              Delete
+                            </button>
+
+                            {isAdmin && (
+                              <span
+                                style={{
+                                  fontSize:
+                                    "10px",
+                                  color:
+                                    "#9ca3af",
+                                  fontWeight:
+                                    700,
+                                  marginLeft:
+                                    "3px",
+                                }}
+                              >
+                                Admin
+                              </span>
+                            )}
+                          </div>
                         </td>
-                      </>
-                    )}
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
+                      </tr>
+                    );
+                  }
+                )
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* ====================================================
+            TABLE FOOTER
+        ==================================================== */}
+
+        {users.length > 0 && (
+          <div
+            style={{
+              padding:
+                "14px 20px",
+              borderTop:
+                "1px solid #eef0f3",
+              background:
+                "#fafafa",
+              display: "flex",
+              justifyContent:
+                "space-between",
+              alignItems: "center",
+              gap: "10px",
+              flexWrap: "wrap",
+            }}
+          >
+            <span
+              style={{
+                fontSize:
+                  "12px",
+                color:
+                  "#6b7280",
+              }}
+            >
+              Showing{" "}
+              <strong
+                style={{
+                  color:
+                    "#374151",
+                }}
+              >
+                {users.length}
+              </strong>{" "}
+              users
+            </span>
+
+            <span
+              style={{
+                fontSize:
+                  "11px",
+                color:
+                  "#9ca3af",
+              }}
+            >
+              BuyUKUsed Admin
+            </span>
+          </div>
+        )}
       </div>
 
       {/* ==========================================================
-          USER STATS MODAL
-          ========================================================== */}
+          USER DETAILS MODAL
+      ========================================================== */}
 
       {selectedUser && (
         <div
+          onClick={() =>
+            setSelectedUser(null)
+          }
           style={{
             position:
               "fixed",
-            top: 0,
-            left: 0,
-            width: "100%",
-            height: "100%",
-            backgroundColor:
-              "rgba(0,0,0,0.5)",
+            inset: 0,
+            background:
+              "rgba(15,23,42,0.55)",
             backdropFilter:
-              "blur(4px)",
+              "blur(8px)",
             display: "flex",
             alignItems:
               "center",
@@ -1069,445 +1664,720 @@ const UsersTable = ({
               "center",
             zIndex: 9999,
             padding: "20px",
-            boxSizing:
-              "border-box",
           }}
-          onClick={() =>
-            setSelectedUser(null)
-          }
         >
           <div
-            style={{
-              background:
-                "white",
-              borderRadius:
-                "var(--radius-xl)",
-              maxWidth:
-                "480px",
-              width: "100%",
-              padding:
-                "32px",
-              position:
-                "relative",
-              maxHeight:
-                "90vh",
-              overflowY:
-                "auto",
-              boxSizing:
-                "border-box",
-            }}
             onClick={(e) =>
               e.stopPropagation()
             }
+            style={{
+              width: "100%",
+              maxWidth: "520px",
+              maxHeight: "90vh",
+              overflowY:
+                "auto",
+              background:
+                "#ffffff",
+              borderRadius:
+                "22px",
+              boxShadow:
+                "0 25px 70px rgba(0,0,0,0.2)",
+              overflow:
+                "hidden",
+            }}
           >
-            {/* CLOSE */}
-
-            <button
-              onClick={() =>
-                setSelectedUser(
-                  null
-                )
-              }
-              style={{
-                position:
-                  "absolute",
-                top: "14px",
-                right: "18px",
-                fontSize:
-                  "28px",
-                cursor:
-                  "pointer",
-                color:
-                  "var(--gray-400)",
-                background:
-                  "none",
-                border:
-                  "none",
-              }}
-            >
-              &times;
-            </button>
-
-            {/* TITLE */}
-
-            <h2
-              style={{
-                fontSize:
-                  "24px",
-                fontWeight:
-                  800,
-                marginBottom:
-                  "8px",
-              }}
-            >
-              📊 User Stats
-            </h2>
-
-            <p
-              style={{
-                color:
-                  "var(--gray-500)",
-                marginBottom:
-                  "20px",
-              }}
-            >
-              {selectedUser.name ||
-                "Unnamed User"}
-            </p>
-
             {/* ==================================================
-                USER DETAILS
-                ================================================== */}
+                MODAL HEADER
+            ================================================== */}
 
             <div
               style={{
-                display:
-                  "grid",
-                gridTemplateColumns:
-                  "1fr 1fr",
-                gap: "12px",
+                padding:
+                  "24px",
+                background:
+                  "#111827",
+                color:
+                  "#ffffff",
+                position:
+                  "relative",
               }}
             >
-              {/* ROLE */}
+              <button
+                onClick={() =>
+                  setSelectedUser(
+                    null
+                  )
+                }
+                style={{
+                  position:
+                    "absolute",
+                  top: "16px",
+                  right: "16px",
+                  width: "34px",
+                  height: "34px",
+                  borderRadius:
+                    "50%",
+                  border:
+                    "1px solid rgba(255,255,255,0.2)",
+                  background:
+                    "rgba(255,255,255,0.08)",
+                  color:
+                    "#ffffff",
+                  fontSize:
+                    "20px",
+                  cursor:
+                    "pointer",
+                }}
+              >
+                ×
+              </button>
 
               <div
                 style={{
-                  background:
-                    "var(--gray-50)",
-                  padding:
-                    "14px",
-                  borderRadius:
-                    "var(--radius-md)",
+                  display:
+                    "flex",
+                  alignItems:
+                    "center",
+                  gap: "14px",
+                  paddingRight:
+                    "40px",
                 }}
               >
                 <div
                   style={{
-                    fontSize:
-                      "11px",
+                    width:
+                      "54px",
+                    height:
+                      "54px",
+                    borderRadius:
+                      "16px",
+                    background:
+                      "#ffffff",
                     color:
-                      "var(--gray-400)",
+                      "#111827",
+                    display:
+                      "flex",
+                    alignItems:
+                      "center",
+                    justifyContent:
+                      "center",
+                    fontWeight:
+                      900,
+                    fontSize:
+                      "15px",
                   }}
                 >
-                  Role
+                  {getInitials(
+                    selectedUser
+                  )}
                 </div>
 
-                <div
-                  style={{
-                    fontWeight:
-                      600,
-                    textTransform:
-                      "capitalize",
-                  }}
-                >
-                  {selectedUser.role ||
-                    "buyer"}
+                <div>
+                  <h2
+                    style={{
+                      margin: 0,
+                      fontSize:
+                        "20px",
+                      fontWeight:
+                        850,
+                    }}
+                  >
+                    {selectedUser.name ||
+                      "Unnamed User"}
+                  </h2>
+
+                  <p
+                    style={{
+                      margin:
+                        "4px 0 0",
+                      color:
+                        "#cbd5e1",
+                      fontSize:
+                        "12px",
+                    }}
+                  >
+                    User account details
+                  </p>
                 </div>
               </div>
+            </div>
 
-              {/* STATUS */}
+            {/* ==================================================
+                MODAL BODY
+            ================================================== */}
 
+            <div
+              style={{
+                padding:
+                  "24px",
+              }}
+            >
               <div
                 style={{
-                  background:
-                    "var(--gray-50)",
-                  padding:
-                    "14px",
-                  borderRadius:
-                    "var(--radius-md)",
+                  display:
+                    "grid",
+                  gridTemplateColumns:
+                    "1fr 1fr",
+                  gap: "12px",
                 }}
               >
-                <div
-                  style={{
-                    fontSize:
-                      "11px",
-                    color:
-                      "var(--gray-400)",
-                  }}
-                >
-                  Status
-                </div>
+                {/* ROLE */}
 
                 <div
                   style={{
-                    fontWeight:
-                      600,
-                    color:
-                      selectedUser.isActive !==
-                      false
-                        ? "#16a34a"
-                        : "#dc2626",
+                    padding:
+                      "15px",
+                    background:
+                      "#f8fafc",
+                    border:
+                      "1px solid #eef0f3",
+                    borderRadius:
+                      "14px",
                   }}
                 >
-                  {selectedUser.isActive !==
-                  false
-                    ? "Active"
-                    : "Inactive"}
+                  <div
+                    style={{
+                      fontSize:
+                        "10px",
+                      fontWeight:
+                        800,
+                      color:
+                        "#9ca3af",
+                      textTransform:
+                        "uppercase",
+                      letterSpacing:
+                        "0.05em",
+                      marginBottom:
+                        "6px",
+                    }}
+                  >
+                    Role
+                  </div>
+
+                  <div
+                    style={{
+                      fontSize:
+                        "14px",
+                      fontWeight:
+                        800,
+                      color:
+                        "#111827",
+                      textTransform:
+                        "capitalize",
+                    }}
+                  >
+                    {selectedUser.role ||
+                      "buyer"}
+                  </div>
                 </div>
+
+                {/* ACCOUNT */}
+
+                <div
+                  style={{
+                    padding:
+                      "15px",
+                    background:
+                      "#f8fafc",
+                    border:
+                      "1px solid #eef0f3",
+                    borderRadius:
+                      "14px",
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize:
+                        "10px",
+                      fontWeight:
+                        800,
+                      color:
+                        "#9ca3af",
+                      textTransform:
+                        "uppercase",
+                      letterSpacing:
+                        "0.05em",
+                      marginBottom:
+                        "6px",
+                    }}
+                  >
+                    Account
+                  </div>
+
+                  <div
+                    style={{
+                      fontSize:
+                        "14px",
+                      fontWeight:
+                        800,
+                      color:
+                        selectedUser.isActive !==
+                        false
+                          ? "#047857"
+                          : "#b91c1c",
+                    }}
+                  >
+                    {selectedUser.isActive !==
+                    false
+                      ? "Active"
+                      : "Inactive"}
+                  </div>
+                </div>
+
+                {/* VERIFICATION */}
+
+                <div
+                  style={{
+                    padding:
+                      "15px",
+                    background:
+                      "#f8fafc",
+                    border:
+                      "1px solid #eef0f3",
+                    borderRadius:
+                      "14px",
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize:
+                        "10px",
+                      fontWeight:
+                        800,
+                      color:
+                        "#9ca3af",
+                      textTransform:
+                        "uppercase",
+                      letterSpacing:
+                        "0.05em",
+                      marginBottom:
+                        "6px",
+                    }}
+                  >
+                    Verification
+                  </div>
+
+                  <div
+                    style={{
+                      fontSize:
+                        "14px",
+                      fontWeight:
+                        800,
+                      color:
+                        isUserVerified(
+                          selectedUser
+                        )
+                          ? "#047857"
+                          : "#c2410c",
+                    }}
+                  >
+                    {isUserVerified(
+                      selectedUser
+                    )
+                      ? "✓ Verified"
+                      : "Pending"}
+                  </div>
+                </div>
+
+                {/* LOCATION */}
+
+                <div
+                  style={{
+                    padding:
+                      "15px",
+                    background:
+                      "#f8fafc",
+                    border:
+                      "1px solid #eef0f3",
+                    borderRadius:
+                      "14px",
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize:
+                        "10px",
+                      fontWeight:
+                        800,
+                      color:
+                        "#9ca3af",
+                      textTransform:
+                        "uppercase",
+                      letterSpacing:
+                        "0.05em",
+                      marginBottom:
+                        "6px",
+                    }}
+                  >
+                    Location
+                  </div>
+
+                  <div
+                    style={{
+                      fontSize:
+                        "14px",
+                      fontWeight:
+                        700,
+                      color:
+                        "#111827",
+                    }}
+                  >
+                    {selectedUser.location ||
+                      "Ghana"}
+                  </div>
+                </div>
+
+                {/* EMAIL */}
+
+                <div
+                  style={{
+                    gridColumn:
+                      "1 / -1",
+                    padding:
+                      "15px",
+                    background:
+                      "#f8fafc",
+                    border:
+                      "1px solid #eef0f3",
+                    borderRadius:
+                      "14px",
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize:
+                        "10px",
+                      fontWeight:
+                        800,
+                      color:
+                        "#9ca3af",
+                      textTransform:
+                        "uppercase",
+                      letterSpacing:
+                        "0.05em",
+                      marginBottom:
+                        "6px",
+                    }}
+                  >
+                    Email
+                  </div>
+
+                  <div
+                    style={{
+                      fontSize:
+                        "13px",
+                      fontWeight:
+                        700,
+                      color:
+                        "#111827",
+                      wordBreak:
+                        "break-all",
+                    }}
+                  >
+                    {selectedUser.email ||
+                      "—"}
+                  </div>
+                </div>
+
+                {/* PHONE */}
+
+                {selectedUser.phone && (
+                  <div
+                    style={{
+                      gridColumn:
+                        "1 / -1",
+                      padding:
+                        "15px",
+                      background:
+                        "#f8fafc",
+                      border:
+                        "1px solid #eef0f3",
+                      borderRadius:
+                        "14px",
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize:
+                          "10px",
+                        fontWeight:
+                          800,
+                        color:
+                          "#9ca3af",
+                        textTransform:
+                          "uppercase",
+                        letterSpacing:
+                          "0.05em",
+                        marginBottom:
+                          "6px",
+                      }}
+                    >
+                      Phone
+                    </div>
+
+                    <div
+                      style={{
+                        fontSize:
+                          "13px",
+                        fontWeight:
+                          700,
+                        color:
+                          "#111827",
+                      }}
+                    >
+                      {selectedUser.phone}
+                    </div>
+                  </div>
+                )}
+
+                {/* JOINED */}
+
+                <div
+                  style={{
+                    gridColumn:
+                      "1 / -1",
+                    padding:
+                      "15px",
+                    background:
+                      "#f8fafc",
+                    border:
+                      "1px solid #eef0f3",
+                    borderRadius:
+                      "14px",
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize:
+                        "10px",
+                      fontWeight:
+                        800,
+                      color:
+                        "#9ca3af",
+                      textTransform:
+                        "uppercase",
+                      letterSpacing:
+                        "0.05em",
+                      marginBottom:
+                        "6px",
+                    }}
+                  >
+                    Joined
+                  </div>
+
+                  <div
+                    style={{
+                      fontSize:
+                        "13px",
+                      fontWeight:
+                        700,
+                      color:
+                        "#111827",
+                    }}
+                  >
+                    {formatDate(
+                      selectedUser.createdAt
+                    )}
+                  </div>
+                </div>
+
+                {/* VERIFIED DATE */}
+
+                {selectedUser.verifiedAt && (
+                  <div
+                    style={{
+                      gridColumn:
+                        "1 / -1",
+                      padding:
+                        "15px",
+                      background:
+                        "#ecfdf5",
+                      border:
+                        "1px solid #a7f3d0",
+                      borderRadius:
+                        "14px",
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize:
+                          "10px",
+                        fontWeight:
+                          800,
+                        color:
+                          "#047857",
+                        textTransform:
+                          "uppercase",
+                        letterSpacing:
+                          "0.05em",
+                        marginBottom:
+                          "6px",
+                      }}
+                    >
+                      Verified At
+                    </div>
+
+                    <div
+                      style={{
+                        fontSize:
+                          "13px",
+                        fontWeight:
+                          700,
+                        color:
+                          "#065f46",
+                      }}
+                    >
+                      {new Date(
+                        selectedUser.verifiedAt
+                      ).toLocaleString()}
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {/* VERIFIED */}
+              {/* ==================================================
+                  MODAL ACTIONS
+              ================================================== */}
 
-              <div
-                style={{
-                  background:
-                    "var(--gray-50)",
-                  padding:
-                    "14px",
-                  borderRadius:
-                    "var(--radius-md)",
-                }}
-              >
+              {!String(
+                selectedUser.role ||
+                  ""
+              )
+                .toLowerCase()
+                .includes("admin") && (
                 <div
                   style={{
-                    fontSize:
-                      "11px",
-                    color:
-                      "var(--gray-400)",
-                  }}
-                >
-                  Verification
-                </div>
-
-                <div
-                  style={{
-                    fontWeight:
-                      600,
-                    color:
-                      isUserVerified(
-                        selectedUser
-                      )
-                        ? "#16a34a"
-                        : "#dc2626",
+                    display:
+                      "flex",
+                    gap: "8px",
+                    marginTop:
+                      "18px",
                   }}
                 >
                   {isUserVerified(
                     selectedUser
+                  ) ? (
+                    <button
+                      onClick={() => {
+                        onUnverifyUser?.(
+                          getUserId(
+                            selectedUser
+                          )
+                        );
+
+                        setSelectedUser(
+                          null
+                        );
+                      }}
+                      disabled={
+                        Boolean(
+                          verifyingUser?.[
+                            getUserId(
+                              selectedUser
+                            )
+                          ]
+                        )
+                      }
+                      style={{
+                        flex: 1,
+                        padding:
+                          "11px",
+                        borderRadius:
+                          "10px",
+                        border:
+                          "1px solid #fed7aa",
+                        background:
+                          "#fff7ed",
+                        color:
+                          "#c2410c",
+                        fontWeight:
+                          800,
+                        cursor:
+                          "pointer",
+                      }}
+                    >
+                      Unverify User
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        onVerifyUser?.(
+                          getUserId(
+                            selectedUser
+                          )
+                        );
+
+                        setSelectedUser(
+                          null
+                        );
+                      }}
+                      disabled={
+                        Boolean(
+                          verifyingUser?.[
+                            getUserId(
+                              selectedUser
+                            )
+                          ]
+                        )
+                      }
+                      style={{
+                        flex: 1,
+                        padding:
+                          "11px",
+                        borderRadius:
+                          "10px",
+                        border:
+                          "1px solid #a7f3d0",
+                        background:
+                          "#ecfdf5",
+                        color:
+                          "#047857",
+                        fontWeight:
+                          800,
+                        cursor:
+                          "pointer",
+                      }}
+                    >
+                      Verify User
+                    </button>
+                  )}
+                </div>
+              )}
+
+              <button
+                onClick={() =>
+                  setSelectedUser(
+                    null
                   )
-                    ? "✅ Verified"
-                    : "❌ Not Verified"}
-                </div>
-              </div>
-
-              {/* LOCATION */}
-
-              <div
+                }
                 style={{
-                  background:
-                    "var(--gray-50)",
+                  width:
+                    "100%",
+                  marginTop:
+                    "10px",
                   padding:
-                    "14px",
+                    "12px",
+                  border:
+                    "1px solid #e5e7eb",
                   borderRadius:
-                    "var(--radius-md)",
+                    "10px",
+                  background:
+                    "#ffffff",
+                  color:
+                    "#374151",
+                  fontWeight:
+                    800,
+                  cursor:
+                    "pointer",
                 }}
               >
-                <div
-                  style={{
-                    fontSize:
-                      "11px",
-                    color:
-                      "var(--gray-400)",
-                  }}
-                >
-                  Location
-                </div>
-
-                <div
-                  style={{
-                    fontWeight:
-                      600,
-                  }}
-                >
-                  {selectedUser.location ||
-                    "—"}
-                </div>
-              </div>
-
-              {/* JOINED */}
-
-              <div
-                style={{
-                  background:
-                    "var(--gray-50)",
-                  padding:
-                    "14px",
-                  borderRadius:
-                    "var(--radius-md)",
-                }}
-              >
-                <div
-                  style={{
-                    fontSize:
-                      "11px",
-                    color:
-                      "var(--gray-400)",
-                  }}
-                >
-                  Joined
-                </div>
-
-                <div
-                  style={{
-                    fontWeight:
-                      600,
-                  }}
-                >
-                  {selectedUser.createdAt
-                    ? new Date(
-                        selectedUser.createdAt
-                      ).toLocaleDateString()
-                    : "—"}
-                </div>
-              </div>
-
-              {/* EMAIL */}
-
-              <div
-                style={{
-                  background:
-                    "var(--gray-50)",
-                  padding:
-                    "14px",
-                  borderRadius:
-                    "var(--radius-md)",
-                  gridColumn:
-                    "1 / -1",
-                }}
-              >
-                <div
-                  style={{
-                    fontSize:
-                      "11px",
-                    color:
-                      "var(--gray-400)",
-                  }}
-                >
-                  Email
-                </div>
-
-                <div
-                  style={{
-                    fontWeight:
-                      600,
-                    wordBreak:
-                      "break-all",
-                  }}
-                >
-                  {selectedUser.email ||
-                    "—"}
-                </div>
-              </div>
-
-              {/* PHONE */}
-
-              {selectedUser.phone && (
-                <div
-                  style={{
-                    background:
-                      "var(--gray-50)",
-                    padding:
-                      "14px",
-                    borderRadius:
-                      "var(--radius-md)",
-                    gridColumn:
-                      "1 / -1",
-                  }}
-                >
-                  <div
-                    style={{
-                      fontSize:
-                        "11px",
-                      color:
-                        "var(--gray-400)",
-                    }}
-                  >
-                    Phone
-                  </div>
-
-                  <div
-                    style={{
-                      fontWeight:
-                        600,
-                    }}
-                  >
-                    {selectedUser.phone}
-                  </div>
-                </div>
-              )}
-
-              {/* VERIFICATION DATE */}
-
-              {selectedUser.verifiedAt && (
-                <div
-                  style={{
-                    background:
-                      "var(--gray-50)",
-                    padding:
-                      "14px",
-                    borderRadius:
-                      "var(--radius-md)",
-                    gridColumn:
-                      "1 / -1",
-                  }}
-                >
-                  <div
-                    style={{
-                      fontSize:
-                        "11px",
-                      color:
-                        "var(--gray-400)",
-                    }}
-                  >
-                    Verified At
-                  </div>
-
-                  <div
-                    style={{
-                      fontWeight:
-                        600,
-                    }}
-                  >
-                    {new Date(
-                      selectedUser.verifiedAt
-                    ).toLocaleString()}
-                  </div>
-                </div>
-              )}
+                Close
+              </button>
             </div>
-
-            {/* ==================================================
-                CLOSE BUTTON
-                ================================================== */}
-
-            <button
-              onClick={() =>
-                setSelectedUser(
-                  null
-                )
-              }
-              style={{
-                width: "100%",
-                padding:
-                  "12px",
-                marginTop:
-                  "20px",
-                background:
-                  "var(--gray-200)",
-                border:
-                  "none",
-                borderRadius:
-                  "var(--radius-full)",
-                fontWeight:
-                  600,
-                cursor:
-                  "pointer",
-              }}
-            >
-              Close
-            </button>
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 };
 

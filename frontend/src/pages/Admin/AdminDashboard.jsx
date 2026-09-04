@@ -94,11 +94,6 @@ const AdminDashboard = () => {
 
   // ==========================================================
   // VERIFICATION LOADING STATE
-  //
-  // Example:
-  // {
-  //   "USER_ID": true
-  // }
   // ==========================================================
 
   const [verifying, setVerifying] =
@@ -173,10 +168,6 @@ const AdminDashboard = () => {
           user?.email
         );
 
-        // ======================================================
-        // ADMIN ENDPOINTS
-        // ======================================================
-
         const [
           productsData,
           usersData,
@@ -210,10 +201,6 @@ const AdminDashboard = () => {
           ),
         ]);
 
-        // ======================================================
-        // LOG RESPONSES
-        // ======================================================
-
         console.log(
           "📦 Admin products response:",
           productsData
@@ -239,29 +226,17 @@ const AdminDashboard = () => {
           unverifiedData
         );
 
-        // ======================================================
-        // PRODUCTS
-        // ======================================================
-
         setProducts(
           productsData?.products ||
             productsData?.data ||
             []
         );
 
-        // ======================================================
-        // USERS
-        // ======================================================
-
         setUsers(
           usersData?.users ||
             usersData?.data ||
             []
         );
-
-        // ======================================================
-        // STATS
-        // ======================================================
 
         setStats(
           statsData?.stats ||
@@ -270,20 +245,12 @@ const AdminDashboard = () => {
             {}
         );
 
-        // ======================================================
-        // RIDERS
-        // ======================================================
-
         setRiders(
           ridersData?.riders ||
             ridersData?.users ||
             ridersData?.data ||
             []
         );
-
-        // ======================================================
-        // UNVERIFIED SELLERS
-        // ======================================================
 
         setUnverifiedSellers(
           unverifiedData?.sellers ||
@@ -355,7 +322,7 @@ const AdminDashboard = () => {
   ]);
 
   // ==========================================================
-  // FILTER PRODUCTS
+  // FILTERS
   // ==========================================================
 
   const filteredProducts =
@@ -383,10 +350,6 @@ const AdminDashboard = () => {
       products,
       searchTerm,
     ]);
-
-  // ==========================================================
-  // FILTER USERS
-  // ==========================================================
 
   const filteredUsers =
     useMemo(() => {
@@ -416,10 +379,6 @@ const AdminDashboard = () => {
       users,
       searchTerm,
     ]);
-
-  // ==========================================================
-  // FILTER RIDERS
-  // ==========================================================
 
   const filteredRiders =
     useMemo(() => {
@@ -489,7 +448,6 @@ const AdminDashboard = () => {
           token
         );
 
-        // Remove seller immediately
         setUnverifiedSellers(
           (previous) =>
             previous.filter(
@@ -541,10 +499,6 @@ const AdminDashboard = () => {
         return;
       }
 
-      // ======================================================
-      // PREVENT DOUBLE CLICK
-      // ======================================================
-
       if (verifying[userId]) {
         return;
       }
@@ -562,20 +516,10 @@ const AdminDashboard = () => {
           userId
         );
 
-        const result =
-          await verifyUser(
-            userId,
-            token
-          );
-
-        console.log(
-          "✅ Verify user response:",
-          result
+        await verifyUser(
+          userId,
+          token
         );
-
-        // ======================================================
-        // UPDATE USER IMMEDIATELY
-        // ======================================================
 
         setUsers(
           (previous) =>
@@ -594,16 +538,9 @@ const AdminDashboard = () => {
 
                 return {
                   ...userItem,
-
-                  isVerified:
-                    true,
-
-                  verified:
-                    true,
-
-                  verificationStatus:
-                    "approved",
-
+                  isVerified: true,
+                  verified: true,
+                  verificationStatus: "approved",
                   verifiedAt:
                     new Date().toISOString(),
                 };
@@ -615,10 +552,6 @@ const AdminDashboard = () => {
           "User verified successfully!",
           "success"
         );
-
-        // ======================================================
-        // REFRESH FROM DATABASE
-        // ======================================================
 
         await fetchData();
       } catch (err) {
@@ -657,10 +590,6 @@ const AdminDashboard = () => {
         return;
       }
 
-      // ======================================================
-      // PREVENT DOUBLE CLICK
-      // ======================================================
-
       if (verifying[userId]) {
         return;
       }
@@ -678,20 +607,10 @@ const AdminDashboard = () => {
           userId
         );
 
-        const result =
-          await unverifyUser(
-            userId,
-            token
-          );
-
-        console.log(
-          "✅ Unverify user response:",
-          result
+        await unverifyUser(
+          userId,
+          token
         );
-
-        // ======================================================
-        // UPDATE USER IMMEDIATELY
-        // ======================================================
 
         setUsers(
           (previous) =>
@@ -710,21 +629,11 @@ const AdminDashboard = () => {
 
                 return {
                   ...userItem,
-
-                  isVerified:
-                    false,
-
-                  verified:
-                    false,
-
-                  verificationStatus:
-                    "pending",
-
-                  verifiedAt:
-                    null,
-
-                  verifiedBy:
-                    null,
+                  isVerified: false,
+                  verified: false,
+                  verificationStatus: "pending",
+                  verifiedAt: null,
+                  verifiedBy: null,
                 };
               }
             )
@@ -734,10 +643,6 @@ const AdminDashboard = () => {
           "User verification removed",
           "success"
         );
-
-        // ======================================================
-        // REFRESH FROM DATABASE
-        // ======================================================
 
         await fetchData();
       } catch (err) {
@@ -800,10 +705,6 @@ const AdminDashboard = () => {
               "1px solid #e5e7eb",
           }}
         >
-          {/* ==================================================
-              HEADER
-          ================================================== */}
-
           <div
             style={{
               display:
@@ -852,8 +753,6 @@ const AdminDashboard = () => {
                 marketplace users.
               </p>
             </div>
-
-            {/* COUNTS */}
 
             <div
               style={{
@@ -905,10 +804,6 @@ const AdminDashboard = () => {
               </span>
             </div>
           </div>
-
-          {/* ==================================================
-              USERS
-          ================================================== */}
 
           {verificationUsers.length ===
           0 ? (
@@ -989,8 +884,6 @@ const AdminDashboard = () => {
                           "#fff",
                       }}
                     >
-                      {/* USER INFORMATION */}
-
                       <div
                         style={{
                           minWidth:
@@ -1111,10 +1004,6 @@ const AdminDashboard = () => {
                           </div>
                         )}
                       </div>
-
-                      {/* ==================================================
-                          VERIFICATION ACTION
-                      ================================================== */}
 
                       <div
                         style={{
@@ -1257,11 +1146,6 @@ const AdminDashboard = () => {
 
     setSearchTerm,
 
-    // ========================================================
-    // IMPORTANT:
-    // These are required by UsersTable.jsx
-    // ========================================================
-
     onVerifyUser:
       handleVerifyUser,
 
@@ -1295,269 +1179,318 @@ const AdminDashboard = () => {
               users={
                 filteredUsers
               }
+              setActivePage={
+                setActivePage
+              }
             />
 
             {/* ==================================================
-                PENDING SELLER VERIFICATIONS
+                PENDING SELLER VERIFICATIONS – CLICKABLE CARD
             ================================================== */}
 
             <div
-              className="pending-verifications-widget"
+              onClick={() =>
+                setActivePage(
+                  "sellers"
+                )
+              }
               style={{
-                background:
-                  "#fff",
-                borderRadius:
-                  "12px",
-                padding:
-                  "20px",
-                margin:
-                  "24px 0",
-                boxShadow:
-                  "0 2px 8px rgba(0,0,0,0.08)",
-                border:
-                  "1px solid #e5e7eb",
+                cursor: "pointer",
               }}
             >
-              <h3
+              <div
+                className="pending-verifications-widget"
                 style={{
+                  background:
+                    "#fff",
+                  borderRadius:
+                    "12px",
+                  padding:
+                    "20px",
                   margin:
-                    "0 0 16px 0",
-                  display:
-                    "flex",
-                  alignItems:
-                    "center",
-                  gap: "8px",
+                    "24px 0",
+                  boxShadow:
+                    "0 2px 8px rgba(0,0,0,0.08)",
+                  border:
+                    "1px solid #e5e7eb",
+                  transition:
+                    "all 0.2s ease",
+                }}
+                onMouseEnter={(
+                  e
+                ) => {
+                  e.currentTarget.style.transform =
+                    "translateY(-2px)";
+                  e.currentTarget.style.boxShadow =
+                    "0 8px 16px rgba(0,0,0,0.1)";
+                }}
+                onMouseLeave={(
+                  e
+                ) => {
+                  e.currentTarget.style.transform =
+                    "translateY(0)";
+                  e.currentTarget.style.boxShadow =
+                    "0 2px 8px rgba(0,0,0,0.08)";
                 }}
               >
-                <span>
-                  📋
-                </span>
-
-                Pending Seller
-                Verifications
-
-                <span
+                <h3
                   style={{
-                    fontSize:
-                      "14px",
-                    background:
-                      "#f3f4f6",
-                    padding:
-                      "2px 10px",
-                    borderRadius:
-                      "20px",
-                    marginLeft:
-                      "8px",
-                  }}
-                >
-                  {
-                    unverifiedSellers.length
-                  }
-                </span>
-              </h3>
-
-              {unverifiedSellers.length ===
-              0 ? (
-                <p
-                  style={{
-                    color:
-                      "#6b7280",
                     margin:
-                      "8px 0",
+                      "0 0 16px 0",
+                    display:
+                      "flex",
+                    alignItems:
+                      "center",
+                    gap: "8px",
                   }}
                 >
-                  All sellers
-                  are verified
-                  🎉
-                </p>
-              ) : (
-                <ul
-                  style={{
-                    listStyle:
-                      "none",
-                    padding:
-                      0,
-                    margin:
-                      0,
-                  }}
-                >
-                  {unverifiedSellers
-                    .slice(
-                      0,
-                      5
-                    )
-                    .map(
-                      (
-                        seller
-                      ) => (
-                        <li
-                          key={
-                            seller._id
-                          }
-                          style={{
-                            display:
-                              "flex",
-                            justifyContent:
-                              "space-between",
-                            alignItems:
-                              "center",
-                            padding:
-                              "12px 0",
-                            borderBottom:
-                              "1px solid #f3f4f6",
-                          }}
-                        >
-                          <div>
-                            <strong>
-                              {seller.name ||
-                                seller.shopName ||
-                                "Seller"}
-                            </strong>
+                  <span>
+                    📋
+                  </span>
 
-                            {seller.email && (
-                              <span
-                                style={{
-                                  marginLeft:
-                                    "12px",
-                                  color:
-                                    "#6b7280",
-                                  fontSize:
-                                    "14px",
-                                }}
-                              >
-                                {
-                                  seller.email
-                                }
-                              </span>
-                            )}
+                  Pending Seller
+                  Verifications
 
-                            {seller.createdAt && (
-                              <span
-                                style={{
-                                  marginLeft:
-                                    "12px",
-                                  fontSize:
-                                    "12px",
-                                  color:
-                                    "#9ca3af",
-                                }}
-                              >
-                                Joined{" "}
-                                {new Date(
-                                  seller.createdAt
-                                ).toLocaleDateString()}
-                              </span>
-                            )}
-                          </div>
-
-                          <button
-                            type="button"
-                            onClick={() =>
-                              handleVerify(
-                                seller._id
-                              )
-                            }
-                            disabled={
-                              Boolean(
-                                verifying[
-                                  seller._id
-                                ]
-                              )
-                            }
-                            style={{
-                              background:
-                                "#2563eb",
-                              color:
-                                "white",
-                              border:
-                                "none",
-                              padding:
-                                "6px 16px",
-                              borderRadius:
-                                "6px",
-                              cursor:
-                                verifying[
-                                  seller._id
-                                ]
-                                  ? "not-allowed"
-                                  : "pointer",
-                              fontWeight:
-                                500,
-                              fontSize:
-                                "14px",
-                              opacity:
-                                verifying[
-                                  seller._id
-                                ]
-                                  ? 0.6
-                                  : 1,
-                            }}
-                          >
-                            {verifying[
-                              seller._id
-                            ]
-                              ? "Verifying..."
-                              : "✓ Verify"}
-                          </button>
-                        </li>
-                      )
-                    )}
-                </ul>
-              )}
-
-              {unverifiedSellers.length >
-                5 && (
-                <p
-                  style={{
-                    marginTop:
-                      "8px",
-                    textAlign:
-                      "right",
-                  }}
-                >
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setActivePage(
-                        "sellers"
-                      )
-                    }
+                  <span
                     style={{
-                      background:
-                        "none",
-                      border:
-                        "none",
-                      color:
-                        "#2563eb",
-                      cursor:
-                        "pointer",
                       fontSize:
                         "14px",
+                      background:
+                        "#f3f4f6",
+                      padding:
+                        "2px 10px",
+                      borderRadius:
+                        "20px",
+                      marginLeft:
+                        "8px",
                     }}
                   >
-                    View all{" "}
                     {
                       unverifiedSellers.length
-                    }{" "}
-                    pending →
-                  </button>
-                </p>
-              )}
+                    }
+                  </span>
+                </h3>
+
+                {unverifiedSellers.length ===
+                0 ? (
+                  <p
+                    style={{
+                      color:
+                        "#6b7280",
+                      margin:
+                        "8px 0",
+                    }}
+                  >
+                    All sellers
+                    are verified
+                    🎉
+                  </p>
+                ) : (
+                  <ul
+                    style={{
+                      listStyle:
+                        "none",
+                      padding:
+                        0,
+                      margin:
+                        0,
+                    }}
+                  >
+                    {unverifiedSellers
+                      .slice(
+                        0,
+                        5
+                      )
+                      .map(
+                        (
+                          seller
+                        ) => (
+                          <li
+                            key={
+                              seller._id
+                            }
+                            style={{
+                              display:
+                                "flex",
+                              justifyContent:
+                                "space-between",
+                              alignItems:
+                                "center",
+                              padding:
+                                "12px 0",
+                              borderBottom:
+                                "1px solid #f3f4f6",
+                            }}
+                          >
+                            <div>
+                              <strong>
+                                {seller.name ||
+                                  seller.shopName ||
+                                  "Seller"}
+                              </strong>
+
+                              {seller.email && (
+                                <span
+                                  style={{
+                                    marginLeft:
+                                      "12px",
+                                    color:
+                                      "#6b7280",
+                                    fontSize:
+                                      "14px",
+                                  }}
+                                >
+                                  {
+                                    seller.email
+                                  }
+                                </span>
+                              )}
+
+                              {seller.createdAt && (
+                                <span
+                                  style={{
+                                    marginLeft:
+                                      "12px",
+                                    fontSize:
+                                      "12px",
+                                    color:
+                                      "#9ca3af",
+                                  }}
+                                >
+                                  Joined{" "}
+                                  {new Date(
+                                    seller.createdAt
+                                  ).toLocaleDateString()}
+                                </span>
+                              )}
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={(
+                                e
+                              ) => {
+                                e.stopPropagation();
+                                handleVerify(
+                                  seller._id
+                                );
+                              }}
+                              disabled={
+                                Boolean(
+                                  verifying[
+                                    seller._id
+                                  ]
+                                )
+                              }
+                              style={{
+                                background:
+                                  "#2563eb",
+                                color:
+                                  "white",
+                                border:
+                                  "none",
+                                padding:
+                                  "6px 16px",
+                                borderRadius:
+                                  "6px",
+                                cursor:
+                                  verifying[
+                                    seller._id
+                                  ]
+                                    ? "not-allowed"
+                                    : "pointer",
+                                fontWeight:
+                                  500,
+                                fontSize:
+                                  "14px",
+                                opacity:
+                                  verifying[
+                                    seller._id
+                                  ]
+                                    ? 0.6
+                                    : 1,
+                              }}
+                            >
+                              {verifying[
+                                seller._id
+                              ]
+                                ? "Verifying..."
+                                : "✓ Verify"}
+                            </button>
+                          </li>
+                        )
+                      )}
+                  </ul>
+                )}
+
+                {unverifiedSellers.length >
+                  5 && (
+                  <p
+                    style={{
+                      marginTop:
+                        "8px",
+                      textAlign:
+                        "right",
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={(
+                        e
+                      ) => {
+                        e.stopPropagation();
+                        setActivePage(
+                          "sellers"
+                        );
+                      }}
+                      style={{
+                        background:
+                          "none",
+                        border:
+                          "none",
+                        color:
+                          "#2563eb",
+                        cursor:
+                          "pointer",
+                        fontSize:
+                          "14px",
+                      }}
+                    >
+                      View all{" "}
+                      {
+                        unverifiedSellers.length
+                      }{" "}
+                      pending →
+                    </button>
+                  </p>
+                )}
+              </div>
             </div>
 
             {/* ==================================================
-                RECENT PRODUCTS
+                RECENT PRODUCTS – CLICKABLE CARD
             ================================================== */}
 
-            <RecentProducts
-              products={filteredProducts.slice(
-                0,
-                5
-              )}
-            />
+            <div
+              onClick={() =>
+                setActivePage(
+                  "products"
+                )
+              }
+              style={{
+                cursor: "pointer",
+              }}
+            >
+              <RecentProducts
+                products={filteredProducts.slice(
+                  0,
+                  5
+                )}
+              />
+            </div>
 
             {/* ==================================================
-                SELLER / USER MANAGEMENT
+                SELLER / USER MANAGEMENT BUTTON
             ================================================== */}
 
             <div
@@ -1615,21 +1548,7 @@ const AdminDashboard = () => {
       case "users":
         return (
           <>
-            {/* ==================================================
-                USER VERIFICATION PANEL
-            ================================================== */}
-
             {renderUserVerificationPanel()}
-
-            {/* ==================================================
-                EXISTING USERS TABLE
-
-                sharedProps now includes:
-                onVerifyUser
-                onUnverifyUser
-                verifyingUser
-            ================================================== */}
-
             <UsersTable
               {...sharedProps}
             />
@@ -1718,14 +1637,28 @@ const AdminDashboard = () => {
               users={
                 filteredUsers
               }
+              setActivePage={
+                setActivePage
+              }
             />
 
-            <RecentProducts
-              products={filteredProducts.slice(
-                0,
-                5
-              )}
-            />
+            <div
+              onClick={() =>
+                setActivePage(
+                  "products"
+                )
+              }
+              style={{
+                cursor: "pointer",
+              }}
+            >
+              <RecentProducts
+                products={filteredProducts.slice(
+                  0,
+                  5
+                )}
+              />
+            </div>
           </>
         );
     }
@@ -1768,10 +1701,6 @@ const AdminDashboard = () => {
   return (
     <div className="admin-wrapper">
 
-      {/* ======================================================
-          TOAST
-      ====================================================== */}
-
       {notification && (
         <Toast
           message={
@@ -1788,10 +1717,6 @@ const AdminDashboard = () => {
         />
       )}
 
-      {/* ======================================================
-          SIDEBAR
-      ====================================================== */}
-
       <AdminSidebar
         activePage={
           activePage
@@ -1806,10 +1731,6 @@ const AdminDashboard = () => {
           setSidebarOpen
         }
       />
-
-      {/* ======================================================
-          MAIN
-      ====================================================== */}
 
       <div
         className={`admin-main ${
@@ -1841,10 +1762,6 @@ const AdminDashboard = () => {
 
         <div className="admin-content">
 
-          {/* ==================================================
-              ERROR
-          ================================================== */}
-
           {error && (
             <div
               className="admin-error-banner"
@@ -1864,10 +1781,6 @@ const AdminDashboard = () => {
               ⚠️ {error}
             </div>
           )}
-
-          {/* ==================================================
-              LOADING
-          ================================================== */}
 
           {loading &&
           activePage !==
