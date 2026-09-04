@@ -2385,6 +2385,31 @@ export const admin = {
       }
     );
   },
+
+  // ============================================================
+  // ✅ NEW: Unverify a specific user (admin only)
+  // ============================================================
+  unverifyUserById: async (
+    userId,
+    token = getToken()
+  ) => {
+    if (!userId) {
+      throw new Error(
+        "User ID is required"
+      );
+    }
+
+    return request(
+      `${API_URL}/api/admin/users/${encodeURIComponent(
+        userId
+      )}/unverify`,
+      {
+        method: "PUT",
+        headers:
+          getHeaders(token),
+      }
+    );
+  },
 };
 
 // ================================================================
@@ -2881,10 +2906,13 @@ export const getUnverifiedSellers =
 export const verifySeller =
   admin.verifySeller;
 
-// ================================================================
-// ✅ NEW EXPORT: Admin verification of a user
-// ================================================================
+// ─── NEW aliases for user verification ──────────────────────
+export const verifyUser = admin.verifyUserById;
+export const unverifyUser = admin.unverifyUserById;
+
+// Also export the long names if needed
 export const verifyUserById = admin.verifyUserById;
+export const unverifyUserById = admin.unverifyUserById;
 
 // ================================================================
 // DELIVERY EXPORTS
@@ -3040,7 +3068,10 @@ const api = {
   getUnverifiedSellers,
   verifySeller,
 
-  verifyUserById, // ✅ added
+  verifyUser,       // ✅ added
+  unverifyUser,     // ✅ added
+  verifyUserById,   // ✅ added
+  unverifyUserById, // ✅ added
 
   createDelivery,
   getCustomerDeliveries,

@@ -1,3 +1,7 @@
+// ============================================================
+// AdminDashboard.jsx
+// ============================================================
+
 import React, {
   useState,
   useEffect,
@@ -30,7 +34,10 @@ import {
   getRiders,
   getUnverifiedSellers,
   verifySeller,
-  updateUser,
+
+  // User verification
+  verifyUser,
+  unverifyUser,
 } from "../../services/api";
 
 import "./styles/admin.css";
@@ -77,13 +84,6 @@ const AdminDashboard = () => {
     useState("");
 
   // ==========================================================
-  // USER FILTER
-  // ==========================================================
-
-  const [userFilter, setUserFilter] =
-    useState("all");
-
-  // ==========================================================
   // SELLER VERIFICATION STATE
   // ==========================================================
 
@@ -93,17 +93,15 @@ const AdminDashboard = () => {
   ] = useState([]);
 
   // ==========================================================
-  // USER VERIFICATION STATE
+  // VERIFICATION LOADING STATE
+  //
+  // Example:
+  // {
+  //   "USER_ID": true
+  // }
   // ==========================================================
 
-  const [verifyingUsers, setVerifyingUsers] =
-    useState({});
-
-  // ==========================================================
-  // SELLER VERIFICATION LOADING STATE
-  // ==========================================================
-
-  const [verifyingSellers, setVerifyingSellers] =
+  const [verifying, setVerifying] =
     useState({});
 
   // ==========================================================
@@ -125,101 +123,31 @@ const AdminDashboard = () => {
     );
 
   // ==========================================================
-  // USER VERIFICATION CHECK
+  // CHECK USER VERIFICATION STATUS
   // ==========================================================
 
-  const isUserVerified = useCallback(
-    (userItem) => {
-      if (!userItem) {
-        return false;
-      }
-
-      if (
-        userItem.isVerified === true ||
-        userItem.verified === true ||
-        userItem.emailVerified === true
-      ) {
-        return true;
-      }
-
-      if (
-        userItem.isVerified === false ||
-        userItem.verified === false ||
-        userItem.emailVerified === false
-      ) {
-        return false;
-      }
-
-      const status =
-        userItem.verificationStatus ||
-        userItem.verifyStatus ||
-        userItem.status;
-
-      if (
-        typeof status === "string"
-      ) {
-        const normalized =
-          status
-            .trim()
-            .toLowerCase();
-
-        if (
-          normalized ===
-            "verified" ||
-          normalized ===
-            "approved" ||
-          normalized ===
-            "active"
-        ) {
-          return true;
-        }
-
-        if (
-          normalized ===
-            "unverified" ||
-          normalized ===
-            "pending" ||
-          normalized ===
-            "rejected"
-        ) {
+  const isUserVerified =
+    useCallback(
+      (userItem) => {
+        if (!userItem) {
           return false;
         }
-      }
 
-      return false;
-    },
-    []
-  );
+        const verificationStatus =
+          String(
+            userItem.verificationStatus || ""
+          ).toLowerCase();
 
-  // ==========================================================
-  // VERIFIED USERS
-  // ==========================================================
-
-  const verifiedUsers =
-    useMemo(() => {
-      return users.filter(
-        (userItem) =>
-          isUserVerified(userItem)
-      );
-    }, [
-      users,
-      isUserVerified,
-    ]);
-
-  // ==========================================================
-  // UNVERIFIED USERS
-  // ==========================================================
-
-  const unverifiedUsers =
-    useMemo(() => {
-      return users.filter(
-        (userItem) =>
-          !isUserVerified(userItem)
-      );
-    }, [
-      users,
-      isUserVerified,
-    ]);
+        return Boolean(
+          userItem.isVerified === true ||
+            userItem.verified === true ||
+            userItem.emailVerified === true ||
+            verificationStatus === "verified" ||
+            verificationStatus === "approved"
+        );
+      },
+      []
+    );
 
   // ==========================================================
   // FETCH ADMIN DATA
@@ -245,6 +173,10 @@ const AdminDashboard = () => {
           user?.email
         );
 
+        // ======================================================
+        // ADMIN ENDPOINTS
+        // ======================================================
+
         const [
           productsData,
           usersData,
@@ -258,21 +190,29 @@ const AdminDashboard = () => {
             },
             token
           ),
+
           getAdminUsers(
             {},
             token
           ),
+
           getAdminDashboardStats(
             token
           ),
+
           getRiders(
             {},
             token
           ),
+
           getUnverifiedSellers(
             token
           ),
         ]);
+
+        // ======================================================
+        // LOG RESPONSES
+        // ======================================================
 
         console.log(
           "📦 Admin products response:",
@@ -299,40 +239,29 @@ const AdminDashboard = () => {
           unverifiedData
         );
 
-        const loadedProducts =
-          productsData?.products ||
-          productsData?.data ||
-          [];
+        // ======================================================
+        // PRODUCTS
+        // ======================================================
 
         setProducts(
-          Array.isArray(
-            loadedProducts
-          )
-            ? loadedProducts
-            : []
+          productsData?.products ||
+            productsData?.data ||
+            []
         );
 
-        const loadedUsers =
-          usersData?.users ||
-          usersData?.data ||
-          [];
+        // ======================================================
+        // USERS
+        // ======================================================
 
         setUsers(
-          Array.isArray(
-            loadedUsers
-          )
-            ? loadedUsers
-            : []
+          usersData?.users ||
+            usersData?.data ||
+            []
         );
 
-        console.log(
-          "👥 Total users:",
-          Array.isArray(
-            loadedUsers
-          )
-            ? loadedUsers.length
-            : 0
-        );
+        // ======================================================
+        // STATS
+        // ======================================================
 
         setStats(
           statsData?.stats ||
@@ -341,32 +270,26 @@ const AdminDashboard = () => {
             {}
         );
 
-        const loadedRiders =
-          ridersData?.riders ||
-          ridersData?.users ||
-          ridersData?.data ||
-          [];
+        // ======================================================
+        // RIDERS
+        // ======================================================
 
         setRiders(
-          Array.isArray(
-            loadedRiders
-          )
-            ? loadedRiders
-            : []
+          ridersData?.riders ||
+            ridersData?.users ||
+            ridersData?.data ||
+            []
         );
 
-        const loadedUnverifiedSellers =
-          unverifiedData?.sellers ||
-          unverifiedData?.users ||
-          unverifiedData?.data ||
-          [];
+        // ======================================================
+        // UNVERIFIED SELLERS
+        // ======================================================
 
         setUnverifiedSellers(
-          Array.isArray(
-            loadedUnverifiedSellers
-          )
-            ? loadedUnverifiedSellers
-            : []
+          unverifiedData?.sellers ||
+            unverifiedData?.users ||
+            unverifiedData?.data ||
+            []
         );
 
         console.log(
@@ -462,10 +385,10 @@ const AdminDashboard = () => {
     ]);
 
   // ==========================================================
-  // FILTER USERS BY SEARCH
+  // FILTER USERS
   // ==========================================================
 
-  const searchedUsers =
+  const filteredUsers =
     useMemo(() => {
       if (!searchTerm) {
         return users;
@@ -492,48 +415,6 @@ const AdminDashboard = () => {
     }, [
       users,
       searchTerm,
-    ]);
-
-  // ==========================================================
-  // FILTER USERS BY VERIFICATION
-  // ==========================================================
-
-  const filteredUsers =
-    useMemo(() => {
-      let result =
-        searchedUsers;
-
-      if (
-        userFilter ===
-        "verified"
-      ) {
-        result =
-          result.filter(
-            (userItem) =>
-              isUserVerified(
-                userItem
-              )
-          );
-      }
-
-      if (
-        userFilter ===
-        "unverified"
-      ) {
-        result =
-          result.filter(
-            (userItem) =>
-              !isUserVerified(
-                userItem
-              )
-          );
-      }
-
-      return result;
-    }, [
-      searchedUsers,
-      userFilter,
-      isUserVerified,
     ]);
 
   // ==========================================================
@@ -576,261 +457,787 @@ const AdminDashboard = () => {
     ]);
 
   // ==========================================================
-  // CLEAR PRODUCT CACHE
-  // ==========================================================
-
-  const clearProductCache = useCallback(() => {
-    try {
-      const keysToRemove = [];
-      for (let i = 0; i < sessionStorage.length; i++) {
-        const key = sessionStorage.key(i);
-        if (key && key.startsWith('products_v3_')) {
-          keysToRemove.push(key);
-        }
-      }
-      keysToRemove.forEach(key => sessionStorage.removeItem(key));
-      console.log(`🗑️ Cleared ${keysToRemove.length} product cache entries`);
-    } catch (error) {
-      console.warn('Could not clear product cache:', error);
-    }
-  }, []);
-
-  // ==========================================================
-  // VERIFY USER – USING updateUser
-  // ==========================================================
-
-  const handleVerifyUser =
-    useCallback(
-      async (userId) => {
-        if (!userId) {
-          showNotification(
-            "User ID is missing",
-            "error"
-          );
-
-          return;
-        }
-
-        if (!token) {
-          showNotification(
-            "Authentication token is missing",
-            "error"
-          );
-
-          return;
-        }
-
-        if (
-          verifyingUsers[userId]
-        ) {
-          return;
-        }
-
-        setVerifyingUsers(
-          (previous) => ({
-            ...previous,
-            [userId]: true,
-          })
-        );
-
-        try {
-          console.log(
-            "🔐 Verifying user:",
-            userId
-          );
-
-          const response =
-            await updateUser(
-              userId,
-              { isVerified: true },
-              token
-            );
-
-          console.log(
-            "✅ User verification response:",
-            response
-          );
-
-          const verifiedUser =
-            response?.user ||
-            response?.data?.user ||
-            null;
-
-          setUsers(
-            (previousUsers) =>
-              previousUsers.map(
-                (userItem) => {
-                  if (
-                    userItem._id !==
-                    userId
-                  ) {
-                    return userItem;
-                  }
-
-                  return {
-                    ...userItem,
-
-                    isVerified:
-                      true,
-
-                    verified:
-                      true,
-
-                    verificationStatus:
-                      "approved",
-
-                    verifiedAt:
-                      verifiedUser?.verifiedAt ||
-                      new Date().toISOString(),
-
-                    verifiedBy:
-                      verifiedUser?.verifiedBy ||
-                      user?._id ||
-                      null,
-                  };
-                }
-              )
-          );
-
-          // ✅ Clear product cache so the badge appears on product cards
-          clearProductCache();
-
-          showNotification(
-            "User verified successfully!",
-            "success"
-          );
-
-          await fetchData();
-        } catch (err) {
-          console.error(
-            "❌ User verification error:",
-            err
-          );
-
-          showNotification(
-            err?.message ||
-              "Failed to verify user",
-            "error"
-          );
-        } finally {
-          setVerifyingUsers(
-            (previous) => ({
-              ...previous,
-              [userId]: false,
-            })
-          );
-        }
-      },
-      [
-        token,
-        user,
-        verifyingUsers,
-        fetchData,
-        showNotification,
-        clearProductCache,
-      ]
-    );
-
-  // ==========================================================
   // VERIFY SELLER
   // ==========================================================
 
-  const handleVerifySeller =
-    useCallback(
-      async (sellerId) => {
-        if (!sellerId) {
-          showNotification(
-            "Seller ID is missing",
-            "error"
-          );
-
-          return;
-        }
-
-        if (!token) {
-          showNotification(
-            "Authentication token is missing",
-            "error"
-          );
-
-          return;
-        }
-
-        if (
-          verifyingSellers[
-            sellerId
-          ]
-        ) {
-          return;
-        }
-
-        setVerifyingSellers(
-          (previous) => ({
-            ...previous,
-            [sellerId]: true,
-          })
+  const handleVerify =
+    async (sellerId) => {
+      if (!sellerId) {
+        showNotification(
+          "Seller ID is missing",
+          "error"
         );
 
-        try {
-          console.log(
-            "🔐 Verifying seller:",
-            sellerId
-          );
+        return;
+      }
 
-          await verifySeller(
-            sellerId,
+      setVerifying(
+        (previous) => ({
+          ...previous,
+          [sellerId]: true,
+        })
+      );
+
+      try {
+        console.log(
+          "🔐 Verifying seller:",
+          sellerId
+        );
+
+        await verifySeller(
+          sellerId,
+          token
+        );
+
+        // Remove seller immediately
+        setUnverifiedSellers(
+          (previous) =>
+            previous.filter(
+              (seller) =>
+                String(seller._id) !==
+                String(sellerId)
+            )
+        );
+
+        showNotification(
+          "Seller verified successfully!",
+          "success"
+        );
+
+        await fetchData();
+      } catch (err) {
+        console.error(
+          "❌ Seller verification error:",
+          err
+        );
+
+        showNotification(
+          err?.message ||
+            "Verification failed",
+          "error"
+        );
+      } finally {
+        setVerifying(
+          (previous) => ({
+            ...previous,
+            [sellerId]: false,
+          })
+        );
+      }
+    };
+
+  // ==========================================================
+  // VERIFY USER
+  // ==========================================================
+
+  const handleVerifyUser =
+    async (userId) => {
+      if (!userId) {
+        showNotification(
+          "User ID is missing",
+          "error"
+        );
+
+        return;
+      }
+
+      // ======================================================
+      // PREVENT DOUBLE CLICK
+      // ======================================================
+
+      if (verifying[userId]) {
+        return;
+      }
+
+      setVerifying(
+        (previous) => ({
+          ...previous,
+          [userId]: true,
+        })
+      );
+
+      try {
+        console.log(
+          "🔐 Verifying user:",
+          userId
+        );
+
+        const result =
+          await verifyUser(
+            userId,
             token
           );
 
-          // ✅ Also clear product cache for seller verification
-          clearProductCache();
+        console.log(
+          "✅ Verify user response:",
+          result
+        );
 
-          setUnverifiedSellers(
-            (previous) =>
-              previous.filter(
-                (seller) =>
-                  seller._id !==
-                  sellerId
-              )
-          );
+        // ======================================================
+        // UPDATE USER IMMEDIATELY
+        // ======================================================
 
-          showNotification(
-            "Seller verified successfully!",
-            "success"
-          );
+        setUsers(
+          (previous) =>
+            previous.map(
+              (userItem) => {
+                const currentId =
+                  userItem._id ||
+                  userItem.id;
 
-          await fetchData();
-        } catch (err) {
-          console.error(
-            "❌ Seller verification error:",
-            err
-          );
+                if (
+                  String(currentId) !==
+                  String(userId)
+                ) {
+                  return userItem;
+                }
 
-          showNotification(
-            err?.message ||
-              "Verification failed",
-            "error"
-          );
-        } finally {
-          setVerifyingSellers(
-            (previous) => ({
-              ...previous,
-              [sellerId]: false,
-            })
-          );
-        }
-      },
-      [
-        token,
-        verifyingSellers,
-        fetchData,
-        showNotification,
-        clearProductCache,
-      ]
-    );
+                return {
+                  ...userItem,
+
+                  isVerified:
+                    true,
+
+                  verified:
+                    true,
+
+                  verificationStatus:
+                    "approved",
+
+                  verifiedAt:
+                    new Date().toISOString(),
+                };
+              }
+            )
+        );
+
+        showNotification(
+          "User verified successfully!",
+          "success"
+        );
+
+        // ======================================================
+        // REFRESH FROM DATABASE
+        // ======================================================
+
+        await fetchData();
+      } catch (err) {
+        console.error(
+          "❌ User verification error:",
+          err
+        );
+
+        showNotification(
+          err?.message ||
+            "User verification failed",
+          "error"
+        );
+      } finally {
+        setVerifying(
+          (previous) => ({
+            ...previous,
+            [userId]: false,
+          })
+        );
+      }
+    };
 
   // ==========================================================
-  // SHARED PROPS (unchanged)
+  // UNVERIFY USER
+  // ==========================================================
+
+  const handleUnverifyUser =
+    async (userId) => {
+      if (!userId) {
+        showNotification(
+          "User ID is missing",
+          "error"
+        );
+
+        return;
+      }
+
+      // ======================================================
+      // PREVENT DOUBLE CLICK
+      // ======================================================
+
+      if (verifying[userId]) {
+        return;
+      }
+
+      setVerifying(
+        (previous) => ({
+          ...previous,
+          [userId]: true,
+        })
+      );
+
+      try {
+        console.log(
+          "🔓 Removing user verification:",
+          userId
+        );
+
+        const result =
+          await unverifyUser(
+            userId,
+            token
+          );
+
+        console.log(
+          "✅ Unverify user response:",
+          result
+        );
+
+        // ======================================================
+        // UPDATE USER IMMEDIATELY
+        // ======================================================
+
+        setUsers(
+          (previous) =>
+            previous.map(
+              (userItem) => {
+                const currentId =
+                  userItem._id ||
+                  userItem.id;
+
+                if (
+                  String(currentId) !==
+                  String(userId)
+                ) {
+                  return userItem;
+                }
+
+                return {
+                  ...userItem,
+
+                  isVerified:
+                    false,
+
+                  verified:
+                    false,
+
+                  verificationStatus:
+                    "pending",
+
+                  verifiedAt:
+                    null,
+
+                  verifiedBy:
+                    null,
+                };
+              }
+            )
+        );
+
+        showNotification(
+          "User verification removed",
+          "success"
+        );
+
+        // ======================================================
+        // REFRESH FROM DATABASE
+        // ======================================================
+
+        await fetchData();
+      } catch (err) {
+        console.error(
+          "❌ User unverification error:",
+          err
+        );
+
+        showNotification(
+          err?.message ||
+            "Failed to remove user verification",
+          "error"
+        );
+      } finally {
+        setVerifying(
+          (previous) => ({
+            ...previous,
+            [userId]: false,
+          })
+        );
+      }
+    };
+
+  // ==========================================================
+  // USER VERIFICATION PANEL
+  // ==========================================================
+
+  const renderUserVerificationPanel =
+    () => {
+      const verificationUsers =
+        filteredUsers;
+
+      const verifiedCount =
+        verificationUsers.filter(
+          (userItem) =>
+            isUserVerified(
+              userItem
+            )
+        ).length;
+
+      const unverifiedCount =
+        verificationUsers.length -
+        verifiedCount;
+
+      return (
+        <div
+          className="user-verification-widget"
+          style={{
+            background:
+              "#ffffff",
+            borderRadius:
+              "12px",
+            padding:
+              "20px",
+            marginBottom:
+              "24px",
+            boxShadow:
+              "0 2px 8px rgba(0,0,0,0.08)",
+            border:
+              "1px solid #e5e7eb",
+          }}
+        >
+          {/* ==================================================
+              HEADER
+          ================================================== */}
+
+          <div
+            style={{
+              display:
+                "flex",
+              justifyContent:
+                "space-between",
+              alignItems:
+                "center",
+              gap: "16px",
+              marginBottom:
+                "18px",
+              flexWrap:
+                "wrap",
+            }}
+          >
+            <div>
+              <h3
+                style={{
+                  margin:
+                    "0 0 6px 0",
+                  display:
+                    "flex",
+                  alignItems:
+                    "center",
+                  gap: "8px",
+                }}
+              >
+                <span>
+                  ✓
+                </span>
+
+                User Verification
+              </h3>
+
+              <p
+                style={{
+                  margin: 0,
+                  color:
+                    "#6b7280",
+                  fontSize:
+                    "14px",
+                }}
+              >
+                Verify or remove
+                verification from
+                marketplace users.
+              </p>
+            </div>
+
+            {/* COUNTS */}
+
+            <div
+              style={{
+                display:
+                  "flex",
+                gap: "8px",
+                flexWrap:
+                  "wrap",
+              }}
+            >
+              <span
+                style={{
+                  background:
+                    "#dcfce7",
+                  color:
+                    "#166534",
+                  padding:
+                    "6px 10px",
+                  borderRadius:
+                    "20px",
+                  fontSize:
+                    "12px",
+                  fontWeight:
+                    600,
+                }}
+              >
+                ✓ Verified:{" "}
+                {verifiedCount}
+              </span>
+
+              <span
+                style={{
+                  background:
+                    "#fef3c7",
+                  color:
+                    "#92400e",
+                  padding:
+                    "6px 10px",
+                  borderRadius:
+                    "20px",
+                  fontSize:
+                    "12px",
+                  fontWeight:
+                    600,
+                }}
+              >
+                Unverified:{" "}
+                {unverifiedCount}
+              </span>
+            </div>
+          </div>
+
+          {/* ==================================================
+              USERS
+          ================================================== */}
+
+          {verificationUsers.length ===
+          0 ? (
+            <div
+              style={{
+                padding:
+                  "24px",
+                textAlign:
+                  "center",
+                color:
+                  "#6b7280",
+                background:
+                  "#f9fafb",
+                borderRadius:
+                  "8px",
+              }}
+            >
+              No users found.
+            </div>
+          ) : (
+            <div
+              style={{
+                display:
+                  "flex",
+                flexDirection:
+                  "column",
+                gap: "10px",
+              }}
+            >
+              {verificationUsers.map(
+                (userItem) => {
+                  const userId =
+                    userItem._id ||
+                    userItem.id;
+
+                  if (!userId) {
+                    return null;
+                  }
+
+                  const verified =
+                    isUserVerified(
+                      userItem
+                    );
+
+                  const busy =
+                    Boolean(
+                      verifying[
+                        userId
+                      ]
+                    );
+
+                  const isAdmin =
+                    String(
+                      userItem.role || ""
+                    ).toLowerCase() ===
+                    "admin";
+
+                  return (
+                    <div
+                      key={
+                        userId
+                      }
+                      style={{
+                        display:
+                          "flex",
+                        alignItems:
+                          "center",
+                        justifyContent:
+                          "space-between",
+                        gap: "16px",
+                        padding:
+                          "14px",
+                        border:
+                          "1px solid #e5e7eb",
+                        borderRadius:
+                          "8px",
+                        background:
+                          "#fff",
+                      }}
+                    >
+                      {/* USER INFORMATION */}
+
+                      <div
+                        style={{
+                          minWidth:
+                            0,
+                          flex: 1,
+                        }}
+                      >
+                        <div
+                          style={{
+                            display:
+                              "flex",
+                            alignItems:
+                              "center",
+                            gap: "8px",
+                            flexWrap:
+                              "wrap",
+                          }}
+                        >
+                          <strong>
+                            {userItem.name ||
+                              "User"}
+                          </strong>
+
+                          {verified ? (
+                            <span
+                              style={{
+                                background:
+                                  "#dcfce7",
+                                color:
+                                  "#166534",
+                                padding:
+                                  "3px 8px",
+                                borderRadius:
+                                  "999px",
+                                fontSize:
+                                  "12px",
+                                fontWeight:
+                                  600,
+                              }}
+                            >
+                              ✓ Verified
+                            </span>
+                          ) : (
+                            <span
+                              style={{
+                                background:
+                                  "#fef3c7",
+                                color:
+                                  "#92400e",
+                                padding:
+                                  "3px 8px",
+                                borderRadius:
+                                  "999px",
+                                fontSize:
+                                  "12px",
+                                fontWeight:
+                                  600,
+                              }}
+                            >
+                              Unverified
+                            </span>
+                          )}
+
+                          {isAdmin && (
+                            <span
+                              style={{
+                                background:
+                                  "#ede9fe",
+                                color:
+                                  "#6d28d9",
+                                padding:
+                                  "3px 8px",
+                                borderRadius:
+                                  "999px",
+                                fontSize:
+                                  "12px",
+                                fontWeight:
+                                  600,
+                              }}
+                            >
+                              Admin
+                            </span>
+                          )}
+                        </div>
+
+                        <div
+                          style={{
+                            marginTop:
+                              "4px",
+                            color:
+                              "#6b7280",
+                            fontSize:
+                              "14px",
+                            overflow:
+                              "hidden",
+                            textOverflow:
+                              "ellipsis",
+                            whiteSpace:
+                              "nowrap",
+                          }}
+                        >
+                          {userItem.email ||
+                            "No email"}
+                        </div>
+
+                        {userItem.phone && (
+                          <div
+                            style={{
+                              marginTop:
+                                "2px",
+                              color:
+                                "#9ca3af",
+                              fontSize:
+                                "13px",
+                            }}
+                          >
+                            {userItem.phone}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* ==================================================
+                          VERIFICATION ACTION
+                      ================================================== */}
+
+                      <div
+                        style={{
+                          display:
+                            "flex",
+                          gap: "8px",
+                          flexShrink:
+                            0,
+                        }}
+                      >
+                        {isAdmin ? (
+                          <span
+                            style={{
+                              color:
+                                "#9ca3af",
+                              fontSize:
+                                "12px",
+                            }}
+                          >
+                            Admin account
+                          </span>
+                        ) : !verified ? (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleVerifyUser(
+                                userId
+                              )
+                            }
+                            disabled={
+                              busy
+                            }
+                            style={{
+                              background:
+                                busy
+                                  ? "#86efac"
+                                  : "#16a34a",
+                              color:
+                                "#fff",
+                              border:
+                                "none",
+                              padding:
+                                "8px 14px",
+                              borderRadius:
+                                "7px",
+                              cursor:
+                                busy
+                                  ? "not-allowed"
+                                  : "pointer",
+                              fontWeight:
+                                600,
+                              fontSize:
+                                "13px",
+                              opacity:
+                                busy
+                                  ? 0.8
+                                  : 1,
+                              whiteSpace:
+                                "nowrap",
+                            }}
+                          >
+                            {busy
+                              ? "Verifying..."
+                              : "✓ Verify User"}
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleUnverifyUser(
+                                userId
+                              )
+                            }
+                            disabled={
+                              busy
+                            }
+                            style={{
+                              background:
+                                busy
+                                  ? "#fca5a5"
+                                  : "#dc2626",
+                              color:
+                                "#fff",
+                              border:
+                                "none",
+                              padding:
+                                "8px 14px",
+                              borderRadius:
+                                "7px",
+                              cursor:
+                                busy
+                                  ? "not-allowed"
+                                  : "pointer",
+                              fontWeight:
+                                600,
+                              fontSize:
+                                "13px",
+                              opacity:
+                                busy
+                                  ? 0.8
+                                  : 1,
+                              whiteSpace:
+                                "nowrap",
+                            }}
+                          >
+                            {busy
+                              ? "Removing..."
+                              : "✕ Unverify User"}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                }
+              )}
+            </div>
+          )}
+        </div>
+      );
+    };
+
+  // ==========================================================
+  // SHARED PROPS
   // ==========================================================
 
   const sharedProps = {
@@ -849,133 +1256,34 @@ const AdminDashboard = () => {
     searchTerm,
 
     setSearchTerm,
+
+    // ========================================================
+    // IMPORTANT:
+    // These are required by UsersTable.jsx
+    // ========================================================
+
+    onVerifyUser:
+      handleVerifyUser,
+
+    onUnverifyUser:
+      handleUnverifyUser,
+
+    verifyingUser:
+      verifying,
   };
 
   // ==========================================================
-  // USER FILTER BUTTONS
-  // ==========================================================
-
-  const UserFilterButtons = () => {
-    return (
-      <div
-        style={{
-          display: "flex",
-          flexWrap: "wrap",
-          gap: "8px",
-          marginBottom: "18px",
-        }}
-      >
-        <button
-          type="button"
-          onClick={() =>
-            setUserFilter("all")
-          }
-          style={{
-            padding:
-              "8px 16px",
-            borderRadius:
-              "9999px",
-            border:
-              userFilter === "all"
-                ? "1px solid #2563eb"
-                : "1px solid #d1d5db",
-            background:
-              userFilter === "all"
-                ? "#2563eb"
-                : "#ffffff",
-            color:
-              userFilter === "all"
-                ? "#ffffff"
-                : "#374151",
-            fontWeight: 600,
-            cursor: "pointer",
-            fontSize: "13px",
-          }}
-        >
-          All Users ({users.length})
-        </button>
-
-        <button
-          type="button"
-          onClick={() =>
-            setUserFilter(
-              "verified"
-            )
-          }
-          style={{
-            padding:
-              "8px 16px",
-            borderRadius:
-              "9999px",
-            border:
-              userFilter ===
-              "verified"
-                ? "1px solid #16a34a"
-                : "1px solid #d1d5db",
-            background:
-              userFilter ===
-              "verified"
-                ? "#16a34a"
-                : "#ffffff",
-            color:
-              userFilter ===
-              "verified"
-                ? "#ffffff"
-                : "#374151",
-            fontWeight: 600,
-            cursor: "pointer",
-            fontSize: "13px",
-          }}
-        >
-          ✓ Verified ({verifiedUsers.length})
-        </button>
-
-        <button
-          type="button"
-          onClick={() =>
-            setUserFilter(
-              "unverified"
-            )
-          }
-          style={{
-            padding:
-              "8px 16px",
-            borderRadius:
-              "9999px",
-            border:
-              userFilter ===
-              "unverified"
-                ? "1px solid #dc2626"
-                : "1px solid #d1d5db",
-            background:
-              userFilter ===
-              "unverified"
-                ? "#dc2626"
-                : "#ffffff",
-            color:
-              userFilter ===
-              "unverified"
-                ? "#ffffff"
-                : "#374151",
-            fontWeight: 600,
-            cursor: "pointer",
-            fontSize: "13px",
-          }}
-        >
-          ⚠ Unverified ({unverifiedUsers.length})
-        </button>
-      </div>
-    );
-  };
-
-  // ==========================================================
-  // RENDER ACTIVE PAGE (unchanged)
+  // RENDER ACTIVE PAGE
   // ==========================================================
 
   const renderPage = () => {
     switch (
       activePage
     ) {
+      // ======================================================
+      // DASHBOARD
+      // ======================================================
+
       case "dashboard":
         return (
           <>
@@ -989,423 +1297,9 @@ const AdminDashboard = () => {
               }
             />
 
-            <div
-              className="user-verification-widget"
-              style={{
-                background:
-                  "#fff",
-                borderRadius:
-                  "12px",
-                padding:
-                  "20px",
-                margin:
-                  "24px 0",
-                boxShadow:
-                  "0 2px 8px rgba(0,0,0,0.08)",
-                border:
-                  "1px solid #e5e7eb",
-              }}
-            >
-              <h3
-                style={{
-                  margin:
-                    "0 0 16px 0",
-                  display:
-                    "flex",
-                  alignItems:
-                    "center",
-                  gap: "8px",
-                }}
-              >
-                <span>
-                  👥
-                </span>
-
-                User Verification
-              </h3>
-
-              <UserFilterButtons />
-
-              {unverifiedUsers.length >
-              0 ? (
-                <div>
-                  <div
-                    style={{
-                      display:
-                        "flex",
-                      alignItems:
-                        "center",
-                      justifyContent:
-                        "space-between",
-                      marginBottom:
-                        "10px",
-                    }}
-                  >
-                    <strong
-                      style={{
-                        color:
-                          "#dc2626",
-                        fontSize:
-                          "14px",
-                      }}
-                    >
-                      Unverified Users
-                    </strong>
-
-                    <span
-                      style={{
-                        background:
-                          "#fee2e2",
-                        color:
-                          "#dc2626",
-                        padding:
-                          "3px 9px",
-                        borderRadius:
-                          "9999px",
-                        fontSize:
-                          "12px",
-                        fontWeight:
-                          700,
-                      }}
-                    >
-                      {
-                        unverifiedUsers.length
-                      }
-                    </span>
-                  </div>
-
-                  <div
-                    style={{
-                      overflowX:
-                        "auto",
-                    }}
-                  >
-                    <table
-                      style={{
-                        width:
-                          "100%",
-                        borderCollapse:
-                          "collapse",
-                        fontSize:
-                          "13px",
-                      }}
-                    >
-                      <thead>
-                        <tr>
-                          <th
-                            style={{
-                              textAlign:
-                                "left",
-                              padding:
-                                "10px",
-                              borderBottom:
-                                "1px solid #e5e7eb",
-                            }}
-                          >
-                            User
-                          </th>
-                          <th
-                            style={{
-                              textAlign:
-                                "left",
-                              padding:
-                                "10px",
-                              borderBottom:
-                                "1px solid #e5e7eb",
-                            }}
-                          >
-                            Email
-                          </th>
-                          <th
-                            style={{
-                              textAlign:
-                                "left",
-                              padding:
-                                "10px",
-                              borderBottom:
-                                "1px solid #e5e7eb",
-                            }}
-                          >
-                            Phone
-                          </th>
-                          <th
-                            style={{
-                              textAlign:
-                                "left",
-                              padding:
-                                "10px",
-                              borderBottom:
-                                "1px solid #e5e7eb",
-                            }}
-                          >
-                            Role
-                          </th>
-                          <th
-                            style={{
-                              textAlign:
-                                "center",
-                              padding:
-                                "10px",
-                              borderBottom:
-                                "1px solid #e5e7eb",
-                            }}
-                          >
-                            Status
-                          </th>
-                          <th
-                            style={{
-                              textAlign:
-                                "center",
-                              padding:
-                                "10px",
-                              borderBottom:
-                                "1px solid #e5e7eb",
-                            }}
-                          >
-                            Action
-                          </th>
-                        </tr>
-                      </thead>
-
-                      <tbody>
-                        {unverifiedUsers
-                          .slice(
-                            0,
-                            10
-                          )
-                          .map(
-                            (
-                              userItem
-                            ) => (
-                              <tr
-                                key={
-                                  userItem._id
-                                }
-                              >
-                                <td
-                                  style={{
-                                    padding:
-                                      "10px",
-                                    borderBottom:
-                                      "1px solid #f3f4f6",
-                                  }}
-                                >
-                                  <strong>
-                                    {userItem.name ||
-                                      "Unknown User"}
-                                  </strong>
-                                </td>
-                                <td
-                                  style={{
-                                    padding:
-                                      "10px",
-                                    borderBottom:
-                                      "1px solid #f3f4f6",
-                                    color:
-                                      "#6b7280",
-                                  }}
-                                >
-                                  {userItem.email ||
-                                    "—"}
-                                </td>
-                                <td
-                                  style={{
-                                    padding:
-                                      "10px",
-                                    borderBottom:
-                                      "1px solid #f3f4f6",
-                                    color:
-                                      "#6b7280",
-                                  }}
-                                >
-                                  {userItem.phone ||
-                                    "—"}
-                                </td>
-                                <td
-                                  style={{
-                                    padding:
-                                      "10px",
-                                    borderBottom:
-                                      "1px solid #f3f4f6",
-                                  }}
-                                >
-                                  {userItem.role ||
-                                    "user"}
-                                </td>
-                                <td
-                                  style={{
-                                    padding:
-                                      "10px",
-                                    borderBottom:
-                                      "1px solid #f3f4f6",
-                                    textAlign:
-                                      "center",
-                                  }}
-                                >
-                                  <span
-                                    style={{
-                                      display:
-                                        "inline-flex",
-                                      alignItems:
-                                        "center",
-                                      gap:
-                                        "4px",
-                                      background:
-                                        "#fee2e2",
-                                      color:
-                                        "#dc2626",
-                                      padding:
-                                        "4px 9px",
-                                      borderRadius:
-                                        "9999px",
-                                      fontSize:
-                                        "11px",
-                                      fontWeight:
-                                        700,
-                                    }}
-                                  >
-                                    ⚠ Unverified
-                                  </span>
-                                </td>
-                                <td
-                                  style={{
-                                    padding:
-                                      "10px",
-                                    borderBottom:
-                                      "1px solid #f3f4f6",
-                                    textAlign:
-                                      "center",
-                                  }}
-                                >
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      handleVerifyUser(
-                                        userItem._id
-                                      )
-                                    }
-                                    disabled={
-                                      Boolean(
-                                        verifyingUsers[
-                                          userItem._id
-                                        ]
-                                      )
-                                    }
-                                    style={{
-                                      background:
-                                        verifyingUsers[
-                                          userItem._id
-                                        ]
-                                          ? "#9ca3af"
-                                          : "#16a34a",
-                                      color:
-                                        "#ffffff",
-                                      border:
-                                        "none",
-                                      padding:
-                                        "7px 12px",
-                                      borderRadius:
-                                        "6px",
-                                      cursor:
-                                        verifyingUsers[
-                                          userItem._id
-                                        ]
-                                          ? "not-allowed"
-                                          : "pointer",
-                                      fontWeight:
-                                        600,
-                                      fontSize:
-                                        "12px",
-                                      whiteSpace:
-                                        "nowrap",
-                                      opacity:
-                                        verifyingUsers[
-                                          userItem._id
-                                        ]
-                                          ? 0.7
-                                          : 1,
-                                    }}
-                                  >
-                                    {verifyingUsers[
-                                      userItem._id
-                                    ]
-                                      ? "Verifying..."
-                                      : "✓ Verify User"}
-                                  </button>
-                                </td>
-                              </tr>
-                            )
-                          )}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  {unverifiedUsers.length >
-                    10 && (
-                    <div
-                      style={{
-                        marginTop:
-                          "12px",
-                        textAlign:
-                          "right",
-                      }}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setUserFilter(
-                            "unverified"
-                          );
-
-                          setActivePage(
-                            "users"
-                          );
-                        }}
-                        style={{
-                          background:
-                            "none",
-                          border:
-                            "none",
-                          color:
-                            "#2563eb",
-                          cursor:
-                            "pointer",
-                          fontSize:
-                            "13px",
-                          fontWeight:
-                            600,
-                        }}
-                      >
-                        View all{" "}
-                        {
-                          unverifiedUsers.length
-                        }{" "}
-                        unverified users →
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div
-                  style={{
-                    background:
-                      "#f0fdf4",
-                    border:
-                      "1px solid #bbf7d0",
-                    color:
-                      "#15803d",
-                    padding:
-                      "14px",
-                    borderRadius:
-                      "8px",
-                    fontSize:
-                      "14px",
-                  }}
-                >
-                  ✓ All users are verified.
-                </div>
-              )}
-            </div>
+            {/* ==================================================
+                PENDING SELLER VERIFICATIONS
+            ================================================== */}
 
             <div
               className="pending-verifications-widget"
@@ -1432,8 +1326,7 @@ const AdminDashboard = () => {
                     "flex",
                   alignItems:
                     "center",
-                  gap:
-                    "8px",
+                  gap: "8px",
                 }}
               >
                 <span>
@@ -1560,24 +1453,20 @@ const AdminDashboard = () => {
                           <button
                             type="button"
                             onClick={() =>
-                              handleVerifySeller(
+                              handleVerify(
                                 seller._id
                               )
                             }
                             disabled={
                               Boolean(
-                                verifyingSellers[
+                                verifying[
                                   seller._id
                                 ]
                               )
                             }
                             style={{
                               background:
-                                verifyingSellers[
-                                  seller._id
-                                ]
-                                  ? "#9ca3af"
-                                  : "#2563eb",
+                                "#2563eb",
                               color:
                                 "white",
                               border:
@@ -1587,7 +1476,7 @@ const AdminDashboard = () => {
                               borderRadius:
                                 "6px",
                               cursor:
-                                verifyingSellers[
+                                verifying[
                                   seller._id
                                 ]
                                   ? "not-allowed"
@@ -1597,18 +1486,18 @@ const AdminDashboard = () => {
                               fontSize:
                                 "14px",
                               opacity:
-                                verifyingSellers[
+                                verifying[
                                   seller._id
                                 ]
                                   ? 0.6
                                   : 1,
                             }}
                           >
-                            {verifyingSellers[
+                            {verifying[
                               seller._id
                             ]
                               ? "Verifying..."
-                              : "✓ Verify Seller"}
+                              : "✓ Verify"}
                           </button>
                         </li>
                       )
@@ -1656,12 +1545,20 @@ const AdminDashboard = () => {
               )}
             </div>
 
+            {/* ==================================================
+                RECENT PRODUCTS
+            ================================================== */}
+
             <RecentProducts
               products={filteredProducts.slice(
                 0,
                 5
               )}
             />
+
+            {/* ==================================================
+                SELLER / USER MANAGEMENT
+            ================================================== */}
 
             <div
               style={{
@@ -1671,17 +1568,13 @@ const AdminDashboard = () => {
                   "flex",
                 justifyContent:
                   "center",
-                gap:
-                  "10px",
-                flexWrap:
-                  "wrap",
               }}
             >
               <button
                 type="button"
                 onClick={() =>
                   setActivePage(
-                    "users"
+                    "sellers"
                   )
                 }
                 style={{
@@ -1708,78 +1601,34 @@ const AdminDashboard = () => {
                 }}
               >
                 <i className="fas fa-users" />
-                Manage Users
-              </button>
-
-              <button
-                type="button"
-                onClick={() =>
-                  setActivePage(
-                    "sellers"
-                  )
-                }
-                style={{
-                  padding:
-                    "12px 24px",
-                  background:
-                    "#16a34a",
-                  color:
-                    "white",
-                  border:
-                    "none",
-                  borderRadius:
-                    "8px",
-                  fontWeight:
-                    600,
-                  cursor:
-                    "pointer",
-                  display:
-                    "flex",
-                  alignItems:
-                    "center",
-                  gap:
-                    "8px",
-                }}
-              >
-                <i className="fas fa-store" />
                 Manage Sellers
+                & Users
               </button>
             </div>
           </>
         );
 
+      // ======================================================
+      // USERS
+      // ======================================================
+
       case "users":
         return (
           <>
-            <div
-              style={{
-                background:
-                  "#ffffff",
-                padding:
-                  "16px",
-                borderRadius:
-                  "12px",
-                marginBottom:
-                  "16px",
-                border:
-                  "1px solid #e5e7eb",
-                boxShadow:
-                  "0 2px 8px rgba(0,0,0,0.05)",
-              }}
-            >
-              <h3
-                style={{
-                  margin:
-                    "0 0 12px 0",
-                  fontSize:
-                    "16px",
-                }}
-              >
-                User Verification
-              </h3>
+            {/* ==================================================
+                USER VERIFICATION PANEL
+            ================================================== */}
 
-              <UserFilterButtons />
-            </div>
+            {renderUserVerificationPanel()}
+
+            {/* ==================================================
+                EXISTING USERS TABLE
+
+                sharedProps now includes:
+                onVerifyUser
+                onUnverifyUser
+                verifyingUser
+            ================================================== */}
 
             <UsersTable
               {...sharedProps}
@@ -1787,12 +1636,20 @@ const AdminDashboard = () => {
           </>
         );
 
+      // ======================================================
+      // PRODUCTS
+      // ======================================================
+
       case "products":
         return (
           <ProductsTable
             {...sharedProps}
           />
         );
+
+      // ======================================================
+      // RIDERS
+      // ======================================================
 
       case "riders":
         return (
@@ -1815,8 +1672,16 @@ const AdminDashboard = () => {
           />
         );
 
+      // ======================================================
+      // SELLERS
+      // ======================================================
+
       case "sellers":
         return <Sellers />;
+
+      // ======================================================
+      // REPORTS
+      // ======================================================
 
       case "reports":
         return (
@@ -1827,12 +1692,20 @@ const AdminDashboard = () => {
           />
         );
 
+      // ======================================================
+      // SETTINGS
+      // ======================================================
+
       case "settings":
         return (
           <Settings
             {...sharedProps}
           />
         );
+
+      // ======================================================
+      // DEFAULT
+      // ======================================================
 
       default:
         return (
@@ -1895,6 +1768,10 @@ const AdminDashboard = () => {
   return (
     <div className="admin-wrapper">
 
+      {/* ======================================================
+          TOAST
+      ====================================================== */}
+
       {notification && (
         <Toast
           message={
@@ -1911,6 +1788,10 @@ const AdminDashboard = () => {
         />
       )}
 
+      {/* ======================================================
+          SIDEBAR
+      ====================================================== */}
+
       <AdminSidebar
         activePage={
           activePage
@@ -1925,6 +1806,10 @@ const AdminDashboard = () => {
           setSidebarOpen
         }
       />
+
+      {/* ======================================================
+          MAIN
+      ====================================================== */}
 
       <div
         className={`admin-main ${
@@ -1956,6 +1841,10 @@ const AdminDashboard = () => {
 
         <div className="admin-content">
 
+          {/* ==================================================
+              ERROR
+          ================================================== */}
+
           {error && (
             <div
               className="admin-error-banner"
@@ -1975,6 +1864,10 @@ const AdminDashboard = () => {
               ⚠️ {error}
             </div>
           )}
+
+          {/* ==================================================
+              LOADING
+          ================================================== */}
 
           {loading &&
           activePage !==
