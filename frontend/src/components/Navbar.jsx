@@ -90,6 +90,7 @@ const Badge = ({ count }) => {
 const Navbar = () => {
   const { user, logout } = useAuth();
   const { favorites = [] } = useCart();
+
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -156,7 +157,7 @@ const Navbar = () => {
   }, [location.pathname]);
 
   // ==========================================================
-  // FETCH UNREAD COUNTS (with safety checks)
+  // FETCH UNREAD COUNTS
   // ==========================================================
 
   useEffect(() => {
@@ -196,24 +197,50 @@ const Navbar = () => {
     const apiUrl = getApiUrl();
 
     const fetchNotificationCount = async () => {
-      if (!isMountedRef.current || !user) return;
+      if (!isMountedRef.current || !user) {
+        return;
+      }
 
       const currentToken = getToken();
-      if (!currentToken) return;
+
+      if (!currentToken) {
+        return;
+      }
 
       let count = 0;
 
+      // --------------------------------------------------------
+      // ADMIN NOTIFICATIONS
+      // --------------------------------------------------------
+
       if (user.role === "admin") {
         try {
-          const data = await getAdminNotifications(currentToken);
-          const notifications = data?.notifications || data?.data || [];
+          const data =
+            await getAdminNotifications(
+              currentToken
+            );
+
+          const notifications =
+            data?.notifications ||
+            data?.data ||
+            [];
+
           if (Array.isArray(notifications)) {
-            count = notifications.filter((n) => n && !n.isRead).length;
+            count =
+              notifications.filter(
+                (notification) =>
+                  notification &&
+                  !notification.isRead
+              ).length;
           }
         } catch {
-          // ignore
+          // Ignore notification errors.
         }
       }
+
+      // --------------------------------------------------------
+      // USER NOTIFICATIONS
+      // --------------------------------------------------------
 
       try {
         const response = await fetch(
@@ -221,34 +248,51 @@ const Navbar = () => {
           {
             method: "GET",
             headers: {
-              Authorization: `Bearer ${currentToken}`,
-              Accept: "application/json",
+              Authorization:
+                `Bearer ${currentToken}`,
+
+              Accept:
+                "application/json",
             },
           }
         );
 
         if (response.status === 401) {
           if (pollIntervalRef.current) {
-            clearInterval(pollIntervalRef.current);
+            clearInterval(
+              pollIntervalRef.current
+            );
+
             pollIntervalRef.current = null;
           }
-          if (isMountedRef.current) setUnreadNotifications(0);
+
+          if (isMountedRef.current) {
+            setUnreadNotifications(0);
+          }
+
           return;
         }
 
         if (response.ok) {
-          const data = await response.json();
+          const data =
+            await response.json();
+
           const apiCount =
             data?.count ??
             data?.unreadCount ??
             data?.unread ??
             data?.totalUnread;
-          if (apiCount !== undefined && apiCount !== null) {
-            count = safeCount(apiCount);
+
+          if (
+            apiCount !== undefined &&
+            apiCount !== null
+          ) {
+            count =
+              safeCount(apiCount);
           }
         }
       } catch {
-        // ignore
+        // Ignore notification errors.
       }
 
       if (isMountedRef.current) {
@@ -256,11 +300,20 @@ const Navbar = () => {
       }
     };
 
+    // ==========================================================
+    // MESSAGE COUNT
+    // ==========================================================
+
     const fetchMessageCount = async () => {
-      if (!isMountedRef.current || !user) return;
+      if (!isMountedRef.current || !user) {
+        return;
+      }
 
       const currentToken = getToken();
-      if (!currentToken) return;
+
+      if (!currentToken) {
+        return;
+      }
 
       try {
         const response = await fetch(
@@ -268,27 +321,42 @@ const Navbar = () => {
           {
             method: "GET",
             headers: {
-              Authorization: `Bearer ${currentToken}`,
-              Accept: "application/json",
+              Authorization:
+                `Bearer ${currentToken}`,
+
+              Accept:
+                "application/json",
             },
           }
         );
 
         if (response.status === 401) {
           if (pollIntervalRef.current) {
-            clearInterval(pollIntervalRef.current);
+            clearInterval(
+              pollIntervalRef.current
+            );
+
             pollIntervalRef.current = null;
           }
-          if (isMountedRef.current) setUnreadMessages(0);
+
+          if (isMountedRef.current) {
+            setUnreadMessages(0);
+          }
+
           return;
         }
 
         if (!response.ok) {
-          if (isMountedRef.current) setUnreadMessages(0);
+          if (isMountedRef.current) {
+            setUnreadMessages(0);
+          }
+
           return;
         }
 
-        const data = await response.json();
+        const data =
+          await response.json();
+
         const messageCount =
           data?.count ??
           data?.unreadCount ??
@@ -297,42 +365,62 @@ const Navbar = () => {
           0;
 
         if (isMountedRef.current) {
-          setUnreadMessages(safeCount(messageCount));
+          setUnreadMessages(
+            safeCount(messageCount)
+          );
         }
       } catch {
-        if (isMountedRef.current) setUnreadMessages(0);
+        if (isMountedRef.current) {
+          setUnreadMessages(0);
+        }
       }
     };
 
+    // Initial fetch.
     fetchNotificationCount();
     fetchMessageCount();
 
+    // Clear existing polling.
     if (pollIntervalRef.current) {
-      clearInterval(pollIntervalRef.current);
+      clearInterval(
+        pollIntervalRef.current
+      );
+
       pollIntervalRef.current = null;
     }
 
-    pollIntervalRef.current = setInterval(() => {
-      if (!user || !getToken()) {
-        if (pollIntervalRef.current) {
-          clearInterval(pollIntervalRef.current);
-          pollIntervalRef.current = null;
-        }
-        if (isMountedRef.current) {
-          setUnreadNotifications(0);
-          setUnreadMessages(0);
-        }
-        return;
-      }
+    // Poll every 30 seconds.
+    pollIntervalRef.current =
+      setInterval(() => {
+        if (!user || !getToken()) {
+          if (pollIntervalRef.current) {
+            clearInterval(
+              pollIntervalRef.current
+            );
 
-      fetchNotificationCount();
-      fetchMessageCount();
-    }, 30000);
+            pollIntervalRef.current = null;
+          }
+
+          if (isMountedRef.current) {
+            setUnreadNotifications(0);
+            setUnreadMessages(0);
+          }
+
+          return;
+        }
+
+        fetchNotificationCount();
+        fetchMessageCount();
+      }, 30000);
 
     return () => {
       isMountedRef.current = false;
+
       if (pollIntervalRef.current) {
-        clearInterval(pollIntervalRef.current);
+        clearInterval(
+          pollIntervalRef.current
+        );
+
         pollIntervalRef.current = null;
       }
     };
@@ -413,13 +501,18 @@ const Navbar = () => {
       return image;
     }
 
-    if (typeof image !== "string") {
+    if (
+      typeof image !== "string"
+    ) {
       return null;
     }
 
-    const base = getApiUrl();
+    const base =
+      getApiUrl();
 
-    if (image.startsWith("/")) {
+    if (
+      image.startsWith("/")
+    ) {
       return `${base}${image}`;
     }
 
@@ -444,7 +537,8 @@ const Navbar = () => {
 
       navigate("/login", {
         state: {
-          from: location.pathname,
+          from:
+            location.pathname,
         },
       });
     }
@@ -469,6 +563,7 @@ const Navbar = () => {
             right: 0 !important;
 
             width: 100% !important;
+            max-width: none !important;
 
             min-width: 0;
 
@@ -476,19 +571,26 @@ const Navbar = () => {
 
             box-sizing: border-box;
 
-            background: rgba(255, 255, 255, 0.96);
+            background:
+              rgba(255, 255, 255, 0.96);
 
-            backdrop-filter: blur(14px);
-            -webkit-backdrop-filter: blur(14px);
+            backdrop-filter:
+              blur(14px);
+
+            -webkit-backdrop-filter:
+              blur(14px);
 
             border-bottom:
-              1px solid rgba(253, 254, 255, 0.8);
+              1px solid
+              rgba(253, 254, 255, 0.8);
 
             box-shadow:
-              0 2px 10px rgba(0, 0, 0, 0.05);
+              0 2px 10px
+              rgba(0, 0, 0, 0.05);
 
             isolation: isolate;
           }
+
 
           /* =====================================================
              NAVBAR CONTAINER
@@ -497,11 +599,12 @@ const Navbar = () => {
           .navbar-container {
             width: 100%;
 
-            max-width: 1280px;
+            max-width: 1600px;
 
             margin: 0 auto;
 
-            padding: 8px 16px;
+            padding:
+              8px 24px;
 
             min-height: 46px;
 
@@ -511,13 +614,14 @@ const Navbar = () => {
 
             justify-content: space-between;
 
-            gap: 12px;
+            gap: 20px;
 
             box-sizing: border-box;
           }
 
+
           /* =====================================================
-             LOGO
+             LEFT / LOGO
           ===================================================== */
 
           .navbar-logo {
@@ -537,7 +641,7 @@ const Navbar = () => {
 
             gap: 7px;
 
-            flex-shrink: 1;
+            flex: 0 1 auto;
 
             min-width: 0;
 
@@ -545,6 +649,7 @@ const Navbar = () => {
 
             overflow: hidden;
           }
+
 
           .navbar-logo-text {
             display: flex;
@@ -560,6 +665,7 @@ const Navbar = () => {
             flex-shrink: 0;
           }
 
+
           .navbar-logo img {
             height: 34px;
 
@@ -574,21 +680,28 @@ const Navbar = () => {
             flex-shrink: 0;
           }
 
+
           .navbar-logo i {
             font-size: 18px;
           }
+
 
           /* =====================================================
              START SELLING
           ===================================================== */
 
           .navbar-post-ad-btn {
-            flex-shrink: 0;
+            flex: 0 0 auto;
+
+            margin-left: auto;
+            margin-right: auto;
           }
+
 
           .navbar-post-ad-text {
             display: inline;
           }
+
 
           /* =====================================================
              AVATAR
@@ -622,6 +735,7 @@ const Navbar = () => {
             flex-shrink: 0;
           }
 
+
           /* =====================================================
              RIGHT SIDE
           ===================================================== */
@@ -631,12 +745,15 @@ const Navbar = () => {
 
             align-items: center;
 
-            gap: 12px;
+            justify-content: flex-end;
 
-            flex-shrink: 0;
+            gap: 14px;
+
+            flex: 0 0 auto;
 
             min-width: 0;
           }
+
 
           /* =====================================================
              ICON BUTTONS
@@ -672,13 +789,16 @@ const Navbar = () => {
               transform 0.2s ease;
           }
 
+
           .navbar-heart:hover,
           .navbar-bell:hover,
           .navbar-envelope:hover {
             color: #2ecc71;
 
-            transform: translateY(-1px);
+            transform:
+              translateY(-1px);
           }
+
 
           /* =====================================================
              UNREAD BADGE
@@ -720,7 +840,10 @@ const Navbar = () => {
             box-sizing: border-box;
 
             pointer-events: none;
+
+            white-space: nowrap;
           }
+
 
           /* =====================================================
              DROPDOWN
@@ -728,8 +851,10 @@ const Navbar = () => {
 
           .navbar-dropdown {
             animation:
-              dropdownFade 0.18s ease;
+              dropdownFade
+              0.18s ease;
           }
+
 
           @keyframes dropdownFade {
             from {
@@ -747,6 +872,7 @@ const Navbar = () => {
             }
           }
 
+
           /* =====================================================
              DESKTOP ONLY
           ===================================================== */
@@ -755,15 +881,69 @@ const Navbar = () => {
             display: inline-block;
           }
 
+
           /* =====================================================
-             TABLET
+             LARGE DESKTOP
+          ===================================================== */
+
+          @media (min-width: 1601px) {
+            .navbar-container {
+              max-width: 1800px;
+
+              padding-left: 32px;
+              padding-right: 32px;
+
+              gap: 28px;
+            }
+
+            .navbar-right {
+              gap: 16px;
+            }
+
+            .navbar-post-ad-btn {
+              padding:
+                7px 18px !important;
+
+              font-size:
+                13px !important;
+            }
+          }
+
+
+          /* =====================================================
+             EXTRA LARGE DESKTOP
+          ===================================================== */
+
+          @media (min-width: 1921px) {
+            .navbar-container {
+              max-width: 1920px;
+
+              padding-left: 40px;
+              padding-right: 40px;
+            }
+
+            .navbar-logo-text {
+              font-size: 21px;
+            }
+
+            .navbar-logo img {
+              width: 35px;
+              height: 35px;
+              max-width: 35px;
+            }
+          }
+
+
+          /* =====================================================
+             TABLET / SMALL DESKTOP
           ===================================================== */
 
           @media (max-width: 1024px) {
             .navbar-container {
-              padding: 8px 12px;
+              padding:
+                8px 12px;
 
-              gap: 8px;
+              gap: 10px;
             }
 
             .navbar-logo {
@@ -791,7 +971,13 @@ const Navbar = () => {
             .navbar-right {
               gap: 10px;
             }
+
+            .navbar-post-ad-btn {
+              margin-left: auto;
+              margin-right: auto;
+            }
           }
+
 
           /* =====================================================
              MOBILE
@@ -813,6 +999,8 @@ const Navbar = () => {
               gap: 4px;
 
               min-width: 0;
+
+              flex-shrink: 1;
             }
 
             .navbar-logo-text {
@@ -837,6 +1025,9 @@ const Navbar = () => {
 
               font-size:
                 10px !important;
+
+              margin-left: auto;
+              margin-right: auto;
             }
 
             .navbar-post-ad-text {
@@ -886,6 +1077,7 @@ const Navbar = () => {
               display: none !important;
             }
           }
+
 
           /* =====================================================
              SMALL MOBILE
@@ -969,6 +1161,7 @@ const Navbar = () => {
             }
           }
 
+
           /* =====================================================
              VERY SMALL MOBILE
           ===================================================== */
@@ -977,6 +1170,8 @@ const Navbar = () => {
             .navbar-container {
               padding:
                 4px 5px;
+
+              gap: 3px;
             }
 
             .navbar-logo {
@@ -1027,6 +1222,7 @@ const Navbar = () => {
             }
           }
 
+
           /* =====================================================
              REDUCE MOTION
           ===================================================== */
@@ -1065,10 +1261,24 @@ const Navbar = () => {
             />
 
             <span className="navbar-logo-text">
-              <span style={{ color: "#0b2a52" }}>BuyUK</span>
-              <span style={{ color: "#2ecc71" }}>Used</span>
+              <span
+                style={{
+                  color: "#0b2a52",
+                }}
+              >
+                BuyUK
+              </span>
+
+              <span
+                style={{
+                  color: "#2ecc71",
+                }}
+              >
+                Used
+              </span>
             </span>
           </Link>
+
 
           {/* START SELLING */}
 
@@ -1080,21 +1290,27 @@ const Navbar = () => {
 
               color: "white",
 
-              padding: "6px 16px",
+              padding:
+                "6px 16px",
 
-              borderRadius: "9999px",
+              borderRadius:
+                "9999px",
 
               fontWeight: 700,
 
               fontSize: "13px",
 
-              textDecoration: "none",
+              textDecoration:
+                "none",
 
-              display: "inline-flex",
+              display:
+                "inline-flex",
 
-              alignItems: "center",
+              alignItems:
+                "center",
 
-              justifyContent: "center",
+              justifyContent:
+                "center",
 
               gap: "6px",
 
@@ -1104,7 +1320,8 @@ const Navbar = () => {
               boxShadow:
                 "0 2px 4px rgba(46, 204, 113, 0.3)",
 
-              whiteSpace: "nowrap",
+              whiteSpace:
+                "nowrap",
             }}
             onMouseEnter={(event) => {
               event.currentTarget.style.background =
@@ -1133,6 +1350,7 @@ const Navbar = () => {
             </span>
           </Link>
 
+
           {/* RIGHT SIDE */}
 
           <div className="navbar-right">
@@ -1153,9 +1371,12 @@ const Navbar = () => {
               <i className="fas fa-heart" />
 
               <Badge
-                count={favoriteCount}
+                count={
+                  favoriteCount
+                }
               />
             </Link>
+
 
             {/* NOTIFICATIONS */}
 
@@ -1180,6 +1401,7 @@ const Navbar = () => {
               </Link>
             )}
 
+
             {/* MESSAGES */}
 
             {user && (
@@ -1203,34 +1425,45 @@ const Navbar = () => {
               </Link>
             )}
 
+
             {/* LOGGED-IN USER */}
 
             {user ? (
               <div
                 ref={dropdownRef}
                 style={{
-                  position: "relative",
+                  position:
+                    "relative",
+
                   flexShrink: 0,
                 }}
               >
+
                 {/* USER BUTTON */}
 
                 <div
-                  onClick={toggleDropdown}
+                  onClick={
+                    toggleDropdown
+                  }
                   role="button"
                   tabIndex={0}
-                  aria-expanded={dropdownOpen}
+                  aria-expanded={
+                    dropdownOpen
+                  }
                   aria-label="Open account menu"
                   style={{
                     display: "flex",
 
-                    alignItems: "center",
+                    alignItems:
+                      "center",
 
                     gap: "6px",
 
-                    cursor: "pointer",
+                    cursor:
+                      "pointer",
 
-                    padding: "4px 7px",
+                    padding:
+                      "4px 7px",
 
                     borderRadius:
                       "9999px",
@@ -1243,6 +1476,8 @@ const Navbar = () => {
 
                     transition:
                       "all 0.2s ease",
+
+                    minWidth: 0,
                   }}
                   onKeyDown={(event) => {
                     if (
@@ -1269,20 +1504,26 @@ const Navbar = () => {
                       "transparent";
                   }}
                 >
+
                   {/* AVATAR */}
 
                   <div className="navbar-avatar">
+
                     {profileImageUrl ? (
                       <img
-                        src={profileImageUrl}
+                        src={
+                          profileImageUrl
+                        }
                         alt={
                           user.name ||
                           "User"
                         }
                         style={{
-                          width: "100%",
+                          width:
+                            "100%",
 
-                          height: "100%",
+                          height:
+                            "100%",
 
                           borderRadius:
                             "50%",
@@ -1290,7 +1531,8 @@ const Navbar = () => {
                           objectFit:
                             "cover",
 
-                          display: "block",
+                          display:
+                            "block",
                         }}
                         onError={(event) => {
                           event.currentTarget.style.display =
@@ -1301,10 +1543,12 @@ const Navbar = () => {
                       userInitial
                     )}
 
-                    {user.role === "admin" && (
+                    {user.role ===
+                      "admin" && (
                       <span
                         style={{
-                          position: "absolute",
+                          position:
+                            "absolute",
 
                           top: "-2px",
 
@@ -1313,11 +1557,14 @@ const Navbar = () => {
                           background:
                             "#f59e0b",
 
-                          color: "white",
+                          color:
+                            "white",
 
-                          fontSize: "7px",
+                          fontSize:
+                            "7px",
 
-                          fontWeight: 700,
+                          fontWeight:
+                            700,
 
                           borderRadius:
                             "50%",
@@ -1334,20 +1581,26 @@ const Navbar = () => {
                     )}
                   </div>
 
+
                   {/* USER NAME */}
 
                   <span
                     className="desktop-only"
                     style={{
-                      fontSize: "13px",
+                      fontSize:
+                        "13px",
 
-                      color: "#334155",
+                      color:
+                        "#334155",
 
-                      fontWeight: 500,
+                      fontWeight:
+                        500,
 
-                      maxWidth: "120px",
+                      maxWidth:
+                        "120px",
 
-                      overflow: "hidden",
+                      overflow:
+                        "hidden",
 
                       textOverflow:
                         "ellipsis",
@@ -1359,6 +1612,7 @@ const Navbar = () => {
                     {user.name}
                   </span>
 
+
                   {/* ARROW */}
 
                   <i
@@ -1368,12 +1622,15 @@ const Navbar = () => {
                         : "down"
                     }`}
                     style={{
-                      fontSize: "9px",
+                      fontSize:
+                        "9px",
 
-                      color: "#94a3b8",
+                      color:
+                        "#94a3b8",
                     }}
                   />
                 </div>
+
 
                 {/* USER DROPDOWN */}
 
@@ -1381,14 +1638,16 @@ const Navbar = () => {
                   <div
                     className="navbar-dropdown"
                     style={{
-                      position: "absolute",
+                      position:
+                        "absolute",
 
                       top:
                         "calc(100% + 8px)",
 
                       right: 0,
 
-                      minWidth: "190px",
+                      minWidth:
+                        "190px",
 
                       background:
                         "rgba(255, 255, 255, 0.98)",
@@ -1402,36 +1661,47 @@ const Navbar = () => {
                       border:
                         "1px solid #e5e7eb",
 
-                      borderRadius: "12px",
+                      borderRadius:
+                        "12px",
 
                       boxShadow:
                         "0 10px 35px rgba(0,0,0,0.14)",
 
-                      padding: "4px 0",
+                      padding:
+                        "4px 0",
 
-                      zIndex: 100000,
+                      zIndex:
+                        100000,
                     }}
                   >
+
                     <Link
                       to="/post-ad"
                       onClick={() =>
-                        setDropdownOpen(false)
+                        setDropdownOpen(
+                          false
+                        )
                       }
                       style={{
-                        display: "flex",
+                        display:
+                          "flex",
 
-                        alignItems: "center",
+                        alignItems:
+                          "center",
 
                         gap: "10px",
 
                         padding:
                           "9px 14px",
 
-                        color: "#2ecc71",
+                        color:
+                          "#2ecc71",
 
-                        fontWeight: 600,
+                        fontWeight:
+                          600,
 
-                        fontSize: "13px",
+                        fontSize:
+                          "13px",
 
                         textDecoration:
                           "none",
@@ -1442,24 +1712,31 @@ const Navbar = () => {
                       SELL
                     </Link>
 
+
                     <Link
                       to="/profile"
                       onClick={() =>
-                        setDropdownOpen(false)
+                        setDropdownOpen(
+                          false
+                        )
                       }
                       style={{
-                        display: "flex",
+                        display:
+                          "flex",
 
-                        alignItems: "center",
+                        alignItems:
+                          "center",
 
                         gap: "10px",
 
                         padding:
                           "9px 14px",
 
-                        color: "#334155",
+                        color:
+                          "#334155",
 
-                        fontSize: "13px",
+                        fontSize:
+                          "13px",
 
                         textDecoration:
                           "none",
@@ -1470,24 +1747,31 @@ const Navbar = () => {
                       My Shop
                     </Link>
 
+
                     <Link
                       to="/my-ads"
                       onClick={() =>
-                        setDropdownOpen(false)
+                        setDropdownOpen(
+                          false
+                        )
                       }
                       style={{
-                        display: "flex",
+                        display:
+                          "flex",
 
-                        alignItems: "center",
+                        alignItems:
+                          "center",
 
                         gap: "10px",
 
                         padding:
                           "9px 14px",
 
-                        color: "#334155",
+                        color:
+                          "#334155",
 
-                        fontSize: "13px",
+                        fontSize:
+                          "13px",
 
                         textDecoration:
                           "none",
@@ -1498,24 +1782,31 @@ const Navbar = () => {
                       My Ads
                     </Link>
 
+
                     <Link
                       to="/wishlist"
                       onClick={() =>
-                        setDropdownOpen(false)
+                        setDropdownOpen(
+                          false
+                        )
                       }
                       style={{
-                        display: "flex",
+                        display:
+                          "flex",
 
-                        alignItems: "center",
+                        alignItems:
+                          "center",
 
                         gap: "10px",
 
                         padding:
                           "9px 14px",
 
-                        color: "#334155",
+                        color:
+                          "#334155",
 
-                        fontSize: "13px",
+                        fontSize:
+                          "13px",
 
                         textDecoration:
                           "none",
@@ -1525,7 +1816,8 @@ const Navbar = () => {
 
                       Favorites
 
-                      {favoriteCount > 0 && (
+                      {favoriteCount >
+                        0 && (
                         <span
                           style={{
                             marginLeft:
@@ -1534,33 +1826,44 @@ const Navbar = () => {
                             color:
                               "#e74c3c",
 
-                            fontWeight: 700,
+                            fontWeight:
+                              700,
                           }}
                         >
-                          {favoriteCount}
+                          {
+                            favoriteCount
+                          }
                         </span>
                       )}
                     </Link>
 
-                    {user.role === "admin" && (
+
+                    {user.role ===
+                      "admin" && (
                       <Link
                         to="/admin"
                         onClick={() =>
-                          setDropdownOpen(false)
+                          setDropdownOpen(
+                            false
+                          )
                         }
                         style={{
-                          display: "flex",
+                          display:
+                            "flex",
 
-                          alignItems: "center",
+                          alignItems:
+                            "center",
 
                           gap: "10px",
 
                           padding:
                             "9px 14px",
 
-                          color: "#334155",
+                          color:
+                            "#334155",
 
-                          fontSize: "13px",
+                          fontSize:
+                            "13px",
 
                           textDecoration:
                             "none",
@@ -1572,43 +1875,58 @@ const Navbar = () => {
                       </Link>
                     )}
 
+
                     <hr
                       style={{
-                        margin: "4px 0",
+                        margin:
+                          "4px 0",
 
-                        border: "none",
+                        border:
+                          "none",
 
                         borderTop:
                           "1px solid #e5e7eb",
                       }}
                     />
 
+
                     <button
                       type="button"
-                      onClick={handleLogout}
+                      onClick={
+                        handleLogout
+                      }
                       style={{
-                        display: "flex",
+                        display:
+                          "flex",
 
-                        alignItems: "center",
+                        alignItems:
+                          "center",
 
                         gap: "10px",
 
-                        width: "100%",
+                        width:
+                          "100%",
 
                         padding:
                           "9px 14px",
 
-                        background: "none",
+                        background:
+                          "none",
 
-                        border: "none",
+                        border:
+                          "none",
 
-                        color: "#dc2626",
+                        color:
+                          "#dc2626",
 
-                        fontSize: "13px",
+                        fontSize:
+                          "13px",
 
-                        cursor: "pointer",
+                        cursor:
+                          "pointer",
 
-                        textAlign: "left",
+                        textAlign:
+                          "left",
                       }}
                     >
                       <i className="fas fa-sign-out-alt" />
@@ -1624,13 +1942,20 @@ const Navbar = () => {
 
               <div
                 style={{
-                  display: "flex",
+                  display:
+                    "flex",
 
-                  alignItems: "center",
+                  alignItems:
+                    "center",
 
                   gap: "6px",
+
+                  flexShrink: 0,
                 }}
               >
+
+                {/* LOGIN */}
+
                 <Link
                   to="/login"
                   className="desktop-only"
@@ -1638,7 +1963,8 @@ const Navbar = () => {
                     border:
                       "1px solid #0b2a52",
 
-                    color: "#0b2a52",
+                    color:
+                      "#0b2a52",
 
                     padding:
                       "4px 10px",
@@ -1646,16 +1972,24 @@ const Navbar = () => {
                     borderRadius:
                       "9999px",
 
-                    fontWeight: 600,
+                    fontWeight:
+                      600,
 
-                    fontSize: "12px",
+                    fontSize:
+                      "12px",
 
                     textDecoration:
                       "none",
+
+                    whiteSpace:
+                      "nowrap",
                   }}
                 >
                   Log In
                 </Link>
+
+
+                {/* SIGN UP */}
 
                 <Link
                   to="/register"
@@ -1664,7 +1998,8 @@ const Navbar = () => {
                     background:
                       "#0b2a52",
 
-                    color: "white",
+                    color:
+                      "white",
 
                     padding:
                       "4px 10px",
@@ -1672,25 +2007,35 @@ const Navbar = () => {
                     borderRadius:
                       "9999px",
 
-                    fontWeight: 600,
+                    fontWeight:
+                      600,
 
-                    fontSize: "12px",
+                    fontSize:
+                      "12px",
 
                     textDecoration:
                       "none",
+
+                    whiteSpace:
+                      "nowrap",
                   }}
                 >
                   Sign Up
                 </Link>
 
+
                 {/* MOBILE ACCOUNT MENU */}
 
                 <div
-                  ref={mobileDropdownRef}
+                  ref={
+                    mobileDropdownRef
+                  }
                   style={{
-                    position: "relative",
+                    position:
+                      "relative",
                   }}
                 >
+
                   <div
                     onClick={
                       toggleMobileDropdown
@@ -1702,11 +2047,14 @@ const Navbar = () => {
                     }
                     aria-label="Open account menu"
                     style={{
-                      display: "flex",
+                      display:
+                        "flex",
 
-                      alignItems: "center",
+                      alignItems:
+                        "center",
 
-                      cursor: "pointer",
+                      cursor:
+                        "pointer",
 
                       padding: "3px",
 
@@ -1718,8 +2066,10 @@ const Navbar = () => {
                     }}
                     onKeyDown={(event) => {
                       if (
-                        event.key === "Enter" ||
-                        event.key === " "
+                        event.key ===
+                          "Enter" ||
+                        event.key ===
+                          " "
                       ) {
                         event.preventDefault();
 
@@ -1732,18 +2082,21 @@ const Navbar = () => {
                     </div>
                   </div>
 
+
                   {mobileDropdownOpen && (
                     <div
                       className="navbar-dropdown"
                       style={{
-                        position: "absolute",
+                        position:
+                          "absolute",
 
                         top:
                           "calc(100% + 8px)",
 
                         right: 0,
 
-                        minWidth: "180px",
+                        minWidth:
+                          "180px",
 
                         background:
                           "rgba(255, 255, 255, 0.98)",
@@ -1763,11 +2116,14 @@ const Navbar = () => {
                         boxShadow:
                           "0 10px 35px rgba(0,0,0,0.14)",
 
-                        padding: "4px 0",
+                        padding:
+                          "4px 0",
 
-                        zIndex: 100000,
+                        zIndex:
+                          100000,
                       }}
                     >
+
                       <Link
                         to="/wishlist"
                         onClick={() =>
@@ -1776,7 +2132,8 @@ const Navbar = () => {
                           )
                         }
                         style={{
-                          display: "flex",
+                          display:
+                            "flex",
 
                           alignItems:
                             "center",
@@ -1786,9 +2143,11 @@ const Navbar = () => {
                           padding:
                             "9px 14px",
 
-                          color: "#334155",
+                          color:
+                            "#334155",
 
-                          fontSize: "13px",
+                          fontSize:
+                            "13px",
 
                           textDecoration:
                             "none",
@@ -1798,7 +2157,8 @@ const Navbar = () => {
 
                         Favorites
 
-                        {favoriteCount > 0 && (
+                        {favoriteCount >
+                          0 && (
                           <span
                             style={{
                               marginLeft:
@@ -1807,13 +2167,17 @@ const Navbar = () => {
                               color:
                                 "#e74c3c",
 
-                              fontWeight: 700,
+                              fontWeight:
+                                700,
                             }}
                           >
-                            {favoriteCount}
+                            {
+                              favoriteCount
+                            }
                           </span>
                         )}
                       </Link>
+
 
                       <Link
                         to="/login"
@@ -1823,7 +2187,8 @@ const Navbar = () => {
                           )
                         }
                         style={{
-                          display: "flex",
+                          display:
+                            "flex",
 
                           alignItems:
                             "center",
@@ -1836,7 +2201,8 @@ const Navbar = () => {
                           color:
                             "#0b2a52",
 
-                          fontSize: "13px",
+                          fontSize:
+                            "13px",
 
                           textDecoration:
                             "none",
@@ -1847,6 +2213,7 @@ const Navbar = () => {
                         Log In
                       </Link>
 
+
                       <Link
                         to="/register"
                         onClick={() =>
@@ -1855,7 +2222,8 @@ const Navbar = () => {
                           )
                         }
                         style={{
-                          display: "flex",
+                          display:
+                            "flex",
 
                           alignItems:
                             "center",
@@ -1868,7 +2236,8 @@ const Navbar = () => {
                           color:
                             "#0b2a52",
 
-                          fontSize: "13px",
+                          fontSize:
+                            "13px",
 
                           textDecoration:
                             "none",
