@@ -342,7 +342,9 @@ const SellerPage = () => {
         if (cancelled) return;
 
         // ─── Process profile ──────────────────────────────────
-        if (profileResult.success && profileResult.seller) {
+        // Safely determine if profile succeeded
+        const profileSuccess = profileResult && (profileResult.success || profileResult.seller);
+        if (profileSuccess && profileResult.seller) {
           const sellerData = profileResult.seller;
           const normalizedSeller = {
             _id: sellerData._id || sellerId,
@@ -367,12 +369,13 @@ const SellerPage = () => {
           };
           setSeller(normalizedSeller);
         } else {
-          throw new Error(profileResult.message || "Failed to load seller profile.");
+          // Profile fetch failed – show error
+          throw new Error(profileResult?.message || "Failed to load seller profile.");
         }
 
         // ─── Process products ──────────────────────────────────
-        if (productsResult.success && Array.isArray(productsResult.products)) {
-          setProducts(productsResult.products);
+        if (productsResult && (productsResult.success || Array.isArray(productsResult.products))) {
+          setProducts(productsResult.products || []);
           setPagination(productsResult.pagination || null);
         } else {
           setProducts([]);
@@ -380,7 +383,7 @@ const SellerPage = () => {
         }
 
         // ─── Process reviews ──────────────────────────────────
-        if (reviewsResult.success) {
+        if (reviewsResult && (reviewsResult.success || Array.isArray(reviewsResult.reviews))) {
           const incomingReviews = Array.isArray(reviewsResult.reviews) ? reviewsResult.reviews : [];
           setReviews(incomingReviews);
 
@@ -402,7 +405,7 @@ const SellerPage = () => {
           }
           setReviewError("");
         } else {
-          setReviewError(reviewsResult.message || "Unable to load reviews.");
+          setReviewError(reviewsResult?.message || "Unable to load reviews.");
           setReviews([]);
         }
       } catch (err) {
