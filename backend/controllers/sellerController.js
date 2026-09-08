@@ -1,4 +1,3 @@
-
 // ============================================================
 // backend/controllers/sellerController.js
 // BuyUKUsed Seller Controller
@@ -13,8 +12,7 @@ const Order = require("../models/Orders");
 // Re-use the existing product controller.
 // This keeps seller product creation/update/delete compatible
 // with the current Product model and Cloudinary handling.
-const productController =
-  require("./productController");
+const productController = require("./productController");
 
 // ============================================================
 // HELPERS
@@ -65,6 +63,24 @@ const getUserRole = (req) => {
 };
 
 // ------------------------------------------------------------
+// Normalize ObjectId
+// ------------------------------------------------------------
+
+const normalizeObjectId = (value) => {
+  if (!value) {
+    return null;
+  }
+
+  try {
+    return new mongoose.Types.ObjectId(
+      value
+    );
+  } catch {
+    return null;
+  }
+};
+
+// ------------------------------------------------------------
 // Make sure authenticated user is seller/admin
 // ------------------------------------------------------------
 
@@ -72,44 +88,75 @@ const requireSellerAccount = async (
   req,
   res
 ) => {
-  const userId = getUserId(req);
+  try {
+    const userId = getUserId(req);
 
-  if (!userId) {
-    res.status(401).json({
-      success: false,
-      message: "Authentication required.",
-    });
+    if (!userId) {
+      res.status(401).json({
+        success: false,
+        message:
+          "Authentication required.",
+      });
 
-    return null;
-  }
+      return null;
+    }
 
-  const user =
-    await User.findById(userId);
+    if (
+      !mongoose.Types.ObjectId.isValid(
+        userId
+      )
+    ) {
+      res.status(401).json({
+        success: false,
+        message:
+          "Invalid authenticated user ID.",
+      });
 
-  if (!user) {
-    res.status(404).json({
-      success: false,
-      message: "User not found.",
-    });
+      return null;
+    }
 
-    return null;
-  }
+    const user =
+      await User.findById(userId);
 
-  if (
-    !["seller", "admin"].includes(
-      user.role
-    )
-  ) {
-    res.status(403).json({
+    if (!user) {
+      res.status(404).json({
+        success: false,
+        message:
+          "User not found.",
+      });
+
+      return null;
+    }
+
+    if (
+      !["seller", "admin"].includes(
+        user.role
+      )
+    ) {
+      res.status(403).json({
+        success: false,
+        message:
+          "Access denied. You are not a seller.",
+      });
+
+      return null;
+    }
+
+    return user;
+  } catch (error) {
+    console.error(
+      "❌ requireSellerAccount error:",
+      error
+    );
+
+    res.status(500).json({
       success: false,
       message:
-        "Access denied. You are not a seller.",
+        "Failed to verify seller account.",
     });
 
     return null;
   }
-
-  return user;
 };
 
 // ------------------------------------------------------------
@@ -276,6 +323,18 @@ const registerSeller = async (
       });
     }
 
+    if (
+      !mongoose.Types.ObjectId.isValid(
+        userId
+      )
+    ) {
+      return res.status(401).json({
+        success: false,
+        message:
+          "Invalid user ID.",
+      });
+    }
+
     const {
       shopName,
       description,
@@ -435,6 +494,18 @@ const getSellerProfile =
         });
       }
 
+      if (
+        !mongoose.Types.ObjectId.isValid(
+          userId
+        )
+      ) {
+        return res.status(401).json({
+          success: false,
+          message:
+            "Invalid user ID.",
+        });
+      }
+
       const seller =
         await User.findById(userId)
           .select(
@@ -499,6 +570,18 @@ const updateSellerProfile =
           success: false,
           message:
             "Authentication required.",
+        });
+      }
+
+      if (
+        !mongoose.Types.ObjectId.isValid(
+          userId
+        )
+      ) {
+        return res.status(401).json({
+          success: false,
+          message:
+            "Invalid user ID.",
         });
       }
 
@@ -898,16 +981,6 @@ const getMyProducts =
 // ============================================================
 // 6. CREATE SELLER PRODUCT
 // ============================================================
-//
-// Delegates to the existing product controller so that:
-//
-// - Product validation remains centralized.
-// - Cloudinary upload remains centralized.
-// - Images/videos remain compatible.
-// - Product fields remain compatible with Product.js.
-// - sellerId is assigned by the existing product controller.
-//
-// ============================================================
 
 const createProductSeller =
   async (
@@ -925,8 +998,6 @@ const createProductSeller =
         return;
       }
 
-      // Make sure the existing product
-      // controller sees the authenticated seller.
       req.user = {
         ...(req.user || {}),
         _id: seller._id,
@@ -960,12 +1031,6 @@ const createProductSeller =
 
 // ============================================================
 // 7. UPDATE SELLER PRODUCT
-// ============================================================
-//
-// Existing productController expects req.params.id.
-// Seller routes use :productId.
-// We map the parameter here.
-//
 // ============================================================
 
 const updateProductSeller =
@@ -1519,8 +1584,6 @@ const updateSellerOrderStatus =
         });
       }
 
-      // Current Orders model uses one
-      // global order status.
       order.status =
         status;
 
@@ -1793,6 +1856,18 @@ const getSellerAnalytics =
 // ============================================================
 // 14. PUBLIC SELLER PROFILE
 // ============================================================
+//
+// IMPORTANT:
+// This endpoint is PUBLIC.
+// It must NOT require authentication.
+//
+// The seller page normally calls something similar to:
+//
+// GET /api/sellers/:sellerId
+//
+// The seller ID comes from Product.sellerId.
+//
+// ============================================================
 
 const getPublicSellerProfile =
   async (
@@ -1804,11 +1879,31 @@ const getPublicSellerProfile =
         sellerId,
       } = req.params;
 
+      console.log(
+        "🔎 Public seller profile request:",
+        {
+          sellerId,
+        }
+      );
+
+      if (!sellerId) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Seller ID is required.",
+        });
+      }
+
       if (
         !mongoose.Types.ObjectId.isValid(
           sellerId
         )
       ) {
+        console.error(
+          "❌ Invalid seller ID:",
+          sellerId
+        );
+
         return res.status(400).json({
           success: false,
           message:
@@ -1816,16 +1911,20 @@ const getPublicSellerProfile =
         });
       }
 
+      // ------------------------------------------------------
+      // IMPORTANT FIX:
+      //
+      // First find the user by _id.
+      //
+      // Do not immediately require role === seller.
+      // Some existing products may reference users whose
+      // seller role/status was not correctly migrated.
+      // ------------------------------------------------------
+
       const seller =
-        await User.findOne({
-          _id: sellerId,
-          role: {
-            $in: [
-              "seller",
-              "admin",
-            ],
-          },
-        })
+        await User.findById(
+          sellerId
+        )
           .select(
             [
               "_id",
@@ -1838,6 +1937,8 @@ const getPublicSellerProfile =
               "profileImage",
               "photo",
               "photoURL",
+              "image",
+              "imageUrl",
 
               "shopName",
               "shopDescription",
@@ -1861,12 +1962,54 @@ const getPublicSellerProfile =
           .lean();
 
       if (!seller) {
+        console.error(
+          "❌ Seller user not found:",
+          sellerId
+        );
+
         return res.status(404).json({
           success: false,
           message:
             "Seller not found.",
         });
       }
+
+      // ------------------------------------------------------
+      // Verify that this account actually has seller activity.
+      //
+      // This allows older seller records to continue displaying
+      // when their role field was not properly updated.
+      // ------------------------------------------------------
+
+      const hasSellerRole =
+        ["seller", "admin"].includes(
+          String(
+            seller.role || ""
+          ).toLowerCase()
+        );
+
+      const sellerProductExists =
+        await Product.exists({
+          sellerId:
+            seller._id,
+        });
+
+      if (
+        !hasSellerRole &&
+        !sellerProductExists
+      ) {
+        return res.status(404).json({
+          success: false,
+          message:
+            "Seller profile not found.",
+        });
+      }
+
+      // ------------------------------------------------------
+      // Count active products.
+      //
+      // Normal products use status: "active".
+      // ------------------------------------------------------
 
       const productsCount =
         await Product.countDocuments({
@@ -1875,21 +2018,57 @@ const getPublicSellerProfile =
           status: "active",
         });
 
+      // ------------------------------------------------------
+      // Fallback count.
+      //
+      // If an older seller has products but their status field
+      // is missing, do not make the seller page appear empty.
+      // ------------------------------------------------------
+
+      let totalSellerProducts =
+        productsCount;
+
+      if (
+        totalSellerProducts === 0 &&
+        sellerProductExists
+      ) {
+        totalSellerProducts =
+          await Product.countDocuments({
+            sellerId:
+              seller._id,
+          });
+      }
+
+      // ------------------------------------------------------
+      // Avatar fallback
+      // ------------------------------------------------------
+
       const avatar =
         seller.avatar ||
         seller.profileImage ||
         seller.photo ||
         seller.photoURL ||
+        seller.image ||
+        seller.imageUrl ||
         null;
+
+      // ------------------------------------------------------
+      // Member date fallback
+      // ------------------------------------------------------
 
       const memberSince =
         seller.sellerSince ||
         seller.createdAt ||
         null;
 
+      // ------------------------------------------------------
+      // Online status
+      // ------------------------------------------------------
+
       const activityDate =
         seller.lastActive ||
         seller.lastSeen ||
+        seller.lastLogin ||
         null;
 
       let isOnline = false;
@@ -1900,22 +2079,42 @@ const getPublicSellerProfile =
             activityDate
           ).getTime();
 
-        const difference =
-          Date.now() -
-          activityTime;
+        if (
+          !Number.isNaN(
+            activityTime
+          )
+        ) {
+          const difference =
+            Date.now() -
+            activityTime;
 
-        isOnline =
-          difference >= 0 &&
-          difference <=
-            5 * 60 * 1000;
+          isOnline =
+            difference >= 0 &&
+            difference <=
+              5 * 60 * 1000;
+        }
       }
+
+      // ------------------------------------------------------
+      // Build stable public seller object.
+      //
+      // Frontend can safely use these fields regardless of
+      // which old field existed in MongoDB.
+      // ------------------------------------------------------
 
       const publicProfile = {
         _id:
           seller._id,
 
+        id:
+          seller._id,
+
+        sellerId:
+          seller._id,
+
         name:
           seller.name ||
+          seller.shopName ||
           "Seller",
 
         email:
@@ -1928,7 +2127,7 @@ const getPublicSellerProfile =
 
         location:
           seller.location ||
-          "",
+          "Ghana",
 
         shopName:
           seller.shopName ||
@@ -1949,7 +2148,7 @@ const getPublicSellerProfile =
 
         sellerStatus:
           seller.sellerStatus ||
-          "",
+          "active",
 
         isVerified:
           seller.isVerified === true,
@@ -1958,18 +2157,25 @@ const getPublicSellerProfile =
 
         profileImage:
           seller.profileImage ||
+          avatar ||
           null,
 
         photo:
           seller.photo ||
+          avatar ||
           null,
 
         photoURL:
           seller.photoURL ||
+          avatar ||
           null,
 
         createdAt:
           seller.createdAt ||
+          null,
+
+        updatedAt:
+          seller.updatedAt ||
           null,
 
         sellerSince:
@@ -1997,19 +2203,27 @@ const getPublicSellerProfile =
             seller.rating || 0
           ),
 
-        productsCount,
+        productsCount:
+          totalSellerProducts,
       };
 
       console.log(
-        "👤 Public seller profile:",
+        "✅ Public seller profile:",
         {
-          sellerId,
+          sellerId:
+            sellerId,
 
           name:
             publicProfile.name,
 
           shopName:
             publicProfile.shopName,
+
+          role:
+            publicProfile.role,
+
+          sellerStatus:
+            publicProfile.sellerStatus,
 
           avatar:
             publicProfile.avatar,
@@ -2033,6 +2247,7 @@ const getPublicSellerProfile =
 
       return res.json({
         success: true,
+
         seller:
           publicProfile,
       });
@@ -2054,6 +2269,12 @@ const getPublicSellerProfile =
 // ============================================================
 // 15. PUBLIC SELLER PRODUCTS
 // ============================================================
+//
+// Public seller products.
+//
+// GET /api/sellers/:sellerId/products
+//
+// ============================================================
 
 const getPublicSellerProducts =
   async (
@@ -2065,11 +2286,22 @@ const getPublicSellerProducts =
         sellerId,
       } = req.params;
 
-      const {
-        page = 1,
-        limit = 20,
-        sort = "-createdAt",
-      } = req.query;
+      console.log(
+        "🔎 Public seller products request:",
+        {
+          sellerId,
+          query:
+            req.query,
+        }
+      );
+
+      if (!sellerId) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Seller ID is required.",
+        });
+      }
 
       if (
         !mongoose.Types.ObjectId.isValid(
@@ -2083,22 +2315,92 @@ const getPublicSellerProducts =
         });
       }
 
-      const sellerExists =
-        await User.exists({
-          _id: sellerId,
-          role: {
-            $in: [
-              "seller",
-              "admin",
-            ],
-          },
-        });
+      const {
+        page = 1,
+        limit = 20,
+        sort = "-createdAt",
+      } = req.query;
 
-      if (!sellerExists) {
+      // ------------------------------------------------------
+      // Verify the seller user exists.
+      //
+      // Do not require role here because old products may still
+      // reference users whose role field was not migrated.
+      // ------------------------------------------------------
+
+      const seller =
+        await User.findById(
+          sellerId
+        )
+          .select(
+            "_id name shopName role sellerStatus"
+          )
+          .lean();
+
+      if (!seller) {
         return res.status(404).json({
           success: false,
           message:
             "Seller not found.",
+        });
+      }
+
+      // ------------------------------------------------------
+      // Check whether this user has seller products.
+      // ------------------------------------------------------
+
+      const sellerHasProducts =
+        await Product.exists({
+          sellerId:
+            seller._id,
+        });
+
+      if (!sellerHasProducts) {
+        return res.json({
+          success: true,
+
+          products: [],
+
+          seller: {
+            _id:
+              seller._id,
+
+            name:
+              seller.name ||
+              "Seller",
+
+            shopName:
+              seller.shopName ||
+              seller.name ||
+              "Shop",
+          },
+
+          pagination: {
+            page:
+              Math.max(
+                1,
+                parseInt(
+                  page,
+                  10
+                ) || 1
+              ),
+
+            limit:
+              Math.min(
+                Math.max(
+                  1,
+                  parseInt(
+                    limit,
+                    10
+                  ) || 20
+                ),
+                50
+              ),
+
+            total: 0,
+
+            totalPages: 0,
+          },
         });
       }
 
@@ -2115,35 +2417,141 @@ const getPublicSellerProducts =
       const sortObj =
         parseSort(sort);
 
-      const filter = {
-        sellerId,
+      // ------------------------------------------------------
+      // Primary filter:
+      //
+      // Only active products are publicly displayed.
+      // ------------------------------------------------------
+
+      const activeFilter = {
+        sellerId:
+          seller._id,
+
         status: "active",
       };
 
-      const [
+      let [
         products,
         total,
       ] = await Promise.all([
-        Product.find(filter)
+        Product.find(
+          activeFilter
+        )
           .sort(sortObj)
           .skip(skip)
           .limit(limitNum)
           .lean(),
 
         Product.countDocuments(
-          filter
+          activeFilter
         ),
       ]);
+
+      // ------------------------------------------------------
+      // Compatibility fallback.
+      //
+      // If this seller has products but none have status:
+      // "active", fetch their products instead of showing an
+      // apparently broken/empty seller page.
+      //
+      // This is particularly useful for products created before
+      // the current Product.status implementation.
+      // ------------------------------------------------------
+
+      if (
+        total === 0 &&
+        sellerHasProducts
+      ) {
+        const legacyFilter = {
+          sellerId:
+            seller._id,
+        };
+
+        [
+          products,
+          total,
+        ] = await Promise.all([
+          Product.find(
+            legacyFilter
+          )
+            .sort(sortObj)
+            .skip(skip)
+            .limit(limitNum)
+            .lean(),
+
+          Product.countDocuments(
+            legacyFilter
+          ),
+        ]);
+      }
+
+      // ------------------------------------------------------
+      // Add stable seller information to every product.
+      //
+      // This makes frontend seller cards/pages much easier to
+      // render and prevents missing seller names.
+      // ------------------------------------------------------
+
+      const normalizedProducts =
+        products.map(
+          (product) => ({
+            ...product,
+
+            sellerId:
+              product.sellerId ||
+              seller._id,
+
+            sellerName:
+              product.sellerName ||
+              seller.shopName ||
+              seller.name ||
+              "Seller",
+          })
+        );
 
       return res.json({
         success: true,
 
-        products,
+        products:
+          normalizedProducts,
+
+        seller: {
+          _id:
+            seller._id,
+
+          id:
+            seller._id,
+
+          sellerId:
+            seller._id,
+
+          name:
+            seller.name ||
+            "Seller",
+
+          shopName:
+            seller.shopName ||
+            seller.name ||
+            "Shop",
+
+          role:
+            seller.role ||
+            "seller",
+
+          sellerStatus:
+            seller.sellerStatus ||
+            "active",
+        },
 
         pagination: {
-          page: pageNum,
-          limit: limitNum,
+          page:
+            pageNum,
+
+          limit:
+            limitNum,
+
           total,
+
           totalPages:
             Math.ceil(
               total /

@@ -1,237 +1,383 @@
 // ============================================================
 // backend/routes/sellerRoutes.js
-// BuyUKUsed Seller Routes
+// BuyUKUsed - Public Seller Routes
 // ============================================================
 
 const express = require("express");
+const mongoose = require("mongoose");
+
+const User = require("../models/User");
+const Product = require("../models/Product");
 
 const router = express.Router();
 
 // ============================================================
-// CONTROLLER
+// HELPERS
 // ============================================================
 
-const {
-  registerSeller,
-  getSellerProfile,
-  updateSellerProfile,
+const isValidObjectId = (value) => {
+  return mongoose.Types.ObjectId.isValid(value);
+};
 
-  getSellerDashboard,
-  getSellerEarnings,
-  getSellerAnalytics,
+const safeNumber = (value, fallback, min, max) => {
+  const number = Number(value);
 
-  getMyProducts,
-  createProductSeller,
-  updateProductSeller,
-  deleteProductSeller,
+  if (!Number.isFinite(number)) {
+    return fallback;
+  }
 
-  getSellerOrders,
-  getSellerOrderById,
-  updateSellerOrderStatus,
-
-  getPublicSellerProfile,
-  getPublicSellerProducts,
-} = require("../controllers/sellerController");
+  return Math.min(
+    Math.max(Math.floor(number), min),
+    max
+  );
+};
 
 // ============================================================
-// AUTH MIDDLEWARE
+// GET PUBLIC SELLER PROFILE
+//
+// GET /api/sellers/:sellerId
 // ============================================================
 
-const { protect } = require("../middleware/auth");
+router.get("/:sellerId", async (req, res) => {
+  try {
+    const { sellerId } = req.params;
+
+    if (!sellerId) {
+      return res.status(400).json({
+        success: false,
+        message: "Seller ID is required.",
+      });
+    }
+
+    if (!isValidObjectId(sellerId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid seller ID.",
+      });
+    }
+
+    const seller = await User.findById(sellerId)
+      .select(
+        [
+          "_id",
+          "name",
+          "email",
+          "phone",
+          "profileImage",
+          "photo",
+          "avatar",
+          "picture",
+          "role",
+          "location",
+          "city",
+          "bio",
+          "description",
+          "createdAt",
+          "updatedAt",
+          "isActive",
+        ].join(" ")
+      )
+      .lean();
+
+    if (!seller) {
+      return res.status(404).json({
+        success: false,
+        message: "Seller not found.",
+      });
+    }
+
+    // Do not expose inactive accounts publicly.
+    if (seller.isActive === false) {
+      return res.status(404).json({
+        success: false,
+        message: "Seller not found.",
+      });
+    }
+
+    // Only sellers/admins should be publicly treated as sellers.
+    if (
+      seller.role !== "seller" &&
+      seller.role !== "admin"
+    ) {
+      return res.status(404).json({
+        success: false,
+        message: "Seller not found.",
+      });
+    }
+
+    // --------------------------------------------------------
+    // PRODUCT STATISTICS
+    // --------------------------------------------------------
+
+    const productFilter = {
+      sellerId: seller._id,
+    };
+
+    const productCount =
+      await Product.countDocuments(productFilter);
+
+    // --------------------------------------------------------
+    // REVIEW STATISTICS
+    //
+    // Keep this independent so missing review model does not
+    // break the seller profile endpoint.
+    // --------------------------------------------------------
+
+    let reviewCount = 0;
+    let averageRating = 0;
+
+    try {
+      const Review = require("../models/Review");
+
+      const reviewStats =
+        await Review.aggregate([
+          {
+            $match: {
+              sellerId: seller._id,
+            },
+          },
+          {
+            $group: {
+              _id: null,
+              count: {
+                $sum: 1,
+              },
+              average: {
+                $avg: "$rating",
+              },
+            },
+          },
+        ]);
+
+      if (reviewStats.length > 0) {
+        reviewCount =
+          Number(reviewStats[0].count) || 0;
+
+        averageRating =
+          Number(reviewStats[0].average) || 0;
+      }
+    } catch {
+      // Review model/field structure should never
+      // prevent the seller profile from loading.
+    }
+
+    // --------------------------------------------------------
+    // RESPONSE
+    // --------------------------------------------------------
+
+    return res.json({
+      success: true,
+
+      seller: {
+        ...seller,
+
+        productCount,
+
+        reviewCount,
+
+        averageRating:
+          Math.round(averageRating * 10) / 10,
+      },
+    });
+  } catch (error) {
+    console.error(
+      "❌ Public seller profile error:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to load seller profile.",
+    });
+  }
+});
 
 // ============================================================
-// SELLER REGISTRATION
+// GET PUBLIC SELLER PRODUCTS
+//
+// GET /api/sellers/:sellerId/products
 // ============================================================
 
-/**
- * POST /api/sellers/register
- *
- * Register the authenticated user as a seller.
- */
-router.post(
-  "/register",
-  protect,
-  registerSeller
-);
-
-// ============================================================
-// OWN SELLER PROFILE
-// ============================================================
-
-/**
- * GET /api/sellers/profile
- *
- * Get authenticated seller profile.
- */
-router.get(
-  "/profile",
-  protect,
-  getSellerProfile
-);
-
-/**
- * PUT /api/sellers/profile
- *
- * Update authenticated seller profile.
- */
-router.put(
-  "/profile",
-  protect,
-  updateSellerProfile
-);
-
-// ============================================================
-// SELLER DASHBOARD
-// ============================================================
-
-/**
- * GET /api/sellers/dashboard
- */
-router.get(
-  "/dashboard",
-  protect,
-  getSellerDashboard
-);
-
-// ============================================================
-// SELLER EARNINGS
-// ============================================================
-
-/**
- * GET /api/sellers/earnings
- */
-router.get(
-  "/earnings",
-  protect,
-  getSellerEarnings
-);
-
-// ============================================================
-// SELLER ANALYTICS
-// ============================================================
-
-/**
- * GET /api/sellers/analytics
- */
-router.get(
-  "/analytics",
-  protect,
-  getSellerAnalytics
-);
-
-// ============================================================
-// SELLER PRODUCTS
-// ============================================================
-
-/**
- * GET /api/sellers/products
- *
- * Get authenticated seller's products.
- */
-router.get(
-  "/products",
-  protect,
-  getMyProducts
-);
-
-/**
- * POST /api/sellers/products
- *
- * Create seller product.
- */
-router.post(
-  "/products",
-  protect,
-  createProductSeller
-);
-
-/**
- * PUT /api/sellers/products/:productId
- *
- * Update seller product.
- */
-router.put(
-  "/products/:productId",
-  protect,
-  updateProductSeller
-);
-
-/**
- * DELETE /api/sellers/products/:productId
- *
- * Delete seller product.
- */
-router.delete(
-  "/products/:productId",
-  protect,
-  deleteProductSeller
-);
-
-// ============================================================
-// SELLER ORDERS
-// ============================================================
-
-/**
- * GET /api/sellers/orders
- */
-router.get(
-  "/orders",
-  protect,
-  getSellerOrders
-);
-
-/**
- * GET /api/sellers/orders/:orderId
- */
-router.get(
-  "/orders/:orderId",
-  protect,
-  getSellerOrderById
-);
-
-/**
- * PUT /api/sellers/orders/:orderId/status
- */
-router.put(
-  "/orders/:orderId/status",
-  protect,
-  updateSellerOrderStatus
-);
-
-// ============================================================
-// PUBLIC SELLER PROFILE
-// ============================================================
-
-/**
- * GET /api/sellers/:sellerId
- *
- * Public seller profile.
- *
- * NO protect middleware.
- */
-router.get(
-  "/:sellerId",
-  getPublicSellerProfile
-);
-
-// ============================================================
-// PUBLIC SELLER PRODUCTS
-// ============================================================
-
-/**
- * GET /api/sellers/:sellerId/products
- *
- * Public products belonging to seller.
- *
- * NO protect middleware.
- */
 router.get(
   "/:sellerId/products",
-  getPublicSellerProducts
-);
+  async (req, res) => {
+    try {
+      const { sellerId } = req.params;
 
-// ============================================================
-// EXPORT
-// ============================================================
+      if (!sellerId) {
+        return res.status(400).json({
+          success: false,
+          message: "Seller ID is required.",
+        });
+      }
+
+      if (!isValidObjectId(sellerId)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid seller ID.",
+        });
+      }
+
+      // ------------------------------------------------------
+      // VERIFY SELLER
+      // ------------------------------------------------------
+
+      const seller = await User.findById(sellerId)
+        .select("_id name role isActive")
+        .lean();
+
+      if (!seller) {
+        return res.status(404).json({
+          success: false,
+          message: "Seller not found.",
+        });
+      }
+
+      if (seller.isActive === false) {
+        return res.status(404).json({
+          success: false,
+          message: "Seller not found.",
+        });
+      }
+
+      if (
+        seller.role !== "seller" &&
+        seller.role !== "admin"
+      ) {
+        return res.status(404).json({
+          success: false,
+          message: "Seller not found.",
+        });
+      }
+
+      // ------------------------------------------------------
+      // PAGINATION
+      // ------------------------------------------------------
+
+      const page = safeNumber(
+        req.query.page,
+        1,
+        1,
+        100000
+      );
+
+      const limit = safeNumber(
+        req.query.limit,
+        20,
+        1,
+        100
+      );
+
+      const skip = (page - 1) * limit;
+
+      // ------------------------------------------------------
+      // SORT
+      // ------------------------------------------------------
+
+      const sortQuery =
+        String(req.query.sort || "-createdAt");
+
+      let sort = {
+        createdAt: -1,
+      };
+
+      if (sortQuery === "createdAt") {
+        sort = {
+          createdAt: 1,
+        };
+      }
+
+      if (sortQuery === "-createdAt") {
+        sort = {
+          createdAt: -1,
+        };
+      }
+
+      if (sortQuery === "price") {
+        sort = {
+          price: 1,
+        };
+      }
+
+      if (sortQuery === "-price") {
+        sort = {
+          price: -1,
+        };
+      }
+
+      // ------------------------------------------------------
+      // PRODUCT FILTER
+      // ------------------------------------------------------
+
+      const filter = {
+        sellerId: seller._id,
+      };
+
+      // If your Product model uses isActive,
+      // only return active listings.
+      //
+      // We deliberately don't force isActive here because
+      // older products in your database may not have the field.
+
+      // ------------------------------------------------------
+      // QUERY
+      // ------------------------------------------------------
+
+      const [products, total] =
+        await Promise.all([
+          Product.find(filter)
+            .sort(sort)
+            .skip(skip)
+            .limit(limit)
+            .lean(),
+
+          Product.countDocuments(filter),
+        ]);
+
+      const totalPages =
+        Math.max(
+          1,
+          Math.ceil(total / limit)
+        );
+
+      // ------------------------------------------------------
+      // RESPONSE
+      // ------------------------------------------------------
+
+      return res.json({
+        success: true,
+
+        seller: {
+          _id: seller._id,
+          name: seller.name,
+        },
+
+        products,
+
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages,
+          hasNextPage:
+            page < totalPages,
+          hasPreviousPage:
+            page > 1,
+        },
+      });
+    } catch (error) {
+      console.error(
+        "❌ Public seller products error:",
+        error
+      );
+
+      return res.status(500).json({
+        success: false,
+        message:
+          "Failed to load seller products.",
+      });
+    }
+  }
+);
 
 module.exports = router;

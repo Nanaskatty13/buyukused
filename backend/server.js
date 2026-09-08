@@ -57,24 +57,30 @@ if (missing.length > 0) {
 // TRUST PROXY
 // ============================================================
 
+/*
+ * Render sits behind a proxy.
+ *
+ * trust proxy = 1 allows Express to correctly understand
+ * the original client IP for rate limiting and logging.
+ */
+
 app.set("trust proxy", 1);
 
 // ============================================================
 // BASE URL
 // ============================================================
-//
-// IMPORTANT:
-//
-// BASE_URL is the BACKEND URL.
-//
-// Production:
-// https://buyukused.onrender.com
-//
-// FRONTEND_URL is:
-// https://buyukused.com
-//
-// Do NOT use the frontend URL as BASE_URL.
-//
+
+/*
+ * BASE_URL = BACKEND URL
+ *
+ * Production example:
+ * https://buyukused.onrender.com
+ *
+ * FRONTEND_URL should be:
+ * https://buyukused.com
+ *
+ * Do NOT use the frontend URL as BASE_URL.
+ */
 
 app.use((req, res, next) => {
   req.baseUrl =
@@ -93,39 +99,40 @@ app.use(
     crossOriginResourcePolicy: {
       policy: "cross-origin",
     },
+
+    /*
+     * We are serving images/files cross-origin.
+     * Keep the policy permissive enough for the marketplace.
+     */
   })
 );
 
 // ============================================================
-// OPTIMIZED: COMPRESSION with better settings
+// COMPRESSION
 // ============================================================
 
 app.use(
   compression({
-    // Compress all responses, including small ones
     threshold: 0,
 
-    // Maximum compression level (9 = best compression)
-    level: 9,
+    /*
+     * Level 6 is generally a better production balance
+     * than level 9 because it reduces CPU pressure on Render.
+     */
+    level: 6,
 
-    // Filter: compress all applicable content types
     filter: (req, res) => {
-      // Skip compression for already-compressed formats
       if (req.headers["x-no-compression"]) {
         return false;
       }
 
-      // Use compression for all responses by default
       return compression.filter(req, res);
     },
-
-    // Set Vary header for proper caching behavior
-    // (compression already does this by default)
   })
 );
 
 console.log(
-  "🗜️ Compression enabled: threshold=0, level=9"
+  "🗜️ Compression enabled: threshold=0, level=6"
 );
 
 // ============================================================
@@ -143,23 +150,26 @@ app.use(
 // ============================================================
 // CORS
 // ============================================================
-//
-// PRODUCTION FRONTEND:
-//
-// https://buyukused.com
-// https://www.buyukused.com
-//
-// LOCAL DEVELOPMENT:
-//
-// http://localhost:3000
-// http://127.0.0.1:3000
-// http://localhost:5173
-// http://127.0.0.1:5173
-//
-// Vercel URLs are kept temporarily for development/testing.
-// You can remove them later once you are completely finished
-// using Vercel preview deployments.
-//
+
+/*
+ * Production:
+ *
+ * https://buyukused.com
+ * https://www.buyukused.com
+ *
+ * Local:
+ *
+ * http://localhost:3000
+ * http://127.0.0.1:3000
+ * http://localhost:5173
+ * http://127.0.0.1:5173
+ *
+ * Vercel:
+ *
+ * https://buyukused.vercel.app
+ *
+ * Known previews are retained.
+ */
 
 const allowedOrigins = [
   // ----------------------------------------------------------
@@ -236,12 +246,15 @@ const isAllowedOrigin = (origin) => {
   // ----------------------------------------------------------
   // Requests without Origin
   // ----------------------------------------------------------
-  //
-  // Examples:
-  // - Render health checks
-  // - curl
-  // - server-to-server requests
-  //
+
+  /*
+   * Examples:
+   *
+   * - Render health checks
+   * - curl
+   * - server-to-server requests
+   * - some native clients
+   */
 
   if (!origin) {
     return true;
@@ -282,7 +295,7 @@ const isAllowedOrigin = (origin) => {
   }
 
   // ----------------------------------------------------------
-  // Everything else is blocked
+  // Everything else blocked
   // ----------------------------------------------------------
 
   return false;
@@ -357,10 +370,17 @@ const corsOptions = {
 // APPLY CORS
 // ============================================================
 
-app.use(cors(corsOptions));
+app.use(
+  cors(corsOptions)
+);
+
+/*
+ * Regex is used instead of app.options("*", ...)
+ * because it works safely across Express versions.
+ */
 
 app.options(
-  "*",
+  /.*/,
   cors(corsOptions)
 );
 
@@ -382,7 +402,7 @@ app.use(
 );
 
 // ============================================================
-// OPTIMIZED: STATIC UPLOADS with caching headers
+// STATIC UPLOADS
 // ============================================================
 
 const uploadsDirectory = path.join(
@@ -393,49 +413,71 @@ const uploadsDirectory = path.join(
 
 app.use(
   "/uploads",
-  express.static(uploadsDirectory, {
-    setHeaders: (res, filePath) => {
-      // Allow cross-origin access
-      res.setHeader(
-        "Access-Control-Allow-Origin",
-        "*"
-      );
+  express.static(
+    uploadsDirectory,
+    {
+      setHeaders: (res, filePath) => {
+        // ------------------------------------------------------
+        // Cross-origin access
+        // ------------------------------------------------------
 
-      res.setHeader(
-        "Cross-Origin-Resource-Policy",
-        "cross-origin"
-      );
+        res.setHeader(
+          "Access-Control-Allow-Origin",
+          "*"
+        );
 
-      // ─── CACHE CONTROL ──────────────────────────────────────
-      // Cache static assets for 1 year (immutable) for images
-      // that rarely change, or 1 day for others
-      const ext = path.extname(filePath).toLowerCase();
+        res.setHeader(
+          "Cross-Origin-Resource-Policy",
+          "cross-origin"
+        );
 
-      if (
-        [".jpg", ".jpeg", ".png", ".webp", ".gif", ".svg", ".ico"].includes(ext)
-      ) {
-        // Images: cache for 1 year
-        res.setHeader(
-          "Cache-Control",
-          "public, max-age=31536000, immutable"
-        );
-      } else if (
-        [".css", ".js", ".woff2", ".woff", ".ttf", ".eot"].includes(ext)
-      ) {
-        // Fonts and static assets: cache for 1 year
-        res.setHeader(
-          "Cache-Control",
-          "public, max-age=31536000, immutable"
-        );
-      } else {
-        // Everything else: cache for 1 day
-        res.setHeader(
-          "Cache-Control",
-          "public, max-age=86400"
-        );
-      }
-    },
-  })
+        // ------------------------------------------------------
+        // Cache control
+        // ------------------------------------------------------
+
+        const ext =
+          path
+            .extname(filePath)
+            .toLowerCase();
+
+        if (
+          [
+            ".jpg",
+            ".jpeg",
+            ".png",
+            ".webp",
+            ".gif",
+            ".svg",
+            ".ico",
+          ].includes(ext)
+        ) {
+          res.setHeader(
+            "Cache-Control",
+            "public, max-age=31536000, immutable"
+          );
+        } else if (
+          [
+            ".css",
+            ".js",
+            ".woff2",
+            ".woff",
+            ".ttf",
+            ".eot",
+          ].includes(ext)
+        ) {
+          res.setHeader(
+            "Cache-Control",
+            "public, max-age=31536000, immutable"
+          );
+        } else {
+          res.setHeader(
+            "Cache-Control",
+            "public, max-age=86400"
+          );
+        }
+      },
+    }
+  )
 );
 
 console.log(
@@ -444,7 +486,7 @@ console.log(
 );
 
 console.log(
-  "🗄️ Static file caching: ENABLED (images: 1 year, others: 1 day)"
+  "🗄️ Static file caching: ENABLED"
 );
 
 // ============================================================
@@ -487,7 +529,11 @@ const skipIfAdmin = (
   }
 
   const token =
-    authHeader.split(" ")[1];
+    authHeader.substring(7).trim();
+
+  if (!token) {
+    return next();
+  }
 
   try {
     const decoded =
@@ -497,14 +543,19 @@ const skipIfAdmin = (
       );
 
     if (
+      decoded &&
       decoded.role === "admin"
     ) {
       req.skipRateLimit = true;
     }
   } catch {
-    // Invalid JWT.
-    // Normal authentication middleware
-    // will handle it.
+    /*
+     * Invalid JWT.
+     *
+     * Do not reject here.
+     * The actual authentication middleware
+     * will handle authentication.
+     */
   }
 
   next();
@@ -518,80 +569,81 @@ app.use(
 // GLOBAL API RATE LIMITER
 // ============================================================
 
-const apiLimiter = rateLimit({
-  windowMs:
-    15 * 60 * 1000,
+const apiLimiter =
+  rateLimit({
+    windowMs:
+      15 * 60 * 1000,
 
-  max:
-    process.env.NODE_ENV === "production"
-      ? 500
-      : 1000,
+    max:
+      process.env.NODE_ENV === "production"
+        ? 500
+        : 1000,
 
-  skip: (req) => {
-    // --------------------------------------------------------
-    // Admin bypass
-    // --------------------------------------------------------
+    skip: (req) => {
+      // ------------------------------------------------------
+      // Admin bypass
+      // ------------------------------------------------------
 
-    if (
-      req.skipRateLimit
-    ) {
-      return true;
-    }
+      if (
+        req.skipRateLimit
+      ) {
+        return true;
+      }
 
-    // --------------------------------------------------------
-    // Development bypass
-    // --------------------------------------------------------
+      // ------------------------------------------------------
+      // Development bypass
+      // ------------------------------------------------------
 
-    if (
-      process.env.NODE_ENV ===
-      "development"
-    ) {
-      return true;
-    }
+      if (
+        process.env.NODE_ENV ===
+        "development"
+      ) {
+        return true;
+      }
 
-    // --------------------------------------------------------
-    // Public product GET requests
-    // --------------------------------------------------------
+      // ------------------------------------------------------
+      // Public product GET requests
+      // ------------------------------------------------------
 
-    if (
-      req.method === "GET" &&
-      req.path.startsWith(
-        "/products"
-      )
-    ) {
-      return true;
-    }
+      if (
+        req.method === "GET" &&
+        req.path.startsWith(
+          "/products"
+        )
+      ) {
+        return true;
+      }
 
-    // --------------------------------------------------------
-    // Public review GET requests
-    // --------------------------------------------------------
+      // ------------------------------------------------------
+      // Public review GET requests
+      // ------------------------------------------------------
 
-    if (
-      req.method === "GET" &&
-      req.path.startsWith(
-        "/reviews"
-      )
-    ) {
-      return true;
-    }
+      if (
+        req.method === "GET" &&
+        req.path.startsWith(
+          "/reviews"
+        )
+      ) {
+        return true;
+      }
 
-    return false;
-  },
+      return false;
+    },
 
-  standardHeaders: true,
+    standardHeaders: true,
 
-  legacyHeaders: false,
+    legacyHeaders: false,
 
-  message: {
-    success: false,
+    message: {
+      success: false,
 
-    message:
-      "Too many requests, please try again later.",
+      message:
+        "Too many requests, please try again later.",
 
-    errorCode:
-      "RATE_LIMITED",
-  },
-});
+      errorCode:
+        "RATE_LIMITED",
+    },
+  });
 
 // ============================================================
 // APPLY GLOBAL API LIMITER
@@ -612,8 +664,7 @@ const publicReadLimiter =
       15 * 60 * 1000,
 
     max:
-      process.env.NODE_ENV ===
-      "production"
+      process.env.NODE_ENV === "production"
         ? 1000
         : 5000,
 
@@ -642,8 +693,7 @@ const authLimiter =
       15 * 60 * 1000,
 
     max:
-      process.env.NODE_ENV ===
-      "production"
+      process.env.NODE_ENV === "production"
         ? 30
         : 200,
 
@@ -915,6 +965,7 @@ app.use(
 
 app.use(
   "/api/products",
+
   (req, res, next) => {
     if (
       req.method === "GET"
@@ -928,6 +979,7 @@ app.use(
 
     next();
   },
+
   productRoutes
 );
 
@@ -937,6 +989,7 @@ app.use(
 
 app.use(
   "/api/reviews",
+
   (req, res, next) => {
     if (
       req.method === "GET"
@@ -950,6 +1003,7 @@ app.use(
 
     next();
   },
+
   reviewRoutes
 );
 
@@ -985,6 +1039,10 @@ console.log(
 app.use(
   "/api/notifications",
   notificationRoutes
+);
+
+console.log(
+  "🔔 Notifications API mounted at /api/notifications"
 );
 
 // ============================================================
@@ -1324,6 +1382,31 @@ app.use(
     }
 
     // --------------------------------------------------------
+    // JWT ERROR
+    // --------------------------------------------------------
+
+    if (
+      err &&
+      (
+        err.name === "JsonWebTokenError" ||
+        err.name === "TokenExpiredError" ||
+        err.name === "NotBeforeError"
+      )
+    ) {
+      return res
+        .status(401)
+        .json({
+          success: false,
+
+          message:
+            "Invalid or expired authentication token.",
+
+          errorCode:
+            "AUTHENTICATION_ERROR",
+        });
+    }
+
+    // --------------------------------------------------------
     // DEFAULT
     // --------------------------------------------------------
 
@@ -1472,6 +1555,10 @@ const createDefaultAdmin =
 const start =
   async () => {
     try {
+      // ------------------------------------------------------
+      // CONNECT DATABASE
+      // ------------------------------------------------------
+
       const connection =
         await connectDB();
 
@@ -1479,13 +1566,25 @@ const start =
         `✅ MongoDB connected to: ${connection.name}`
       );
 
+      // ------------------------------------------------------
+      // DEFAULT CATEGORIES
+      // ------------------------------------------------------
+
       await ensureDefaultCategories();
 
       console.log(
         "✅ Default categories check completed"
       );
 
+      // ------------------------------------------------------
+      // DEFAULT ADMIN
+      // ------------------------------------------------------
+
       await createDefaultAdmin();
+
+      // ------------------------------------------------------
+      // START HTTP SERVER
+      // ------------------------------------------------------
 
       const server =
         app.listen(
@@ -1514,7 +1613,7 @@ const start =
             );
 
             console.log(
-              `🌐 Production frontend: https://buyukused.com`
+              "🌐 Production frontend: https://buyukused.com"
             );
 
             console.log(
@@ -1522,7 +1621,7 @@ const start =
             );
 
             console.log(
-              "🗄️ Static file caching: ENABLED (1 year for images/fonts)"
+              "🗄️ Static file caching: ENABLED"
             );
 
             console.log(
@@ -1554,6 +1653,14 @@ const start =
             );
 
             console.log(
+              "🔔 Notifications API: /api/notifications"
+            );
+
+            console.log(
+              "💬 Messages API: /api/messages"
+            );
+
+            console.log(
               "🔐 Review authentication: ENABLED"
             );
 
@@ -1570,7 +1677,7 @@ const start =
             );
 
             console.log(
-              "🗜️ Compression: ENABLED (threshold=0, level=9)"
+              "🗜️ Compression: ENABLED"
             );
 
             console.log(
@@ -1591,9 +1698,9 @@ const start =
           }
         );
 
-      // --------------------------------------------------------
+      // ------------------------------------------------------
       // SERVER TIMEOUTS
-      // --------------------------------------------------------
+      // ------------------------------------------------------
 
       server.timeout =
         120000;
@@ -1604,15 +1711,37 @@ const start =
       server.headersTimeout =
         66000;
 
-      // --------------------------------------------------------
+      // ------------------------------------------------------
       // GRACEFUL SHUTDOWN
-      // --------------------------------------------------------
+      // ------------------------------------------------------
+
+      let shuttingDown = false;
 
       const shutdown =
         async (signal) => {
+          if (shuttingDown) {
+            return;
+          }
+
+          shuttingDown = true;
+
           console.log(
             `\n🛑 ${signal} received. Shutting down server...`
           );
+
+          const forceShutdown =
+            setTimeout(
+              () => {
+                console.error(
+                  "❌ Forced shutdown after timeout."
+                );
+
+                process.exit(1);
+              },
+              10000
+            );
+
+          forceShutdown.unref();
 
           server.close(
             async () => {
@@ -1624,10 +1753,19 @@ const start =
                 const mongoose =
                   require("mongoose");
 
-                await mongoose.connection.close();
+                if (
+                  mongoose.connection.readyState !==
+                  0
+                ) {
+                  await mongoose.connection.close();
+                }
 
                 console.log(
                   "🛑 MongoDB connection closed."
+                );
+
+                clearTimeout(
+                  forceShutdown
                 );
 
                 process.exit(0);
@@ -1637,20 +1775,13 @@ const start =
                   error
                 );
 
+                clearTimeout(
+                  forceShutdown
+                );
+
                 process.exit(1);
               }
             }
-          );
-
-          setTimeout(
-            () => {
-              console.error(
-                "❌ Forced shutdown after timeout."
-              );
-
-              process.exit(1);
-            },
-            10000
           );
         };
 
