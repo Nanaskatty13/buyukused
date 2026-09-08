@@ -78,7 +78,7 @@ const getFileHeaders = (token = getToken()) => {
 // RESPONSE HANDLER (ENHANCED)
 // ================================================================
 
-const handleResponse = async (response) => {
+const handleResponse = async (response, options = {}) => {
   let data = {};
 
   if (response.status !== 204) {
@@ -105,6 +105,16 @@ const handleResponse = async (response) => {
       );
       data = {};
     }
+  }
+
+  // ✅ NEW: Graceful 404 handling when throwOnNotFound is false
+  if (response.status === 404 && options.throwOnNotFound === false) {
+    return {
+      success: false,
+      status: 404,
+      message: data?.message || "Resource not found",
+      data: data,
+    };
   }
 
   if (!response.ok) {
@@ -162,6 +172,9 @@ const request = async (
   let controller;
   let timeoutId;
 
+  // ✅ NEW: extract throwOnNotFound from options, default true
+  const { throwOnNotFound = true, ...fetchOptions } = options;
+
   try {
     controller = new AbortController();
 
@@ -172,11 +185,11 @@ const request = async (
     const latestToken = getToken();
 
     const incomingHeaders =
-      options.headers || {};
+      fetchOptions.headers || {};
 
     const isFormData =
       typeof FormData !== "undefined" &&
-      options.body instanceof FormData;
+      fetchOptions.body instanceof FormData;
 
     let headers;
 
@@ -252,18 +265,18 @@ const request = async (
       );
 
       if (
-        options.body &&
-        typeof options.body === "string"
+        fetchOptions.body &&
+        typeof fetchOptions.body === "string"
       ) {
         try {
           console.log(
             "⭐ Review request body:",
-            JSON.parse(options.body)
+            JSON.parse(fetchOptions.body)
           );
         } catch {
           console.log(
             "⭐ Review request body:",
-            options.body
+            fetchOptions.body
           );
         }
       }
@@ -271,10 +284,10 @@ const request = async (
 
     const response = await fetch(url, {
       credentials: "include",
-      ...options,
+      ...fetchOptions,
       headers,
       signal:
-        options.signal ||
+        fetchOptions.signal ||
         controller.signal,
     });
 
@@ -292,7 +305,7 @@ const request = async (
       );
     }
 
-    return await handleResponse(response);
+    return await handleResponse(response, { throwOnNotFound });
   } catch (error) {
     if (timeoutId) {
       clearTimeout(timeoutId);
@@ -364,6 +377,14 @@ const request = async (
 
     throw error;
   }
+};
+
+// ================================================================
+// PUBLIC REQUEST – does NOT throw on 404
+// ================================================================
+
+export const publicRequest = async (url, options = {}) => {
+  return request(url, { ...options, throwOnNotFound: false });
 };
 
 // ================================================================
@@ -3089,6 +3110,9 @@ const api = {
   getImageUrl,
   getToken,
   clearAuthData,
+
+  // ✅ NEW: publicRequest exported for use in other modules
+  publicRequest,
 };
 
 export default api;

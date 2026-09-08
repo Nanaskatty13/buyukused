@@ -584,7 +584,7 @@ const requestWithFiles =
   };
 
 // ================================================================
-// PUBLIC REQUEST
+// PUBLIC REQUEST – now handles 404 without throwing
 // ================================================================
 
 const publicRequest =
@@ -600,27 +600,45 @@ const publicRequest =
       ...fetchOptions
     } = options;
 
-    const response =
-      await fetch(
-        `${baseUrl}${url}`,
-        {
-          ...fetchOptions,
+    try {
+      const response =
+        await fetch(
+          `${baseUrl}${url}`,
+          {
+            ...fetchOptions,
 
-          credentials,
+            credentials,
 
-          headers: {
-            Accept:
-              "application/json",
+            headers: {
+              Accept:
+                "application/json",
 
-            ...(fetchOptions.headers ||
-              {}),
-          },
-        }
+              ...(fetchOptions.headers ||
+                {}),
+            },
+          }
+        );
+
+      return await handleResponse(
+        response
       );
+    } catch (error) {
+      // If it's a 404, we return a structured failure instead of throwing
+      if (
+        error.status === 404
+      ) {
+        return {
+          success: false,
+          status: 404,
+          message:
+            error.message ||
+            "Resource not found",
+        };
+      }
 
-    return handleResponse(
-      response
-    );
+      // For other errors, re-throw
+      throw error;
+    }
   };
 
 // ================================================================
@@ -1470,7 +1488,7 @@ export const updateSellerOrderStatus =
   };
 
 // ================================================================
-// 14. PUBLIC SELLER PROFILE
+// 14. PUBLIC SELLER PROFILE – returns success:false on 404
 // ================================================================
 
 export const getPublicSellerProfile =
@@ -1495,13 +1513,29 @@ export const getPublicSellerProfile =
         )}`
       );
 
+    // If the public request returned a failure (e.g., 404)
+    if (
+      response &&
+      typeof response === "object" &&
+      response.success === false
+    ) {
+      return {
+        success: false,
+        status: response.status || 404,
+        message: response.message || "Seller not found",
+        seller: null,
+        profile: null,
+        user: null,
+      };
+    }
+
     return normalizeSellerProfileResponse(
       response
     );
   };
 
 // ================================================================
-// 15. PUBLIC SELLER PRODUCTS
+// 15. PUBLIC SELLER PRODUCTS – returns success:false on 404
 // ================================================================
 
 export const getPublicSellerProducts =
@@ -1540,21 +1574,34 @@ export const getPublicSellerProducts =
         )}/products${query}`
       );
 
+    // If the public request returned a failure (e.g., 404)
+    if (
+      response &&
+      typeof response === "object" &&
+      response.success === false
+    ) {
+      return {
+        success: false,
+        status: response.status || 404,
+        message: response.message || "Products not found",
+        products: [],
+        items: [],
+        results: [],
+        total: 0,
+        page: 1,
+        limit: 20,
+        pages: 1,
+        pagination: { page: 1, limit: 20, total: 0, pages: 1 },
+      };
+    }
+
     return normalizeProductsResponse(
       response
     );
   };
 
 // ================================================================
-// 16. COMPLETE PUBLIC SELLER PAGE
-//
-// IMPORTANT:
-// Do NOT use Promise.all() here.
-//
-// If seller profile succeeds but products fail,
-// the seller profile should STILL display.
-//
-// This is one of the biggest reliability fixes.
+// 16. COMPLETE PUBLIC SELLER PAGE – uses the new safe functions
 // ================================================================
 
 export const getPublicSellerPage =
@@ -1589,8 +1636,7 @@ export const getPublicSellerPage =
           normalizedId
         );
     } catch (error) {
-      profileError =
-        error;
+      profileError = error;
     }
 
     // ------------------------------------------------------------
@@ -1604,8 +1650,40 @@ export const getPublicSellerPage =
           params
         );
     } catch (error) {
+      productsError = error;
+    }
+
+    // ------------------------------------------------------------
+    // Detect failure from the returned objects (success: false)
+    // ------------------------------------------------------------
+
+    if (
+      profile &&
+      typeof profile === "object" &&
+      profile.success === false
+    ) {
+      profileError =
+        profileError ||
+        new Error(
+          profile.message ||
+            "Seller not found"
+        );
+      // Also set profile to null so we don't use it
+      profile = null;
+    }
+
+    if (
+      productsResponse &&
+      typeof productsResponse === "object" &&
+      productsResponse.success === false
+    ) {
       productsError =
-        error;
+        productsError ||
+        new Error(
+          productsResponse.message ||
+            "Products not found"
+        );
+      productsResponse = null;
     }
 
     // ------------------------------------------------------------
@@ -1631,8 +1709,6 @@ export const getPublicSellerPage =
     // ------------------------------------------------------------
     // If profile completely failed AND no seller exists,
     // throw the profile error.
-    //
-    // Products failing alone should NOT destroy the page.
     // ------------------------------------------------------------
 
     if (
