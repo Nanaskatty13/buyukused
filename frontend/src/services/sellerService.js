@@ -3,74 +3,116 @@
 // BuyUKUsed - Seller API Service
 // ================================================================
 
-import {
-  API_URL,
-} from "./api";
-
-import {
-  getToken,
-} from "../utils/storage";
+import { API_URL } from "./api";
+import { getToken } from "../utils/storage";
 
 // ================================================================
-// HELPER: BUILD QUERY STRING
+// API BASE URL
 // ================================================================
 
-const buildQuery = (
-  params = {}
-) => {
-  const searchParams =
-    new URLSearchParams();
+const getBaseUrl = () => {
+  const base = String(API_URL || "").trim();
 
-  Object.entries(params).forEach(
-    ([key, value]) => {
-      if (
-        value === undefined ||
-        value === null ||
-        value === ""
-      ) {
-        return;
-      }
+  if (!base) {
+    return "http://localhost:5000";
+  }
 
-      searchParams.set(
-        key,
-        String(value)
-      );
-    }
-  );
-
-  const query =
-    searchParams.toString();
-
-  return query
-    ? `?${query}`
-    : "";
+  return base.replace(/\/+$/, "");
 };
 
 // ================================================================
-// HELPER: HANDLE RESPONSE
+// NORMALIZE SELLER ID
+//
+// Supports:
+//
+// sellerId
+// seller._id
+// seller.id
+// seller.userId
+// populated seller objects
+// MongoDB ObjectId-like values
 // ================================================================
 
-const handleResponse = async (
-  response
-) => {
+export const normalizeSellerId = (seller) => {
+  if (!seller) {
+    return "";
+  }
+
+  if (
+    typeof seller === "string" ||
+    typeof seller === "number"
+  ) {
+    return String(seller).trim();
+  }
+
+  if (typeof seller === "object") {
+    const possibleId =
+      seller._id ??
+      seller.id ??
+      seller.sellerId ??
+      seller.userId ??
+      seller.user?._id ??
+      seller.user?.id ??
+      "";
+
+    if (
+      possibleId &&
+      typeof possibleId === "object" &&
+      possibleId.toString
+    ) {
+      return String(possibleId.toString()).trim();
+    }
+
+    return String(possibleId || "").trim();
+  }
+
+  return "";
+};
+
+// ================================================================
+// BUILD QUERY STRING
+// ================================================================
+
+const buildQuery = (params = {}) => {
+  const searchParams = new URLSearchParams();
+
+  Object.entries(params).forEach(([key, value]) => {
+    if (
+      value === undefined ||
+      value === null ||
+      value === ""
+    ) {
+      return;
+    }
+
+    searchParams.set(key, String(value));
+  });
+
+  const query = searchParams.toString();
+
+  return query ? `?${query}` : "";
+};
+
+// ================================================================
+// HANDLE RESPONSE
+// ================================================================
+
+const handleResponse = async (response) => {
   let data = {};
 
   if (response.status !== 204) {
     const contentType =
-      response.headers.get(
-        "content-type"
-      ) || "";
+      response.headers.get("content-type") || "";
 
     try {
       if (
-        contentType.includes(
-          "application/json"
-        )
+        contentType
+          .toLowerCase()
+          .includes("application/json")
       ) {
         data = await response.json();
       } else {
-        const text =
-          await response.text();
+        const text = await response.text();
 
         if (text) {
           data = {
@@ -87,16 +129,13 @@ const handleResponse = async (
     const error = new Error(
       data?.message ||
         data?.error ||
+        data?.msg ||
         `HTTP ${response.status}`
     );
 
-    error.status =
-      response.status;
-
+    error.status = response.status;
     error.data = data;
-
-    error.url =
-      response.url;
+    error.url = response.url;
 
     throw error;
   }
@@ -105,96 +144,279 @@ const handleResponse = async (
 };
 
 // ================================================================
-// HELPER: JSON REQUEST WITH TOKEN
+// CREATE HEADERS
+// ================================================================
+
+const createHeaders = ({
+  includeToken = true,
+  includeJsonContentType = true,
+  customHeaders = {},
+} = {}) => {
+  const token = getToken();
+
+  const headers = {
+    Accept: "application/json",
+  };
+
+  if (includeJsonContentType) {
+    headers["Content-Type"] = "application/json";
+  }
+
+  if (includeToken && token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  return {
+    ...headers,
+    ...customHeaders,
+  };
+};
+
+// ================================================================
+// STANDARD REQUEST
 // ================================================================
 
 const request = async (
   url,
   options = {}
 ) => {
-  const token =
-    getToken();
+  const baseUrl = getBaseUrl();
 
-  const headers = {
-    "Content-Type":
-      "application/json",
+  const {
+    includeToken = true,
+    credentials = "include",
+    ...fetchOptions
+  } = options;
 
-    Accept:
-      "application/json",
+  const response = await fetch(
+    `${baseUrl}${url}`,
+    {
+      ...fetchOptions,
 
-    ...(token
-      ? {
-          Authorization:
-            `Bearer ${token}`,
-        }
-      : {}),
+      credentials,
 
-    ...(options.headers || {}),
-  };
-
-  const response =
-    await fetch(
-      `${API_URL}${url}`,
-      {
-        ...options,
-
-        credentials:
-          "include",
-
-        headers,
-      }
-    );
-
-  return handleResponse(
-    response
+      headers: createHeaders({
+        includeToken,
+        includeJsonContentType:
+          fetchOptions.method !== "GET" &&
+          fetchOptions.method !== "HEAD"
+            ? true
+            : false,
+        customHeaders:
+          fetchOptions.headers || {},
+      }),
+    }
   );
+
+  return handleResponse(response);
 };
 
 // ================================================================
-// HELPER: FORMDATA REQUEST WITH TOKEN
+// FORMDATA REQUEST
+//
+// IMPORTANT:
+// Do NOT manually set Content-Type.
+// Browser must generate multipart/form-data boundary.
 // ================================================================
 
-const requestWithFiles =
-  async (
-    url,
-    formData,
-    options = {}
-  ) => {
-    const token =
-      getToken();
+const requestWithFiles = async (
+  url,
+  formData,
+  options = {}
+) => {
+  const baseUrl = getBaseUrl();
 
-    const headers = {
-      ...(token
-        ? {
-            Authorization:
-              `Bearer ${token}`,
-          }
-        : {}),
+  const token = getToken();
 
-      ...(options.headers || {}),
-    };
+  const {
+    method = "POST",
+    credentials = "include",
+    headers: customHeaders = {},
+  } = options;
 
-    const response =
-      await fetch(
-        `${API_URL}${url}`,
-        {
-          method:
-            options.method ||
-            "POST",
-
-          credentials:
-            "include",
-
-          headers,
-
-          body: formData,
-        }
-      );
-
-    return handleResponse(
-      response
-    );
+  const headers = {
+    Accept: "application/json",
+    ...customHeaders,
   };
+
+  if (token) {
+    headers.Authorization =
+      `Bearer ${token}`;
+  }
+
+  const response = await fetch(
+    `${baseUrl}${url}`,
+    {
+      method,
+      credentials,
+      headers,
+      body: formData,
+    }
+  );
+
+  return handleResponse(response);
+};
+
+// ================================================================
+// PUBLIC REQUEST
+//
+// No authentication is required.
+//
+// This is used for seller pages viewed by:
+//
+// - logged-in users
+// - logged-out users
+// - mobile visitors
+// - search-engine visitors
+// ================================================================
+
+const publicRequest = async (
+  url,
+  options = {}
+) => {
+  const baseUrl = getBaseUrl();
+
+  const {
+    credentials = "omit",
+    ...fetchOptions
+  } = options;
+
+  const response = await fetch(
+    `${baseUrl}${url}`,
+    {
+      ...fetchOptions,
+
+      credentials,
+
+      headers: {
+        Accept: "application/json",
+        ...(fetchOptions.headers || {}),
+      },
+    }
+  );
+
+  return handleResponse(response);
+};
+
+// ================================================================
+// NORMALIZE API DATA
+//
+// Allows the frontend to safely work with:
+//
+// { data: ... }
+// { seller: ... }
+// { profile: ... }
+// { products: ... }
+// { items: ... }
+// { results: ... }
+// or direct arrays/objects.
+// ================================================================
+
+const unwrapData = (response) => {
+  if (!response) {
+    return response;
+  }
+
+  if (
+    response.data !== undefined &&
+    response.data !== null
+  ) {
+    return response.data;
+  }
+
+  return response;
+};
+
+// ================================================================
+// NORMALIZE SELLER PROFILE RESPONSE
+// ================================================================
+
+const normalizeSellerProfileResponse = (
+  response
+) => {
+  const data = unwrapData(response);
+
+  if (!data) {
+    return {
+      ...response,
+      seller: null,
+    };
+  }
+
+  if (data.seller) {
+    return {
+      ...response,
+      ...data,
+      seller: data.seller,
+    };
+  }
+
+  if (data.profile) {
+    return {
+      ...response,
+      ...data,
+      seller: data.profile,
+    };
+  }
+
+  if (data.user) {
+    return {
+      ...response,
+      ...data,
+      seller: data.user,
+    };
+  }
+
+  return {
+    ...response,
+    ...data,
+    seller: data,
+  };
+};
+
+// ================================================================
+// NORMALIZE PRODUCT RESPONSE
+// ================================================================
+
+const normalizeProductsResponse = (
+  response
+) => {
+  const data = unwrapData(response);
+
+  if (Array.isArray(data)) {
+    return {
+      ...response,
+      products: data,
+      items: data,
+    };
+  }
+
+  if (!data || typeof data !== "object") {
+    return {
+      ...response,
+      products: [],
+      items: [],
+    };
+  }
+
+  const products =
+    Array.isArray(data.products)
+      ? data.products
+      : Array.isArray(data.items)
+      ? data.items
+      : Array.isArray(data.results)
+      ? data.results
+      : Array.isArray(data.data)
+      ? data.data
+      : [];
+
+  return {
+    ...response,
+    ...data,
+    products,
+    items: products,
+  };
+};
 
 // ================================================================
 // SELLER SERVICE FUNCTIONS
@@ -204,46 +426,63 @@ const requestWithFiles =
 // 1. REGISTER SELLER
 // ================================================================
 
-export const registerSeller =
-  async (data) => {
-    return request(
-      "/sellers/register",
-      {
-        method: "POST",
-
-        body:
-          JSON.stringify(data),
-      }
+export const registerSeller = async (
+  data
+) => {
+  if (!data || typeof data !== "object") {
+    throw new Error(
+      "Seller registration data is required"
     );
-  };
+  }
+
+  return request(
+    "/sellers/register",
+    {
+      method: "POST",
+      body: JSON.stringify(data),
+    }
+  );
+};
 
 // ================================================================
 // 2. GET OWN SELLER PROFILE
 // ================================================================
 
-export const getSellerProfile =
-  async () => {
-    return request(
-      "/sellers/profile"
-    );
-  };
+export const getSellerProfile = async () => {
+  const response = await request(
+    "/sellers/profile"
+  );
+
+  return normalizeSellerProfileResponse(
+    response
+  );
+};
 
 // ================================================================
 // 3. UPDATE OWN SELLER PROFILE
 // ================================================================
 
-export const updateSellerProfile =
-  async (data) => {
-    return request(
-      "/sellers/profile",
-      {
-        method: "PUT",
-
-        body:
-          JSON.stringify(data),
-      }
+export const updateSellerProfile = async (
+  data
+) => {
+  if (!data || typeof data !== "object") {
+    throw new Error(
+      "Seller profile data is required"
     );
-  };
+  }
+
+  const response = await request(
+    "/sellers/profile",
+    {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }
+  );
+
+  return normalizeSellerProfileResponse(
+    response
+  );
+};
 
 // ================================================================
 // DASHBOARD & ANALYTICS
@@ -253,46 +492,43 @@ export const updateSellerProfile =
 // 4. SELLER DASHBOARD
 // ================================================================
 
-export const getSellerDashboard =
-  async (
-    period = "all"
-  ) => {
-    return request(
-      `/sellers/dashboard?period=${encodeURIComponent(
-        period
-      )}`
-    );
-  };
+export const getSellerDashboard = async (
+  period = "all"
+) => {
+  return request(
+    `/sellers/dashboard?period=${encodeURIComponent(
+      period
+    )}`
+  );
+};
 
 // ================================================================
 // 5. SELLER EARNINGS
 // ================================================================
 
-export const getSellerEarnings =
-  async (
-    period = "all"
-  ) => {
-    return request(
-      `/sellers/earnings?period=${encodeURIComponent(
-        period
-      )}`
-    );
-  };
+export const getSellerEarnings = async (
+  period = "all"
+) => {
+  return request(
+    `/sellers/earnings?period=${encodeURIComponent(
+      period
+    )}`
+  );
+};
 
 // ================================================================
 // 6. SELLER ANALYTICS
 // ================================================================
 
-export const getSellerAnalytics =
-  async (
-    period = "today"
-  ) => {
-    return request(
-      `/sellers/analytics?period=${encodeURIComponent(
-        period
-      )}`
-    );
-  };
+export const getSellerAnalytics = async (
+  period = "today"
+) => {
+  return request(
+    `/sellers/analytics?period=${encodeURIComponent(
+      period
+    )}`
+  );
+};
 
 // ================================================================
 // PRODUCT MANAGEMENT
@@ -302,96 +538,110 @@ export const getSellerAnalytics =
 // 7. GET MY PRODUCTS
 // ================================================================
 
-export const getMyProducts =
-  async (
-    params = {}
-  ) => {
-    const {
-      page = 1,
-      limit = 20,
-      sort = "-createdAt",
-      status,
-    } = params;
+export const getMyProducts = async (
+  params = {}
+) => {
+  const {
+    page = 1,
+    limit = 20,
+    sort = "-createdAt",
+    status,
+  } = params;
 
-    const query =
-      buildQuery({
-        page,
-        limit,
-        sort,
-        status,
-      });
+  const query = buildQuery({
+    page,
+    limit,
+    sort,
+    status,
+  });
 
-    return request(
-      `/sellers/products${query}`
-    );
-  };
+  const response = await request(
+    `/sellers/products${query}`
+  );
+
+  return normalizeProductsResponse(
+    response
+  );
+};
 
 // ================================================================
 // 8. CREATE PRODUCT
 // ================================================================
 
-export const createProductSeller =
-  async (
-    formData
-  ) => {
-    return requestWithFiles(
+export const createProductSeller = async (
+  formData
+) => {
+  if (!(formData instanceof FormData)) {
+    throw new Error(
+      "FormData is required to create a product"
+    );
+  }
+
+  const response =
+    await requestWithFiles(
       "/sellers/products",
       formData,
       {
         method: "POST",
       }
     );
-  };
+
+  return response;
+};
 
 // ================================================================
 // 9. UPDATE PRODUCT
 // ================================================================
 
-export const updateProductSeller =
-  async (
-    productId,
-    formData
-  ) => {
-    if (!productId) {
-      throw new Error(
-        "Product ID is required"
-      );
-    }
-
-    return requestWithFiles(
-      `/sellers/products/${encodeURIComponent(
-        productId
-      )}`,
-      formData,
-      {
-        method: "PUT",
-      }
+export const updateProductSeller = async (
+  productId,
+  formData
+) => {
+  if (!productId) {
+    throw new Error(
+      "Product ID is required"
     );
-  };
+  }
+
+  if (!(formData instanceof FormData)) {
+    throw new Error(
+      "FormData is required to update a product"
+    );
+  }
+
+  return requestWithFiles(
+    `/sellers/products/${encodeURIComponent(
+      productId
+    )}`,
+    formData,
+    {
+      method: "PUT",
+    }
+  );
+};
 
 // ================================================================
 // 10. DELETE PRODUCT
 // ================================================================
 
-export const deleteProductSeller =
-  async (
-    productId
-  ) => {
-    if (!productId) {
-      throw new Error(
-        "Product ID is required"
-      );
-    }
-
-    return request(
-      `/sellers/products/${encodeURIComponent(
-        productId
-      )}`,
-      {
-        method: "DELETE",
-      }
+export const deleteProductSeller = async (
+  productId
+) => {
+  if (!productId) {
+    throw new Error(
+      "Product ID is required"
     );
-  };
+  }
+
+  return request(
+    `/sellers/products/${encodeURIComponent(
+      productId
+    )}`,
+    {
+      method: "DELETE",
+    }
+  );
+};
 
 // ================================================================
 // ORDER MANAGEMENT
@@ -401,48 +651,45 @@ export const deleteProductSeller =
 // 11. GET SELLER ORDERS
 // ================================================================
 
-export const getSellerOrders =
-  async (
-    params = {}
-  ) => {
-    const {
-      page = 1,
-      limit = 20,
-      status,
-    } = params;
+export const getSellerOrders = async (
+  params = {}
+) => {
+  const {
+    page = 1,
+    limit = 20,
+    status,
+  } = params;
 
-    const query =
-      buildQuery({
-        page,
-        limit,
-        status,
-      });
+  const query = buildQuery({
+    page,
+    limit,
+    status,
+  });
 
-    return request(
-      `/sellers/orders${query}`
-    );
-  };
+  return request(
+    `/sellers/orders${query}`
+  );
+};
 
 // ================================================================
 // 12. GET SELLER ORDER BY ID
 // ================================================================
 
-export const getSellerOrderById =
-  async (
-    orderId
-  ) => {
-    if (!orderId) {
-      throw new Error(
-        "Order ID is required"
-      );
-    }
-
-    return request(
-      `/sellers/orders/${encodeURIComponent(
-        orderId
-      )}`
+export const getSellerOrderById = async (
+  orderId
+) => {
+  if (!orderId) {
+    throw new Error(
+      "Order ID is required"
     );
-  };
+  }
+
+  return request(
+    `/sellers/orders/${encodeURIComponent(
+      orderId
+    )}`
+  );
+};
 
 // ================================================================
 // 13. UPDATE SELLER ORDER STATUS
@@ -471,11 +718,9 @@ export const updateSellerOrderStatus =
       )}/status`,
       {
         method: "PUT",
-
-        body:
-          JSON.stringify({
-            status,
-          }),
+        body: JSON.stringify({
+          status,
+        }),
       }
     );
   };
@@ -486,34 +731,51 @@ export const updateSellerOrderStatus =
 
 // ================================================================
 // 14. GET PUBLIC SELLER PROFILE
+//
+// Backend:
+//
+// GET /sellers/:sellerId
+//
+// This MUST remain public.
+// Do not require the visitor to be logged in.
 // ================================================================
 
 export const getPublicSellerProfile =
-  async (
-    sellerId
-  ) => {
-    if (!sellerId) {
+  async (sellerId) => {
+    const normalizedId =
+      normalizeSellerId(sellerId);
+
+    if (!normalizedId) {
       throw new Error(
-        "Seller ID is required"
+        "Valid Seller ID is required"
       );
     }
 
-    return request(
-      `/sellers/${encodeURIComponent(
-        sellerId
-      )}`
+    const response =
+      await publicRequest(
+        `/sellers/${encodeURIComponent(
+          normalizedId
+        )}`
+      );
+
+    return normalizeSellerProfileResponse(
+      response
     );
   };
 
 // ================================================================
 // 15. GET PUBLIC SELLER PRODUCTS
 //
-// IMPORTANT:
-// Backend route:
+// Backend:
+//
 // GET /sellers/:sellerId/products
 //
+// IMPORTANT:
 // Do NOT use:
-// /api/products?sellerId=...
+//
+// /products?sellerId=...
+//
+// and do NOT require authentication.
 // ================================================================
 
 export const getPublicSellerProducts =
@@ -521,9 +783,12 @@ export const getPublicSellerProducts =
     sellerId,
     params = {}
   ) => {
-    if (!sellerId) {
+    const normalizedId =
+      normalizeSellerId(sellerId);
+
+    if (!normalizedId) {
       throw new Error(
-        "Seller ID is required"
+        "Valid Seller ID is required"
       );
     }
 
@@ -533,18 +798,84 @@ export const getPublicSellerProducts =
       sort = "-createdAt",
     } = params;
 
-    const query =
-      buildQuery({
-        page,
-        limit,
-        sort,
-      });
+    const query = buildQuery({
+      page,
+      limit,
+      sort,
+    });
 
-    return request(
-      `/sellers/${encodeURIComponent(
-        sellerId
-      )}/products${query}`
+    const response =
+      await publicRequest(
+        `/sellers/${encodeURIComponent(
+          normalizedId
+        )}/products${query}`
+      );
+
+    return normalizeProductsResponse(
+      response
     );
+  };
+
+// ================================================================
+// 16. GET COMPLETE PUBLIC SELLER PAGE DATA
+//
+// Convenience helper.
+//
+// Fetches:
+//
+// seller profile
+// +
+// seller products
+//
+// Useful for seller page components.
+// ================================================================
+
+export const getPublicSellerPage =
+  async (
+    sellerId,
+    params = {}
+  ) => {
+    const normalizedId =
+      normalizeSellerId(sellerId);
+
+    if (!normalizedId) {
+      throw new Error(
+        "Valid Seller ID is required"
+      );
+    }
+
+    const [
+      profileResponse,
+      productsResponse,
+    ] = await Promise.all([
+      getPublicSellerProfile(
+        normalizedId
+      ),
+      getPublicSellerProducts(
+        normalizedId,
+        params
+      ),
+    ]);
+
+    return {
+      sellerId: normalizedId,
+
+      seller:
+        profileResponse?.seller ||
+        profileResponse?.profile ||
+        profileResponse?.user ||
+        null,
+
+      profile:
+        profileResponse,
+
+      products:
+        productsResponse?.products ||
+        productsResponse?.items ||
+        [],
+
+      productsResponse,
+    };
   };
 
 // ================================================================
@@ -552,6 +883,8 @@ export const getPublicSellerProducts =
 // ================================================================
 
 const sellerService = {
+  normalizeSellerId,
+
   registerSeller,
 
   getSellerProfile,
@@ -572,6 +905,7 @@ const sellerService = {
 
   getPublicSellerProfile,
   getPublicSellerProducts,
+  getPublicSellerPage,
 };
 
 export default sellerService;

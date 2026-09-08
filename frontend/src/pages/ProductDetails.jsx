@@ -2906,7 +2906,9 @@ const ProductDetails = () => {
           </div>
         )}
 
-        {/* EDIT MODAL (unchanged) */}
+        {/* ============================================================
+            EDIT MODAL – COMPLETED WITH FULL FORM
+        ============================================================ */}
         {showEditModal && (
           <div
             style={{
@@ -2981,7 +2983,1578 @@ const ProductDetails = () => {
               )}
 
               <form onSubmit={handleEditSubmit}>
-                {/* The edit form remains unchanged – keep your existing code */}
+                {/* ----- Basic Info ----- */}
+                <div style={{ marginBottom: "16px" }}>
+                  <label style={{ fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                    Title *
+                  </label>
+                  <input
+                    type="text"
+                    name="title"
+                    value={editForm.title}
+                    onChange={handleEditChange}
+                    required
+                    style={{
+                      width: "100%",
+                      padding: "8px 12px",
+                      border: "1px solid var(--gray-300)",
+                      borderRadius: "var(--radius-sm)",
+                    }}
+                  />
+                </div>
+
+                <div style={{ marginBottom: "16px" }}>
+                  <label style={{ fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                    Price (GH₵) *
+                  </label>
+                  <input
+                    type="number"
+                    name="price"
+                    value={editForm.price}
+                    onChange={handleEditChange}
+                    required
+                    min="0"
+                    step="0.01"
+                    style={{
+                      width: "100%",
+                      padding: "8px 12px",
+                      border: "1px solid var(--gray-300)",
+                      borderRadius: "var(--radius-sm)",
+                    }}
+                  />
+                </div>
+
+                <div style={{ marginBottom: "16px" }}>
+                  <label style={{ fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                    Description
+                  </label>
+                  <textarea
+                    name="description"
+                    value={editForm.description}
+                    onChange={handleEditChange}
+                    rows="4"
+                    style={{
+                      width: "100%",
+                      padding: "8px 12px",
+                      border: "1px solid var(--gray-300)",
+                      borderRadius: "var(--radius-sm)",
+                    }}
+                  />
+                </div>
+
+                <div style={{ marginBottom: "16px" }}>
+                  <label style={{ fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                    Location
+                  </label>
+                  <input
+                    type="text"
+                    name="location"
+                    value={editForm.location}
+                    onChange={handleEditChange}
+                    style={{
+                      width: "100%",
+                      padding: "8px 12px",
+                      border: "1px solid var(--gray-300)",
+                      borderRadius: "var(--radius-sm)",
+                    }}
+                  />
+                </div>
+
+                <div style={{ marginBottom: "16px" }}>
+                  <label style={{ fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                    Condition
+                  </label>
+                  <select
+                    name="condition"
+                    value={editForm.condition}
+                    onChange={handleEditChange}
+                    style={{
+                      width: "100%",
+                      padding: "8px 12px",
+                      border: "1px solid var(--gray-300)",
+                      borderRadius: "var(--radius-sm)",
+                    }}
+                  >
+                    <option value="">Select condition</option>
+                    <option value="Brand New">Brand New</option>
+                    <option value="Like New">Like New</option>
+                    <option value="Excellent">Excellent</option>
+                    <option value="Good">Good</option>
+                    <option value="Fair">Fair</option>
+                    <option value="Needs Repair">Needs Repair</option>
+                  </select>
+                </div>
+
+                <div style={{ marginBottom: "16px" }}>
+                  <label style={{ fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                    Seller Phone (for WhatsApp)
+                  </label>
+                  <input
+                    type="text"
+                    name="sellerPhone"
+                    value={editForm.sellerPhone}
+                    onChange={handleEditChange}
+                    placeholder="0244123456"
+                    style={{
+                      width: "100%",
+                      padding: "8px 12px",
+                      border: "1px solid var(--gray-300)",
+                      borderRadius: "var(--radius-sm)",
+                    }}
+                  />
+                </div>
+
+                <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", marginBottom: "16px" }}>
+                  <label style={{ display: "flex", alignItems: "center", gap: "6px", fontWeight: 600 }}>
+                    <input
+                      type="checkbox"
+                      name="negotiation"
+                      checked={editForm.negotiation}
+                      onChange={handleEditChange}
+                    />
+                    Negotiable
+                  </label>
+                  <label style={{ display: "flex", alignItems: "center", gap: "6px", fontWeight: 600 }}>
+                    <input
+                      type="checkbox"
+                      name="swapAccepted"
+                      checked={editForm.swapAccepted}
+                      onChange={handleEditChange}
+                    />
+                    Swap Accepted
+                  </label>
+                </div>
+
+                <div style={{ marginBottom: "16px" }}>
+                  <label style={{ fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                    Warranty
+                  </label>
+                  <input
+                    type="text"
+                    name="warranty"
+                    value={editForm.warranty}
+                    onChange={handleEditChange}
+                    placeholder="e.g. 6 months, 1 year"
+                    style={{
+                      width: "100%",
+                      padding: "8px 12px",
+                      border: "1px solid var(--gray-300)",
+                      borderRadius: "var(--radius-sm)",
+                    }}
+                  />
+                </div>
+
+                <hr style={{ margin: "16px 0" }} />
+
+                {/* ----- Category Specifics ----- */}
+                {editForm.category === "Phones" && (
+                  <>
+                    <h3 style={{ fontSize: "18px", fontWeight: 700, marginBottom: "12px" }}>
+                      Phone Specifications
+                    </h3>
+                    <div style={{ marginBottom: "12px" }}>
+                      <label style={{ fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                        Brand
+                      </label>
+                      <input
+                        type="text"
+                        name="brand"
+                        value={editForm.brand}
+                        onChange={handleEditChange}
+                        style={{
+                          width: "100%",
+                          padding: "8px 12px",
+                          border: "1px solid var(--gray-300)",
+                          borderRadius: "var(--radius-sm)",
+                        }}
+                      />
+                    </div>
+                    <div style={{ marginBottom: "12px" }}>
+                      <label style={{ fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                        Model
+                      </label>
+                      <input
+                        type="text"
+                        name="model"
+                        value={editForm.model}
+                        onChange={handleEditChange}
+                        style={{
+                          width: "100%",
+                          padding: "8px 12px",
+                          border: "1px solid var(--gray-300)",
+                          borderRadius: "var(--radius-sm)",
+                        }}
+                      />
+                    </div>
+                    <div style={{ marginBottom: "12px" }}>
+                      <label style={{ fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                        Storage
+                      </label>
+                      <input
+                        type="text"
+                        name="storage"
+                        value={editForm.storage}
+                        onChange={handleEditChange}
+                        placeholder="e.g. 64GB, 128GB"
+                        style={{
+                          width: "100%",
+                          padding: "8px 12px",
+                          border: "1px solid var(--gray-300)",
+                          borderRadius: "var(--radius-sm)",
+                        }}
+                      />
+                    </div>
+                    <div style={{ marginBottom: "12px" }}>
+                      <label style={{ fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                        Color
+                      </label>
+                      <select
+                        name="color"
+                        value={editForm.color}
+                        onChange={handleEditChange}
+                        style={{
+                          width: "100%",
+                          padding: "8px 12px",
+                          border: "1px solid var(--gray-300)",
+                          borderRadius: "var(--radius-sm)",
+                        }}
+                      >
+                        <option value="">Select color</option>
+                        {ALL_COLORS.map(c => (
+                          <option key={c} value={c}>{c}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div style={{ marginBottom: "12px" }}>
+                      <label style={{ fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                        Battery Health (%)
+                      </label>
+                      <input
+                        type="number"
+                        name="batteryHealth"
+                        value={editForm.batteryHealth}
+                        onChange={handleEditChange}
+                        min="0"
+                        max="100"
+                        style={{
+                          width: "100%",
+                          padding: "8px 12px",
+                          border: "1px solid var(--gray-300)",
+                          borderRadius: "var(--radius-sm)",
+                        }}
+                      />
+                    </div>
+                    <div style={{ marginBottom: "12px" }}>
+                      <label style={{ fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                        Face ID
+                      </label>
+                      <input
+                        type="text"
+                        name="faceId"
+                        value={editForm.faceId}
+                        onChange={handleEditChange}
+                        placeholder="e.g. Yes, No"
+                        style={{
+                          width: "100%",
+                          padding: "8px 12px",
+                          border: "1px solid var(--gray-300)",
+                          borderRadius: "var(--radius-sm)",
+                        }}
+                      />
+                    </div>
+                    <div style={{ marginBottom: "12px" }}>
+                      <label style={{ fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                        SIM Status
+                      </label>
+                      <select
+                        name="simStatus"
+                        value={editForm.simStatus}
+                        onChange={handleEditChange}
+                        style={{
+                          width: "100%",
+                          padding: "8px 12px",
+                          border: "1px solid var(--gray-300)",
+                          borderRadius: "var(--radius-sm)",
+                        }}
+                      >
+                        <option value="">Select</option>
+                        <option value="Dual SIM">Dual SIM</option>
+                        <option value="Single SIM">Single SIM</option>
+                        <option value="eSIM">eSIM</option>
+                        <option value="eSIM & Physical">eSIM & Physical</option>
+                      </select>
+                    </div>
+                  </>
+                )}
+
+                {editForm.category === "Laptops" && (
+                  <>
+                    <h3 style={{ fontSize: "18px", fontWeight: 700, marginBottom: "12px" }}>
+                      Laptop Specifications
+                    </h3>
+                    <div style={{ marginBottom: "12px" }}>
+                      <label style={{ fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                        Brand
+                      </label>
+                      <select
+                        name="brand"
+                        value={editForm.brand}
+                        onChange={handleEditChange}
+                        style={{
+                          width: "100%",
+                          padding: "8px 12px",
+                          border: "1px solid var(--gray-300)",
+                          borderRadius: "var(--radius-sm)",
+                        }}
+                      >
+                        <option value="">Select brand</option>
+                        {LAPTOP_BRANDS.map(b => (
+                          <option key={b} value={b}>{b}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div style={{ marginBottom: "12px" }}>
+                      <label style={{ fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                        Model
+                      </label>
+                      <input
+                        type="text"
+                        name="model"
+                        value={editForm.model}
+                        onChange={handleEditChange}
+                        style={{
+                          width: "100%",
+                          padding: "8px 12px",
+                          border: "1px solid var(--gray-300)",
+                          borderRadius: "var(--radius-sm)",
+                        }}
+                      />
+                    </div>
+                    <div style={{ marginBottom: "12px" }}>
+                      <label style={{ fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                        Processor
+                      </label>
+                      <select
+                        name="processor"
+                        value={editForm.processor}
+                        onChange={handleEditChange}
+                        style={{
+                          width: "100%",
+                          padding: "8px 12px",
+                          border: "1px solid var(--gray-300)",
+                          borderRadius: "var(--radius-sm)",
+                        }}
+                      >
+                        <option value="">Select processor</option>
+                        {PROCESSOR_OPTIONS.map(p => (
+                          <option key={p} value={p}>{p}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div style={{ marginBottom: "12px" }}>
+                      <label style={{ fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                        RAM
+                      </label>
+                      <select
+                        name="ram"
+                        value={editForm.ram}
+                        onChange={handleEditChange}
+                        style={{
+                          width: "100%",
+                          padding: "8px 12px",
+                          border: "1px solid var(--gray-300)",
+                          borderRadius: "var(--radius-sm)",
+                        }}
+                      >
+                        <option value="">Select RAM</option>
+                        {RAM_OPTIONS.map(r => (
+                          <option key={r} value={r}>{r}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div style={{ marginBottom: "12px" }}>
+                      <label style={{ fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                        Storage
+                      </label>
+                      <input
+                        type="text"
+                        name="storage"
+                        value={editForm.storage}
+                        onChange={handleEditChange}
+                        placeholder="e.g. 256GB SSD, 1TB HDD"
+                        style={{
+                          width: "100%",
+                          padding: "8px 12px",
+                          border: "1px solid var(--gray-300)",
+                          borderRadius: "var(--radius-sm)",
+                        }}
+                      />
+                    </div>
+                    <div style={{ marginBottom: "12px" }}>
+                      <label style={{ fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                        Screen Size
+                      </label>
+                      <select
+                        name="screenSize"
+                        value={editForm.screenSize}
+                        onChange={handleEditChange}
+                        style={{
+                          width: "100%",
+                          padding: "8px 12px",
+                          border: "1px solid var(--gray-300)",
+                          borderRadius: "var(--radius-sm)",
+                        }}
+                      >
+                        <option value="">Select screen size</option>
+                        {SCREEN_SIZE_OPTIONS.map(s => (
+                          <option key={s} value={s}>{s}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div style={{ marginBottom: "12px" }}>
+                      <label style={{ fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                        Graphics
+                      </label>
+                      <select
+                        name="graphics"
+                        value={editForm.graphics}
+                        onChange={handleEditChange}
+                        style={{
+                          width: "100%",
+                          padding: "8px 12px",
+                          border: "1px solid var(--gray-300)",
+                          borderRadius: "var(--radius-sm)",
+                        }}
+                      >
+                        <option value="">Select graphics</option>
+                        {GRAPHICS_OPTIONS.map(g => (
+                          <option key={g} value={g}>{g}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div style={{ marginBottom: "12px" }}>
+                      <label style={{ fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                        Battery Health (%)
+                      </label>
+                      <input
+                        type="number"
+                        name="batteryHealth"
+                        value={editForm.batteryHealth}
+                        onChange={handleEditChange}
+                        min="0"
+                        max="100"
+                        style={{
+                          width: "100%",
+                          padding: "8px 12px",
+                          border: "1px solid var(--gray-300)",
+                          borderRadius: "var(--radius-sm)",
+                        }}
+                      />
+                    </div>
+                    <div style={{ marginBottom: "12px" }}>
+                      <label style={{ fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                        Color
+                      </label>
+                      <select
+                        name="color"
+                        value={editForm.color}
+                        onChange={handleEditChange}
+                        style={{
+                          width: "100%",
+                          padding: "8px 12px",
+                          border: "1px solid var(--gray-300)",
+                          borderRadius: "var(--radius-sm)",
+                        }}
+                      >
+                        <option value="">Select color</option>
+                        {ALL_COLORS.map(c => (
+                          <option key={c} value={c}>{c}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </>
+                )}
+
+                {editForm.category === "Tablets" && (
+                  <>
+                    <h3 style={{ fontSize: "18px", fontWeight: 700, marginBottom: "12px" }}>
+                      Tablet Specifications
+                    </h3>
+                    <div style={{ marginBottom: "12px" }}>
+                      <label style={{ fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                        Brand
+                      </label>
+                      <select
+                        name="brand"
+                        value={editForm.brand}
+                        onChange={handleEditChange}
+                        style={{
+                          width: "100%",
+                          padding: "8px 12px",
+                          border: "1px solid var(--gray-300)",
+                          borderRadius: "var(--radius-sm)",
+                        }}
+                      >
+                        <option value="">Select brand</option>
+                        {TABLET_BRANDS.map(b => (
+                          <option key={b} value={b}>{b}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div style={{ marginBottom: "12px" }}>
+                      <label style={{ fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                        Model
+                      </label>
+                      <input
+                        type="text"
+                        name="model"
+                        value={editForm.model}
+                        onChange={handleEditChange}
+                        style={{
+                          width: "100%",
+                          padding: "8px 12px",
+                          border: "1px solid var(--gray-300)",
+                          borderRadius: "var(--radius-sm)",
+                        }}
+                      />
+                    </div>
+                    <div style={{ marginBottom: "12px" }}>
+                      <label style={{ fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                        Year
+                      </label>
+                      <select
+                        name="year"
+                        value={editForm.year}
+                        onChange={handleEditChange}
+                        style={{
+                          width: "100%",
+                          padding: "8px 12px",
+                          border: "1px solid var(--gray-300)",
+                          borderRadius: "var(--radius-sm)",
+                        }}
+                      >
+                        <option value="">Select year</option>
+                        {YEAR_OPTIONS.map(y => (
+                          <option key={y} value={y}>{y}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div style={{ marginBottom: "12px" }}>
+                      <label style={{ fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                        Storage
+                      </label>
+                      <input
+                        type="text"
+                        name="storage"
+                        value={editForm.storage}
+                        onChange={handleEditChange}
+                        placeholder="e.g. 64GB, 128GB"
+                        style={{
+                          width: "100%",
+                          padding: "8px 12px",
+                          border: "1px solid var(--gray-300)",
+                          borderRadius: "var(--radius-sm)",
+                        }}
+                      />
+                    </div>
+                    <div style={{ marginBottom: "12px" }}>
+                      <label style={{ fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                        Screen Size
+                      </label>
+                      <select
+                        name="screenSize"
+                        value={editForm.screenSize}
+                        onChange={handleEditChange}
+                        style={{
+                          width: "100%",
+                          padding: "8px 12px",
+                          border: "1px solid var(--gray-300)",
+                          borderRadius: "var(--radius-sm)",
+                        }}
+                      >
+                        <option value="">Select screen size</option>
+                        {TABLET_SCREEN_SIZES.map(s => (
+                          <option key={s} value={s}>{s}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div style={{ marginBottom: "12px" }}>
+                      <label style={{ fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                        Connectivity
+                      </label>
+                      <select
+                        name="connectivity"
+                        value={editForm.connectivity}
+                        onChange={handleEditChange}
+                        style={{
+                          width: "100%",
+                          padding: "8px 12px",
+                          border: "1px solid var(--gray-300)",
+                          borderRadius: "var(--radius-sm)",
+                        }}
+                      >
+                        <option value="">Select connectivity</option>
+                        {CONNECTIVITY_OPTIONS.map(c => (
+                          <option key={c} value={c}>{c}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div style={{ marginBottom: "12px" }}>
+                      <label style={{ fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                        Color
+                      </label>
+                      <select
+                        name="color"
+                        value={editForm.color}
+                        onChange={handleEditChange}
+                        style={{
+                          width: "100%",
+                          padding: "8px 12px",
+                          border: "1px solid var(--gray-300)",
+                          borderRadius: "var(--radius-sm)",
+                        }}
+                      >
+                        <option value="">Select color</option>
+                        {ALL_COLORS.map(c => (
+                          <option key={c} value={c}>{c}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div style={{ marginBottom: "12px" }}>
+                      <label style={{ fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                        Battery Health (%)
+                      </label>
+                      <input
+                        type="number"
+                        name="batteryHealth"
+                        value={editForm.batteryHealth}
+                        onChange={handleEditChange}
+                        min="0"
+                        max="100"
+                        style={{
+                          width: "100%",
+                          padding: "8px 12px",
+                          border: "1px solid var(--gray-300)",
+                          borderRadius: "var(--radius-sm)",
+                        }}
+                      />
+                    </div>
+                  </>
+                )}
+
+                {editForm.category === "TVs" && (
+                  <>
+                    <h3 style={{ fontSize: "18px", fontWeight: 700, marginBottom: "12px" }}>
+                      TV Specifications
+                    </h3>
+                    <div style={{ marginBottom: "12px" }}>
+                      <label style={{ fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                        Brand
+                      </label>
+                      <select
+                        name="brand"
+                        value={editForm.brand}
+                        onChange={handleEditChange}
+                        style={{
+                          width: "100%",
+                          padding: "8px 12px",
+                          border: "1px solid var(--gray-300)",
+                          borderRadius: "var(--radius-sm)",
+                        }}
+                      >
+                        <option value="">Select brand</option>
+                        {TV_BRANDS.map(b => (
+                          <option key={b} value={b}>{b}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div style={{ marginBottom: "12px" }}>
+                      <label style={{ fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                        Model
+                      </label>
+                      <input
+                        type="text"
+                        name="model"
+                        value={editForm.model}
+                        onChange={handleEditChange}
+                        style={{
+                          width: "100%",
+                          padding: "8px 12px",
+                          border: "1px solid var(--gray-300)",
+                          borderRadius: "var(--radius-sm)",
+                        }}
+                      />
+                    </div>
+                    <div style={{ marginBottom: "12px" }}>
+                      <label style={{ fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                        TV Type
+                      </label>
+                      <select
+                        name="tvType"
+                        value={editForm.tvType}
+                        onChange={handleEditChange}
+                        style={{
+                          width: "100%",
+                          padding: "8px 12px",
+                          border: "1px solid var(--gray-300)",
+                          borderRadius: "var(--radius-sm)",
+                        }}
+                      >
+                        <option value="">Select TV type</option>
+                        {TV_TYPES.map(t => (
+                          <option key={t} value={t}>{t}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div style={{ marginBottom: "12px" }}>
+                      <label style={{ fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                        Screen Size
+                      </label>
+                      <input
+                        type="text"
+                        name="screenSize"
+                        value={editForm.screenSize}
+                        onChange={handleEditChange}
+                        placeholder="e.g. 55 inch"
+                        style={{
+                          width: "100%",
+                          padding: "8px 12px",
+                          border: "1px solid var(--gray-300)",
+                          borderRadius: "var(--radius-sm)",
+                        }}
+                      />
+                    </div>
+                    <div style={{ marginBottom: "12px" }}>
+                      <label style={{ fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                        Resolution
+                      </label>
+                      <select
+                        name="resolution"
+                        value={editForm.resolution}
+                        onChange={handleEditChange}
+                        style={{
+                          width: "100%",
+                          padding: "8px 12px",
+                          border: "1px solid var(--gray-300)",
+                          borderRadius: "var(--radius-sm)",
+                        }}
+                      >
+                        <option value="">Select resolution</option>
+                        <option value="720p">720p</option>
+                        <option value="1080p">1080p</option>
+                        <option value="4K">4K</option>
+                        <option value="8K">8K</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+                    <div style={{ marginBottom: "12px" }}>
+                      <label style={{ fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                        Display Technology
+                      </label>
+                      <select
+                        name="displayTechnology"
+                        value={editForm.displayTechnology}
+                        onChange={handleEditChange}
+                        style={{
+                          width: "100%",
+                          padding: "8px 12px",
+                          border: "1px solid var(--gray-300)",
+                          borderRadius: "var(--radius-sm)",
+                        }}
+                      >
+                        <option value="">Select technology</option>
+                        {DISPLAY_TECHNOLOGIES.map(t => (
+                          <option key={t} value={t}>{t}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div style={{ marginBottom: "12px" }}>
+                      <label style={{ fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                        Refresh Rate
+                      </label>
+                      <select
+                        name="refreshRate"
+                        value={editForm.refreshRate}
+                        onChange={handleEditChange}
+                        style={{
+                          width: "100%",
+                          padding: "8px 12px",
+                          border: "1px solid var(--gray-300)",
+                          borderRadius: "var(--radius-sm)",
+                        }}
+                      >
+                        <option value="">Select refresh rate</option>
+                        {REFRESH_RATES.map(r => (
+                          <option key={r} value={r}>{r}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div style={{ marginBottom: "12px" }}>
+                      <label style={{ fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                        Operating System
+                      </label>
+                      <select
+                        name="operatingSystem"
+                        value={editForm.operatingSystem}
+                        onChange={handleEditChange}
+                        style={{
+                          width: "100%",
+                          padding: "8px 12px",
+                          border: "1px solid var(--gray-300)",
+                          borderRadius: "var(--radius-sm)",
+                        }}
+                      >
+                        <option value="">Select OS</option>
+                        {TV_OPERATING_SYSTEMS.map(o => (
+                          <option key={o} value={o}>{o}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div style={{ marginBottom: "12px" }}>
+                      <label style={{ fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                        HDR
+                      </label>
+                      <select
+                        name="hdr"
+                        value={editForm.hdr}
+                        onChange={handleEditChange}
+                        style={{
+                          width: "100%",
+                          padding: "8px 12px",
+                          border: "1px solid var(--gray-300)",
+                          borderRadius: "var(--radius-sm)",
+                        }}
+                      >
+                        <option value="">Select HDR</option>
+                        {HDR_OPTIONS.map(h => (
+                          <option key={h} value={h}>{h}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div style={{ marginBottom: "12px" }}>
+                      <label style={{ fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                        HDMI Ports
+                      </label>
+                      <select
+                        name="hdmiPorts"
+                        value={editForm.hdmiPorts}
+                        onChange={handleEditChange}
+                        style={{
+                          width: "100%",
+                          padding: "8px 12px",
+                          border: "1px solid var(--gray-300)",
+                          borderRadius: "var(--radius-sm)",
+                        }}
+                      >
+                        <option value="">Select</option>
+                        {HDMI_OPTIONS.map(h => (
+                          <option key={h} value={h}>{h}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div style={{ marginBottom: "12px" }}>
+                      <label style={{ fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                        USB Ports
+                      </label>
+                      <select
+                        name="usbPorts"
+                        value={editForm.usbPorts}
+                        onChange={handleEditChange}
+                        style={{
+                          width: "100%",
+                          padding: "8px 12px",
+                          border: "1px solid var(--gray-300)",
+                          borderRadius: "var(--radius-sm)",
+                        }}
+                      >
+                        <option value="">Select</option>
+                        {USB_OPTIONS.map(u => (
+                          <option key={u} value={u}>{u}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div style={{ marginBottom: "12px" }}>
+                      <label style={{ fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                        Connectivity
+                      </label>
+                      <input
+                        type="text"
+                        name="connectivity"
+                        value={editForm.connectivity}
+                        onChange={handleEditChange}
+                        placeholder="e.g. WiFi, Bluetooth, Ethernet"
+                        style={{
+                          width: "100%",
+                          padding: "8px 12px",
+                          border: "1px solid var(--gray-300)",
+                          borderRadius: "var(--radius-sm)",
+                        }}
+                      />
+                    </div>
+                    <div style={{ marginBottom: "12px" }}>
+                      <label style={{ fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                        Year
+                      </label>
+                      <input
+                        type="text"
+                        name="year"
+                        value={editForm.year}
+                        onChange={handleEditChange}
+                        placeholder="e.g. 2023"
+                        style={{
+                          width: "100%",
+                          padding: "8px 12px",
+                          border: "1px solid var(--gray-300)",
+                          borderRadius: "var(--radius-sm)",
+                        }}
+                      />
+                    </div>
+                    <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", marginBottom: "16px" }}>
+                      <label style={{ display: "flex", alignItems: "center", gap: "6px", fontWeight: 600 }}>
+                        <input
+                          type="checkbox"
+                          name="smartTV"
+                          checked={editForm.smartTV}
+                          onChange={handleEditChange}
+                        />
+                        Smart TV
+                      </label>
+                      <label style={{ display: "flex", alignItems: "center", gap: "6px", fontWeight: 600 }}>
+                        <input
+                          type="checkbox"
+                          name="voiceControl"
+                          checked={editForm.voiceControl}
+                          onChange={handleEditChange}
+                        />
+                        Voice Control
+                      </label>
+                      <label style={{ display: "flex", alignItems: "center", gap: "6px", fontWeight: 600 }}>
+                        <input
+                          type="checkbox"
+                          name="wallMountable"
+                          checked={editForm.wallMountable}
+                          onChange={handleEditChange}
+                        />
+                        Wall Mountable
+                      </label>
+                    </div>
+                  </>
+                )}
+
+                {editForm.category === "Game Consoles" && (
+                  <>
+                    <h3 style={{ fontSize: "18px", fontWeight: 700, marginBottom: "12px" }}>
+                      Console Specifications
+                    </h3>
+                    <div style={{ marginBottom: "12px" }}>
+                      <label style={{ fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                        Brand
+                      </label>
+                      <select
+                        name="brand"
+                        value={editForm.brand}
+                        onChange={handleEditChange}
+                        style={{
+                          width: "100%",
+                          padding: "8px 12px",
+                          border: "1px solid var(--gray-300)",
+                          borderRadius: "var(--radius-sm)",
+                        }}
+                      >
+                        <option value="">Select brand</option>
+                        {CONSOLE_BRANDS.map(b => (
+                          <option key={b} value={b}>{b}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div style={{ marginBottom: "12px" }}>
+                      <label style={{ fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                        Model
+                      </label>
+                      <input
+                        type="text"
+                        name="model"
+                        value={editForm.model}
+                        onChange={handleEditChange}
+                        style={{
+                          width: "100%",
+                          padding: "8px 12px",
+                          border: "1px solid var(--gray-300)",
+                          borderRadius: "var(--radius-sm)",
+                        }}
+                      />
+                    </div>
+                    <div style={{ marginBottom: "12px" }}>
+                      <label style={{ fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                        Console Type
+                      </label>
+                      <select
+                        name="consoleType"
+                        value={editForm.consoleType}
+                        onChange={handleEditChange}
+                        style={{
+                          width: "100%",
+                          padding: "8px 12px",
+                          border: "1px solid var(--gray-300)",
+                          borderRadius: "var(--radius-sm)",
+                        }}
+                      >
+                        <option value="">Select type</option>
+                        {CONSOLE_TYPES.map(t => (
+                          <option key={t} value={t}>{t}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div style={{ marginBottom: "12px" }}>
+                      <label style={{ fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                        Edition
+                      </label>
+                      <select
+                        name="edition"
+                        value={editForm.edition}
+                        onChange={handleEditChange}
+                        style={{
+                          width: "100%",
+                          padding: "8px 12px",
+                          border: "1px solid var(--gray-300)",
+                          borderRadius: "var(--radius-sm)",
+                        }}
+                      >
+                        <option value="">Select edition</option>
+                        {CONSOLE_EDITIONS.map(e => (
+                          <option key={e} value={e}>{e}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div style={{ marginBottom: "12px" }}>
+                      <label style={{ fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                        Disc Drive
+                      </label>
+                      <select
+                        name="discDrive"
+                        value={editForm.discDrive}
+                        onChange={handleEditChange}
+                        style={{
+                          width: "100%",
+                          padding: "8px 12px",
+                          border: "1px solid var(--gray-300)",
+                          borderRadius: "var(--radius-sm)",
+                        }}
+                      >
+                        <option value="">Select</option>
+                        {DISC_DRIVE_OPTIONS.map(d => (
+                          <option key={d} value={d}>{d}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div style={{ marginBottom: "12px" }}>
+                      <label style={{ fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                        Controllers Included
+                      </label>
+                      <select
+                        name="controllersIncluded"
+                        value={editForm.controllersIncluded}
+                        onChange={handleEditChange}
+                        style={{
+                          width: "100%",
+                          padding: "8px 12px",
+                          border: "1px solid var(--gray-300)",
+                          borderRadius: "var(--radius-sm)",
+                        }}
+                      >
+                        <option value="">Select</option>
+                        {CONTROLLER_OPTIONS.map(c => (
+                          <option key={c} value={c}>{c}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div style={{ marginBottom: "12px" }}>
+                      <label style={{ fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                        Battery
+                      </label>
+                      <select
+                        name="battery"
+                        value={editForm.battery}
+                        onChange={handleEditChange}
+                        style={{
+                          width: "100%",
+                          padding: "8px 12px",
+                          border: "1px solid var(--gray-300)",
+                          borderRadius: "var(--radius-sm)",
+                        }}
+                      >
+                        <option value="">Select battery</option>
+                        {BATTERY_OPTIONS.map(b => (
+                          <option key={b} value={b}>{b}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div style={{ marginBottom: "12px" }}>
+                      <label style={{ fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                        Resolution
+                      </label>
+                      <select
+                        name="resolution"
+                        value={editForm.resolution}
+                        onChange={handleEditChange}
+                        style={{
+                          width: "100%",
+                          padding: "8px 12px",
+                          border: "1px solid var(--gray-300)",
+                          borderRadius: "var(--radius-sm)",
+                        }}
+                      >
+                        <option value="">Select resolution</option>
+                        {CONSOLE_RESOLUTIONS.map(r => (
+                          <option key={r} value={r}>{r}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div style={{ marginBottom: "12px" }}>
+                      <label style={{ fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                        Video Output
+                      </label>
+                      <select
+                        name="videoOutput"
+                        value={editForm.videoOutput}
+                        onChange={handleEditChange}
+                        style={{
+                          width: "100%",
+                          padding: "8px 12px",
+                          border: "1px solid var(--gray-300)",
+                          borderRadius: "var(--radius-sm)",
+                        }}
+                      >
+                        <option value="">Select</option>
+                        {VIDEO_OUTPUT_OPTIONS.map(v => (
+                          <option key={v} value={v}>{v}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div style={{ marginBottom: "12px" }}>
+                      <label style={{ fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                        Region
+                      </label>
+                      <select
+                        name="region"
+                        value={editForm.region}
+                        onChange={handleEditChange}
+                        style={{
+                          width: "100%",
+                          padding: "8px 12px",
+                          border: "1px solid var(--gray-300)",
+                          borderRadius: "var(--radius-sm)",
+                        }}
+                      >
+                        <option value="">Select region</option>
+                        {REGION_OPTIONS.map(r => (
+                          <option key={r} value={r}>{r}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div style={{ marginBottom: "12px" }}>
+                      <label style={{ fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                        Storage
+                      </label>
+                      <input
+                        type="text"
+                        name="storage"
+                        value={editForm.storage}
+                        onChange={handleEditChange}
+                        placeholder="e.g. 1TB, 2TB"
+                        style={{
+                          width: "100%",
+                          padding: "8px 12px",
+                          border: "1px solid var(--gray-300)",
+                          borderRadius: "var(--radius-sm)",
+                        }}
+                      />
+                    </div>
+                    <div style={{ marginBottom: "12px" }}>
+                      <label style={{ fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                        RAM
+                      </label>
+                      <input
+                        type="text"
+                        name="ram"
+                        value={editForm.ram}
+                        onChange={handleEditChange}
+                        placeholder="e.g. 8GB, 16GB"
+                        style={{
+                          width: "100%",
+                          padding: "8px 12px",
+                          border: "1px solid var(--gray-300)",
+                          borderRadius: "var(--radius-sm)",
+                        }}
+                      />
+                    </div>
+                    <div style={{ marginBottom: "12px" }}>
+                      <label style={{ fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                        Connectivity
+                      </label>
+                      <input
+                        type="text"
+                        name="connectivity"
+                        value={editForm.connectivity}
+                        onChange={handleEditChange}
+                        placeholder="e.g. WiFi, Bluetooth"
+                        style={{
+                          width: "100%",
+                          padding: "8px 12px",
+                          border: "1px solid var(--gray-300)",
+                          borderRadius: "var(--radius-sm)",
+                        }}
+                      />
+                    </div>
+                    <div style={{ marginBottom: "12px" }}>
+                      <label style={{ fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                        Year
+                      </label>
+                      <input
+                        type="text"
+                        name="year"
+                        value={editForm.year}
+                        onChange={handleEditChange}
+                        placeholder="e.g. 2023"
+                        style={{
+                          width: "100%",
+                          padding: "8px 12px",
+                          border: "1px solid var(--gray-300)",
+                          borderRadius: "var(--radius-sm)",
+                        }}
+                      />
+                    </div>
+                  </>
+                )}
+
+                {editForm.category === "Accessories" && (
+                  <>
+                    <h3 style={{ fontSize: "18px", fontWeight: 700, marginBottom: "12px" }}>
+                      Accessory Specifications
+                    </h3>
+                    <div style={{ marginBottom: "12px" }}>
+                      <label style={{ fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                        Brand
+                      </label>
+                      <select
+                        name="brand"
+                        value={editForm.brand}
+                        onChange={handleEditChange}
+                        style={{
+                          width: "100%",
+                          padding: "8px 12px",
+                          border: "1px solid var(--gray-300)",
+                          borderRadius: "var(--radius-sm)",
+                        }}
+                      >
+                        <option value="">Select brand</option>
+                        {ACCESSORY_BRANDS.map(b => (
+                          <option key={b} value={b}>{b}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div style={{ marginBottom: "12px" }}>
+                      <label style={{ fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                        Model
+                      </label>
+                      <input
+                        type="text"
+                        name="model"
+                        value={editForm.model}
+                        onChange={handleEditChange}
+                        style={{
+                          width: "100%",
+                          padding: "8px 12px",
+                          border: "1px solid var(--gray-300)",
+                          borderRadius: "var(--radius-sm)",
+                        }}
+                      />
+                    </div>
+                    <div style={{ marginBottom: "12px" }}>
+                      <label style={{ fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                        Connectivity
+                      </label>
+                      <input
+                        type="text"
+                        name="connectivity"
+                        value={editForm.connectivity}
+                        onChange={handleEditChange}
+                        placeholder="e.g. Bluetooth, Wired, USB-C"
+                        style={{
+                          width: "100%",
+                          padding: "8px 12px",
+                          border: "1px solid var(--gray-300)",
+                          borderRadius: "var(--radius-sm)",
+                        }}
+                      />
+                    </div>
+                    <div style={{ marginBottom: "12px" }}>
+                      <label style={{ fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                        Color
+                      </label>
+                      <select
+                        name="color"
+                        value={editForm.color}
+                        onChange={handleEditChange}
+                        style={{
+                          width: "100%",
+                          padding: "8px 12px",
+                          border: "1px solid var(--gray-300)",
+                          borderRadius: "var(--radius-sm)",
+                        }}
+                      >
+                        <option value="">Select color</option>
+                        {ALL_COLORS.map(c => (
+                          <option key={c} value={c}>{c}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </>
+                )}
+
+                {editForm.category === "Smartwatches" && (
+                  <>
+                    <h3 style={{ fontSize: "18px", fontWeight: 700, marginBottom: "12px" }}>
+                      Smartwatch Specifications
+                    </h3>
+                    <div style={{ marginBottom: "12px" }}>
+                      <label style={{ fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                        Brand
+                      </label>
+                      <input
+                        type="text"
+                        name="brand"
+                        value={editForm.brand}
+                        onChange={handleEditChange}
+                        style={{
+                          width: "100%",
+                          padding: "8px 12px",
+                          border: "1px solid var(--gray-300)",
+                          borderRadius: "var(--radius-sm)",
+                        }}
+                      />
+                    </div>
+                    <div style={{ marginBottom: "12px" }}>
+                      <label style={{ fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                        Model
+                      </label>
+                      <input
+                        type="text"
+                        name="model"
+                        value={editForm.model}
+                        onChange={handleEditChange}
+                        style={{
+                          width: "100%",
+                          padding: "8px 12px",
+                          border: "1px solid var(--gray-300)",
+                          borderRadius: "var(--radius-sm)",
+                        }}
+                      />
+                    </div>
+                    <div style={{ marginBottom: "12px" }}>
+                      <label style={{ fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                        Watch Size
+                      </label>
+                      <select
+                        name="watchSize"
+                        value={editForm.watchSize}
+                        onChange={handleEditChange}
+                        style={{
+                          width: "100%",
+                          padding: "8px 12px",
+                          border: "1px solid var(--gray-300)",
+                          borderRadius: "var(--radius-sm)",
+                        }}
+                      >
+                        <option value="">Select size</option>
+                        {WATCH_SIZE_OPTIONS.map(s => (
+                          <option key={s} value={s}>{s}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div style={{ marginBottom: "12px" }}>
+                      <label style={{ fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                        Connectivity
+                      </label>
+                      <select
+                        name="connectivity"
+                        value={editForm.connectivity}
+                        onChange={handleEditChange}
+                        style={{
+                          width: "100%",
+                          padding: "8px 12px",
+                          border: "1px solid var(--gray-300)",
+                          borderRadius: "var(--radius-sm)",
+                        }}
+                      >
+                        <option value="">Select connectivity</option>
+                        {CONNECTIVITY_OPTIONS.map(c => (
+                          <option key={c} value={c}>{c}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div style={{ marginBottom: "12px" }}>
+                      <label style={{ fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                        Color
+                      </label>
+                      <select
+                        name="color"
+                        value={editForm.color}
+                        onChange={handleEditChange}
+                        style={{
+                          width: "100%",
+                          padding: "8px 12px",
+                          border: "1px solid var(--gray-300)",
+                          borderRadius: "var(--radius-sm)",
+                        }}
+                      >
+                        <option value="">Select color</option>
+                        {ALL_COLORS.map(c => (
+                          <option key={c} value={c}>{c}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div style={{ marginBottom: "12px" }}>
+                      <label style={{ fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                        Battery Health (%)
+                      </label>
+                      <input
+                        type="number"
+                        name="batteryHealth"
+                        value={editForm.batteryHealth}
+                        onChange={handleEditChange}
+                        min="0"
+                        max="100"
+                        style={{
+                          width: "100%",
+                          padding: "8px 12px",
+                          border: "1px solid var(--gray-300)",
+                          borderRadius: "var(--radius-sm)",
+                        }}
+                      />
+                    </div>
+                  </>
+                )}
+
+                {/* ----- Image Management ----- */}
+                <hr style={{ margin: "16px 0" }} />
+                <div style={{ marginBottom: "16px" }}>
+                  <label style={{ fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                    Existing Images
+                  </label>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                    {imagesToKeep.map((img, idx) => (
+                      <div key={idx} style={{ position: "relative" }}>
+                        <img
+                          src={getImageUrl(img)}
+                          alt={`Existing ${idx}`}
+                          style={{ width: "80px", height: "80px", objectFit: "cover", borderRadius: "4px" }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveExistingImage(idx)}
+                          style={{
+                            position: "absolute",
+                            top: "-6px",
+                            right: "-6px",
+                            background: "red",
+                            color: "white",
+                            border: "none",
+                            borderRadius: "50%",
+                            width: "20px",
+                            height: "20px",
+                            fontSize: "12px",
+                            cursor: "pointer",
+                          }}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: "16px" }}>
+                  <label style={{ fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                    Add New Images
+                  </label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleNewFileChange}
+                    style={{
+                      width: "100%",
+                      padding: "8px 12px",
+                      border: "1px solid var(--gray-300)",
+                      borderRadius: "var(--radius-sm)",
+                    }}
+                  />
+                  {newFilePreviews.length > 0 && (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginTop: "8px" }}>
+                      {newFilePreviews.map((url, idx) => (
+                        <div key={idx} style={{ position: "relative" }}>
+                          <img
+                            src={url}
+                            alt={`New ${idx}`}
+                            style={{ width: "80px", height: "80px", objectFit: "cover", borderRadius: "4px" }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeNewFile(idx)}
+                            style={{
+                              position: "absolute",
+                              top: "-6px",
+                              right: "-6px",
+                              background: "red",
+                              color: "white",
+                              border: "none",
+                              borderRadius: "50%",
+                              width: "20px",
+                              height: "20px",
+                              fontSize: "12px",
+                              cursor: "pointer",
+                            }}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
+                  <button
+                    type="button"
+                    onClick={() => setShowEditModal(false)}
+                    style={{
+                      padding: "10px 24px",
+                      background: "var(--gray-200)",
+                      border: "none",
+                      borderRadius: "var(--radius-full)",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={editLoading}
+                    style={{
+                      padding: "10px 24px",
+                      background: editLoading ? "var(--gray-300)" : "var(--primary)",
+                      color: "white",
+                      border: "none",
+                      borderRadius: "var(--radius-full)",
+                      fontWeight: 600,
+                      cursor: editLoading ? "not-allowed" : "pointer",
+                    }}
+                  >
+                    {editLoading ? "Saving..." : "Save Changes"}
+                  </button>
+                </div>
               </form>
             </div>
           </div>
