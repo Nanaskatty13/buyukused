@@ -18,7 +18,7 @@ const Hero = ({ onSearch }) => {
   // ==========================================================
 
   const heroBackground =
-    "https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=1920&q=70";
+    "/assets/logo/hero.png";
 
   // ==========================================================
   // CAROUSEL SLIDES
