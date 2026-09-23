@@ -323,6 +323,10 @@ const citiesByRegion = {
 // ============================================================
 
 const phoneColors = [
+  "Burgundy",
+  "Glacier",
+  "Silver",
+  "Black",
   "Space Gray",
   "Orange",
   "Deep Blue",
