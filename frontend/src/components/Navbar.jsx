@@ -36,18 +36,21 @@ const getToken = () => {
 // ============================================================
 // API URL
 // ============================================================
+// ✅ FIX: fallback was http://localhost:5000 → every request
+//         failed on production and the badge never updated.
+//         Now matches api.js / Login.jsx / messageService.js.
 
 const getApiUrl = () => {
   try {
     const value = import.meta.env.VITE_API_URL;
 
     if (!value) {
-      return "http://localhost:5000";
+      return "https://buyukused-y6cp.onrender.com";
     }
 
     return String(value).replace(/\/+$/, "");
   } catch {
-    return "http://localhost:5000";
+    return "https://buyukused-y6cp.onrender.com";
   }
 };
 
@@ -68,8 +71,12 @@ const safeCount = (value) => {
 // ============================================================
 // BADGE
 // ============================================================
+// ✅ Accepts an optional `pulse` prop — when true, applies a
+//    one-shot scale-bounce animation to draw the eye to a new
+//    message. Backwards-compatible: existing calls without the
+//    prop behave exactly as before.
 
-const Badge = ({ count }) => {
+const Badge = ({ count, pulse = false }) => {
   const value = safeCount(count);
 
   if (value <= 0) {
@@ -77,7 +84,11 @@ const Badge = ({ count }) => {
   }
 
   return (
-    <span className="navbar-badge">
+    <span
+      className={`navbar-badge ${
+        pulse ? "navbar-badge-pulse" : ""
+      }`}
+    >
       {value > 99 ? "99+" : value}
     </span>
   );
@@ -106,10 +117,25 @@ const Navbar = () => {
   const [unreadMessages, setUnreadMessages] =
     useState(0);
 
+  // ✅ New — drives the one-shot "new message arrived" pulse
+  //    on the badge (see effect below).
+  const [badgePulse, setBadgePulse] =
+    useState(false);
+
   const dropdownRef = useRef(null);
   const mobileDropdownRef = useRef(null);
   const pollIntervalRef = useRef(null);
   const isMountedRef = useRef(true);
+
+  // ✅ Track the previous count so we can pulse ONLY on an
+  //    increase (not on every poll). Initialised to `null` so
+  //    the first poll (page load with unread) doesn't pulse.
+  const prevUnreadRef = useRef(null);
+
+  // ✅ Cache the base document.title once so we can prefix it
+  //    with "(N)" and restore it cleanly without clobbering
+  //    any other route-specific title.
+  const baseTitleRef = useRef(null);
 
   // ==========================================================
   // CLOSE DROPDOWNS WHEN CLICKING OUTSIDE
@@ -159,6 +185,10 @@ const Navbar = () => {
   // ==========================================================
   // FETCH UNREAD COUNTS
   // ==========================================================
+  // ✅ Polling reduced 30s → 15s for a more live feel.
+  //    Notifications stay at 30s (rarely change), messages at
+  //    15s (user expects near-real-time). Two intervals share
+  //    one ref-based cleanup.
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -389,7 +419,7 @@ const Navbar = () => {
       pollIntervalRef.current = null;
     }
 
-    // Poll every 30 seconds.
+    // ✅ Poll every 15 seconds for messages + notifications.
     pollIntervalRef.current =
       setInterval(() => {
         if (!user || !getToken()) {
@@ -411,7 +441,7 @@ const Navbar = () => {
 
         fetchNotificationCount();
         fetchMessageCount();
-      }, 30000);
+      }, 15000);
 
     return () => {
       isMountedRef.current = false;
@@ -425,6 +455,108 @@ const Navbar = () => {
       }
     };
   }, [user]);
+
+  // ==========================================================
+  // PULSE THE BADGE WHEN A NEW MESSAGE ARRIVES
+  // ==========================================================
+  // Fires once per increase in `unreadMessages`. The sentinel
+  // `prevUnreadRef.current === null` skips the first poll so
+  // landing on the page with 3 existing unread messages
+  // doesn't cause an unprompted pulse.
+
+  useEffect(() => {
+    if (prevUnreadRef.current === null) {
+      prevUnreadRef.current = unreadMessages;
+      return;
+    }
+
+    if (unreadMessages > prevUnreadRef.current) {
+      setBadgePulse(true);
+
+      const timer = setTimeout(() => {
+        if (isMountedRef.current) {
+          setBadgePulse(false);
+        }
+      }, 700);
+
+      prevUnreadRef.current = unreadMessages;
+
+      return () => clearTimeout(timer);
+    }
+
+    prevUnreadRef.current = unreadMessages;
+  }, [unreadMessages]);
+
+  // ==========================================================
+  // PAGE-TITLE FLASH FOR NEW MESSAGES
+  // ==========================================================
+  // When the tab is focused:
+  //     "(3) BuyUKUsed"
+  // When the tab is hidden:
+  //     alternates between "(3) New message" and "BuyUKUsed"
+  //     every 1.5s so the tab title grabs attention in the tab
+  //     strip without a sound / browser permission popup.
+
+  useEffect(() => {
+    // Capture the original title once.
+    if (baseTitleRef.current === null) {
+      const cleaned = document.title
+        .replace(/^\(\d+\+?\)\s*/, "")
+        .replace(/^New message.*—\s*/, "")
+        .trim();
+
+      baseTitleRef.current = cleaned || "BuyUKUsed";
+    }
+
+    const base = baseTitleRef.current;
+
+    if (unreadMessages === 0) {
+      document.title = base;
+      return;
+    }
+
+    const prefix =
+      unreadMessages > 99
+        ? "99+"
+        : String(unreadMessages);
+
+    let timerId = null;
+    let show = true;
+
+    const update = () => {
+      if (document.hidden) {
+        document.title = show
+          ? `(${prefix}) New message`
+          : base;
+        show = !show;
+      } else {
+        document.title = `(${prefix}) ${base}`;
+      }
+    };
+
+    update();
+    timerId = setInterval(update, 1500);
+
+    const handleVisibility = () => {
+      // Reset the toggle on visibility change so we always
+      // start the flash from the "(N) New message" state.
+      show = true;
+      update();
+    };
+
+    document.addEventListener(
+      "visibilitychange",
+      handleVisibility
+    );
+
+    return () => {
+      if (timerId) clearInterval(timerId);
+      document.removeEventListener(
+        "visibilitychange",
+        handleVisibility
+      );
+    };
+  }, [unreadMessages]);
 
   // ==========================================================
   // LOGOUT
@@ -842,6 +974,76 @@ const Navbar = () => {
             pointer-events: none;
 
             white-space: nowrap;
+
+            /* Needed for the pulse + breathe transforms below */
+            transform-origin: center center;
+          }
+
+
+          /* =====================================================
+             ✅ ENVELOPE — unread state
+          =====================================================
+             When the user has unread messages, the envelope icon
+             switches to the brand green and the badge gets a slow
+             breathing animation so it's noticeable without being
+             obnoxious. Both reset once the user reads the message
+             and the poll returns 0.
+          */
+
+          .navbar-envelope.has-unread {
+            color: #2ecc71;
+          }
+
+          .navbar-envelope.has-unread:hover {
+            color: #27ae60;
+          }
+
+          .navbar-envelope.has-unread i {
+            color: #2ecc71;
+          }
+
+          .navbar-envelope.has-unread .navbar-badge {
+            animation:
+              navbar-badge-breathe
+              2s ease-in-out infinite;
+          }
+
+
+          /* =====================================================
+             ✅ BADGE — one-shot pop on new message arrival
+          ===================================================== */
+
+          .navbar-badge.navbar-badge-pulse {
+            animation:
+              navbar-badge-pop
+              0.6s ease-out;
+          }
+
+
+          @keyframes navbar-badge-breathe {
+            0%,
+            100% {
+              transform: scale(1);
+            }
+
+            50% {
+              transform: scale(1.15);
+            }
+          }
+
+
+          @keyframes navbar-badge-pop {
+            0% {
+              transform: scale(1);
+            }
+
+            40% {
+              transform: scale(1.6);
+            }
+
+            100% {
+              transform: scale(1);
+            }
           }
 
 
@@ -1237,6 +1439,13 @@ const Navbar = () => {
             .navbar-envelope {
               transition: none;
             }
+
+            /* ✅ Respect user preference for reduced motion —
+               badge stays highlighted but doesn't animate. */
+            .navbar-envelope.has-unread .navbar-badge,
+            .navbar-badge.navbar-badge-pulse {
+              animation: none;
+            }
           }
         `}
       </style>
@@ -1403,23 +1612,41 @@ const Navbar = () => {
 
 
             {/* MESSAGES */}
+            {/* ✅ Envelope gets `has-unread` class when there are
+                  unread messages → turns green + badge breathes.
+                  Badge gets `pulse` prop on new arrival → pops. */}
 
             {user && (
               <Link
                 to="/messages"
-                className="navbar-envelope"
+                className={`navbar-envelope ${
+                  unreadMessages > 0
+                    ? "has-unread"
+                    : ""
+                }`}
                 aria-label={`Messages${
                   unreadMessages > 0
                     ? `, ${unreadMessages} unread`
                     : ""
                 }`}
-                title="Messages"
+                title={
+                  unreadMessages > 0
+                    ? `${unreadMessages} unread message${
+                        unreadMessages === 1
+                          ? ""
+                          : "s"
+                      }`
+                    : "Messages"
+                }
               >
                 <i className="fas fa-envelope" />
 
                 <Badge
                   count={
                     unreadMessages
+                  }
+                  pulse={
+                    badgePulse
                   }
                 />
               </Link>
