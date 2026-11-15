@@ -14,11 +14,6 @@ const getReceiverId = (m) => getId(m.receiver);
 const getMessageText = (m) => m.message || m.content || m.text || '';
 const isRead = (m) => Boolean(m.read || m.isRead || m.readAt);
 
-/**
- * Dedupe messages by _id. If duplicates are found, prefer the one
- * that has `read: true` (so tick marks update correctly even if the
- * backend returns an older, unread copy).
- */
 const dedupeById = (arr) => {
   if (!Array.isArray(arr)) return [];
   const map = new Map();
@@ -81,6 +76,36 @@ const formatTime = (str) => {
   });
 };
 
+const formatLastSeen = (str) => {
+  if (!str) return '';
+  const d = new Date(str);
+  const now = new Date();
+  const diffMin = Math.floor((now - d) / 60000);
+  if (diffMin < 1) return 'just now';
+  if (diffMin < 60) return `${diffMin}m ago`;
+  const diffHr = Math.floor(diffMin / 60);
+  if (diffHr < 24) return `${diffHr}h ago`;
+  const diffDay = Math.floor(diffHr / 24);
+  if (diffDay === 1) return 'yesterday';
+  if (diffDay < 7) return `${diffDay}d ago`;
+  return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+};
+
+/**
+ * "Online" = active in the last 2 minutes.
+ * Prefers `lastActive` timestamp (accurate) over the boolean `online`
+ * flag (which can go stale if the backend doesn't reset it).
+ */
+const computeOnlineStatus = (partner) => {
+  if (!partner) return false;
+  if (partner.lastActive) {
+    const diff = Date.now() - new Date(partner.lastActive).getTime();
+    return diff < 2 * 60 * 1000;
+  }
+  if (partner.online === true) return true;
+  return false;
+};
+
 const getInitials = (name) => {
   if (!name) return '?';
   return name.split(' ').filter(Boolean).map((w) => w[0]).slice(0, 2).join('').toUpperCase();
@@ -94,20 +119,40 @@ const EMOJIS = [
 // ══════════════════════════════════════════════════════════════════
 // Sub-components
 // ══════════════════════════════════════════════════════════════════
-const Avatar = ({ name, size = 40, src }) => (
-  <div
-    style={{
-      width: size, height: size, borderRadius: '50%',
-      background: 'linear-gradient(135deg, #25d366, #128c7e)',
-      color: '#fff', display: 'flex', alignItems: 'center',
-      justifyContent: 'center', fontWeight: 700, fontSize: size * 0.38,
-      flexShrink: 0, overflow: 'hidden',
-    }}
-  >
-    {src ? (
-      <img src={src} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-    ) : (
-      getInitials(name)
+const Avatar = ({ name, size = 40, src, isOnline = null }) => (
+  <div style={{ position: 'relative', flexShrink: 0 }}>
+    <div
+      style={{
+        width: size, height: size, borderRadius: '50%',
+        background: 'linear-gradient(135deg, #25d366, #128c7e)',
+        color: '#fff', display: 'flex', alignItems: 'center',
+        justifyContent: 'center', fontWeight: 700, fontSize: size * 0.38,
+        overflow: 'hidden',
+      }}
+    >
+      {src ? (
+        <img src={src} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+      ) : (
+        getInitials(name)
+      )}
+    </div>
+    {isOnline !== null && (
+      <span
+        aria-label={isOnline ? 'Online' : 'Offline'}
+        title={isOnline ? 'Online' : 'Offline'}
+        style={{
+          position: 'absolute',
+          bottom: 0,
+          right: 0,
+          width: Math.max(10, size * 0.28),
+          height: Math.max(10, size * 0.28),
+          borderRadius: '50%',
+          background: isOnline ? '#25d366' : '#8696a0',
+          border: '2px solid #fff',
+          boxShadow: '0 0 0 1px rgba(0,0,0,0.06)',
+          transition: 'background 0.25s',
+        }}
+      />
     )}
   </div>
 );
@@ -121,6 +166,26 @@ const Ticks = ({ read }) => (
       display: 'inline-block', verticalAlign: 'middle',
     }}
   />
+);
+
+const TypingIndicator = () => (
+  <span
+    style={{
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: 4,
+      color: '#25d366',
+      fontWeight: 600,
+      fontStyle: 'italic',
+    }}
+  >
+    <span style={{ display: 'inline-flex', gap: 2, marginRight: 2 }}>
+      <span className="wa-typing-dot" />
+      <span className="wa-typing-dot" style={{ animationDelay: '0.15s' }} />
+      <span className="wa-typing-dot" style={{ animationDelay: '0.3s' }} />
+    </span>
+    typing…
+  </span>
 );
 
 const MessageBubble = ({ msg, isMine, isConsecutive, showTail, onImageClick }) => {
@@ -157,60 +222,27 @@ const MessageBubble = ({ msg, isMine, isConsecutive, showTail, onImageClick }) =
             loading="lazy"
             onClick={() => onImageClick(url)}
             onError={(e) => { e.currentTarget.style.display = 'none'; }}
-            style={{
-              maxWidth: '100%',
-              maxHeight: 320,
-              height: 'auto',
-              borderRadius: 6,
-              display: 'block',
-              cursor: 'pointer',
-              marginBottom: 4,
-            }}
+            style={{ maxWidth: '100%', maxHeight: 320, height: 'auto', borderRadius: 6, display: 'block', cursor: 'pointer', marginBottom: 4 }}
           />
         )}
         {type === 'video' && url && (
-          <video
-            src={url}
-            controls
-            style={{
-              maxWidth: '100%',
-              maxHeight: 320,
-              borderRadius: 6,
-              display: 'block',
-              marginBottom: 4,
-            }}
-          />
+          <video src={url} controls style={{ maxWidth: '100%', maxHeight: 320, borderRadius: 6, display: 'block', marginBottom: 4 }} />
         )}
         {type === 'contact' && url && (
-          <a
-            href={url}
-            download
-            style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#111b21', textDecoration: 'none', padding: '4px 0', marginBottom: 4 }}
-          >
+          <a href={url} download style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#111b21', textDecoration: 'none', padding: '4px 0', marginBottom: 4 }}>
             <i className="fas fa-address-card" style={{ fontSize: 24, color: '#25d366' }} />
             <span style={{ fontSize: 13, fontWeight: 600 }}>Contact card</span>
           </a>
         )}
         {type === 'file' && url && (
-          <a
-            href={url}
-            target="_blank"
-            rel="noopener noreferrer"
-            download
-            style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#111b21', textDecoration: 'none', padding: '4px 0', marginBottom: 4 }}
-          >
+          <a href={url} target="_blank" rel="noopener noreferrer" download style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#111b21', textDecoration: 'none', padding: '4px 0', marginBottom: 4 }}>
             <i className="fas fa-file" style={{ fontSize: 22, color: '#25d366' }} />
             <span style={{ fontSize: 13, fontWeight: 600 }}>Attachment</span>
           </a>
         )}
-        {!type && <span>{text}</span>}
+        {!type && <span style={{ whiteSpace: 'pre-wrap' }}>{text}</span>}
 
-        <div
-          style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'flex-end',
-            fontSize: 10.5, color: '#667781', marginTop: 2, marginLeft: 12,
-          }}
-        >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', fontSize: 10.5, color: '#667781', marginTop: 2, marginLeft: 12 }}>
           <span>{formatTime(msg.createdAt)}</span>
           {isMine && <Ticks read={isRead(msg)} />}
         </div>
@@ -221,13 +253,7 @@ const MessageBubble = ({ msg, isMine, isConsecutive, showTail, onImageClick }) =
 
 const DateDivider = ({ date }) => (
   <div style={{ display: 'flex', justifyContent: 'center', margin: '12px 0 8px' }}>
-    <span
-      style={{
-        background: '#fff', padding: '5px 12px', borderRadius: 8,
-        fontSize: 11.5, fontWeight: 600, color: '#667781',
-        boxShadow: '0 1px 0.5px rgba(11,20,26,0.13)',
-      }}
-    >
+    <span style={{ background: '#fff', padding: '5px 12px', borderRadius: 8, fontSize: 11.5, fontWeight: 600, color: '#667781', boxShadow: '0 1px 0.5px rgba(11,20,26,0.13)' }}>
       {formatDateDivider(date)}
     </span>
   </div>
@@ -252,6 +278,9 @@ const MessagesPage = () => {
   const [attachMenuPos, setAttachMenuPos] = useState(null);
   const [emojiPickerPos, setEmojiPickerPos] = useState(null);
 
+  // ─── Presence + typing state ─────────────────────────────────
+  const [partnerTyping, setPartnerTyping] = useState(false);
+
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const pollRef = useRef(null);
@@ -259,6 +288,39 @@ const MessagesPage = () => {
   const emojiBtnRef = useRef(null);
   const attachMenuRef = useRef(null);
   const emojiPickerRef = useRef(null);
+
+  // Typing refs
+  const selectedConvRef = useRef(null);
+  const lastTypingSentRef = useRef(0);          // last time we POSTed typing:true
+  const typingStopTimerRef = useRef(null);      // fires typing:false after idle
+  const typingClearTimerRef = useRef(null);     // fires on the receiving side to hide "typing…"
+
+  // Keep a ref of the open conversation so the poll (which is set up
+  // once) can check "is the typing notification for the currently
+  // open partner?" without needing to be re-created.
+  useEffect(() => {
+    selectedConvRef.current = selectedConversation;
+  }, [selectedConversation]);
+
+  // ─── Auto-grow the typing box ────────────────────────────────
+  const resizeInput = () => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  };
+
+  useEffect(() => {
+    resizeInput();
+  }, [replyMessage, selectedConversation?.partnerId]);
+
+  // ─── Cleanup typing timers on unmount ────────────────────────
+  useEffect(() => {
+    return () => {
+      if (typingStopTimerRef.current) clearTimeout(typingStopTimerRef.current);
+      if (typingClearTimerRef.current) clearTimeout(typingClearTimerRef.current);
+    };
+  }, []);
 
   // ─── Initial fetch ───────────────────────────────────────────
   useEffect(() => {
@@ -279,7 +341,7 @@ const MessagesPage = () => {
     return () => { cancelled = true; };
   }, [user, token]);
 
-  // ─── Single poller for inbox + open thread ───────────────────
+  // ─── Single poller for inbox + open thread + typing state ────
   useEffect(() => {
     if (!user || !token) return;
     const poll = async () => {
@@ -289,8 +351,36 @@ const MessagesPage = () => {
         });
         if (!res.ok) return;
         const data = await res.json();
+
         if (data.success && Array.isArray(data.messages)) {
           setMessagesList(dedupeById(data.messages));
+        }
+
+        // ─── Read typing state from backend ────────────────────
+        // Expected shape (from POST /api/messages/typing):
+        //   data.typing = { partnerId, isTyping } | null | undefined
+        // - If typing is explicitly about the currently-open partner
+        //   and isTyping === true → show "typing…"
+        // - If isTyping === false for that partner → hide immediately
+        // - If typing is absent / for another partner → leave the
+        //   5s safety timeout to auto-hide (no flicker)
+        if (selectedConvRef.current) {
+          const currentPartnerId = selectedConvRef.current.partnerId;
+          const typing = data.typing;
+
+          if (typing && typing.partnerId === currentPartnerId) {
+            if (typing.isTyping) {
+              setPartnerTyping(true);
+              if (typingClearTimerRef.current) clearTimeout(typingClearTimerRef.current);
+              typingClearTimerRef.current = setTimeout(() => setPartnerTyping(false), 5000);
+            } else {
+              setPartnerTyping(false);
+              if (typingClearTimerRef.current) {
+                clearTimeout(typingClearTimerRef.current);
+                typingClearTimerRef.current = null;
+              }
+            }
+          }
         }
       } catch { /* silent */ }
     };
@@ -323,6 +413,16 @@ const MessagesPage = () => {
       })
       .sort((a, b) => new Date(b.last?.createdAt || 0) - new Date(a.last?.createdAt || 0));
   }, [messagesList, user]);
+
+  // ─── Reactive partner (picks up lastActive/online from the latest poll) ─
+  const activePartner = useMemo(() => {
+    if (!selectedConversation) return null;
+    const conv = conversations.find((c) => c.partnerId === selectedConversation.partnerId);
+    return conv?.partner || selectedConversation.partner || null;
+  }, [conversations, selectedConversation]);
+
+  // Computed fresh on every render (poll re-renders every 5s → stays fresh)
+  const partnerOnline = computeOnlineStatus(activePartner);
 
   // ─── Messages of selected thread (derived, deduped) ──────────
   const conversationMessages = useMemo(() => {
@@ -409,6 +509,66 @@ const MessagesPage = () => {
     setShowEmojiPicker(true);
   };
 
+  // ─── Typing notification helper ──────────────────────────────
+  /**
+   * Fire-and-forget POST to /api/messages/typing. If the endpoint
+   * doesn't exist yet the request silently fails — no console
+   * error, no UX impact.
+   */
+  const sendTypingPing = async (isTyping, partnerIdOverride = null) => {
+    const partnerId = partnerIdOverride || selectedConversation?.partnerId;
+    if (!partnerId || !token) return;
+    try {
+      await fetch(`${API_URL}/api/messages/typing`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ receiver: partnerId, isTyping }),
+      });
+    } catch { /* silent — endpoint optional */ }
+  };
+
+  /**
+   * Fires on every keystroke. Sends typing:true at most once every
+   * 2s, and schedules a typing:false after 3s of inactivity.
+   */
+  const handleInputChange = (e) => {
+    const val = e.target.value;
+    setReplyMessage(val);
+
+    if (!selectedConversation) return;
+
+    // Input cleared → immediately signal "stopped typing"
+    if (!val.trim()) {
+      if (typingStopTimerRef.current) {
+        clearTimeout(typingStopTimerRef.current);
+        typingStopTimerRef.current = null;
+      }
+      if (lastTypingSentRef.current > 0) {
+        sendTypingPing(false);
+        lastTypingSentRef.current = 0;
+      }
+      return;
+    }
+
+    // Throttle: at most one typing:true every 2s
+    const now = Date.now();
+    if (now - lastTypingSentRef.current > 2000) {
+      sendTypingPing(true);
+      lastTypingSentRef.current = now;
+    }
+
+    // Reset the "stopped typing" timer
+    if (typingStopTimerRef.current) clearTimeout(typingStopTimerRef.current);
+    typingStopTimerRef.current = setTimeout(() => {
+      sendTypingPing(false);
+      lastTypingSentRef.current = 0;
+      typingStopTimerRef.current = null;
+    }, 3000);
+  };
+
   // ─── Send helpers ────────────────────────────────────────────
   const sendMessage = async (text) => {
     if (!text.trim() || !selectedConversation || !token) return false;
@@ -451,6 +611,30 @@ const MessagesPage = () => {
     if (ok) {
       setReplyMessage('');
       inputRef.current?.focus();
+      if (inputRef.current) inputRef.current.style.height = 'auto';
+
+      // Stop typing immediately (they just sent)
+      if (typingStopTimerRef.current) {
+        clearTimeout(typingStopTimerRef.current);
+        typingStopTimerRef.current = null;
+      }
+      if (lastTypingSentRef.current > 0) {
+        sendTypingPing(false);
+        lastTypingSentRef.current = 0;
+      }
+    }
+  };
+
+  const handleInputKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      const isTouch =
+        typeof window !== 'undefined' &&
+        window.matchMedia &&
+        window.matchMedia('(pointer: coarse)').matches;
+      if (!isTouch) {
+        e.preventDefault();
+        handleSendReply(e);
+      }
     }
   };
 
@@ -489,11 +673,33 @@ const MessagesPage = () => {
   };
 
   const openConversation = (conv) => {
+    // Reset typing state when switching threads
+    setPartnerTyping(false);
+    if (typingClearTimerRef.current) {
+      clearTimeout(typingClearTimerRef.current);
+      typingClearTimerRef.current = null;
+    }
     setSelectedConversation({ partnerId: conv.partnerId, partner: conv.partner });
     setShowAttachMenu(false);
     setShowEmojiPicker(false);
   };
+
   const closeConversation = () => {
+    // If we were typing, tell the partner we stopped
+    const closingPartnerId = selectedConversation?.partnerId;
+    if (lastTypingSentRef.current > 0 && closingPartnerId) {
+      sendTypingPing(false, closingPartnerId);
+      lastTypingSentRef.current = 0;
+    }
+    if (typingStopTimerRef.current) {
+      clearTimeout(typingStopTimerRef.current);
+      typingStopTimerRef.current = null;
+    }
+    if (typingClearTimerRef.current) {
+      clearTimeout(typingClearTimerRef.current);
+      typingClearTimerRef.current = null;
+    }
+    setPartnerTyping(false);
     setSelectedConversation(null);
     setShowAttachMenu(false);
     setShowEmojiPicker(false);
@@ -598,8 +804,24 @@ const MessagesPage = () => {
           border-radius: 20px;
           font-size: 14.5px;
           color: #111b21;
+          font-family: inherit;
+          line-height: 20px;
+          resize: none;
+          min-height: 40px;
+          max-height: 120px;
+          overflow-y: auto;
+          box-sizing: border-box;
+          -webkit-appearance: none;
+          word-wrap: break-word;
+          overflow-wrap: break-word;
+          white-space: pre-wrap;
         }
         .wa-input::placeholder { color: #8696a0; }
+        .wa-input::-webkit-scrollbar { width: 6px; }
+        .wa-input::-webkit-scrollbar-thumb {
+          background: rgba(0,0,0,0.15);
+          border-radius: 3px;
+        }
 
         .wa-popup {
           background: #fff;
@@ -642,31 +864,40 @@ const MessagesPage = () => {
           gap: 2px;
         }
 
+        /* ─── Typing indicator dots ─── */
+        .wa-typing-dot {
+          display: inline-block;
+          width: 4px;
+          height: 4px;
+          border-radius: 50%;
+          background: #25d366;
+          animation: wa-typing-bounce 1.2s infinite ease-in-out;
+        }
+        @keyframes wa-typing-bounce {
+          0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+          30%           { transform: translateY(-4px); opacity: 1; }
+        }
+
         /* ═══════════════════════════════════════════════════
            LARGE DESKTOP (≥ 1400px)
            ═══════════════════════════════════════════════════ */
         @media (min-width: 1400px) {
-          .wa-container {
-            max-width: 1300px;
-            height: calc(100vh - 150px);
-          }
+          .wa-container { max-width: 1300px; height: calc(100vh - 150px); }
           .wa-messages { padding: 20px 8% 16px; }
           .wa-bubble { max-width: 70%; }
+          .wa-input { max-height: 140px; }
         }
 
         /* ═══════════════════════════════════════════════════
-           TABLET (769px – 1024px) — iPad Pro portrait, iPad landscape
+           TABLET (769px – 1024px)
            ═══════════════════════════════════════════════════ */
         @media (max-width: 1024px) and (min-width: 769px) {
           .container.wa-page { padding: 12px 10px; }
-          .wa-container {
-            height: calc(100vh - 110px);
-            max-width: 100%;
-            border-radius: 10px;
-          }
+          .wa-container { height: calc(100vh - 110px); max-width: 100%; border-radius: 10px; }
           .wa-messages { padding: 14px 4% 10px; }
           .wa-icon-btn { width: 42px; height: 42px; }
           .wa-bubble { max-width: 78%; }
+          .wa-input { max-height: 110px; }
         }
 
         /* ═══════════════════════════════════════════════════
@@ -674,94 +905,59 @@ const MessagesPage = () => {
            ═══════════════════════════════════════════════════ */
         @media (max-width: 768px) and (min-width: 601px) {
           .container.wa-page { padding: 10px 8px; }
-          .wa-container {
-            height: calc(100vh - 100px);
-            border-radius: 10px;
-          }
+          .wa-container { height: calc(100vh - 100px); border-radius: 10px; }
           .wa-messages { padding: 12px 12px 8px; }
           .wa-composer { padding: 8px 10px; gap: 4px; }
           .wa-bubble { max-width: 80%; }
           .wa-icon-btn { width: 42px; height: 42px; }
+          .wa-input { max-height: 110px; }
         }
 
         /* ═══════════════════════════════════════════════════
            PHONE (≤ 600px)
            ═══════════════════════════════════════════════════ */
         @media (max-width: 600px) {
-          .container.wa-page {
-            padding: 0;
-            max-width: 100%;
-          }
+          .container.wa-page { padding: 0; max-width: 100%; }
           .wa-container {
-            /* dvh handles mobile address-bar show/hide; svh fallback via vh */
             height: calc(100vh - 100px);
             height: calc(100dvh - 100px - env(safe-area-inset-bottom, 0px));
-            min-height: 0;
-            max-width: 100%;
-            margin: 0;
-            border-radius: 0;
-            border: none;
-            box-shadow: none;
+            min-height: 0; max-width: 100%; margin: 0;
+            border-radius: 0; border: none; box-shadow: none;
           }
           .wa-messages { padding: 10px 8px 6px; }
-          .wa-composer {
-            padding: 8px 8px calc(8px + env(safe-area-inset-bottom, 0px));
-            gap: 4px;
-          }
+          .wa-composer { padding: 8px 8px calc(8px + env(safe-area-inset-bottom, 0px)); gap: 4px; }
           .wa-icon-btn { width: 38px; height: 38px; font-size: 17px; }
           .wa-bubble { max-width: 85%; }
+          .wa-input { font-size: 16px; padding: 8px 14px; line-height: 22px; min-height: 38px; max-height: 100px; }
 
-          /* iOS Safari zooms the whole page if input < 16px */
-          .wa-input {
-            font-size: 16px;
-            padding: 10px 14px;
-          }
-
-          /* Emoji picker → centered bottom sheet above composer */
           .wa-emoji-picker {
-            left: 50% !important;
-            right: auto !important;
+            left: 50% !important; right: auto !important;
             bottom: calc(72px + env(safe-area-inset-bottom, 0px)) !important;
             transform: translateX(-50%);
-            width: 340px;
-            max-width: calc(100vw - 16px) !important;
+            width: 340px; max-width: calc(100vw - 16px) !important;
             grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)) !important;
             padding: 10px !important;
-            max-height: 260px;
-            overflow-y: auto;
+            max-height: 260px; overflow-y: auto;
           }
-          .wa-emoji-picker .wa-emoji {
-            width: 40px;
-            height: 40px;
-            font-size: 24px;
-          }
+          .wa-emoji-picker .wa-emoji { width: 40px; height: 40px; font-size: 24px; }
 
-          /* Attach menu → centered above composer */
           .wa-attach-menu {
-            left: 50% !important;
-            right: auto !important;
+            left: 50% !important; right: auto !important;
             bottom: calc(72px + env(safe-area-inset-bottom, 0px)) !important;
             transform: translateX(-50%);
-            min-width: 220px;
-            padding: 8px !important;
+            min-width: 220px; padding: 8px !important;
           }
-          .wa-menu-item {
-            padding: 12px 18px;
-            font-size: 15px;
-          }
+          .wa-menu-item { padding: 12px 18px; font-size: 15px; }
         }
 
         /* ═══════════════════════════════════════════════════
-           TINY PHONE (≤ 380px) — iPhone SE, older Androids
+           TINY PHONE (≤ 380px)
            ═══════════════════════════════════════════════════ */
         @media (max-width: 380px) {
           .wa-messages { padding: 8px 6px 4px; }
-          .wa-composer {
-            padding: 6px 6px calc(6px + env(safe-area-inset-bottom, 0px));
-            gap: 3px;
-          }
+          .wa-composer { padding: 6px 6px calc(6px + env(safe-area-inset-bottom, 0px)); gap: 3px; }
           .wa-icon-btn { width: 34px; height: 34px; font-size: 15px; }
-          .wa-input { padding: 9px 12px; }
+          .wa-input { padding: 8px 12px; line-height: 20px; min-height: 36px; max-height: 90px; }
           .wa-bubble { max-width: 88%; }
           .wa-emoji-picker { width: calc(100vw - 12px) !important; }
         }
@@ -783,9 +979,10 @@ const MessagesPage = () => {
                   <i className="fas fa-arrow-left" />
                 </button>
                 <Avatar
-                  name={selectedConversation.partner?.name || 'User'}
+                  name={activePartner?.name || 'User'}
                   size={40}
-                  src={selectedConversation.partner?.profileImage || selectedConversation.partner?.avatar}
+                  src={activePartner?.profileImage || activePartner?.avatar}
+                  isOnline={partnerOnline}
                 />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div
@@ -794,10 +991,18 @@ const MessagesPage = () => {
                       whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                     }}
                   >
-                    {selectedConversation.partner?.name || 'User'}
+                    {activePartner?.name || 'User'}
                   </div>
-                  <div style={{ fontSize: 12, color: '#667781' }}>
-                    {selectedConversation.partner?.online ? 'online' : 'tap for contact info'}
+                  <div style={{ fontSize: 12, color: '#667781', minHeight: 16 }}>
+                    {partnerTyping ? (
+                      <TypingIndicator />
+                    ) : partnerOnline ? (
+                      <span style={{ color: '#25d366', fontWeight: 600 }}>online</span>
+                    ) : activePartner?.lastActive ? (
+                      <span>last seen {formatLastSeen(activePartner.lastActive)}</span>
+                    ) : (
+                      <span>tap for contact info</span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -858,15 +1063,23 @@ const MessagesPage = () => {
                   <i className="fas fa-paperclip" />
                 </button>
 
-                <form onSubmit={handleSendReply} style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-                  <input
+                <form
+                  onSubmit={handleSendReply}
+                  style={{
+                    flex: 1, display: 'flex', alignItems: 'flex-end',
+                    gap: 6, minWidth: 0,
+                  }}
+                >
+                  <textarea
                     ref={inputRef}
-                    type="text"
+                    rows={1}
                     className="wa-input"
                     value={replyMessage}
-                    onChange={(e) => setReplyMessage(e.target.value)}
+                    onChange={handleInputChange}
+                    onKeyDown={handleInputKeyDown}
                     placeholder={uploading ? 'Uploading…' : 'Type a message'}
                     disabled={uploading}
+                    enterKeyHint="send"
                   />
                   <button
                     type="submit"
@@ -909,70 +1122,74 @@ const MessagesPage = () => {
                     No conversations yet.
                   </div>
                 ) : (
-                  conversations.map((conv) => (
-                    <div
-                      key={conv.partnerId}
-                      className="wa-conv-item"
-                      onClick={() => openConversation(conv)}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: 12,
-                        padding: '12px 16px', cursor: 'pointer',
-                        borderBottom: '1px solid #f0f2f5', transition: 'background 0.15s',
-                      }}
-                    >
-                      <Avatar
-                        name={conv.partner?.name || 'User'}
-                        size={48}
-                        src={conv.partner?.profileImage || conv.partner?.avatar}
-                      />
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 2 }}>
-                          <span
-                            style={{
-                              fontWeight: 600, fontSize: 15, color: '#111b21',
-                              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                            }}
-                          >
-                            {conv.partner?.name || 'User'}
-                          </span>
-                          <span
-                            style={{
-                              fontSize: 11.5, flexShrink: 0, marginLeft: 8,
-                              color: conv.unread > 0 ? '#25d366' : '#667781',
-                              fontWeight: conv.unread > 0 ? 600 : 400,
-                            }}
-                          >
-                            {conv.last?.createdAt ? formatTime(conv.last.createdAt) : ''}
-                          </span>
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span
-                            style={{
-                              fontSize: 13, color: '#667781',
-                              whiteSpace: 'nowrap', overflow: 'hidden',
-                              textOverflow: 'ellipsis', flex: 1,
-                            }}
-                          >
-                            {conv.last ? getMessageText(conv.last) : 'No messages'}
-                          </span>
-                          {conv.unread > 0 && (
+                  conversations.map((conv) => {
+                    const convOnline = computeOnlineStatus(conv.partner);
+                    return (
+                      <div
+                        key={conv.partnerId}
+                        className="wa-conv-item"
+                        onClick={() => openConversation(conv)}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 12,
+                          padding: '12px 16px', cursor: 'pointer',
+                          borderBottom: '1px solid #f0f2f5', transition: 'background 0.15s',
+                        }}
+                      >
+                        <Avatar
+                          name={conv.partner?.name || 'User'}
+                          size={48}
+                          src={conv.partner?.profileImage || conv.partner?.avatar}
+                          isOnline={convOnline}
+                        />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 2 }}>
                             <span
                               style={{
-                                background: '#25d366', color: '#fff',
-                                fontSize: 11, fontWeight: 700,
-                                minWidth: 20, height: 20, padding: '0 6px',
-                                borderRadius: 10, display: 'flex',
-                                alignItems: 'center', justifyContent: 'center',
-                                marginLeft: 8, flexShrink: 0,
+                                fontWeight: 600, fontSize: 15, color: '#111b21',
+                                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                               }}
                             >
-                              {conv.unread}
+                              {conv.partner?.name || 'User'}
                             </span>
-                          )}
+                            <span
+                              style={{
+                                fontSize: 11.5, flexShrink: 0, marginLeft: 8,
+                                color: conv.unread > 0 ? '#25d366' : '#667781',
+                                fontWeight: conv.unread > 0 ? 600 : 400,
+                              }}
+                            >
+                              {conv.last?.createdAt ? formatTime(conv.last.createdAt) : ''}
+                            </span>
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span
+                              style={{
+                                fontSize: 13, color: '#667781',
+                                whiteSpace: 'nowrap', overflow: 'hidden',
+                                textOverflow: 'ellipsis', flex: 1,
+                              }}
+                            >
+                              {conv.last ? getMessageText(conv.last) : 'No messages'}
+                            </span>
+                            {conv.unread > 0 && (
+                              <span
+                                style={{
+                                  background: '#25d366', color: '#fff',
+                                  fontSize: 11, fontWeight: 700,
+                                  minWidth: 20, height: 20, padding: '0 6px',
+                                  borderRadius: 10, display: 'flex',
+                                  alignItems: 'center', justifyContent: 'center',
+                                  marginLeft: 8, flexShrink: 0,
+                                }}
+                              >
+                                {conv.unread}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
             </>
@@ -1049,13 +1266,7 @@ const MessagesPage = () => {
           <div
             ref={emojiPickerRef}
             className="wa-popup wa-emoji-picker"
-            style={{
-              bottom: emojiPickerPos.bottom,
-              left: emojiPickerPos.left,
-              padding: 8,
-              gap: 2,
-              maxWidth: 320,
-            }}
+            style={{ bottom: emojiPickerPos.bottom, left: emojiPickerPos.left, padding: 8, gap: 2, maxWidth: 320 }}
           >
             {EMOJIS.map((e) => (
               <button
