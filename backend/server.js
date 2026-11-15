@@ -963,13 +963,89 @@ app.use(
 );
 
 // ============================================================
-// SELLERS
+// SELLERS (with diagnostics)
 // ============================================================
+
+/*
+ * ⚠️ DIAGNOSTIC PING ROUTE
+ * ------------------------
+ * A no-auth GET request you can hit in the browser to verify
+ * the /sellers mount is live on the deployed server:
+ *
+ *     https://<your-backend>/sellers/ping
+ *
+ * - 200 + routeCount > 0  → mount is fine, sellers.js loaded with routes ✅
+ * - 200 + routeCount = 0  → sellers.js loaded but has NO routes (broken file) ❌
+ * - 404                   → mount missing from the deployed server.js ❌
+ *
+ * This route MUST be declared BEFORE `app.use("/sellers", ...)`
+ * so the GET is handled here and real /sellers/:id requests still
+ * go to sellerRoutes.
+ */
+
+app.get(
+  "/sellers/ping",
+  (req, res) => {
+    const routeCount =
+      sellerRoutes &&
+      Array.isArray(sellerRoutes.stack)
+        ? sellerRoutes.stack.length
+        : -1;
+
+    res.status(200).json({
+      success: true,
+      message:
+        "Seller API is mounted and responding",
+      routeCount,
+      hasRoutes:
+        routeCount > 0,
+      timestamp:
+        new Date().toISOString(),
+      hint:
+        routeCount === 0
+          ? "⚠️ sellers.js has ZERO routes — GET /sellers/:id will 404. Verify backend/routes/sellers.js."
+          : routeCount === -1
+          ? "⚠️ sellerRoutes is not a valid Express router. Verify `module.exports = router;` at the bottom of backend/routes/sellers.js."
+          : "✅ sellers.js loaded with routes.",
+    });
+  }
+);
 
 app.use(
   "/sellers",
   sellerRoutes
 );
+
+console.log(
+  "🛒 Seller API mounted at /sellers"
+);
+
+// Startup diagnostic — logs how many routes sellers.js exported.
+if (
+  sellerRoutes &&
+  Array.isArray(sellerRoutes.stack)
+) {
+  const routeCount =
+    sellerRoutes.stack.length;
+
+  console.log(
+    `🛒 Seller router has ${routeCount} route(s) registered`
+  );
+
+  if (routeCount === 0) {
+    console.warn(
+      "⚠️ WARNING: backend/routes/sellers.js has ZERO routes. " +
+        "GET /sellers/:id will return 404 until the file is fixed. " +
+        "It must end with `module.exports = router;` and define " +
+        "`router.get('/:id', ...)` and `router.get('/:id/products', ...)`."
+    );
+  }
+} else {
+  console.warn(
+    "⚠️ WARNING: sellerRoutes is not a valid Express router. " +
+      "Verify backend/routes/sellers.js ends with `module.exports = router;`."
+  );
+}
 
 // ============================================================
 // PRODUCTS
@@ -996,8 +1072,52 @@ app.use(
 );
 
 // ============================================================
-// REVIEWS
+// REVIEWS (with diagnostics)
 // ============================================================
+
+/*
+ * ⚠️ DIAGNOSTIC PING ROUTE
+ * ------------------------
+ * A no-auth GET request you can hit in the browser to verify
+ * the /api/reviews mount is live on the deployed server:
+ *
+ *     https://<your-backend>/api/reviews/ping
+ *
+ * - 200 + routeCount > 0  → mount is fine, reviewRoutes.js loaded ✅
+ * - 200 + routeCount = 0  → reviewRoutes.js loaded but has NO routes ❌
+ * - 404                   → mount missing from the deployed server.js ❌
+ *
+ * Placed AFTER the review logger (so pings are logged) but BEFORE
+ * the rate-limited mount (so the ping is never rate-limited).
+ */
+
+app.get(
+  "/api/reviews/ping",
+  (req, res) => {
+    const routeCount =
+      reviewRoutes &&
+      Array.isArray(reviewRoutes.stack)
+        ? reviewRoutes.stack.length
+        : -1;
+
+    res.status(200).json({
+      success: true,
+      message:
+        "Reviews API is mounted and responding",
+      routeCount,
+      hasRoutes:
+        routeCount > 0,
+      timestamp:
+        new Date().toISOString(),
+      hint:
+        routeCount === 0
+          ? "⚠️ reviewRoutes.js has ZERO routes — GET /api/reviews will 404. Verify backend/routes/reviewRoutes.js."
+          : routeCount === -1
+          ? "⚠️ reviewRoutes is not a valid Express router. Verify `module.exports = router;` at the bottom of backend/routes/reviewRoutes.js."
+          : "✅ reviewRoutes.js loaded with routes.",
+    });
+  }
+);
 
 app.use(
   "/api/reviews",
@@ -1030,6 +1150,32 @@ console.log(
 console.log(
   "👤 Review edit/delete are owner-only"
 );
+
+// Startup diagnostic — logs how many routes reviewRoutes.js exported.
+if (
+  reviewRoutes &&
+  Array.isArray(reviewRoutes.stack)
+) {
+  const routeCount =
+    reviewRoutes.stack.length;
+
+  console.log(
+    `⭐ Reviews router has ${routeCount} route(s) registered`
+  );
+
+  if (routeCount === 0) {
+    console.warn(
+      "⚠️ WARNING: backend/routes/reviewRoutes.js has ZERO routes. " +
+        "GET /api/reviews will return 404 until the file is fixed. " +
+        "It must end with `module.exports = router;` and define `router.get('/', ...)`."
+    );
+  }
+} else {
+  console.warn(
+    "⚠️ WARNING: reviewRoutes is not a valid Express router. " +
+      "Verify backend/routes/reviewRoutes.js ends with `module.exports = router;`."
+  );
+}
 
 // ============================================================
 // VISUAL SEARCH

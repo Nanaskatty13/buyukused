@@ -76,7 +76,11 @@ const getProductReviews = async (req, res) => {
       isActive: true,
     };
 
-    const [reviews, total] =
+    // Aggregation needs an explicit ObjectId (raw $match doesn't cast strings)
+    const productObjectId =
+      new mongoose.Types.ObjectId(productId);
+
+    const [reviews, total, ratingAgg] =
       await Promise.all([
         Review.find(filter)
           .populate(
@@ -91,15 +95,45 @@ const getProductReviews = async (req, res) => {
           .lean(),
 
         Review.countDocuments(filter),
+
+        Review.aggregate([
+          {
+            $match: {
+              productId: productObjectId,
+              type: "PRODUCT",
+              isActive: true,
+            },
+          },
+          {
+            $group: {
+              _id: null,
+              averageRating: {
+                $avg: "$rating",
+              },
+            },
+          },
+        ]),
       ]);
 
     const totalPages =
       Math.ceil(total / limit) || 1;
 
+    // ✅ Summary is now returned for the frontend
+    const rawAverage =
+      ratingAgg?.[0]?.averageRating || 0;
+
+    const averageRating =
+      Math.round(rawAverage * 10) / 10;
+
     return res.status(200).json({
       success: true,
 
       reviews,
+
+      summary: {
+        averageRating,
+        totalReviews: total,
+      },
 
       pagination: {
         page,
@@ -169,7 +203,10 @@ const getSellerReviews = async (req, res) => {
       isActive: true,
     };
 
-    const [reviews, total] =
+    const sellerObjectId =
+      new mongoose.Types.ObjectId(sellerId);
+
+    const [reviews, total, ratingAgg] =
       await Promise.all([
         Review.find(filter)
           .populate(
@@ -184,15 +221,45 @@ const getSellerReviews = async (req, res) => {
           .lean(),
 
         Review.countDocuments(filter),
+
+        Review.aggregate([
+          {
+            $match: {
+              sellerId: sellerObjectId,
+              type: "SELLER",
+              isActive: true,
+            },
+          },
+          {
+            $group: {
+              _id: null,
+              averageRating: {
+                $avg: "$rating",
+              },
+            },
+          },
+        ]),
       ]);
 
     const totalPages =
       Math.ceil(total / limit) || 1;
 
+    // ✅ Summary is now returned for the frontend
+    const rawAverage =
+      ratingAgg?.[0]?.averageRating || 0;
+
+    const averageRating =
+      Math.round(rawAverage * 10) / 10;
+
     return res.status(200).json({
       success: true,
 
       reviews,
+
+      summary: {
+        averageRating,
+        totalReviews: total,
+      },
 
       pagination: {
         page,
@@ -220,7 +287,7 @@ const getSellerReviews = async (req, res) => {
 };
 
 // ============================================================
-// GET USER REVIEWS (NEW)
+// GET USER REVIEWS
 // ============================================================
 
 const getUserReviews = async (req, res) => {
@@ -262,7 +329,10 @@ const getUserReviews = async (req, res) => {
       isActive: true,
     };
 
-    const [reviews, total] =
+    const userObjectId =
+      new mongoose.Types.ObjectId(userId);
+
+    const [reviews, total, ratingAgg] =
       await Promise.all([
         Review.find(filter)
           .populate(
@@ -277,15 +347,45 @@ const getUserReviews = async (req, res) => {
           .lean(),
 
         Review.countDocuments(filter),
+
+        Review.aggregate([
+          {
+            $match: {
+              targetUserId: userObjectId,
+              type: "USER",
+              isActive: true,
+            },
+          },
+          {
+            $group: {
+              _id: null,
+              averageRating: {
+                $avg: "$rating",
+              },
+            },
+          },
+        ]),
       ]);
 
     const totalPages =
       Math.ceil(total / limit) || 1;
 
+    // ✅ Summary is now returned for the frontend
+    const rawAverage =
+      ratingAgg?.[0]?.averageRating || 0;
+
+    const averageRating =
+      Math.round(rawAverage * 10) / 10;
+
     return res.status(200).json({
       success: true,
 
       reviews,
+
+      summary: {
+        averageRating,
+        totalReviews: total,
+      },
 
       pagination: {
         page,
@@ -415,7 +515,7 @@ const createReview = async (req, res) => {
       req.body.sellerId || null;
 
     const targetUserId =
-      req.body.targetUserId || req.body.userId || null; // for USER type
+      req.body.targetUserId || req.body.userId || null;
 
     const orderId =
       req.body.orderId || null;
@@ -584,6 +684,10 @@ const createReview = async (req, res) => {
 
       // ------------------------------------------------------
       // UNIQUENESS
+      //
+      // ✅ FIX: only ACTIVE reviews block a new submission.
+      // A soft-deleted review (isActive: false) must not
+      // prevent the user from leaving a fresh review.
       // ------------------------------------------------------
 
       const existingProductReview =
@@ -591,6 +695,7 @@ const createReview = async (req, res) => {
           userId,
           productId,
           type: "PRODUCT",
+          isActive: true,
         })
           .select("_id")
           .lean();
@@ -731,6 +836,8 @@ const createReview = async (req, res) => {
 
       // ------------------------------------------------------
       // UNIQUENESS
+      //
+      // ✅ FIX: only ACTIVE reviews block a new submission.
       // ------------------------------------------------------
 
       const existingSellerReview =
@@ -738,6 +845,7 @@ const createReview = async (req, res) => {
           userId,
           sellerId,
           type: "SELLER",
+          isActive: true,
         })
           .select("_id")
           .lean();
@@ -800,7 +908,7 @@ const createReview = async (req, res) => {
     }
 
     // ========================================================
-    // USER REVIEW (NEW)
+    // USER REVIEW
     // ========================================================
 
     if (type === "USER") {
@@ -874,6 +982,8 @@ const createReview = async (req, res) => {
 
       // ------------------------------------------------------
       // UNIQUENESS
+      //
+      // ✅ FIX: only ACTIVE reviews block a new submission.
       // ------------------------------------------------------
 
       const existingUserReview =
@@ -881,6 +991,7 @@ const createReview = async (req, res) => {
           userId,
           targetUserId,
           type: "USER",
+          isActive: true,
         })
           .select("_id")
           .lean();
@@ -1436,7 +1547,7 @@ const checkUserReview = async (
 module.exports = {
   getProductReviews,
   getSellerReviews,
-  getUserReviews,       // <-- NEW
+  getUserReviews,
   getReviewById,
   createReview,
   updateReview,

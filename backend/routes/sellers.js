@@ -84,6 +84,90 @@ const validate = (
 };
 
 // ============================================================
+// ROUTER-LEVEL REQUEST LOGGER
+//
+// Prints one line per request that reaches this file.
+//
+// If your 404s appear in Render logs WITHOUT a matching
+// "🛒 SELLER ROUTER:" line, then the request never reached
+// this router — the /sellers mount in server.js is stale
+// or missing.
+//
+// This middleware runs BEFORE all routes so it fires even
+// when a route returns 400/401/404 from within this file.
+// ============================================================
+
+router.use((req, res, next) => {
+  console.log(
+    `🛒 SELLER ROUTER: ${req.method} ${req.originalUrl}`
+  );
+  next();
+});
+
+// ============================================================
+// ROUTER-LEVEL DIAGNOSTIC PING
+//
+// GET /sellers/ping  (no auth, no params)
+//
+// - 200 → this file loaded correctly on the deployed server
+// - 404 → this file was never loaded (mount missing from server.js)
+//
+// Runs BEFORE /:sellerId so it can't be intercepted by the
+// ID validator.
+// ============================================================
+
+router.get(
+  "/ping",
+  (req, res) => {
+    const routes =
+      Array.isArray(router.stack)
+        ? router.stack.map((layer) => ({
+            method:
+              layer.route?.stack?.[0]?.method?.toUpperCase?.() ||
+              "USE",
+            path:
+              layer.route?.path || "(middleware)",
+          }))
+        : [];
+
+    const hasSellerProfileRoute =
+      routes.some(
+        (r) =>
+          r.path === "/:sellerId" &&
+          r.method === "GET"
+      );
+
+    const hasSellerProductsRoute =
+      routes.some(
+        (r) =>
+          r.path === "/:sellerId/products" &&
+          r.method === "GET"
+      );
+
+    res.status(200).json({
+      success: true,
+      message: "Seller router is alive",
+
+      routeCount: routes.length,
+
+      hasSellerProfileRoute,
+      hasSellerProductsRoute,
+
+      routes,
+
+      timestamp:
+        new Date().toISOString(),
+
+      hint:
+        hasSellerProfileRoute &&
+        hasSellerProductsRoute
+          ? "✅ Public seller routes exist. If /sellers/:id still 404s, check the request path or auth headers."
+          : "⚠️ One or more public seller routes are MISSING. Check that this file ends with `module.exports = router;` and hasn't been replaced by an older version on the server.",
+    });
+  }
+);
+
+// ============================================================
 // 1. REGISTER SELLER
 // ============================================================
 
@@ -545,6 +629,48 @@ router.get(
 
   getPublicSellerProfile
 );
+
+// ============================================================
+// STARTUP DIAGNOSTIC
+//
+// Prints once, when the module is first required by
+// server.js. You should see this line in Render logs at boot:
+//
+//   🛒 sellers.js: 10 route(s) registered
+//
+// If the count is 0, the file's routes were never registered
+// (usually because `module.exports = router;` is missing or
+// the file is being replaced at deploy time by an older copy).
+// ============================================================
+
+const routeCount =
+  Array.isArray(router.stack)
+    ? router.stack.length
+    : -1;
+
+console.log(
+  `🛒 sellers.js: ${routeCount} route(s) registered`
+);
+
+if (routeCount <= 0) {
+  console.warn(
+    "⚠️ sellers.js exported ZERO routes. " +
+      "GET /sellers/:id and /sellers/:id/products will 404 until this file defines routes and ends with `module.exports = router;`."
+  );
+} else {
+  const paths = router.stack
+    .map((layer) => {
+      if (!layer.route) return null;
+      const method = Object.keys(layer.route.methods || {})[0]?.toUpperCase?.() || "GET";
+      return `${method} ${layer.route.path}`;
+    })
+    .filter(Boolean);
+
+  console.log(
+    "🛒 sellers.js routes:",
+    paths
+  );
+}
 
 // ============================================================
 // EXPORT

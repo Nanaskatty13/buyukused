@@ -1,6 +1,7 @@
 // frontend/src/pages/Messages.jsx
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { messages } from '../services/messages';
 import { API_URL } from '../services/api';
@@ -91,11 +92,6 @@ const formatLastSeen = (str) => {
   return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
 };
 
-/**
- * "Online" = active in the last 2 minutes.
- * Prefers `lastActive` timestamp (accurate) over the boolean `online`
- * flag (which can go stale if the backend doesn't reset it).
- */
 const computeOnlineStatus = (partner) => {
   if (!partner) return false;
   if (partner.lastActive) {
@@ -278,7 +274,6 @@ const MessagesPage = () => {
   const [attachMenuPos, setAttachMenuPos] = useState(null);
   const [emojiPickerPos, setEmojiPickerPos] = useState(null);
 
-  // ─── Presence + typing state ─────────────────────────────────
   const [partnerTyping, setPartnerTyping] = useState(false);
 
   const messagesEndRef = useRef(null);
@@ -289,15 +284,11 @@ const MessagesPage = () => {
   const attachMenuRef = useRef(null);
   const emojiPickerRef = useRef(null);
 
-  // Typing refs
   const selectedConvRef = useRef(null);
-  const lastTypingSentRef = useRef(0);          // last time we POSTed typing:true
-  const typingStopTimerRef = useRef(null);      // fires typing:false after idle
-  const typingClearTimerRef = useRef(null);     // fires on the receiving side to hide "typing…"
+  const lastTypingSentRef = useRef(0);
+  const typingStopTimerRef = useRef(null);
+  const typingClearTimerRef = useRef(null);
 
-  // Keep a ref of the open conversation so the poll (which is set up
-  // once) can check "is the typing notification for the currently
-  // open partner?" without needing to be re-created.
   useEffect(() => {
     selectedConvRef.current = selectedConversation;
   }, [selectedConversation]);
@@ -356,14 +347,6 @@ const MessagesPage = () => {
           setMessagesList(dedupeById(data.messages));
         }
 
-        // ─── Read typing state from backend ────────────────────
-        // Expected shape (from POST /api/messages/typing):
-        //   data.typing = { partnerId, isTyping } | null | undefined
-        // - If typing is explicitly about the currently-open partner
-        //   and isTyping === true → show "typing…"
-        // - If isTyping === false for that partner → hide immediately
-        // - If typing is absent / for another partner → leave the
-        //   5s safety timeout to auto-hide (no flicker)
         if (selectedConvRef.current) {
           const currentPartnerId = selectedConvRef.current.partnerId;
           const typing = data.typing;
@@ -414,14 +397,13 @@ const MessagesPage = () => {
       .sort((a, b) => new Date(b.last?.createdAt || 0) - new Date(a.last?.createdAt || 0));
   }, [messagesList, user]);
 
-  // ─── Reactive partner (picks up lastActive/online from the latest poll) ─
+  // ─── Reactive partner ────────────────────────────────────────
   const activePartner = useMemo(() => {
     if (!selectedConversation) return null;
     const conv = conversations.find((c) => c.partnerId === selectedConversation.partnerId);
     return conv?.partner || selectedConversation.partner || null;
   }, [conversations, selectedConversation]);
 
-  // Computed fresh on every render (poll re-renders every 5s → stays fresh)
   const partnerOnline = computeOnlineStatus(activePartner);
 
   // ─── Messages of selected thread (derived, deduped) ──────────
@@ -510,11 +492,6 @@ const MessagesPage = () => {
   };
 
   // ─── Typing notification helper ──────────────────────────────
-  /**
-   * Fire-and-forget POST to /api/messages/typing. If the endpoint
-   * doesn't exist yet the request silently fails — no console
-   * error, no UX impact.
-   */
   const sendTypingPing = async (isTyping, partnerIdOverride = null) => {
     const partnerId = partnerIdOverride || selectedConversation?.partnerId;
     if (!partnerId || !token) return;
@@ -530,17 +507,12 @@ const MessagesPage = () => {
     } catch { /* silent — endpoint optional */ }
   };
 
-  /**
-   * Fires on every keystroke. Sends typing:true at most once every
-   * 2s, and schedules a typing:false after 3s of inactivity.
-   */
   const handleInputChange = (e) => {
     const val = e.target.value;
     setReplyMessage(val);
 
     if (!selectedConversation) return;
 
-    // Input cleared → immediately signal "stopped typing"
     if (!val.trim()) {
       if (typingStopTimerRef.current) {
         clearTimeout(typingStopTimerRef.current);
@@ -553,14 +525,12 @@ const MessagesPage = () => {
       return;
     }
 
-    // Throttle: at most one typing:true every 2s
     const now = Date.now();
     if (now - lastTypingSentRef.current > 2000) {
       sendTypingPing(true);
       lastTypingSentRef.current = now;
     }
 
-    // Reset the "stopped typing" timer
     if (typingStopTimerRef.current) clearTimeout(typingStopTimerRef.current);
     typingStopTimerRef.current = setTimeout(() => {
       sendTypingPing(false);
@@ -613,7 +583,6 @@ const MessagesPage = () => {
       inputRef.current?.focus();
       if (inputRef.current) inputRef.current.style.height = 'auto';
 
-      // Stop typing immediately (they just sent)
       if (typingStopTimerRef.current) {
         clearTimeout(typingStopTimerRef.current);
         typingStopTimerRef.current = null;
@@ -673,7 +642,6 @@ const MessagesPage = () => {
   };
 
   const openConversation = (conv) => {
-    // Reset typing state when switching threads
     setPartnerTyping(false);
     if (typingClearTimerRef.current) {
       clearTimeout(typingClearTimerRef.current);
@@ -685,7 +653,6 @@ const MessagesPage = () => {
   };
 
   const closeConversation = () => {
-    // If we were typing, tell the partner we stopped
     const closingPartnerId = selectedConversation?.partnerId;
     if (lastTypingSentRef.current > 0 && closingPartnerId) {
       sendTypingPing(false, closingPartnerId);
@@ -878,6 +845,18 @@ const MessagesPage = () => {
           30%           { transform: translateY(-4px); opacity: 1; }
         }
 
+        /* ─── Chat header profile link ─── */
+        .wa-header-link {
+          touch-action: manipulation;
+          -webkit-tap-highlight-color: transparent;
+        }
+        .wa-header-link:hover { background: rgba(0,0,0,0.04) !important; }
+        .wa-header-link:active { background: rgba(0,0,0,0.08) !important; }
+        .wa-header-link:focus-visible {
+          outline: 2px solid #25d366;
+          outline-offset: 2px;
+        }
+
         /* ═══════════════════════════════════════════════════
            LARGE DESKTOP (≥ 1400px)
            ═══════════════════════════════════════════════════ */
@@ -970,41 +949,68 @@ const MessagesPage = () => {
               {/* ─── Chat Header ─── */}
               <div
                 style={{
-                  flexShrink: 0, display: 'flex', alignItems: 'center', gap: 10,
+                  flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6,
                   padding: '10px 14px', background: '#fff',
                   borderBottom: '1px solid #e9edef',
                 }}
               >
-                <button className="wa-icon-btn" onClick={closeConversation} aria-label="Back">
+                <button
+                  className="wa-icon-btn"
+                  onClick={closeConversation}
+                  aria-label="Back to chats"
+                  title="Back to chats"
+                >
                   <i className="fas fa-arrow-left" />
                 </button>
-                <Avatar
-                  name={activePartner?.name || 'User'}
-                  size={40}
-                  src={activePartner?.profileImage || activePartner?.avatar}
-                  isOnline={partnerOnline}
-                />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div
-                    style={{
-                      fontWeight: 600, fontSize: 15.5, color: '#111b21',
-                      whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                    }}
-                  >
-                    {activePartner?.name || 'User'}
+
+                {/* Profile link — avatar + name + status all tappable */}
+                <Link
+                  to={`/seller/${selectedConversation.partnerId}`}
+                  className="wa-header-link"
+                  aria-label={`View ${activePartner?.name || 'user'}'s profile`}
+                  title={`View ${activePartner?.name || 'user'}'s profile`}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    flex: 1,
+                    minWidth: 0,
+                    textDecoration: 'none',
+                    color: 'inherit',
+                    padding: '6px 10px',
+                    margin: '0 -4px',
+                    borderRadius: 12,
+                    transition: 'background 0.15s',
+                  }}
+                >
+                  <Avatar
+                    name={activePartner?.name || 'User'}
+                    size={40}
+                    src={activePartner?.profileImage || activePartner?.avatar}
+                    isOnline={partnerOnline}
+                  />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div
+                      style={{
+                        fontWeight: 600, fontSize: 15.5, color: '#111b21',
+                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                      }}
+                    >
+                      {activePartner?.name || 'User'}
+                    </div>
+                    <div style={{ fontSize: 12, color: '#667781', minHeight: 16 }}>
+                      {partnerTyping ? (
+                        <TypingIndicator />
+                      ) : partnerOnline ? (
+                        <span style={{ color: '#25d366', fontWeight: 600 }}>online</span>
+                      ) : activePartner?.lastActive ? (
+                        <span>last seen {formatLastSeen(activePartner.lastActive)}</span>
+                      ) : (
+                        <span>tap for contact info</span>
+                      )}
+                    </div>
                   </div>
-                  <div style={{ fontSize: 12, color: '#667781', minHeight: 16 }}>
-                    {partnerTyping ? (
-                      <TypingIndicator />
-                    ) : partnerOnline ? (
-                      <span style={{ color: '#25d366', fontWeight: 600 }}>online</span>
-                    ) : activePartner?.lastActive ? (
-                      <span>last seen {formatLastSeen(activePartner.lastActive)}</span>
-                    ) : (
-                      <span>tap for contact info</span>
-                    )}
-                  </div>
-                </div>
+                </Link>
               </div>
 
               {/* ─── Messages ─── */}
