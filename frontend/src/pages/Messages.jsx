@@ -1,405 +1,1113 @@
-import React, { useState, useEffect, useRef } from 'react';
+// frontend/src/pages/Messages.jsx
+
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { messages } from '../services/messages';
 import { API_URL } from '../services/api';
 
-const Messages = () => {
+// ══════════════════════════════════════════════════════════════════
+// Helpers
+// ══════════════════════════════════════════════════════════════════
+const getId = (val) => (typeof val === 'string' ? val : val?._id || '');
+const getSenderId = (m) => getId(m.sender);
+const getReceiverId = (m) => getId(m.receiver);
+const getMessageText = (m) => m.message || m.content || m.text || '';
+const isRead = (m) => Boolean(m.read || m.isRead || m.readAt);
+
+/**
+ * Dedupe messages by _id. If duplicates are found, prefer the one
+ * that has `read: true` (so tick marks update correctly even if the
+ * backend returns an older, unread copy).
+ */
+const dedupeById = (arr) => {
+  if (!Array.isArray(arr)) return [];
+  const map = new Map();
+  for (const m of arr) {
+    if (!m) continue;
+    const id = m._id || m.id;
+    if (!id) {
+      map.set(`__noid__${Math.random()}`, m);
+      continue;
+    }
+    if (!map.has(id)) {
+      map.set(id, m);
+    } else if (!isRead(map.get(id)) && isRead(m)) {
+      map.set(id, m);
+    }
+  }
+  return Array.from(map.values());
+};
+
+const getAttachmentType = (text) => {
+  if (!text) return null;
+  if (/^📷 Image:/.test(text)) return 'image';
+  if (/^🎥 Video:/.test(text)) return 'video';
+  if (/^📇 Contact:/.test(text)) return 'contact';
+  if (/^📎 File:/.test(text)) return 'file';
+  return null;
+};
+const extractAttachmentUrl = (text) => {
+  const m = text?.match(/^(?:📷 Image|🎥 Video|📎 File|📇 Contact):\s*(.+)/);
+  return m ? m[1].trim() : null;
+};
+
+const sameDay = (a, b) => {
+  if (!a || !b) return false;
+  const da = new Date(a), db = new Date(b);
+  return (
+    da.getFullYear() === db.getFullYear() &&
+    da.getMonth() === db.getMonth() &&
+    da.getDate() === db.getDate()
+  );
+};
+
+const formatDateDivider = (str) => {
+  if (!str) return '';
+  const d = new Date(str);
+  const now = new Date();
+  const yst = new Date(now); yst.setDate(now.getDate() - 1);
+  if (sameDay(d, now)) return 'Today';
+  if (sameDay(d, yst)) return 'Yesterday';
+  return d.toLocaleDateString(undefined, {
+    weekday: 'short', day: 'numeric', month: 'short',
+    year: d.getFullYear() !== now.getFullYear() ? 'numeric' : undefined,
+  });
+};
+
+const formatTime = (str) => {
+  if (!str) return '';
+  return new Date(str).toLocaleTimeString([], {
+    hour: '2-digit', minute: '2-digit', hour12: true,
+  });
+};
+
+const getInitials = (name) => {
+  if (!name) return '?';
+  return name.split(' ').filter(Boolean).map((w) => w[0]).slice(0, 2).join('').toUpperCase();
+};
+
+const EMOJIS = [
+  '😀','😂','🥰','😍','😎','🤔','😅','😭','😡','👍','👎','🙏','👏','💪',
+  '🔥','❤️','💔','✨','🎉','🎂','☕','🍕','⚽','🚗','📱','💻','👀','🙌','✌️','👋',
+];
+
+// ══════════════════════════════════════════════════════════════════
+// Sub-components
+// ══════════════════════════════════════════════════════════════════
+const Avatar = ({ name, size = 40, src }) => (
+  <div
+    style={{
+      width: size, height: size, borderRadius: '50%',
+      background: 'linear-gradient(135deg, #25d366, #128c7e)',
+      color: '#fff', display: 'flex', alignItems: 'center',
+      justifyContent: 'center', fontWeight: 700, fontSize: size * 0.38,
+      flexShrink: 0, overflow: 'hidden',
+    }}
+  >
+    {src ? (
+      <img src={src} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+    ) : (
+      getInitials(name)
+    )}
+  </div>
+);
+
+const Ticks = ({ read }) => (
+  <i
+    className="fas fa-check-double"
+    style={{
+      color: read ? '#53bdeb' : '#8696a0',
+      fontSize: 11, marginLeft: 4,
+      display: 'inline-block', verticalAlign: 'middle',
+    }}
+  />
+);
+
+const MessageBubble = ({ msg, isMine, isConsecutive, showTail, onImageClick }) => {
+  const text = getMessageText(msg);
+  const type = getAttachmentType(text);
+  const url = extractAttachmentUrl(text);
+
+  return (
+    <div style={{ display: 'flex', justifyContent: isMine ? 'flex-end' : 'flex-start' }}>
+      <div
+        className="wa-bubble"
+        style={{
+          padding: '6px 8px 4px 10px',
+          fontSize: 14,
+          lineHeight: 1.35,
+          wordWrap: 'break-word',
+          wordBreak: 'break-word',
+          overflowWrap: 'anywhere',
+          boxShadow: '0 1px 0.5px rgba(11,20,26,0.13)',
+          background: isMine ? '#dcf8c6' : '#fff',
+          color: '#111b21',
+          marginTop: isConsecutive ? 2 : 8,
+          borderTopLeftRadius: 8,
+          borderTopRightRadius: 8,
+          borderBottomLeftRadius: isMine ? 8 : showTail ? 2 : 8,
+          borderBottomRightRadius: isMine ? (showTail ? 2 : 8) : 8,
+          overflow: 'hidden',
+        }}
+      >
+        {type === 'image' && url && (
+          <img
+            src={url}
+            alt="attachment"
+            loading="lazy"
+            onClick={() => onImageClick(url)}
+            onError={(e) => { e.currentTarget.style.display = 'none'; }}
+            style={{
+              maxWidth: '100%',
+              maxHeight: 320,
+              height: 'auto',
+              borderRadius: 6,
+              display: 'block',
+              cursor: 'pointer',
+              marginBottom: 4,
+            }}
+          />
+        )}
+        {type === 'video' && url && (
+          <video
+            src={url}
+            controls
+            style={{
+              maxWidth: '100%',
+              maxHeight: 320,
+              borderRadius: 6,
+              display: 'block',
+              marginBottom: 4,
+            }}
+          />
+        )}
+        {type === 'contact' && url && (
+          <a
+            href={url}
+            download
+            style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#111b21', textDecoration: 'none', padding: '4px 0', marginBottom: 4 }}
+          >
+            <i className="fas fa-address-card" style={{ fontSize: 24, color: '#25d366' }} />
+            <span style={{ fontSize: 13, fontWeight: 600 }}>Contact card</span>
+          </a>
+        )}
+        {type === 'file' && url && (
+          <a
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            download
+            style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#111b21', textDecoration: 'none', padding: '4px 0', marginBottom: 4 }}
+          >
+            <i className="fas fa-file" style={{ fontSize: 22, color: '#25d366' }} />
+            <span style={{ fontSize: 13, fontWeight: 600 }}>Attachment</span>
+          </a>
+        )}
+        {!type && <span>{text}</span>}
+
+        <div
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'flex-end',
+            fontSize: 10.5, color: '#667781', marginTop: 2, marginLeft: 12,
+          }}
+        >
+          <span>{formatTime(msg.createdAt)}</span>
+          {isMine && <Ticks read={isRead(msg)} />}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const DateDivider = ({ date }) => (
+  <div style={{ display: 'flex', justifyContent: 'center', margin: '12px 0 8px' }}>
+    <span
+      style={{
+        background: '#fff', padding: '5px 12px', borderRadius: 8,
+        fontSize: 11.5, fontWeight: 600, color: '#667781',
+        boxShadow: '0 1px 0.5px rgba(11,20,26,0.13)',
+      }}
+    >
+      {formatDateDivider(date)}
+    </span>
+  </div>
+);
+
+// ══════════════════════════════════════════════════════════════════
+// Main component
+// ══════════════════════════════════════════════════════════════════
+const MessagesPage = () => {
   const { user, token } = useAuth();
+
   const [messagesList, setMessagesList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedConversation, setSelectedConversation] = useState(null);
   const [replyMessage, setReplyMessage] = useState('');
   const [sendingReply, setSendingReply] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const pollInterval = useRef(null);
+  const [viewingImage, setViewingImage] = useState(null);
 
-  // ─── Fetch messages ──────────────────────────────────────────────
+  const [showAttachMenu, setShowAttachMenu] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [attachMenuPos, setAttachMenuPos] = useState(null);
+  const [emojiPickerPos, setEmojiPickerPos] = useState(null);
+
+  const messagesEndRef = useRef(null);
+  const inputRef = useRef(null);
+  const pollRef = useRef(null);
+  const attachBtnRef = useRef(null);
+  const emojiBtnRef = useRef(null);
+  const attachMenuRef = useRef(null);
+  const emojiPickerRef = useRef(null);
+
+  // ─── Initial fetch ───────────────────────────────────────────
   useEffect(() => {
-    const fetchMessages = async () => {
-      if (!user || !token) return;
+    if (!user || !token) { setLoading(false); return; }
+    let cancelled = false;
+    (async () => {
       try {
         setLoading(true);
         const data = await messages.getForUser(user._id, token);
         const list = Array.isArray(data) ? data : data?.messages || data?.data || [];
-        setMessagesList(list);
+        if (!cancelled) setMessagesList(dedupeById(list));
       } catch (err) {
         console.error('Error fetching messages:', err);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
-    };
-    fetchMessages();
-    return () => {
-      if (pollInterval.current) clearInterval(pollInterval.current);
-    };
+    })();
+    return () => { cancelled = true; };
   }, [user, token]);
 
-  // ─── Open conversation ──────────────────────────────────────────
-  const openConversation = (otherUserId) => {
-    const conversationMessages = messagesList.filter(msg => {
-      const s = typeof msg.sender === 'string' ? msg.sender : msg.sender?._id;
-      const r = typeof msg.receiver === 'string' ? msg.receiver : msg.receiver?._id;
-      return (s === otherUserId || r === otherUserId) && (s === user._id || r === user._id);
-    });
-    setSelectedConversation({ userId: otherUserId, messages: conversationMessages });
-
-    // Mark unread as read
-    const unread = conversationMessages.filter(msg => {
-      const r = typeof msg.receiver === 'string' ? msg.receiver : msg.receiver?._id;
-      return r === user._id && !msg.read;
-    });
-    unread.forEach(async msg => {
-      try {
-        await messages.markRead(msg._id, token);
-        setMessagesList(prev => prev.map(m => (m._id === msg._id ? { ...m, read: true } : m)));
-        setSelectedConversation(prev => ({
-          ...prev,
-          messages: prev.messages.map(m => (m._id === msg._id ? { ...m, read: true } : m)),
-        }));
-      } catch (err) { console.error(err); }
-    });
-
-    // Polling
-    if (pollInterval.current) clearInterval(pollInterval.current);
-    pollInterval.current = setInterval(async () => {
-      if (!selectedConversation) return;
+  // ─── Single poller for inbox + open thread ───────────────────
+  useEffect(() => {
+    if (!user || !token) return;
+    const poll = async () => {
       try {
         const res = await fetch(`${API_URL}/api/messages/${user._id}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
+        if (!res.ok) return;
         const data = await res.json();
-        if (data.success) {
-          const newMsgs = data.messages.filter(msg => {
-            const s = typeof msg.sender === 'string' ? msg.sender : msg.sender?._id;
-            const r = typeof msg.receiver === 'string' ? msg.receiver : msg.receiver?._id;
-            return (s === otherUserId || r === otherUserId) && (s === user._id || r === user._id);
-          });
-          setMessagesList(prev => {
-            const existing = new Set(prev.map(m => m._id));
-            const added = newMsgs.filter(m => !existing.has(m._id));
-            return [...prev, ...added];
-          });
-          setSelectedConversation(prev => {
-            if (!prev) return prev;
-            const existing = new Set(prev.messages.map(m => m._id));
-            const added = newMsgs.filter(m => !existing.has(m._id));
-            return { ...prev, messages: [...prev.messages, ...added] };
-          });
+        if (data.success && Array.isArray(data.messages)) {
+          setMessagesList(dedupeById(data.messages));
         }
-      } catch (err) { console.error('Polling error:', err); }
-    }, 5000);
+      } catch { /* silent */ }
+    };
+    pollRef.current = setInterval(poll, 5000);
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+  }, [user, token]);
+
+  // ─── Conversations (derived) ─────────────────────────────────
+  const conversations = useMemo(() => {
+    if (!user) return [];
+    const byPartner = new Map();
+    messagesList.forEach((msg) => {
+      const s = getSenderId(msg);
+      const r = getReceiverId(msg);
+      let partnerId = null, partnerObj = null;
+      if (s === user._id) { partnerId = r; partnerObj = typeof msg.receiver === 'object' ? msg.receiver : null; }
+      else if (r === user._id) { partnerId = s; partnerObj = typeof msg.sender === 'object' ? msg.sender : null; }
+      if (!partnerId) return;
+      if (!byPartner.has(partnerId)) byPartner.set(partnerId, { partnerId, partnerObj: null, msgs: [] });
+      const c = byPartner.get(partnerId);
+      c.msgs.push(msg);
+      if (partnerObj && !c.partnerObj) c.partnerObj = partnerObj;
+    });
+    return Array.from(byPartner.values())
+      .map((c) => {
+        const sorted = [...c.msgs].sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+        const last = sorted[0];
+        const unread = c.msgs.filter((m) => getReceiverId(m) === user._id && !isRead(m)).length;
+        return { partnerId: c.partnerId, partner: c.partnerObj, last, unread };
+      })
+      .sort((a, b) => new Date(b.last?.createdAt || 0) - new Date(a.last?.createdAt || 0));
+  }, [messagesList, user]);
+
+  // ─── Messages of selected thread (derived, deduped) ──────────
+  const conversationMessages = useMemo(() => {
+    if (!selectedConversation || !user) return [];
+    const otherId = selectedConversation.partnerId;
+    return dedupeById(messagesList)
+      .filter((msg) => {
+        const s = getSenderId(msg);
+        const r = getReceiverId(msg);
+        return (s === otherId || r === otherId) && (s === user._id || r === user._id);
+      })
+      .sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0));
+  }, [messagesList, selectedConversation, user]);
+
+  // ─── Auto-scroll ─────────────────────────────────────────────
+  useEffect(() => {
+    if (selectedConversation) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+    }
+  }, [selectedConversation?.partnerId]);
+
+  useEffect(() => {
+    if (selectedConversation) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [conversationMessages.length]);
+
+  // ─── Outside click closes popups ─────────────────────────────
+  useEffect(() => {
+    const handler = (e) => {
+      if (
+        showAttachMenu &&
+        attachMenuRef.current && !attachMenuRef.current.contains(e.target) &&
+        attachBtnRef.current && !attachBtnRef.current.contains(e.target)
+      ) setShowAttachMenu(false);
+      if (
+        showEmojiPicker &&
+        emojiPickerRef.current && !emojiPickerRef.current.contains(e.target) &&
+        emojiBtnRef.current && !emojiBtnRef.current.contains(e.target)
+      ) setShowEmojiPicker(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showAttachMenu, showEmojiPicker]);
+
+  // ─── Mark-as-read for open thread ────────────────────────────
+  useEffect(() => {
+    if (!selectedConversation || !user || !token) return;
+    const unread = conversationMessages.filter((m) => getReceiverId(m) === user._id && !isRead(m));
+    if (unread.length === 0) return;
+    (async () => {
+      for (const msg of unread) {
+        try {
+          await messages.markRead(msg._id, token);
+          setMessagesList((prev) => prev.map((m) => (m._id === msg._id ? { ...m, read: true } : m)));
+        } catch (err) { console.error('markRead failed:', err); }
+      }
+    })();
+  }, [selectedConversation?.partnerId, conversationMessages.length, user, token]);
+
+  // ─── Popup open helpers ──────────────────────────────────────
+  const toggleAttachMenu = () => {
+    if (showAttachMenu) { setShowAttachMenu(false); return; }
+    if (attachBtnRef.current) {
+      const rect = attachBtnRef.current.getBoundingClientRect();
+      setAttachMenuPos({
+        bottom: window.innerHeight - rect.top + 8,
+        right: Math.max(8, window.innerWidth - rect.right),
+      });
+    }
+    setShowEmojiPicker(false);
+    setShowAttachMenu(true);
+  };
+  const toggleEmojiPicker = () => {
+    if (showEmojiPicker) { setShowEmojiPicker(false); return; }
+    if (emojiBtnRef.current) {
+      const rect = emojiBtnRef.current.getBoundingClientRect();
+      setEmojiPickerPos({
+        bottom: window.innerHeight - rect.top + 8,
+        left: Math.max(8, Math.min(rect.left, window.innerWidth - 340)),
+      });
+    }
+    setShowAttachMenu(false);
+    setShowEmojiPicker(true);
   };
 
-  const closeConversation = () => {
-    setSelectedConversation(null);
-    if (pollInterval.current) clearInterval(pollInterval.current);
-  };
-
-  // ─── Send reply ──────────────────────────────────────────────────
-  const handleSendReply = async (e) => {
-    e.preventDefault();
-    if (!replyMessage.trim() || !selectedConversation || !token) return;
+  // ─── Send helpers ────────────────────────────────────────────
+  const sendMessage = async (text) => {
+    if (!text.trim() || !selectedConversation || !token) return false;
     setSendingReply(true);
     try {
       const res = await fetch(`${API_URL}/api/messages`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
-          receiver: selectedConversation.userId,
-          message: replyMessage.trim(),
+          receiver: selectedConversation.partnerId,
+          message: text.trim(),
           productId: null,
         }),
       });
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.message || 'Failed to send reply');
-      }
+      if (!res.ok) throw new Error('Failed to send message');
       const data = await res.json();
-      const newMessage = data.message || data.data || data;
-      if (!newMessage?._id) throw new Error('Invalid response');
-      setMessagesList(prev => [newMessage, ...prev]);
-      setSelectedConversation(prev => ({
-        ...prev,
-        messages: [newMessage, ...prev.messages],
-      }));
-      setReplyMessage('');
+      const newMsg = data.message || data.data || data;
+      if (!newMsg?._id) throw new Error('Invalid response');
+      if (!newMsg.createdAt) newMsg.createdAt = new Date().toISOString();
+
+      setMessagesList((prev) => {
+        if (prev.some((m) => m._id === newMsg._id)) return prev;
+        return [...prev, newMsg];
+      });
+      return true;
     } catch (err) {
-      alert(err.message || 'Failed to send reply.');
+      console.error('Send error:', err);
+      alert('Failed to send message.');
+      return false;
     } finally {
       setSendingReply(false);
     }
   };
 
-  // ─── File attachment ─────────────────────────────────────────────
+  const handleSendReply = async (e) => {
+    e.preventDefault();
+    const text = replyMessage;
+    if (!text.trim()) return;
+    const ok = await sendMessage(text);
+    if (ok) {
+      setReplyMessage('');
+      inputRef.current?.focus();
+    }
+  };
+
   const handleFileAttachment = async (file) => {
-    if (!selectedConversation || !token) return;
+    if (!file || !selectedConversation || !token) return;
+    if (file.size > 25 * 1024 * 1024) {
+      alert('File too large. Maximum 25MB.');
+      return;
+    }
     setUploading(true);
     try {
-      const formData = new FormData();
-      formData.append('file', file);
+      const fd = new FormData();
+      fd.append('file', file);
       const uploadRes = await fetch(`${API_URL}/api/upload`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
-        body: formData,
+        body: fd,
       });
       if (!uploadRes.ok) throw new Error('Upload failed');
-      const uploadData = await uploadRes.json();
-      const fileUrl = uploadData.url || uploadData.secure_url;
-      if (!fileUrl) throw new Error('No URL returned');
+      const up = await uploadRes.json();
+      const url = up.url || up.secure_url;
+      if (!url) throw new Error('No URL returned');
 
       let label = '📎 File';
       if (file.type.startsWith('image/')) label = '📷 Image';
       else if (file.type.startsWith('video/')) label = '🎥 Video';
       else if (file.type === 'text/vcard' || file.name?.endsWith('.vcf')) label = '📇 Contact';
-      const messageText = `${label}: ${fileUrl}`;
 
-      const res = await fetch(`${API_URL}/api/messages`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          receiver: selectedConversation.userId,
-          message: messageText,
-          productId: null,
-        }),
-      });
-      if (!res.ok) throw new Error('Failed to send file message');
-      const data = await res.json();
-      const newMessage = data.message || data.data || data;
-      if (!newMessage?._id) throw new Error('Invalid response');
-      setMessagesList(prev => [newMessage, ...prev]);
-      setSelectedConversation(prev => ({
-        ...prev,
-        messages: [newMessage, ...prev.messages],
-      }));
+      await sendMessage(`${label}: ${url}`);
     } catch (err) {
+      console.error('Upload error:', err);
       alert(err.message || 'Failed to send file.');
     } finally {
       setUploading(false);
     }
   };
 
-  // ─── Get conversations ──────────────────────────────────────────
-  const getConversations = () => {
-    if (!user) return [];
-    const partners = new Set();
-    messagesList.forEach(msg => {
-      const s = typeof msg.sender === 'string' ? msg.sender : msg.sender?._id;
-      const r = typeof msg.receiver === 'string' ? msg.receiver : msg.receiver?._id;
-      if (s === user._id && r) partners.add(r);
-      if (r === user._id && s) partners.add(s);
-    });
-    return Array.from(partners).map(partnerId => {
-      const conv = messagesList.filter(msg => {
-        const s = typeof msg.sender === 'string' ? msg.sender : msg.sender?._id;
-        const r = typeof msg.receiver === 'string' ? msg.receiver : msg.receiver?._id;
-        return (s === partnerId || r === partnerId) && (s === user._id || r === user._id);
-      });
-      const sorted = [...conv].sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
-      const last = sorted[0] || null;
-      const unread = conv.filter(msg => {
-        const r = typeof msg.receiver === 'string' ? msg.receiver : msg.receiver?._id;
-        return r === user._id && !msg.read;
-      }).length;
-      let partner = null;
-      for (const msg of sorted) {
-        const s = typeof msg.sender === 'string' ? msg.sender : msg.sender?._id;
-        const r = typeof msg.receiver === 'string' ? msg.receiver : msg.receiver?._id;
-        if (s === partnerId) { partner = msg.sender; break; }
-        if (r === partnerId) { partner = msg.receiver; break; }
-      }
-      return { userId: partnerId, partner, last, unread };
-    }).sort((a, b) => new Date(b.last?.createdAt || 0) - new Date(a.last?.createdAt || 0));
+  const openConversation = (conv) => {
+    setSelectedConversation({ partnerId: conv.partnerId, partner: conv.partner });
+    setShowAttachMenu(false);
+    setShowEmojiPicker(false);
+  };
+  const closeConversation = () => {
+    setSelectedConversation(null);
+    setShowAttachMenu(false);
+    setShowEmojiPicker(false);
   };
 
-  // ─── Render ──────────────────────────────────────────────────────
+  // ─── Not logged in ───────────────────────────────────────────
   if (!user) {
-    return <div className="container" style={{ padding: '40px 20px', textAlign: 'center' }}>Please login to view your messages.</div>;
+    return (
+      <div className="container" style={{ padding: '40px 20px', textAlign: 'center' }}>
+        Please login to view your messages.
+      </div>
+    );
   }
 
+  // ═════════════════════════════════════════════════════════════
+  // Render
+  // ═════════════════════════════════════════════════════════════
   return (
-    <div className="container" style={{ padding: '30px 20px' }}>
-      <h1 style={{ fontSize: '28px', fontWeight: 700, marginBottom: '24px' }}>Messages</h1>
-      {loading ? (
-        <p>Loading conversations...</p>
-      ) : messagesList.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--gray-500)' }}>
-          No messages yet.
-        </div>
-      ) : selectedConversation ? (
-        <div style={{ background: 'white', borderRadius: 'var(--radius-md)', border: '1px solid var(--gray-200)', overflow: 'hidden' }}>
-          <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--gray-200)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <strong>
-              {(() => {
-                const first = selectedConversation.messages[0];
-                if (!first) return 'User';
-                const s = typeof first.sender === 'string' ? first.sender : first.sender?._id;
-                const partner = s === selectedConversation.userId ? first.sender : first.receiver;
-                return partner?.name || 'User';
-              })()}
-            </strong>
-            <button onClick={closeConversation} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer' }}>✕</button>
-          </div>
-          <div style={{ maxHeight: '400px', overflowY: 'auto', padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {[...selectedConversation.messages]
-              .sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0))
-              .map(msg => {
-                const s = typeof msg.sender === 'string' ? msg.sender : msg.sender?._id;
-                const isMine = s === user._id;
-                const messageText = msg.message || msg.content || msg.text || '';
-                return (
+    <>
+      <style>{`
+        /* ═══════════════════════════════════════════════════
+           BASE — Desktop / Laptop (≥ 1025px)
+           ═══════════════════════════════════════════════════ */
+        .container.wa-page {
+          padding: 16px 12px;
+          max-width: 100%;
+        }
+
+        .wa-container {
+          height: calc(100vh - 130px);
+          min-height: 500px;
+          max-width: 1200px;
+          margin: 0 auto;
+          display: flex;
+          flex-direction: column;
+          background: #fff;
+          border-radius: 12px;
+          overflow: hidden;
+          box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+          border: 1px solid #e5e7eb;
+        }
+
+        .wa-messages {
+          flex: 1;
+          overflow-y: auto;
+          min-height: 0;
+          padding: 16px 6% 12px;
+          background-color: #efeae2;
+          background-image:
+            radial-gradient(circle at 20px 20px, rgba(0,0,0,0.025) 1px, transparent 1.5px),
+            radial-gradient(circle at 60px 60px, rgba(0,0,0,0.02) 1px, transparent 1.5px);
+          background-size: 40px 40px, 40px 40px;
+          overscroll-behavior: contain;
+        }
+        .wa-messages::-webkit-scrollbar { width: 6px; }
+        .wa-messages::-webkit-scrollbar-thumb {
+          background: rgba(0,0,0,0.15);
+          border-radius: 3px;
+        }
+
+        .wa-conv-item:hover { background: #f5f6f6 !important; }
+
+        .wa-icon-btn {
+          background: none;
+          border: none;
+          cursor: pointer;
+          width: 40px;
+          height: 40px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 18px;
+          color: #54656f;
+          transition: background 0.15s;
+          flex-shrink: 0;
+        }
+        .wa-icon-btn:hover { background: rgba(0,0,0,0.06); }
+        .wa-icon-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        .wa-emoji {
+          font-size: 22px;
+          background: none;
+          border: none;
+          cursor: pointer;
+          width: 36px;
+          height: 36px;
+          border-radius: 8px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .wa-emoji:hover { background: rgba(0,0,0,0.08); }
+
+        .wa-input {
+          flex: 1;
+          min-width: 0;
+          border: none;
+          outline: none;
+          background: #fff;
+          padding: 10px 14px;
+          border-radius: 20px;
+          font-size: 14.5px;
+          color: #111b21;
+        }
+        .wa-input::placeholder { color: #8696a0; }
+
+        .wa-popup {
+          background: #fff;
+          border-radius: 12px;
+          box-shadow: 0 4px 24px rgba(0,0,0,0.18);
+          z-index: 9999;
+          position: fixed;
+        }
+
+        .wa-menu-item {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 10px 16px;
+          border-radius: 8px;
+          cursor: pointer;
+          font-size: 14px;
+          color: #111b21;
+          transition: background 0.15s;
+        }
+        .wa-menu-item:hover { background: #f0f2f5; }
+        .wa-menu-item i { width: 20px; text-align: center; }
+
+        .wa-composer {
+          flex-shrink: 0;
+          background: #f0f2f5;
+          padding: 10px 12px;
+          display: flex;
+          align-items: flex-end;
+          gap: 6px;
+        }
+
+        .wa-bubble {
+          max-width: 75%;
+        }
+
+        .wa-emoji-picker {
+          display: grid;
+          grid-template-columns: repeat(8, 36px);
+          gap: 2px;
+        }
+
+        /* ═══════════════════════════════════════════════════
+           LARGE DESKTOP (≥ 1400px)
+           ═══════════════════════════════════════════════════ */
+        @media (min-width: 1400px) {
+          .wa-container {
+            max-width: 1300px;
+            height: calc(100vh - 150px);
+          }
+          .wa-messages { padding: 20px 8% 16px; }
+          .wa-bubble { max-width: 70%; }
+        }
+
+        /* ═══════════════════════════════════════════════════
+           TABLET (769px – 1024px) — iPad Pro portrait, iPad landscape
+           ═══════════════════════════════════════════════════ */
+        @media (max-width: 1024px) and (min-width: 769px) {
+          .container.wa-page { padding: 12px 10px; }
+          .wa-container {
+            height: calc(100vh - 110px);
+            max-width: 100%;
+            border-radius: 10px;
+          }
+          .wa-messages { padding: 14px 4% 10px; }
+          .wa-icon-btn { width: 42px; height: 42px; }
+          .wa-bubble { max-width: 78%; }
+        }
+
+        /* ═══════════════════════════════════════════════════
+           SMALL TABLET / IPAD MINI PORTRAIT (≤ 768px)
+           ═══════════════════════════════════════════════════ */
+        @media (max-width: 768px) and (min-width: 601px) {
+          .container.wa-page { padding: 10px 8px; }
+          .wa-container {
+            height: calc(100vh - 100px);
+            border-radius: 10px;
+          }
+          .wa-messages { padding: 12px 12px 8px; }
+          .wa-composer { padding: 8px 10px; gap: 4px; }
+          .wa-bubble { max-width: 80%; }
+          .wa-icon-btn { width: 42px; height: 42px; }
+        }
+
+        /* ═══════════════════════════════════════════════════
+           PHONE (≤ 600px)
+           ═══════════════════════════════════════════════════ */
+        @media (max-width: 600px) {
+          .container.wa-page {
+            padding: 0;
+            max-width: 100%;
+          }
+          .wa-container {
+            /* dvh handles mobile address-bar show/hide; svh fallback via vh */
+            height: calc(100vh - 100px);
+            height: calc(100dvh - 100px - env(safe-area-inset-bottom, 0px));
+            min-height: 0;
+            max-width: 100%;
+            margin: 0;
+            border-radius: 0;
+            border: none;
+            box-shadow: none;
+          }
+          .wa-messages { padding: 10px 8px 6px; }
+          .wa-composer {
+            padding: 8px 8px calc(8px + env(safe-area-inset-bottom, 0px));
+            gap: 4px;
+          }
+          .wa-icon-btn { width: 38px; height: 38px; font-size: 17px; }
+          .wa-bubble { max-width: 85%; }
+
+          /* iOS Safari zooms the whole page if input < 16px */
+          .wa-input {
+            font-size: 16px;
+            padding: 10px 14px;
+          }
+
+          /* Emoji picker → centered bottom sheet above composer */
+          .wa-emoji-picker {
+            left: 50% !important;
+            right: auto !important;
+            bottom: calc(72px + env(safe-area-inset-bottom, 0px)) !important;
+            transform: translateX(-50%);
+            width: 340px;
+            max-width: calc(100vw - 16px) !important;
+            grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)) !important;
+            padding: 10px !important;
+            max-height: 260px;
+            overflow-y: auto;
+          }
+          .wa-emoji-picker .wa-emoji {
+            width: 40px;
+            height: 40px;
+            font-size: 24px;
+          }
+
+          /* Attach menu → centered above composer */
+          .wa-attach-menu {
+            left: 50% !important;
+            right: auto !important;
+            bottom: calc(72px + env(safe-area-inset-bottom, 0px)) !important;
+            transform: translateX(-50%);
+            min-width: 220px;
+            padding: 8px !important;
+          }
+          .wa-menu-item {
+            padding: 12px 18px;
+            font-size: 15px;
+          }
+        }
+
+        /* ═══════════════════════════════════════════════════
+           TINY PHONE (≤ 380px) — iPhone SE, older Androids
+           ═══════════════════════════════════════════════════ */
+        @media (max-width: 380px) {
+          .wa-messages { padding: 8px 6px 4px; }
+          .wa-composer {
+            padding: 6px 6px calc(6px + env(safe-area-inset-bottom, 0px));
+            gap: 3px;
+          }
+          .wa-icon-btn { width: 34px; height: 34px; font-size: 15px; }
+          .wa-input { padding: 9px 12px; }
+          .wa-bubble { max-width: 88%; }
+          .wa-emoji-picker { width: calc(100vw - 12px) !important; }
+        }
+      `}</style>
+
+      <div className="container wa-page">
+        <div className="wa-container">
+          {selectedConversation ? (
+            <>
+              {/* ─── Chat Header ─── */}
+              <div
+                style={{
+                  flexShrink: 0, display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '10px 14px', background: '#fff',
+                  borderBottom: '1px solid #e9edef',
+                }}
+              >
+                <button className="wa-icon-btn" onClick={closeConversation} aria-label="Back">
+                  <i className="fas fa-arrow-left" />
+                </button>
+                <Avatar
+                  name={selectedConversation.partner?.name || 'User'}
+                  size={40}
+                  src={selectedConversation.partner?.profileImage || selectedConversation.partner?.avatar}
+                />
+                <div style={{ flex: 1, minWidth: 0 }}>
                   <div
-                    key={msg._id}
                     style={{
-                      alignSelf: isMine ? 'flex-end' : 'flex-start',
-                      maxWidth: '70%',
-                      background: isMine ? 'var(--primary)' : 'var(--gray-100)',
-                      color: isMine ? 'white' : 'var(--gray-800)',
-                      padding: '8px 14px',
-                      borderRadius: '12px',
-                      fontSize: '14px',
+                      fontWeight: 600, fontSize: 15.5, color: '#111b21',
+                      whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                     }}
                   >
-                    {messageText}
-                    <div style={{ fontSize: '10px', opacity: 0.7, marginTop: '4px', textAlign: 'right' }}>
-                      {msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString() : ''}
-                    </div>
+                    {selectedConversation.partner?.name || 'User'}
                   </div>
-                );
-              })}
-          </div>
-          <div style={{ borderTop: '1px solid var(--gray-200)', padding: '12px' }}>
-            <form onSubmit={handleSendReply} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <input
-                  type="text"
-                  value={replyMessage}
-                  onChange={e => setReplyMessage(e.target.value)}
-                  placeholder="Type a reply..."
-                  style={{ flex: 1, padding: '8px 14px', border: '1.5px solid var(--gray-200)', borderRadius: 'var(--radius-md)', fontSize: '14px' }}
-                />
+                  <div style={{ fontSize: 12, color: '#667781' }}>
+                    {selectedConversation.partner?.online ? 'online' : 'tap for contact info'}
+                  </div>
+                </div>
+              </div>
+
+              {/* ─── Messages ─── */}
+              <div className="wa-messages">
+                {conversationMessages.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '40px 20px', color: '#667781', fontSize: 13 }}>
+                    No messages yet. Start the conversation!
+                  </div>
+                ) : (
+                  conversationMessages.map((msg, idx) => {
+                    const prev = conversationMessages[idx - 1];
+                    const next = conversationMessages[idx + 1];
+                    const isMine = getSenderId(msg) === user._id;
+                    const showDate = !prev || !sameDay(prev.createdAt, msg.createdAt);
+                    const isConsecutive = prev && !showDate && getSenderId(prev) === getSenderId(msg);
+                    const isLastInGroup =
+                      !next ||
+                      !sameDay(next.createdAt, msg.createdAt) ||
+                      getSenderId(next) !== getSenderId(msg);
+                    return (
+                      <React.Fragment key={msg._id || `idx-${idx}`}>
+                        {showDate && <DateDivider date={msg.createdAt} />}
+                        <MessageBubble
+                          msg={msg}
+                          isMine={isMine}
+                          isConsecutive={!!isConsecutive}
+                          showTail={isLastInGroup}
+                          onImageClick={setViewingImage}
+                        />
+                      </React.Fragment>
+                    );
+                  })
+                )}
+                <div ref={messagesEndRef} />
+              </div>
+
+              {/* ─── Composer ─── */}
+              <div className="wa-composer">
                 <button
-                  type="submit"
-                  disabled={sendingReply || uploading}
-                  style={{
-                    padding: '8px 20px',
-                    background: 'var(--secondary)',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: 'var(--radius-full)',
-                    fontWeight: 600,
-                    cursor: (sendingReply || uploading) ? 'not-allowed' : 'pointer',
-                    opacity: (sendingReply || uploading) ? 0.7 : 1,
-                  }}
+                  ref={emojiBtnRef}
+                  type="button"
+                  className="wa-icon-btn"
+                  onClick={toggleEmojiPicker}
+                  aria-label="Emoji"
                 >
-                  {sendingReply ? 'Sending...' : 'Reply'}
+                  <i className="far fa-smile" />
                 </button>
+                <button
+                  ref={attachBtnRef}
+                  type="button"
+                  className="wa-icon-btn"
+                  onClick={toggleAttachMenu}
+                  aria-label="Attach"
+                  disabled={uploading}
+                >
+                  <i className="fas fa-paperclip" />
+                </button>
+
+                <form onSubmit={handleSendReply} style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    className="wa-input"
+                    value={replyMessage}
+                    onChange={(e) => setReplyMessage(e.target.value)}
+                    placeholder={uploading ? 'Uploading…' : 'Type a message'}
+                    disabled={uploading}
+                  />
+                  <button
+                    type="submit"
+                    className="wa-icon-btn"
+                    style={{
+                      background: '#25d366', color: '#fff', width: 42, height: 42,
+                      opacity: sendingReply || uploading || !replyMessage.trim() ? 0.5 : 1,
+                    }}
+                    disabled={sendingReply || uploading || !replyMessage.trim()}
+                    aria-label="Send"
+                  >
+                    <i className="fas fa-paper-plane" />
+                  </button>
+                </form>
               </div>
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                <label style={{ cursor: 'pointer', background: '#f1f5f9', padding: '6px 12px', borderRadius: 'var(--radius-sm)', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <i className="fas fa-image"></i> Image
-                  <input
-                    type="file"
-                    accept="image/*"
-                    style={{ display: 'none' }}
-                    onChange={(e) => {
-                      if (e.target.files?.[0]) handleFileAttachment(e.target.files[0]);
-                      e.target.value = '';
-                    }}
-                  />
-                </label>
-                <label style={{ cursor: 'pointer', background: '#f1f5f9', padding: '6px 12px', borderRadius: 'var(--radius-sm)', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <i className="fas fa-video"></i> Video
-                  <input
-                    type="file"
-                    accept="video/*"
-                    style={{ display: 'none' }}
-                    onChange={(e) => {
-                      if (e.target.files?.[0]) handleFileAttachment(e.target.files[0]);
-                      e.target.value = '';
-                    }}
-                  />
-                </label>
-                <label style={{ cursor: 'pointer', background: '#f1f5f9', padding: '6px 12px', borderRadius: 'var(--radius-sm)', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <i className="fas fa-address-card"></i> Contact
-                  <input
-                    type="file"
-                    accept=".vcf,.vcard"
-                    style={{ display: 'none' }}
-                    onChange={(e) => {
-                      if (e.target.files?.[0]) handleFileAttachment(e.target.files[0]);
-                      e.target.value = '';
-                    }}
-                  />
-                </label>
-                {uploading && <span style={{ fontSize: '13px', color: 'var(--gray-500)' }}>Uploading...</span>}
+            </>
+          ) : (
+            <>
+              {/* ─── Inbox Header ─── */}
+              <div
+                style={{
+                  flexShrink: 0, padding: '14px 18px', background: '#fff',
+                  borderBottom: '1px solid #e9edef',
+                }}
+              >
+                <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: '#111b21' }}>
+                  Chats
+                </h2>
               </div>
-            </form>
-          </div>
-        </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          {getConversations().map(conv => (
-            <div
-              key={conv.userId}
-              onClick={() => openConversation(conv.userId)}
-              style={{
-                background: 'white',
-                padding: '12px 16px',
-                borderRadius: 'var(--radius-md)',
-                border: '1px solid var(--gray-200)',
-                cursor: 'pointer',
-                transition: 'var(--transition)',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-              }}
-            >
-              <div>
-                <div style={{ fontWeight: 600 }}>
-                  {conv.partner?.name || 'User'}
-                  {conv.unread > 0 && (
-                    <span
+
+              {/* ─── Conversation List ─── */}
+              <div style={{ flex: 1, overflowY: 'auto', background: '#fff', minHeight: 0, overscrollBehavior: 'contain' }}>
+                {loading ? (
+                  <div style={{ padding: 40, textAlign: 'center', color: '#667781' }}>
+                    Loading chats…
+                  </div>
+                ) : conversations.length === 0 ? (
+                  <div style={{ padding: 60, textAlign: 'center', color: '#667781' }}>
+                    <i className="far fa-comment-dots" style={{ fontSize: 40, marginBottom: 12, display: 'block' }} />
+                    No conversations yet.
+                  </div>
+                ) : (
+                  conversations.map((conv) => (
+                    <div
+                      key={conv.partnerId}
+                      className="wa-conv-item"
+                      onClick={() => openConversation(conv)}
                       style={{
-                        background: '#e74c3c',
-                        color: 'white',
-                        fontSize: '10px',
-                        padding: '1px 8px',
-                        borderRadius: 'var(--radius-full)',
-                        marginLeft: '8px',
+                        display: 'flex', alignItems: 'center', gap: 12,
+                        padding: '12px 16px', cursor: 'pointer',
+                        borderBottom: '1px solid #f0f2f5', transition: 'background 0.15s',
                       }}
                     >
-                      {conv.unread}
-                    </span>
-                  )}
-                </div>
-                <div
-                  style={{
-                    fontSize: '13px',
-                    color: 'var(--gray-500)',
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    maxWidth: '150px',
-                  }}
-                >
-                  {conv.last?.message || 'No messages'}
-                </div>
+                      <Avatar
+                        name={conv.partner?.name || 'User'}
+                        size={48}
+                        src={conv.partner?.profileImage || conv.partner?.avatar}
+                      />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 2 }}>
+                          <span
+                            style={{
+                              fontWeight: 600, fontSize: 15, color: '#111b21',
+                              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                            }}
+                          >
+                            {conv.partner?.name || 'User'}
+                          </span>
+                          <span
+                            style={{
+                              fontSize: 11.5, flexShrink: 0, marginLeft: 8,
+                              color: conv.unread > 0 ? '#25d366' : '#667781',
+                              fontWeight: conv.unread > 0 ? 600 : 400,
+                            }}
+                          >
+                            {conv.last?.createdAt ? formatTime(conv.last.createdAt) : ''}
+                          </span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span
+                            style={{
+                              fontSize: 13, color: '#667781',
+                              whiteSpace: 'nowrap', overflow: 'hidden',
+                              textOverflow: 'ellipsis', flex: 1,
+                            }}
+                          >
+                            {conv.last ? getMessageText(conv.last) : 'No messages'}
+                          </span>
+                          {conv.unread > 0 && (
+                            <span
+                              style={{
+                                background: '#25d366', color: '#fff',
+                                fontSize: 11, fontWeight: 700,
+                                minWidth: 20, height: 20, padding: '0 6px',
+                                borderRadius: 10, display: 'flex',
+                                alignItems: 'center', justifyContent: 'center',
+                                marginLeft: 8, flexShrink: 0,
+                              }}
+                            >
+                              {conv.unread}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
-              <div style={{ fontSize: '11px', color: 'var(--gray-400)' }}>
-                {conv.last?.createdAt ? new Date(conv.last.createdAt).toLocaleDateString() : ''}
-              </div>
-            </div>
-          ))}
+            </>
+          )}
         </div>
-      )}
-    </div>
+
+        {/* ─── Attach menu popup ─── */}
+        {showAttachMenu && attachMenuPos && (
+          <div
+            ref={attachMenuRef}
+            className="wa-popup wa-attach-menu"
+            style={{ bottom: attachMenuPos.bottom, right: attachMenuPos.right, padding: 6 }}
+          >
+            <label className="wa-menu-item">
+              <i className="fas fa-image" style={{ color: '#007bfc' }} />
+              Image
+              <input
+                type="file"
+                accept="image/*"
+                style={{ display: 'none' }}
+                onChange={(e) => {
+                  if (e.target.files?.[0]) handleFileAttachment(e.target.files[0]);
+                  e.target.value = '';
+                  setShowAttachMenu(false);
+                }}
+              />
+            </label>
+            <label className="wa-menu-item">
+              <i className="fas fa-video" style={{ color: '#ff2e74' }} />
+              Video
+              <input
+                type="file"
+                accept="video/*"
+                style={{ display: 'none' }}
+                onChange={(e) => {
+                  if (e.target.files?.[0]) handleFileAttachment(e.target.files[0]);
+                  e.target.value = '';
+                  setShowAttachMenu(false);
+                }}
+              />
+            </label>
+            <label className="wa-menu-item">
+              <i className="fas fa-address-card" style={{ color: '#7f66ff' }} />
+              Contact
+              <input
+                type="file"
+                accept=".vcf,.vcard"
+                style={{ display: 'none' }}
+                onChange={(e) => {
+                  if (e.target.files?.[0]) handleFileAttachment(e.target.files[0]);
+                  e.target.value = '';
+                  setShowAttachMenu(false);
+                }}
+              />
+            </label>
+            <label className="wa-menu-item">
+              <i className="fas fa-file" style={{ color: '#7f66ff' }} />
+              Document
+              <input
+                type="file"
+                style={{ display: 'none' }}
+                onChange={(e) => {
+                  if (e.target.files?.[0]) handleFileAttachment(e.target.files[0]);
+                  e.target.value = '';
+                  setShowAttachMenu(false);
+                }}
+              />
+            </label>
+          </div>
+        )}
+
+        {/* ─── Emoji picker popup ─── */}
+        {showEmojiPicker && emojiPickerPos && (
+          <div
+            ref={emojiPickerRef}
+            className="wa-popup wa-emoji-picker"
+            style={{
+              bottom: emojiPickerPos.bottom,
+              left: emojiPickerPos.left,
+              padding: 8,
+              gap: 2,
+              maxWidth: 320,
+            }}
+          >
+            {EMOJIS.map((e) => (
+              <button
+                key={e}
+                type="button"
+                className="wa-emoji"
+                onClick={() => {
+                  setReplyMessage((prev) => prev + e);
+                  inputRef.current?.focus();
+                }}
+              >
+                {e}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* ─── Image lightbox ─── */}
+        {viewingImage && (
+          <div
+            onClick={() => setViewingImage(null)}
+            style={{
+              position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.92)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              zIndex: 10001, cursor: 'pointer', padding: 20,
+            }}
+          >
+            <button
+              onClick={() => setViewingImage(null)}
+              style={{
+                position: 'fixed',
+                top: 'max(20px, env(safe-area-inset-top, 20px))',
+                right: 'max(20px, env(safe-area-inset-right, 20px))',
+                background: 'rgba(255,255,255,0.9)', border: 'none',
+                width: 44, height: 44, borderRadius: '50%',
+                fontSize: 22, cursor: 'pointer', display: 'flex',
+                alignItems: 'center', justifyContent: 'center', zIndex: 10002,
+              }}
+            >
+              ✕
+            </button>
+            <img
+              src={viewingImage}
+              alt="Full screen"
+              style={{ maxWidth: '90vw', maxHeight: '90vh', objectFit: 'contain', borderRadius: 8 }}
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+        )}
+      </div>
+    </>
   );
 };
 
-export default Messages;
+export default MessagesPage;

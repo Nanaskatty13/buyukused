@@ -80,12 +80,24 @@ app.set("trust proxy", 1);
  * https://buyukused.com
  *
  * Do NOT use the frontend URL as BASE_URL.
+ *
+ * NOTE:
+ * ----
+ * Express uses `req.baseUrl` INTERNALLY for nested router resolution.
+ * Overriding it works (this middleware has been shipping in production),
+ * but it's fragile. We now expose BOTH:
+ *
+ *   req.backendUrl  ← preferred for new code
+ *   req.baseUrl     ← kept for backward compatibility with existing routes
  */
 
 app.use((req, res, next) => {
-  req.baseUrl =
+  const backendUrl =
     process.env.BASE_URL ||
     `${req.protocol}://${req.get("host")}`;
+
+  req.backendUrl = backendUrl;
+  req.baseUrl = backendUrl; // ← backward compat
 
   next();
 });
@@ -1086,8 +1098,52 @@ console.log(
 );
 
 // ============================================================
-// UPLOAD
+// UPLOAD (with diagnostics)
 // ============================================================
+
+/*
+ * ⚠️ DIAGNOSTIC PING ROUTE
+ * ------------------------
+ * A no-auth, no-upload GET request you can hit in the browser to
+ * verify the upload mount is actually live on the deployed server:
+ *
+ *     https://<your-backend>/api/upload/ping
+ *
+ * - 200 + routeCount > 0  → mount is fine, upload.js loaded with routes ✅
+ * - 200 + routeCount = 0  → upload.js loaded but has NO routes (broken file) ❌
+ * - 404                   → mount missing from the deployed server.js ❌
+ *
+ * This route MUST be declared BEFORE `app.use("/api/upload", ...)`
+ * so the GET is handled here and the POST still goes to uploadRoutes.
+ */
+
+app.get(
+  "/api/upload/ping",
+  (req, res) => {
+    const routeCount =
+      uploadRoutes &&
+      Array.isArray(uploadRoutes.stack)
+        ? uploadRoutes.stack.length
+        : -1;
+
+    res.status(200).json({
+      success: true,
+      message:
+        "Upload API is mounted and responding",
+      routeCount,
+      hasPostRoute:
+        routeCount > 0,
+      timestamp:
+        new Date().toISOString(),
+      hint:
+        routeCount === 0
+          ? "⚠️ upload.js has ZERO routes — POST /api/upload will 404. Verify backend/routes/upload.js."
+          : routeCount === -1
+          ? "⚠️ uploadRoutes is not a valid Express router. Verify `module.exports = router;` at the bottom of backend/routes/upload.js."
+          : "✅ upload.js loaded with routes.",
+    });
+  }
+);
 
 app.use(
   "/api/upload",
@@ -1097,6 +1153,32 @@ app.use(
 console.log(
   "📤 Upload API mounted at /api/upload"
 );
+
+// Startup diagnostic — logs how many routes upload.js exported.
+if (
+  uploadRoutes &&
+  Array.isArray(uploadRoutes.stack)
+) {
+  const routeCount =
+    uploadRoutes.stack.length;
+
+  console.log(
+    `📤 Upload router has ${routeCount} route(s) registered`
+  );
+
+  if (routeCount === 0) {
+    console.warn(
+      "⚠️ WARNING: backend/routes/upload.js has ZERO routes. " +
+        "POST /api/upload will return 404 until the file is fixed. " +
+        "It must end with `module.exports = router;` and define `router.post('/', ...)`."
+    );
+  }
+} else {
+  console.warn(
+    "⚠️ WARNING: uploadRoutes is not a valid Express router. " +
+      "Verify backend/routes/upload.js ends with `module.exports = router;`."
+  );
+}
 
 // ============================================================
 // CATEGORIES

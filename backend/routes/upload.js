@@ -25,22 +25,49 @@ const fileFilter = (req, file, cb) => {
     "image/png",
     "image/gif",
     "image/webp",
+    "image/heic",
+    "image/heif",
+    "image/svg+xml",
+    "image/bmp",
+    "image/tiff",
     // Videos
     "video/mp4",
     "video/quicktime",
     "video/x-msvideo",
     "video/webm",
+    "video/x-matroska",
+    "video/avi",
+    "video/3gpp",
     // Audio
     "audio/webm",
     "audio/mpeg",
     "audio/wav",
     "audio/ogg",
+    "audio/mp4",
+    "audio/m4a",
+    "audio/x-m4a",
+    "audio/aac",
     // Documents / other
     "application/pdf",
     "text/plain",
     "text/vcard",
+    "text/x-vcard",
     "application/vcard",
+    "application/x-vcard",
     "application/vnd.vcard",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/vnd.ms-excel",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "application/vnd.ms-powerpoint",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    // Archives
+    "application/zip",
+    "application/x-zip-compressed",
+    "application/x-rar-compressed",
+    "application/x-rar",
+    // Generic fallback (some browsers send this for unknown docs)
+    "application/octet-stream",
   ];
 
   if (allowedTypes.includes(file.mimetype)) {
@@ -48,7 +75,7 @@ const fileFilter = (req, file, cb) => {
   } else {
     cb(
       new Error(
-        `File type not allowed: ${file.mimetype}. Allowed: images, videos, audio, vcards.`
+        `File type not allowed: ${file.mimetype}. Allowed: images, videos, audio, documents, vcards.`
       )
     );
   }
@@ -276,7 +303,6 @@ router.post(
         "Cosmetics",
         "Other",
       ];
-      // Add cosmetics to the allowed list
       const finalCategory = allowedCategories.includes(normalizedCategory)
         ? normalizedCategory
         : "Other";
@@ -448,5 +474,43 @@ router.post(
     }
   }
 );
+
+// ============================================================
+// MULTER / UPLOAD ERROR HANDLER
+// ============================================================
+// Multer errors are thrown in the middleware chain and bypass the
+// try/catch inside the route handlers, so we need a router-level
+// error handler for them.
+router.use((err, req, res, next) => {
+  if (err instanceof multer.MulterError) {
+    if (err.code === "LIMIT_FILE_SIZE") {
+      return res.status(400).json({
+        success: false,
+        message: "File too large. Maximum size is 50MB.",
+      });
+    }
+    if (err.code === "LIMIT_FILE_COUNT") {
+      return res.status(400).json({
+        success: false,
+        message: "Too many files.",
+      });
+    }
+    return res.status(400).json({
+      success: false,
+      message: err.message,
+    });
+  }
+  if (err && err.message && err.message.includes("File type not allowed")) {
+    return res.status(400).json({
+      success: false,
+      message: err.message,
+    });
+  }
+  console.error("❌ Upload router error:", err);
+  return res.status(500).json({
+    success: false,
+    message: err?.message || "Upload failed.",
+  });
+});
 
 module.exports = router;
