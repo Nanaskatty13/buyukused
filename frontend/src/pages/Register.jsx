@@ -3,7 +3,7 @@
 // BuyUKUsed - Register Page
 // ============================================================
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   Link,
   useNavigate,
@@ -11,11 +11,16 @@ import {
 } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { FcGoogle } from "react-icons/fc";
-import { FaFacebookF } from "react-icons/fa";
+import { FaFacebookF, FaPlaneDeparture } from "react-icons/fa";
 import {
   AiFillEye,
   AiFillEyeInvisible,
+  AiOutlineClose,
 } from "react-icons/ai";
+import {
+  MdVolumeUp,
+  MdVolumeOff,
+} from "react-icons/md";
 
 // ============================================================
 // API URL
@@ -52,26 +57,131 @@ const Register = () => {
     color: "",
   });
 
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [capsLockOn, setCapsLockOn] = useState(false);
+
   const { register } = useAuth();
 
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] =
-    useState(false);
-
-  // ============================================================
-  // SLIDER STATE
-  // ============================================================
-
-  const [sliderProgress, setSliderProgress] = useState(0);
-  const [isDragging, setIsDragging] = useState(false);
-
-  const sliderRef = useRef(null);
-  const handleRef = useRef(null);
-
   const from = location.state?.from || "/";
+
+  const audioCtxRef = useRef(null);
+
+  // ============================================================
+  // AUDIO
+  // ============================================================
+
+  const initAudio = () => {
+    if (audioCtxRef.current) return;
+    if (typeof window === "undefined") return;
+
+    try {
+      const Ctx =
+        window.AudioContext ||
+        window.webkitAudioContext;
+
+      if (!Ctx) return;
+
+      audioCtxRef.current = new Ctx();
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const playTone = (freq, duration = 0.05, type = "sine", volume = 0.1) => {
+    if (!soundEnabled) return;
+    initAudio();
+
+    const ctx = audioCtxRef.current;
+    if (!ctx) return;
+
+    try {
+      if (ctx.state === "suspended") {
+        ctx.resume();
+      }
+
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = type;
+      osc.frequency.value = freq;
+
+      gain.gain.setValueAtTime(volume, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(
+        0.0001,
+        ctx.currentTime + duration
+      );
+
+      osc.connect(gain).connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + duration);
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const sounds = {
+    key: () => playTone(700 + Math.random() * 250, 0.03, "square", 0.04),
+    toggle: () => playTone(440, 0.05, "sine", 0.08),
+    success: () => {
+      playTone(523.25, 0.1, "sine", 0.15);
+      setTimeout(() => playTone(659.25, 0.1, "sine", 0.15), 100);
+      setTimeout(() => playTone(783.99, 0.18, "sine", 0.15), 200);
+    },
+    error: () => {
+      playTone(220, 0.15, "sawtooth", 0.12);
+      setTimeout(() => playTone(164.81, 0.25, "sawtooth", 0.12), 120);
+    },
+    exit: () => {
+      playTone(600, 0.06, "sine", 0.1);
+      setTimeout(() => playTone(400, 0.1, "sine", 0.1), 60);
+    },
+  };
+
+  const toggleSound = () => {
+    initAudio();
+    setSoundEnabled((prev) => !prev);
+    if (!soundEnabled) {
+      setTimeout(() => {
+        playTone(880, 0.06, "sine", 0.1);
+      }, 20);
+    }
+  };
+
+  // ============================================================
+  // EXIT
+  // ============================================================
+
+  const handleExit = () => {
+    if (loading) return;
+
+    sounds.exit();
+
+    setTimeout(() => {
+      navigate("/", { replace: true });
+    }, 150);
+  };
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape" && !loading) {
+        handleExit();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [loading]);
 
   // ============================================================
   // PASSWORD STRENGTH
@@ -129,6 +239,8 @@ const Register = () => {
   const handleChange = (e) => {
     const { name, value } = e.target;
 
+    sounds.key();
+
     setFormData((prev) => ({
       ...prev,
       [name]: value,
@@ -139,123 +251,11 @@ const Register = () => {
     }
   };
 
-  // ============================================================
-  // SLIDER LOGIC
-  // ============================================================
-
-  const startDrag = (e) => {
-    if (loading) return;
-
-    setIsDragging(true);
-
-    if (e.cancelable) {
-      e.preventDefault();
+  const handlePasswordKeyEvent = (e) => {
+    if (typeof e.getModifierState === "function") {
+      setCapsLockOn(e.getModifierState("CapsLock"));
     }
   };
-
-  const onDrag = (e) => {
-    if (!isDragging) return;
-
-    const container = sliderRef.current;
-
-    if (!container) return;
-
-    const rect = container.getBoundingClientRect();
-
-    const clientX = e.touches
-      ? e.touches[0].clientX
-      : e.clientX;
-
-    let x = clientX - rect.left;
-
-    const maxX = Math.max(
-      1,
-      rect.width - 64
-    );
-
-    x = Math.max(
-      0,
-      Math.min(x, maxX)
-    );
-
-    const progress = (x / maxX) * 100;
-
-    setSliderProgress(progress);
-
-    if (e.cancelable) {
-      e.preventDefault();
-    }
-  };
-
-  const endDrag = () => {
-    if (!isDragging) return;
-
-    setIsDragging(false);
-
-    if (sliderProgress >= 95) {
-      handleSubmit(new Event("submit"));
-      setSliderProgress(0);
-    } else {
-      setSliderProgress(0);
-    }
-  };
-
-  // ============================================================
-  // SLIDER EVENT LISTENERS
-  // ============================================================
-
-  React.useEffect(() => {
-    const handleMouseMove = (e) => onDrag(e);
-
-    const handleTouchMove = (e) => onDrag(e);
-
-    const handleEnd = () => endDrag();
-
-    if (isDragging) {
-      document.addEventListener(
-        "mousemove",
-        handleMouseMove
-      );
-
-      document.addEventListener(
-        "touchmove",
-        handleTouchMove,
-        { passive: false }
-      );
-
-      document.addEventListener(
-        "mouseup",
-        handleEnd
-      );
-
-      document.addEventListener(
-        "touchend",
-        handleEnd
-      );
-    }
-
-    return () => {
-      document.removeEventListener(
-        "mousemove",
-        handleMouseMove
-      );
-
-      document.removeEventListener(
-        "touchmove",
-        handleTouchMove
-      );
-
-      document.removeEventListener(
-        "mouseup",
-        handleEnd
-      );
-
-      document.removeEventListener(
-        "touchend",
-        handleEnd
-      );
-    };
-  }, [isDragging, sliderProgress]);
 
   // ============================================================
   // FORM SUBMIT
@@ -266,6 +266,10 @@ const Register = () => {
       e.preventDefault();
     }
 
+    if (loading) return;
+
+    sounds.toggle();
+
     setError("");
 
     // ----------------------------------------------------------
@@ -273,10 +277,10 @@ const Register = () => {
     // ----------------------------------------------------------
 
     if (formData.name.trim().length < 2) {
+      sounds.error();
       setError(
         "Name must be at least 2 characters long"
       );
-
       return;
     }
 
@@ -288,8 +292,8 @@ const Register = () => {
       formData.password !==
       formData.confirmPassword
     ) {
+      sounds.error();
       setError("Passwords do not match");
-
       return;
     }
 
@@ -324,10 +328,10 @@ const Register = () => {
       }
 
       if (age < 18) {
+        sounds.error();
         setError(
           "You must be at least 18 years old to register."
         );
-
         return;
       }
     }
@@ -353,10 +357,13 @@ const Register = () => {
         await register(payload);
 
       if (result.success) {
-        navigate(from, {
-          replace: true,
-        });
+        sounds.success();
+
+        setTimeout(() => {
+          navigate(from, { replace: true });
+        }, 250);
       } else {
+        sounds.error();
         setError(
           result.error ||
             "Registration failed"
@@ -368,13 +375,13 @@ const Register = () => {
         err
       );
 
+      sounds.error();
       setError(
         err.message ||
           "Something went wrong"
       );
     } finally {
       setLoading(false);
-      setSliderProgress(0);
     }
   };
 
@@ -385,48 +392,56 @@ const Register = () => {
   return (
     <>
       <style>{`
+
         /* ======================================================
-           GLOBAL MOBILE SAFETY
-           ====================================================== */
+           STICKY FULL-VIEWPORT — NO PAGE SCROLLBAR
+        ====================================================== */
 
         html,
         body {
-          width: 100%;
-          max-width: 100%;
-          margin: 0;
-          padding: 0;
-          overflow-x: hidden;
+          overflow: hidden !important;
+          height: 100% !important;
         }
 
-        *,
-        *::before,
-        *::after {
+        .register-wrapper,
+        .register-wrapper * {
           box-sizing: border-box;
         }
 
         /* ======================================================
-           REGISTER WRAPPER
-           ====================================================== */
+           REGISTER WRAPPER — padded below the navbar
+        ======================================================
+           The navbar is position:fixed with z-index 99999 and is
+           roughly 48px tall on desktop (smaller on mobile).
+           Padding-top reserves that height + a 24px breathing gap
+           so the card NEVER tucks under the navbar on short screens.
+        ====================================================== */
 
         .register-wrapper {
-          min-height: 100vh;
-          min-height: 100dvh;
+          position: fixed;
+          inset: 0;
 
           width: 100%;
-          max-width: 100%;
+          height: 100vh;
+          height: 100dvh;
 
           display: flex;
           align-items: center;
           justify-content: center;
 
-          padding: 12px;
+          /* ✅ Reserve navbar height (48px) + 28px gap */
+          padding:
+            calc(76px + env(safe-area-inset-top, 0px))
+            16px
+            16px;
 
-          overflow-x: hidden;
+          overflow: hidden;
 
           background-image:
-            linear-gradient(
-              rgba(0, 0, 0, 0.55),
-              rgba(0, 0, 0, 0.55)
+            radial-gradient(
+              circle at center,
+              rgba(0, 0, 0, 0.55) 0%,
+              rgba(0, 0, 0, 0.88) 100%
             ),
             url("https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=1600&q=80");
 
@@ -434,120 +449,552 @@ const Register = () => {
           background-position: center;
           background-repeat: no-repeat;
 
-          overscroll-behavior-x: none;
+          overscroll-behavior: none;
+
+          touch-action: manipulation;
+        }
+
+        .register-wrapper::before {
+          content: '';
+          position: absolute;
+          inset: 0;
+
+          background-image:
+            linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+
+          background-size: 44px 44px;
+
+          pointer-events: none;
+
+          mask-image:
+            radial-gradient(ellipse at center, black 25%, transparent 75%);
+          -webkit-mask-image:
+            radial-gradient(ellipse at center, black 25%, transparent 75%);
+
+          z-index: 0;
         }
 
         /* ======================================================
-           REGISTER CARD
-           ====================================================== */
+           FLYING TAKEOVER PLANE
+        ====================================================== */
 
-        .register-card {
-          max-width: 400px;
-          width: 100%;
+        .flying-plane {
+          position: fixed;
+          z-index: 0;
+          pointer-events: none;
 
-          padding: 16px 20px;
+          font-size: 56px;
+          line-height: 1;
 
-          background: #ffffff;
+          color: rgba(255, 255, 255, 0.72);
 
-          border-radius: 14px;
+          filter:
+            drop-shadow(0 0 18px rgba(255, 255, 255, 0.55))
+            drop-shadow(0 0 42px rgba(255, 255, 255, 0.25));
 
-          box-shadow:
-            0 8px 28px rgba(0, 0, 0, 0.18);
+          animation:
+            fly-across 14s linear infinite;
 
-          overflow: hidden;
-
-          min-width: 0;
+          will-change: transform, opacity;
         }
 
+        @keyframes fly-across {
+          0% {
+            transform: translate(-180px, calc(100vh + 120px));
+            opacity: 0;
+          }
+          8% {
+            opacity: 1;
+          }
+          92% {
+            opacity: 1;
+          }
+          100% {
+            transform: translate(calc(100vw + 180px), -120px);
+            opacity: 0;
+          }
+        }
+
+        /* ======================================================
+           REGISTER CARD — dark glass
+        ======================================================
+           max-height matches the wrapper's usable area so the
+           card scrolls internally instead of touching the navbar.
+        ====================================================== */
+
+        .register-card {
+          position: relative;
+          z-index: 1;
+
+          width: 100%;
+          max-width: 400px;
+
+          /* ✅ Matches wrapper: 100dvh − (76 + 16) */
+          max-height:
+            calc(100dvh - 92px - env(safe-area-inset-top, 0px));
+
+          padding: 22px 22px;
+
+          overflow-y: auto;
+          overflow-x: hidden;
+
+          background: linear-gradient(
+            155deg,
+            rgba(15, 23, 42, 0.55) 0%,
+            rgba(2, 6, 23, 0.75) 100%
+          );
+
+          backdrop-filter: blur(32px) saturate(140%);
+          -webkit-backdrop-filter: blur(32px) saturate(140%);
+
+          border: 1px solid rgba(255, 255, 255, 0.1);
+
+          border-radius: 20px;
+
+          box-shadow:
+            inset 0 1px 0 0 rgba(255, 255, 255, 0.08),
+            inset 0 0 0 1px rgba(255, 255, 255, 0.02),
+            0 24px 80px rgba(0, 0, 0, 0.55);
+
+          color: #f8fafc;
+
+          scrollbar-width: none;
+          -ms-overflow-style: none;
+        }
+
+        .register-card::-webkit-scrollbar {
+          display: none;
+        }
+
+        /* ======================================================
+           EXIT BUTTON
+        ====================================================== */
+
+        .exit-button {
+          position: absolute;
+
+          top: 12px;
+          left: 12px;
+
+          width: 30px;
+          height: 30px;
+
+          display: flex;
+          align-items: center;
+          justify-content: center;
+
+          background: rgba(0, 0, 0, 0.3);
+          border: 1px solid rgba(255, 255, 255, 0.12);
+
+          border-radius: 50%;
+
+          color: rgba(255, 255, 255, 0.75);
+
+          cursor: pointer;
+
+          font-size: 17px;
+
+          transition:
+            background 0.2s ease,
+            color 0.2s ease,
+            transform 0.15s ease,
+            border-color 0.2s ease;
+
+          z-index: 10;
+
+          -webkit-tap-highlight-color: transparent;
+
+          backdrop-filter: blur(8px);
+          -webkit-backdrop-filter: blur(8px);
+        }
+
+        .exit-button:hover:not(:disabled) {
+          background: rgba(239, 68, 68, 0.15);
+          border-color: rgba(239, 68, 68, 0.45);
+          color: #f87171;
+          transform: scale(1.06);
+        }
+
+        .exit-button:active:not(:disabled) {
+          transform: scale(0.94);
+        }
+
+        .exit-button:disabled {
+          opacity: 0.4;
+          cursor: not-allowed;
+        }
+
+        /* ======================================================
+           SOUND TOGGLE
+        ====================================================== */
+
+        .sound-toggle {
+          position: absolute;
+
+          top: 12px;
+          right: 12px;
+
+          width: 30px;
+          height: 30px;
+
+          display: flex;
+          align-items: center;
+          justify-content: center;
+
+          background: rgba(0, 0, 0, 0.3);
+          border: 1px solid rgba(255, 255, 255, 0.12);
+
+          border-radius: 50%;
+
+          color: rgba(255, 255, 255, 0.75);
+
+          cursor: pointer;
+
+          font-size: 15px;
+
+          transition:
+            background 0.2s ease,
+            color 0.2s ease,
+            transform 0.15s ease,
+            border-color 0.2s ease;
+
+          z-index: 10;
+
+          -webkit-tap-highlight-color: transparent;
+
+          backdrop-filter: blur(8px);
+          -webkit-backdrop-filter: blur(8px);
+        }
+
+        .sound-toggle:hover {
+          background: rgba(255, 255, 255, 0.1);
+          border-color: rgba(255, 255, 255, 0.35);
+          color: #ffffff;
+          transform: scale(1.06);
+        }
+
+        .sound-toggle:active {
+          transform: scale(0.94);
+        }
+
+        /* ======================================================
+           TITLE — frosted pill
+        ====================================================== */
+
         .register-card h2 {
-          font-size: 20px;
-          margin-bottom: 2px;
+          display: table;
+          margin: 10px auto 12px;
+
+          padding: 8px 22px;
+
+          background: rgba(255, 255, 255, 0.03);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          border-radius: 9999px;
+
+          backdrop-filter: blur(8px);
+          -webkit-backdrop-filter: blur(8px);
+
+          color: rgba(255, 255, 255, 0.9);
+
+          font-size: 16px;
+          line-height: 1.2;
+          font-weight: 700;
+          letter-spacing: 0.02em;
           text-align: center;
-          font-weight: 800;
+
+          box-shadow:
+            inset 0 1px 0 0 rgba(255, 255, 255, 0.05),
+            0 2px 8px rgba(0, 0, 0, 0.15);
         }
 
         .register-card .subtitle {
-          font-size: 13px;
-          margin-bottom: 14px;
+          margin: 0 0 16px;
+
+          font-size: 12.5px;
+          line-height: 1.4;
           text-align: center;
-          color: var(--gray-500);
-          font-weight: 900;
+
+          color: rgba(255, 255, 255, 0.5);
+
+          font-weight: 700;
+          letter-spacing: 0.02em;
         }
 
         /* ======================================================
            FORM
-           ====================================================== */
+        ====================================================== */
 
         .form-group {
-          margin-bottom: 8px;
           width: 100%;
-          min-width: 0;
+          margin-bottom: 10px;
         }
 
         .form-group label {
           display: block;
-          font-weight: 600;
-          font-size: 12px;
-          margin-bottom: 2px;
+
+          margin-bottom: 4px;
+
+          font-size: 11px;
+          line-height: 1.2;
+          font-weight: 700;
+
+          text-transform: uppercase;
+          letter-spacing: 0.08em;
+
+          color: rgba(255, 255, 255, 0.6);
         }
 
-        .form-group input,
-        .form-group select {
+        .form-group .form-input {
           display: block;
 
           width: 100%;
-          max-width: 100%;
-
           min-width: 0;
 
-          padding: 7px 12px;
+          padding: 9px 13px;
 
-          border: 1.5px solid var(--gray-200);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 10px;
 
-          border-radius: var(--radius-md);
+          background: rgba(255, 255, 255, 0.04);
 
-          font-size: 13px;
+          color: #f8fafc;
 
           font-family: inherit;
+          font-size: 16px;
+          line-height: 1.35;
 
-          transition: var(--transition);
-
-          background: white;
-
-          box-sizing: border-box;
-
-          appearance: auto;
-        }
-
-        .form-group input:focus,
-        .form-group select:focus {
           outline: none;
 
-          border-color: var(--primary);
+          transition:
+            border-color 0.2s ease,
+            box-shadow 0.2s ease,
+            background 0.2s ease;
+
+          -webkit-appearance: none;
+          appearance: none;
+        }
+
+        .form-group .form-input::placeholder {
+          color: rgba(255, 255, 255, 0.3);
+        }
+
+        .form-group .form-input:focus {
+          border-color: rgba(255, 255, 255, 0.4);
+
+          background: rgba(255, 255, 255, 0.06);
 
           box-shadow:
-            0 0 0 2px
-            rgba(0, 0, 0, 0.05);
+            0 0 0 3px rgba(255, 255, 255, 0.08),
+            0 0 24px rgba(255, 255, 255, 0.08);
+        }
+
+        .form-group .form-input:disabled {
+          opacity: 0.65;
+          cursor: not-allowed;
         }
 
         .form-group small {
-          font-size: 11px;
-          color: var(--gray-400);
-
           display: block;
 
-          margin-top: 1px;
+          margin-top: 3px;
 
-          font-weight: 900;
+          font-size: 10px;
+
+          color: rgba(255, 255, 255, 0.4);
+
+          font-weight: 700;
+          letter-spacing: 0.02em;
+        }
+
+        /* ---------------------------------------------------
+           SELECT — restyled for dark
+        --------------------------------------------------- */
+
+        .form-group select.form-input {
+          padding-right: 36px;
+
+          background-image: url("data:image/svg+xml;utf8,<svg fill='rgba(255,255,255,0.5)' height='20' viewBox='0 0 24 24' width='20' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/></svg>");
+
+          background-repeat: no-repeat;
+          background-position: right 10px center;
+
+          cursor: pointer;
+        }
+
+        .form-group select.form-input option {
+          background: #1e293b;
+          color: #f8fafc;
+        }
+
+        /* ---------------------------------------------------
+           DATE — dark native picker
+        --------------------------------------------------- */
+
+        .form-group input[type="date"].form-input {
+          color-scheme: dark;
+        }
+
+        /* ---------------------------------------------------
+           PASSWORD WRAPPER
+        --------------------------------------------------- */
+
+        .password-wrapper {
+          position: relative;
+          width: 100%;
+        }
+
+        .password-wrapper .form-input {
+          padding-right: 44px;
+        }
+
+        .password-toggle {
+          position: absolute;
+
+          right: 8px;
+          top: 50%;
+
+          width: 32px;
+          height: 32px;
+
+          transform: translateY(-50%);
+
+          display: flex;
+          align-items: center;
+          justify-content: center;
+
+          padding: 0;
+
+          background: transparent;
+          border: none;
+
+          color: rgba(255, 255, 255, 0.5);
+
+          cursor: pointer;
+
+          font-size: 18px;
+
+          touch-action: manipulation;
+          -webkit-tap-highlight-color: transparent;
+
+          transition: color 0.2s ease;
+
+          z-index: 3;
+        }
+
+        .password-toggle:hover:not(:disabled) {
+          color: rgba(255, 255, 255, 0.9);
+        }
+
+        .password-toggle:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
+        /* ---------------------------------------------------
+           CAPS LOCK WARNING
+        --------------------------------------------------- */
+
+        .caps-lock-warning {
+          display: flex;
+          align-items: center;
+          gap: 5px;
+
+          margin-top: 6px;
+
+          padding: 4px 8px;
+
+          background: rgba(245, 158, 11, 0.1);
+          border: 1px solid rgba(245, 158, 11, 0.3);
+          border-radius: 6px;
+
+          color: #fbbf24;
+
+          font-size: 11px;
+          font-weight: 700;
+        }
+
+        /* ---------------------------------------------------
+           PASSWORD STRENGTH
+        --------------------------------------------------- */
+
+        .password-strength {
+          margin-top: 8px;
+        }
+
+        .password-strength-bar {
+          display: flex;
+          gap: 3px;
+          height: 3px;
+        }
+
+        .password-strength-segment {
+          flex: 1;
+          border-radius: 2px;
+          background: rgba(255, 255, 255, 0.06);
+          transition: background 0.25s ease;
+        }
+
+        .password-strength-label {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+
+          margin-top: 4px;
+
+          font-size: 10px;
+          font-weight: 700;
+
+          letter-spacing: 0.03em;
+          text-transform: uppercase;
+
+          color: rgba(255, 255, 255, 0.5);
+        }
+
+        .password-strength-label strong {
+          font-weight: 800;
+        }
+
+        /* ---------------------------------------------------
+           REQUIRED / OPTIONAL MARKERS
+        --------------------------------------------------- */
+
+        .required-mark {
+          color: #f87171;
+        }
+
+        .optional-mark {
+          font-weight: 400;
+          letter-spacing: 0;
+          text-transform: none;
+          color: rgba(255, 255, 255, 0.35);
+        }
+
+        /* ---------------------------------------------------
+           MISMATCH WARNING
+        --------------------------------------------------- */
+
+        .mismatch-warning {
+          display: block;
+
+          margin-top: 4px;
+
+          font-size: 10px;
+
+          color: #fca5a5;
+
+          font-weight: 700;
+          letter-spacing: 0.02em;
         }
 
         /* ======================================================
            SOCIAL BUTTONS
-           ====================================================== */
+        ====================================================== */
 
         .social-btn {
           width: 100%;
-          max-width: 100%;
+
+          min-height: 40px;
 
           display: flex;
           align-items: center;
@@ -557,22 +1004,37 @@ const Register = () => {
 
           padding: 9px 12px;
 
-          border: 1px solid #ddd;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 10px;
 
-          border-radius: 50px;
+          background: rgba(255, 255, 255, 0.04);
 
-          background: #fff;
+          color: #f8fafc;
 
           cursor: pointer;
 
+          font-family: inherit;
           font-weight: 600;
           font-size: 13px;
 
           margin-bottom: 8px;
 
-          box-sizing: border-box;
-
+          touch-action: manipulation;
           -webkit-tap-highlight-color: transparent;
+
+          transition:
+            background 0.2s ease,
+            border-color 0.2s ease;
+        }
+
+        .social-btn:hover:not(:disabled) {
+          background: rgba(255, 255, 255, 0.08);
+          border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .social-btn:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
         }
 
         .social-btn.fb {
@@ -581,612 +1043,638 @@ const Register = () => {
           color: #fff;
         }
 
-        .social-btn:disabled {
-          opacity: 0.6;
-          cursor: not-allowed;
+        .social-btn.fb:hover:not(:disabled) {
+          background: #166fe5;
+          border-color: transparent;
         }
 
         /* ======================================================
            DIVIDER
-           ====================================================== */
+        ====================================================== */
 
         .divider {
+          width: 100%;
+
           display: flex;
           align-items: center;
 
-          width: 100%;
-
-          margin: 8px 0 12px;
+          margin: 10px 0 12px;
         }
 
         .divider hr {
           flex: 1;
-
           min-width: 0;
-
           border: none;
-
-          border-top: 1px solid #e5e7eb;
+          border-top: 1px solid rgba(255, 255, 255, 0.08);
         }
 
         .divider span {
-          flex-shrink: 0;
-
+          flex: 0 0 auto;
           margin: 0 10px;
 
-          color: #777;
+          color: rgba(255, 255, 255, 0.4);
 
-          font-size: 13px;
-
-          font-weight: 900;
+          font-size: 11px;
+          font-weight: 800;
+          letter-spacing: 0.1em;
         }
 
         /* ======================================================
-           SLIDER
-           ====================================================== */
+           REGISTER BUTTON — transparent, no green
+        ====================================================== */
 
-        .slider-container {
-          position: relative;
-
-          width: calc(100% + 40px);
-
-          margin-left: -20px;
-          margin-right: -20px;
-
-          height: 64px;
-
-          background: #e5e7eb;
-
-          border-radius: 0;
-
-          overflow: hidden;
-
-          margin-top: 4px;
-
-          touch-action: none;
-
-          user-select: none;
-
-          -webkit-user-select: none;
-
-          box-shadow:
-            inset 0 2px 4px
-            rgba(0, 0, 0, 0.06);
-
-          max-width: none;
-        }
-
-        .slider-track {
-          position: absolute;
-
-          left: 0;
-          top: 0;
-
-          height: 100%;
-
-          background: var(--secondary);
-
-          border-radius: 0;
-
-          transition:
-            width 0.05s ease;
-
-          width: ${sliderProgress}%;
-
-          pointer-events: none;
-        }
-
-        .slider-text {
-          position: absolute;
-
-          left: 0;
-          top: 0;
-
+        .register-button {
           width: 100%;
-          height: 100%;
+
+          min-height: 52px;
+
+          padding: 14px 24px;
+
+          margin: 8px 0 0;
+
+          background: transparent;
+
+          color: #ffffff;
+
+          border: 1px solid rgba(255, 255, 255, 0.28);
+          border-radius: 12px;
+
+          font-family: inherit;
+          font-size: 15px;
+          font-weight: 800;
+
+          letter-spacing: 0.1em;
+          text-transform: uppercase;
+
+          cursor: pointer;
 
           display: flex;
-
           align-items: center;
           justify-content: center;
 
-          font-weight: 700;
-
-          font-size: 18px;
-
-          color: #6b7280;
-
-          pointer-events: none;
+          gap: 10px;
 
           transition:
-            color 0.2s;
+            transform 0.15s ease,
+            background 0.2s ease,
+            border-color 0.2s ease,
+            color 0.2s ease,
+            box-shadow 0.2s ease,
+            opacity 0.2s ease;
 
-          padding-left: 70px;
-          padding-right: 20px;
+          box-shadow:
+            inset 0 1px 0 0 rgba(255, 255, 255, 0.08),
+            0 2px 12px rgba(0, 0, 0, 0.25);
+
+          touch-action: manipulation;
+          -webkit-tap-highlight-color: transparent;
+
+          backdrop-filter: blur(4px);
+          -webkit-backdrop-filter: blur(4px);
+        }
+
+        .register-button:hover:not(:disabled) {
+          background: rgba(255, 255, 255, 0.06);
+          border-color: rgba(255, 255, 255, 0.55);
+
+          box-shadow:
+            inset 0 1px 0 0 rgba(255, 255, 255, 0.12),
+            0 0 24px rgba(255, 255, 255, 0.12),
+            0 4px 16px rgba(0, 0, 0, 0.3);
+
+          transform: translateY(-1px);
+        }
+
+        .register-button:active:not(:disabled) {
+          transform: translateY(0) scale(0.99);
+          background: rgba(255, 255, 255, 0.09);
+
+          box-shadow:
+            inset 0 1px 0 0 rgba(255, 255, 255, 0.1),
+            0 1px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        .register-button:disabled {
+          opacity: 0.55;
+          cursor: not-allowed;
+          background: transparent;
+          border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        .register-button i,
+        .register-button svg {
+          font-size: 14px;
+        }
+
+        /* ======================================================
+           ERROR
+        ====================================================== */
+
+        .register-error {
+          width: 100%;
+
+          overflow-wrap: anywhere;
+
+          background: rgba(220, 38, 38, 0.12);
+          color: #fca5a5;
+          border: 1px solid rgba(220, 38, 38, 0.3);
+
+          padding: 7px 11px;
+          border-radius: 8px;
+
+          margin-bottom: 12px;
+
+          font-size: 12px;
+          line-height: 1.4;
+        }
+
+        /* ======================================================
+           FOOTERS — frosted pills
+        ====================================================== */
+
+        .auth-footer {
+          width: 100%;
 
           text-align: center;
+
+          margin-top: 14px;
+
+          font-size: 12px;
+          line-height: 1.4;
+
+          color: rgba(255, 255, 255, 0.5);
         }
 
-        .slider-text.active {
-          color: white;
-        }
-
-        .slider-handle {
-          position: absolute;
-
-          top: 4px;
-
-          left: 4px;
-
-          width: 56px;
-          height: 56px;
-
-          background: white;
-
-          border-radius: 50%;
-
-          box-shadow:
-            0 6px 20px
-            rgba(0, 0, 0, 0.3);
-
-          cursor: grab;
-
-          display: flex;
-
+        .auth-footer a {
+          display: inline-flex;
           align-items: center;
-          justify-content: center;
+          gap: 6px;
+
+          padding: 6px 14px;
+          margin-left: 8px;
+
+          background: rgba(255, 255, 255, 0.03);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          border-radius: 9999px;
+
+          color: rgba(255, 255, 255, 0.65);
+
+          font-size: 12px;
+          font-weight: 600;
+          letter-spacing: 0.02em;
+
+          text-decoration: none;
 
           transition:
-            left 0.05s ease;
+            background 0.2s ease,
+            border-color 0.2s ease,
+            color 0.2s ease,
+            box-shadow 0.2s ease;
 
-          transform: translateX(0);
-
-          touch-action: none;
-
-          z-index: 2;
+          backdrop-filter: blur(8px);
+          -webkit-backdrop-filter: blur(8px);
 
           -webkit-tap-highlight-color: transparent;
         }
 
-        .slider-handle:active {
-          cursor: grabbing;
-
-          transform: scale(1.04);
-        }
-
-        .slider-handle svg {
-          width: 32px;
-          height: 32px;
-
-          color: var(--secondary);
-
-          transition:
-            transform 0.2s;
-
-          stroke-width: 2.5;
-        }
-
-        .slider-handle.done svg {
-          color: #22c55e;
-        }
-
-        .slider-handle.disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
-        }
-
-        .slider-container.loading
-        .slider-track {
-          background: #9ca3af;
-        }
-
-        /* ======================================================
-           FOOTER
-           ====================================================== */
-
-        .auth-footer {
-          text-align: center;
-
-          margin-top: 10px;
-
-          font-size: 12px;
-
-          color: var(--gray-500);
-
-          width: 100%;
-        }
-
-        .auth-footer a {
-          color: var(--primary);
-
-          font-weight: 700;
-
-          margin-left: 4px;
-
-          text-decoration: none;
+        .auth-footer a:hover {
+          background: rgba(255, 255, 255, 0.08);
+          border-color: rgba(255, 255, 255, 0.28);
+          color: #ffffff;
+          box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
         }
 
         .back-link {
+          width: 100%;
+
           text-align: center;
 
           margin-top: 6px;
 
-          font-size: 12px;
+          font-size: 11px;
+          line-height: 1.4;
 
-          color: var(--gray-400);
+          color: rgba(255, 255, 255, 0.35);
+        }
 
-          width: 100%;
+        .back-link a {
+          color: rgba(255, 255, 255, 0.5);
+          text-decoration: none;
+
+          transition: color 0.2s ease;
+        }
+
+        .back-link a:hover {
+          color: rgba(255, 255, 255, 0.8);
         }
 
         /* ======================================================
-           MOBILE
-           ====================================================== */
+           TABLET — smaller navbar, tighter gap
+        ====================================================== */
 
-        @media (max-width: 480px) {
-
-          html,
-          body {
-            width: 100%;
-            max-width: 100%;
-
-            overflow-x: hidden;
-
-            position: relative;
+        @media (max-width: 768px) {
+          .register-wrapper {
+            /* navbar ~44px + 24px gap = 68px */
+            padding:
+              calc(68px + env(safe-area-inset-top, 0px))
+              12px
+              12px;
           }
 
+          .register-card {
+            max-width: 420px;
+            max-height:
+              calc(100dvh - 80px - env(safe-area-inset-top, 0px));
+          }
+
+          .flying-plane {
+            font-size: 44px;
+          }
+        }
+
+        /* ======================================================
+           MOBILE — smallest navbar
+        ====================================================== */
+
+        @media (max-width: 480px) {
           .register-wrapper {
-            width: 100%;
-            max-width: 100%;
+            align-items: center;
 
-            min-height: 100vh;
-            min-height: 100dvh;
-
-            padding: 8px;
-
-            align-items: flex-start;
-
-            justify-content: center;
-
-            overflow-x: hidden;
-
-            background-position: center;
+            /* navbar ~42px + 18px gap = 60px */
+            padding:
+              calc(60px + env(safe-area-inset-top, 0px))
+              8px
+              8px;
           }
 
           .register-card {
             width: 100%;
             max-width: 400px;
-
-            min-width: 0;
-
-            padding: 10px 12px;
-
-            border-radius: 10px;
-
-            overflow: hidden;
+            max-height:
+              calc(100dvh - 68px - env(safe-area-inset-top, 0px));
+            padding: 16px 14px;
+            border-radius: 16px;
           }
 
           .register-card h2 {
-            font-size: 17px;
-
-            line-height: 1.2;
-
-            margin-bottom: 2px;
+            font-size: 14px;
+            padding: 6px 16px;
+            margin: 10px auto 10px;
           }
 
           .register-card .subtitle {
-            font-size: 12px;
-
-            line-height: 1.3;
-
-            margin-bottom: 8px;
-
-            font-weight: 900;
+            font-size: 11.5px;
+            margin-bottom: 12px;
           }
 
-          /* ====================================================
-             IMPORTANT:
-             16PX PREVENTS MOBILE SAFARI AUTO-ZOOM
-             ==================================================== */
+          .flying-plane {
+            font-size: 36px;
+          }
+
+          .exit-button,
+          .sound-toggle {
+            top: 10px;
+            width: 26px;
+            height: 26px;
+          }
+
+          .exit-button {
+            left: 10px;
+            font-size: 15px;
+          }
+
+          .sound-toggle {
+            right: 10px;
+            font-size: 13px;
+          }
 
           .form-group {
-            width: 100%;
-
-            margin-bottom: 6px;
+            margin-bottom: 8px;
           }
 
           .form-group label {
-            font-size: 10px;
-
-            margin-bottom: 2px;
+            font-size: 10.5px;
+            margin-bottom: 3px;
           }
 
-          .form-group input,
-          .form-group select {
-            width: 100%;
-            max-width: 100%;
-
-            height: 40px;
-
-            padding: 8px 10px;
-
+          .form-group .form-input {
             font-size: 16px !important;
-
-            line-height: 1.2;
-
-            border-radius: 7px;
-
-            box-sizing: border-box;
-
-            /* Prevent iOS text inflation */
-            -webkit-text-size-adjust: 100%;
-
-            /* Prevent mobile Safari zoom */
-            touch-action: manipulation;
+            min-height: 42px;
+            padding: 8px 11px;
+            border-radius: 8px;
           }
 
-          .form-group small {
+          .password-wrapper .form-input {
+            padding-right: 44px;
+          }
+
+          .password-toggle {
+            right: 6px;
+            width: 34px;
+            height: 34px;
+            font-size: 18px;
+          }
+
+          .password-strength {
+            margin-top: 6px;
+          }
+
+          .password-strength-label {
+            font-size: 9px;
+          }
+
+          .caps-lock-warning {
             font-size: 10px;
-
-            line-height: 1.2;
-
-            margin-top: 1px;
-
-            font-weight: 900;
+            padding: 3px 7px;
           }
-
-          /* ====================================================
-             PASSWORD WRAPPER
-             ==================================================== */
-
-          .form-group
-          > div[style*="position: relative"] {
-            width: 100% !important;
-            max-width: 100% !important;
-          }
-
-          /* ====================================================
-             SOCIAL BUTTONS
-             ==================================================== */
 
           .social-btn {
-            width: 100%;
-
             min-height: 38px;
-
-            padding: 7px 10px;
-
+            padding: 8px 10px;
+            margin-bottom: 6px;
             font-size: 12px;
-
-            margin-bottom: 5px;
-
-            border-radius: 50px;
-
-            touch-action: manipulation;
           }
 
-          /* ====================================================
-             DIVIDER
-             ==================================================== */
-
           .divider {
-            width: 100%;
-
-            margin: 5px 0 8px;
+            margin: 8px 0 10px;
           }
 
           .divider span {
-            font-size: 11px;
-
             margin: 0 8px;
-
-            font-weight: 900;
+            font-size: 10px;
           }
 
-          /* ====================================================
-             PASSWORD STRENGTH
-             ==================================================== */
-
-          .form-group
-          div[style*="height: '3px'"] {
-            max-width: 100%;
+          .register-button {
+            min-height: 48px;
+            padding: 12px 20px;
+            font-size: 14px;
+            border-radius: 10px;
+            letter-spacing: 0.08em;
+            margin-top: 6px;
           }
-
-          /* ====================================================
-             MOBILE SLIDER
-             IMPORTANT:
-             Keep it inside the card.
-             No negative width overflow.
-             ==================================================== */
-
-          .slider-container {
-            width: calc(100% + 24px);
-
-            max-width: none;
-
-            margin-left: -12px;
-            margin-right: -12px;
-
-            height: 82px;
-
-            margin-top: 8px;
-
-            overflow: hidden;
-          }
-
-          .slider-track {
-            height: 100%;
-          }
-
-          .slider-handle {
-            width: 66px;
-            height: 66px;
-
-            top: 8px;
-
-            left: 8px;
-
-            border-radius: 50%;
-
-            box-shadow:
-              0 5px 16px
-              rgba(0, 0, 0, 0.28);
-          }
-
-          .slider-handle svg {
-            width: 38px;
-            height: 38px;
-          }
-
-          .slider-text {
-            width: 100%;
-
-            padding-left: 72px;
-            padding-right: 10px;
-
-            font-size: 15px;
-
-            line-height: 1.2;
-
-            font-weight: 800;
-
-            white-space: nowrap;
-          }
-
-          /* ====================================================
-             IMPORTANT:
-             Override inline slider left calculation behavior
-             using the same React progress value.
-             ==================================================== */
-
-          .slider-handle {
-            left: calc(${sliderProgress}% - 33px);
-          }
-
-          /* ====================================================
-             FOOTERS
-             ==================================================== */
 
           .auth-footer {
+            margin-top: 12px;
             font-size: 11px;
+          }
 
-            line-height: 1.3;
-
-            margin-top: 8px;
+          .auth-footer a {
+            font-size: 11px;
+            padding: 5px 12px;
+            margin-left: 6px;
           }
 
           .back-link {
-            font-size: 10px;
-
-            line-height: 1.3;
-
-            margin-top: 3px;
+            margin-top: 4px;
+            font-size: 10.5px;
           }
 
-          /* ====================================================
-             EYE BUTTON
-             ==================================================== */
-
-          .form-group button {
-            touch-action: manipulation;
+          .register-error {
+            margin-bottom: 10px;
+            padding: 7px 10px;
+            font-size: 11px;
           }
         }
 
         /* ======================================================
            VERY SMALL PHONES
-           ====================================================== */
+        ====================================================== */
 
         @media (max-width: 360px) {
-
           .register-wrapper {
-            padding: 5px;
+            /* navbar ~38px + 16px gap = 54px */
+            padding:
+              calc(54px + env(safe-area-inset-top, 0px))
+              6px
+              6px;
           }
 
           .register-card {
-            padding: 8px 10px;
-
-            border-radius: 9px;
+            padding: 14px 11px;
+            border-radius: 14px;
+            max-height:
+              calc(100dvh - 60px - env(safe-area-inset-top, 0px));
           }
 
           .register-card h2 {
-            font-size: 16px;
+            font-size: 13px;
+            padding: 5px 14px;
+            margin: 8px auto 8px;
           }
 
           .register-card .subtitle {
             font-size: 11px;
+            margin-bottom: 10px;
+          }
 
+          .flying-plane {
+            font-size: 28px;
+          }
+
+          .exit-button,
+          .sound-toggle {
+            top: 8px;
+            width: 24px;
+            height: 24px;
+          }
+
+          .exit-button {
+            left: 8px;
+            font-size: 14px;
+          }
+
+          .sound-toggle {
+            right: 8px;
+            font-size: 12px;
+          }
+
+          .form-group {
             margin-bottom: 6px;
           }
 
-          .form-group input,
-          .form-group select {
-            height: 38px;
+          .form-group label {
+            font-size: 10px;
+          }
 
+          .form-group .form-input {
+            min-height: 40px;
             font-size: 16px !important;
-
-            padding: 7px 9px;
+            padding: 7px 10px;
           }
 
           .social-btn {
             min-height: 36px;
+            font-size: 11px;
+            padding: 7px 8px;
+          }
 
+          .register-button {
+            min-height: 44px;
+            padding: 10px 16px;
+            font-size: 13px;
+            border-radius: 9px;
+          }
+
+          .auth-footer,
+          .back-link {
+            font-size: 10px;
+          }
+
+          .auth-footer a {
+            font-size: 10.5px;
+            padding: 4px 10px;
+            margin-left: 5px;
+          }
+        }
+
+        /* ======================================================
+           LANDSCAPE — short viewport, still reserve navbar
+        ====================================================== */
+
+        @media (max-height: 500px)
+          and (orientation: landscape) {
+
+          .register-wrapper {
+            align-items: center;
+
+            /* navbar ~46px + 14px gap = 60px */
+            padding:
+              calc(60px + env(safe-area-inset-top, 0px))
+              8px
+              8px;
+          }
+
+          .register-card {
+            max-width: 500px;
+            max-height:
+              calc(100dvh - 68px - env(safe-area-inset-top, 0px));
+            padding: 12px 16px;
+            border-radius: 14px;
+          }
+
+          .register-card h2 {
+            font-size: 13px;
+            padding: 5px 14px;
+            margin: 6px auto 8px;
+          }
+
+          .register-card .subtitle {
+            margin-bottom: 6px;
             font-size: 11px;
           }
 
-          .slider-container {
-            height: 76px;
-
-            width: calc(100% + 20px);
-
-            margin-left: -10px;
-            margin-right: -10px;
+          .form-group {
+            margin-bottom: 5px;
           }
 
-          .slider-handle {
-            width: 60px;
-            height: 60px;
-
-            top: 8px;
+          .form-group .form-input {
+            min-height: 36px;
+            padding: 6px 10px;
           }
 
-          .slider-handle svg {
-            width: 34px;
-            height: 34px;
+          .social-btn {
+            min-height: 34px;
+            padding: 6px 10px;
+            margin-bottom: 5px;
+            font-size: 12px;
           }
 
-          .slider-text {
-            padding-left: 65px;
+          .divider {
+            margin: 6px 0 8px;
+          }
 
+          .register-button {
+            min-height: 40px;
+            padding: 9px 16px;
             font-size: 13px;
+            margin-top: 4px;
+          }
+
+          .flying-plane {
+            font-size: 32px;
           }
         }
 
         /* ======================================================
            REDUCE MOTION
-           ====================================================== */
+        ====================================================== */
 
         @media (prefers-reduced-motion: reduce) {
-          .register-card *,
-          .register-card *::before,
-          .register-card *::after {
-            transition: none !important;
-            animation: none !important;
+          .exit-button,
+          .sound-toggle,
+          .password-toggle,
+          .form-group .form-input,
+          .social-btn,
+          .auth-footer a,
+          .register-button {
+            transition: none;
+          }
+
+          .flying-plane {
+            animation: none;
+            display: none;
           }
         }
+
       `}</style>
 
-      {/* ======================================================
-          REGISTER WRAPPER
-          ====================================================== */}
+      {/* ====================================================
+          FLYING TAKEOVER PLANE
+      ==================================================== */}
+
+      <div
+        className="flying-plane"
+        aria-hidden="true"
+      >
+        <FaPlaneDeparture />
+      </div>
 
       <div className="register-wrapper">
         <div className="register-card">
 
           {/* ====================================================
+              EXIT BUTTON
+          ==================================================== */}
+
+          <button
+            type="button"
+            className="exit-button"
+            onClick={handleExit}
+            disabled={loading}
+            aria-label="Close registration and return to home"
+            title="Close — back to home (Esc)"
+          >
+            <AiOutlineClose />
+          </button>
+
+          {/* ====================================================
+              SOUND TOGGLE
+          ==================================================== */}
+
+          <button
+            type="button"
+            className="sound-toggle"
+            onClick={toggleSound}
+            aria-label={
+              soundEnabled
+                ? "Disable sound effects"
+                : "Enable sound effects"
+            }
+            title={
+              soundEnabled
+                ? "Sound on — click to mute"
+                : "Sound off — click to unmute"
+            }
+          >
+            {soundEnabled ? <MdVolumeUp /> : <MdVolumeOff />}
+          </button>
+
+          {/* ====================================================
               HEADER
-              ==================================================== */}
+          ==================================================== */}
 
           <h2>
-            Join BuyUk Used 🚀
+            Join BuyUk Used
           </h2>
 
           <p className="subtitle">
@@ -1197,21 +1685,12 @@ const Register = () => {
 
           {/* ====================================================
               ERROR
-              ==================================================== */}
+          ==================================================== */}
 
           {error && (
             <div
               role="alert"
-              style={{
-                background: "#fee2e2",
-                color: "#dc2626",
-                padding: "6px 10px",
-                borderRadius:
-                  "var(--radius-sm)",
-                marginBottom: "10px",
-                fontSize: "12px",
-                lineHeight: "1.3",
-              }}
+              className="register-error"
             >
               {error}
             </div>
@@ -1219,53 +1698,51 @@ const Register = () => {
 
           {/* ====================================================
               SOCIAL LOGIN
-              ==================================================== */}
+          ==================================================== */}
 
           <div>
             <button
               type="button"
               className="social-btn"
-              onClick={() =>
-                (window.location.href =
-                  `${API_URL}/auth/google`)
-              }
+              onClick={() => {
+                sounds.toggle();
+                window.location.href =
+                  `${API_URL}/auth/google`;
+              }}
               disabled={loading}
             >
               <FcGoogle size={18} />
-
               Continue with Google
             </button>
 
             <button
               type="button"
               className="social-btn fb"
-              onClick={() =>
-                (window.location.href =
-                  `${API_URL}/auth/facebook`)
-              }
+              onClick={() => {
+                sounds.toggle();
+                window.location.href =
+                  `${API_URL}/auth/facebook`;
+              }}
               disabled={loading}
             >
               <FaFacebookF size={16} />
-
               Continue with Facebook
             </button>
           </div>
 
           {/* ====================================================
               DIVIDER
-              ==================================================== */}
+          ==================================================== */}
 
           <div className="divider">
             <hr />
-
             <span>OR</span>
-
             <hr />
           </div>
 
           {/* ====================================================
               REGISTER FORM
-              ==================================================== */}
+          ==================================================== */}
 
           <form
             onSubmit={handleSubmit}
@@ -1274,7 +1751,7 @@ const Register = () => {
 
             {/* ==================================================
                 FULL NAME
-                ================================================== */}
+            ================================================== */}
 
             <div className="form-group">
               <label htmlFor="register-name">
@@ -1285,6 +1762,7 @@ const Register = () => {
                 id="register-name"
                 type="text"
                 name="name"
+                className="form-input"
                 value={formData.name}
                 onChange={handleChange}
                 placeholder="John Doe"
@@ -1301,7 +1779,7 @@ const Register = () => {
 
             {/* ==================================================
                 EMAIL
-                ================================================== */}
+            ================================================== */}
 
             <div className="form-group">
               <label htmlFor="register-email">
@@ -1312,6 +1790,7 @@ const Register = () => {
                 id="register-email"
                 type="email"
                 name="email"
+                className="form-input"
                 value={formData.email}
                 onChange={handleChange}
                 placeholder="your@email.com"
@@ -1324,19 +1803,15 @@ const Register = () => {
 
             {/* ==================================================
                 PASSWORD
-                ================================================== */}
+            ================================================== */}
 
             <div className="form-group">
               <label htmlFor="register-password">
                 Password
               </label>
 
-              <div
-                style={{
-                  position: "relative",
-                  width: "100%",
-                }}
-              >
+              <div className="password-wrapper">
+
                 <input
                   id="register-password"
                   type={
@@ -1345,49 +1820,32 @@ const Register = () => {
                       : "password"
                   }
                   name="password"
+                  className="form-input"
                   value={formData.password}
                   onChange={handleChange}
+                  onKeyDown={handlePasswordKeyEvent}
+                  onKeyUp={handlePasswordKeyEvent}
                   placeholder="Min 6 characters"
                   required
                   minLength="6"
                   autoComplete="new-password"
                   disabled={loading}
-                  style={{
-                    paddingRight: "36px",
-                  }}
                 />
 
                 <button
                   type="button"
-                  onClick={() =>
-                    setShowPassword(
-                      !showPassword
-                    )
-                  }
+                  className="password-toggle"
+                  onClick={() => {
+                    sounds.toggle();
+                    setShowPassword(!showPassword);
+                  }}
                   aria-label={
                     showPassword
                       ? "Hide password"
                       : "Show password"
                   }
-                  style={{
-                    position: "absolute",
-                    right: "8px",
-                    top: "50%",
-                    transform:
-                      "translateY(-50%)",
-                    background: "none",
-                    border: "none",
-                    cursor: "pointer",
-                    color: "#64748b",
-                    fontSize: "16px",
-                    padding: "2px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent:
-                      "center",
-                    zIndex: 3,
-                  }}
                   tabIndex={-1}
+                  disabled={loading}
                 >
                   {showPassword ? (
                     <AiFillEyeInvisible />
@@ -1395,70 +1853,64 @@ const Register = () => {
                     <AiFillEye />
                   )}
                 </button>
+
               </div>
 
-              {/* PASSWORD STRENGTH */}
+              {capsLockOn && (
+                <div className="caps-lock-warning" role="status">
+                  <span aria-hidden="true">⚠️</span>
+                  <span>Caps Lock is on</span>
+                </div>
+              )}
 
               {formData.password && (
-                <div
-                  style={{
-                    marginTop: "3px",
-                  }}
-                >
-                  <div
-                    style={{
-                      width: "100%",
-                      height: "3px",
-                      background: "#e5e7eb",
-                      borderRadius: "4px",
-                      overflow: "hidden",
-                    }}
-                  >
-                    <div
-                      style={{
-                        width:
-                          `${passwordStrength.score * 100}%`,
-                        height: "100%",
-                        background:
-                          passwordStrength.color,
-                        transition:
-                          "width 0.3s ease, background 0.3s ease",
-                        borderRadius: "4px",
-                      }}
-                    />
+                <div className="password-strength">
+                  <div className="password-strength-bar">
+                    {[1, 2, 3, 4].map((segment) => {
+                      const filled =
+                        passwordStrength.score * 4 >= segment - 0.5;
+
+                      return (
+                        <span
+                          key={segment}
+                          className="password-strength-segment"
+                          style={
+                            filled
+                              ? {
+                                  background:
+                                    passwordStrength.color,
+                                }
+                              : undefined
+                          }
+                        />
+                      );
+                    })}
                   </div>
 
-                  <span
+                  <div
+                    className="password-strength-label"
                     style={{
-                      fontSize: "10px",
-                      color:
-                        passwordStrength.color,
-                      fontWeight: 600,
+                      color: passwordStrength.color,
                     }}
                   >
-                    {
-                      passwordStrength.label
-                    }
-                  </span>
+                    <span>Password strength</span>
+                    <strong>{passwordStrength.label}</strong>
+                  </div>
                 </div>
               )}
             </div>
 
             {/* ==================================================
                 CONFIRM PASSWORD
-                ================================================== */}
+            ================================================== */}
 
             <div className="form-group">
               <label htmlFor="register-confirm-password">
                 Confirm Password
               </label>
 
-              <div
-                style={{
-                  position: "relative",
-                  width: "100%",
-                }}
-              >
+              <div className="password-wrapper">
+
                 <input
                   id="register-confirm-password"
                   type={
@@ -1467,51 +1919,32 @@ const Register = () => {
                       : "password"
                   }
                   name="confirmPassword"
-                  value={
-                    formData.confirmPassword
-                  }
+                  className="form-input"
+                  value={formData.confirmPassword}
                   onChange={handleChange}
                   placeholder="Re-enter your password"
                   required
                   minLength="6"
                   autoComplete="new-password"
                   disabled={loading}
-                  style={{
-                    paddingRight: "36px",
-                  }}
                 />
 
                 <button
                   type="button"
-                  onClick={() =>
+                  className="password-toggle"
+                  onClick={() => {
+                    sounds.toggle();
                     setShowConfirmPassword(
                       !showConfirmPassword
-                    )
-                  }
+                    );
+                  }}
                   aria-label={
                     showConfirmPassword
                       ? "Hide password"
                       : "Show password"
                   }
-                  style={{
-                    position: "absolute",
-                    right: "8px",
-                    top: "50%",
-                    transform:
-                      "translateY(-50%)",
-                    background: "none",
-                    border: "none",
-                    cursor: "pointer",
-                    color: "#64748b",
-                    fontSize: "16px",
-                    padding: "2px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent:
-                      "center",
-                    zIndex: 3,
-                  }}
                   tabIndex={-1}
+                  disabled={loading}
                 >
                   {showConfirmPassword ? (
                     <AiFillEyeInvisible />
@@ -1519,27 +1952,22 @@ const Register = () => {
                     <AiFillEye />
                   )}
                 </button>
+
               </div>
 
               {formData.confirmPassword &&
                 formData.password &&
                 formData.password !==
                   formData.confirmPassword && (
-                  <small
-                    style={{
-                      color: "#dc2626",
-                      display: "block",
-                      marginTop: "2px",
-                    }}
-                  >
+                  <span className="mismatch-warning">
                     ⚠️ Passwords do not match
-                  </small>
+                  </span>
                 )}
             </div>
 
             {/* ==================================================
                 PHONE
-                ================================================== */}
+            ================================================== */}
 
             <div className="form-group">
               <label htmlFor="register-phone">
@@ -1550,6 +1978,7 @@ const Register = () => {
                 id="register-phone"
                 type="tel"
                 name="phone"
+                className="form-input"
                 value={formData.phone}
                 onChange={handleChange}
                 placeholder="Phone number (optional)"
@@ -1561,114 +1990,47 @@ const Register = () => {
 
             {/* ==================================================
                 COUNTRY
-                ================================================== */}
+            ================================================== */}
 
             <div className="form-group">
               <label htmlFor="register-country">
                 Country{" "}
-                <span
-                  style={{
-                    color: "#dc2626",
-                  }}
-                >
-                  *
-                </span>
+                <span className="required-mark">*</span>
               </label>
 
               <select
                 id="register-country"
                 name="country"
+                className="form-input"
                 value={formData.country}
                 onChange={handleChange}
                 required
                 disabled={loading}
               >
-                <option
-                  value=""
-                  disabled
-                >
+                <option value="" disabled>
                   Select your country
                 </option>
 
-                <option value="Ghana">
-                  Ghana
-                </option>
-
-                <option value="Nigeria">
-                  Nigeria
-                </option>
-
-                <option value="Kenya">
-                  Kenya
-                </option>
-
-                <option value="South Africa">
-                  South Africa
-                </option>
-
-                <option value="Egypt">
-                  Egypt
-                </option>
-
-                <option value="Morocco">
-                  Morocco
-                </option>
-
-                <option value="Tanzania">
-                  Tanzania
-                </option>
-
-                <option value="Uganda">
-                  Uganda
-                </option>
-
-                <option value="Cameroon">
-                  Cameroon
-                </option>
-
-                <option value="Ivory Coast">
-                  Ivory Coast
-                </option>
-
-                <option value="Senegal">
-                  Senegal
-                </option>
-
-                <option value="United States">
-                  United States
-                </option>
-
-                <option value="United Kingdom">
-                  United Kingdom
-                </option>
-
-                <option value="Canada">
-                  Canada
-                </option>
-
-                <option value="Germany">
-                  Germany
-                </option>
-
-                <option value="France">
-                  France
-                </option>
-
-                <option value="China">
-                  China
-                </option>
-
-                <option value="India">
-                  India
-                </option>
-
-                <option value="United Arab Emirates">
-                  United Arab Emirates
-                </option>
-
-                <option value="Other">
-                  Other
-                </option>
+                <option value="Ghana">Ghana</option>
+                <option value="Nigeria">Nigeria</option>
+                <option value="Kenya">Kenya</option>
+                <option value="South Africa">South Africa</option>
+                <option value="Egypt">Egypt</option>
+                <option value="Morocco">Morocco</option>
+                <option value="Tanzania">Tanzania</option>
+                <option value="Uganda">Uganda</option>
+                <option value="Cameroon">Cameroon</option>
+                <option value="Ivory Coast">Ivory Coast</option>
+                <option value="Senegal">Senegal</option>
+                <option value="United States">United States</option>
+                <option value="United Kingdom">United Kingdom</option>
+                <option value="Canada">Canada</option>
+                <option value="Germany">Germany</option>
+                <option value="France">France</option>
+                <option value="China">China</option>
+                <option value="India">India</option>
+                <option value="United Arab Emirates">United Arab Emirates</option>
+                <option value="Other">Other</option>
               </select>
 
               <small>
@@ -1678,25 +2040,19 @@ const Register = () => {
 
             {/* ==================================================
                 BIRTHDAY
-                ================================================== */}
+            ================================================== */}
 
             <div className="form-group">
               <label htmlFor="register-birthday">
                 Date of Birth{" "}
-                <span
-                  style={{
-                    fontWeight: 400,
-                    color: "var(--gray-400)",
-                  }}
-                >
-                  (optional)
-                </span>
+                <span className="optional-mark">(optional)</span>
               </label>
 
               <input
                 id="register-birthday"
                 type="date"
                 name="birthday"
+                className="form-input"
                 value={formData.birthday}
                 onChange={handleChange}
                 max={
@@ -1713,89 +2069,50 @@ const Register = () => {
             </div>
 
             {/* ==================================================
-                SLIDER BUTTON
-                ================================================== */}
+                CREATE ACCOUNT BUTTON — single click
+            ================================================== */}
 
-            <div
-              className={
-                `slider-container ${
-                  loading
-                    ? "loading"
-                    : ""
-                }`
+            <button
+              type="submit"
+              className="register-button"
+              disabled={loading}
+              aria-label={
+                loading
+                  ? "Creating account"
+                  : "Create account"
               }
-              ref={sliderRef}
             >
-              <div
-                className="slider-track"
-                style={{
-                  width:
-                    `${sliderProgress}%`,
-                }}
-              />
+              {loading ? (
+                <>
+                  <i
+                    className="fas fa-circle-notch fa-spin"
+                    aria-hidden="true"
+                  />
+                  <span>Creating account...</span>
+                </>
+              ) : (
+                <>
+                  <i
+                    className="fas fa-user-plus"
+                    aria-hidden="true"
+                  />
+                  <span>CREATE ACCOUNT</span>
+                </>
+              )}
+            </button>
 
-              <div
-                className={
-                  `slider-text ${
-                    sliderProgress >= 10
-                      ? "active"
-                      : ""
-                  }`
-                }
-              >
-                {loading
-                  ? "Creating account..."
-                  : "Slide to create account →"}
-              </div>
-
-              <div
-                className={
-                  `slider-handle ${
-                    loading
-                      ? "disabled"
-                      : ""
-                  } ${
-                    sliderProgress >= 95
-                      ? "done"
-                      : ""
-                  }`
-                }
-                ref={handleRef}
-                onMouseDown={startDrag}
-                onTouchStart={startDrag}
-                style={{
-                  left:
-                    `calc(${sliderProgress}% - 28px)`,
-                }}
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M5 12h14" />
-
-                  <path d="M12 5l7 7-7 7" />
-                </svg>
-              </div>
-            </div>
-
-            {/* End slider */}
           </form>
 
           {/* ====================================================
               ACCOUNT FOOTER
-              ==================================================== */}
+          ==================================================== */}
 
           <div className="auth-footer">
-            Already have account?
-
+            Already have account?{" "}
             <Link
               to="/login"
               state={{ from }}
+              onClick={() => sounds.toggle()}
             >
               Sign in
             </Link>
@@ -1803,23 +2120,19 @@ const Register = () => {
 
           {/* ====================================================
               BACK LINK
-              ==================================================== */}
+          ==================================================== */}
 
           {from !== "/" && (
             <div className="back-link">
               <Link
                 to="/"
-                style={{
-                  color:
-                    "var(--gray-500)",
-                  textDecoration:
-                    "none",
-                }}
+                onClick={() => sounds.toggle()}
               >
                 ← Back to home
               </Link>
             </div>
           )}
+
         </div>
       </div>
     </>

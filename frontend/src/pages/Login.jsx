@@ -3,7 +3,7 @@
 // BuyUKUsed Login Page
 // ============================================================
 
-import React, { useState, useRef } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Link,
   useNavigate,
@@ -11,11 +11,18 @@ import {
 } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { FcGoogle } from "react-icons/fc";
-import { FaFacebookF } from "react-icons/fa";
+import { FaFacebookF, FaPlaneDeparture } from "react-icons/fa";
 import {
   AiFillEye,
   AiFillEyeInvisible,
+  AiOutlineLock,
+  AiOutlineUnlock,
+  AiOutlineClose,
 } from "react-icons/ai";
+import {
+  MdVolumeUp,
+  MdVolumeOff,
+} from "react-icons/md";
 
 const API_URL = (
   import.meta.env.VITE_API_URL ||
@@ -24,6 +31,74 @@ const API_URL = (
 
 console.log("🔗 Login API_URL:", API_URL);
 
+// ============================================================
+// PASSWORD UTILITIES
+// ============================================================
+
+const generateStrongPassword = (length = 16) => {
+  const lower = "abcdefghijkmnopqrstuvwxyz";
+  const upper = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+  const digits = "23456789";
+  const symbols = "!@#$%^&*";
+
+  const all = lower + upper + digits + symbols;
+
+  const random = (max) => {
+    if (
+      typeof window !== "undefined" &&
+      window.crypto &&
+      window.crypto.getRandomValues
+    ) {
+      const arr = new Uint32Array(1);
+      window.crypto.getRandomValues(arr);
+      return arr[0] % max;
+    }
+    return Math.floor(Math.random() * max);
+  };
+
+  const pwd = [
+    lower[random(lower.length)],
+    upper[random(upper.length)],
+    digits[random(digits.length)],
+    symbols[random(symbols.length)],
+  ];
+
+  for (let i = pwd.length; i < length; i++) {
+    pwd.push(all[random(all.length)]);
+  }
+
+  for (let i = pwd.length - 1; i > 0; i--) {
+    const j = random(i + 1);
+    [pwd[i], pwd[j]] = [pwd[j], pwd[i]];
+  }
+
+  return pwd.join("");
+};
+
+const getPasswordStrength = (pwd) => {
+  if (!pwd) {
+    return { score: 0, label: "", color: "" };
+  }
+
+  let score = 0;
+  if (pwd.length >= 8) score++;
+  if (pwd.length >= 12) score++;
+  if (pwd.length >= 16) score++;
+  if (/[a-z]/.test(pwd)) score++;
+  if (/[A-Z]/.test(pwd)) score++;
+  if (/[0-9]/.test(pwd)) score++;
+  if (/[^a-zA-Z0-9]/.test(pwd)) score++;
+
+  if (score <= 2) return { score, label: "Weak", color: "#ef4444" };
+  if (score <= 4) return { score, label: "Fair", color: "#f59e0b" };
+  if (score <= 6) return { score, label: "Good", color: "#3b82f6" };
+  return { score, label: "Strong", color: "#22c55e" };
+};
+
+// ============================================================
+// LOGIN
+// ============================================================
+
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -31,23 +106,167 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
+  const [soundEnabled, setSoundEnabled] = useState(true);
+
+  const [privacyMode, setPrivacyMode] = useState(false);
+  const [peekHidden, setPeekHidden] = useState(false);
+
+  const [capsLockOn, setCapsLockOn] = useState(false);
+
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const from = location.state?.from || "/";
 
+  const audioCtxRef = React.useRef(null);
+
+  const initAudio = () => {
+    if (audioCtxRef.current) return;
+    if (typeof window === "undefined") return;
+
+    try {
+      const Ctx =
+        window.AudioContext ||
+        window.webkitAudioContext;
+
+      if (!Ctx) return;
+
+      audioCtxRef.current = new Ctx();
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const playTone = (freq, duration = 0.05, type = "sine", volume = 0.1) => {
+    if (!soundEnabled) return;
+    initAudio();
+
+    const ctx = audioCtxRef.current;
+    if (!ctx) return;
+
+    try {
+      if (ctx.state === "suspended") {
+        ctx.resume();
+      }
+
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = type;
+      osc.frequency.value = freq;
+
+      gain.gain.setValueAtTime(volume, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(
+        0.0001,
+        ctx.currentTime + duration
+      );
+
+      osc.connect(gain).connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + duration);
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const sounds = {
+    key: () => playTone(700 + Math.random() * 250, 0.03, "square", 0.04),
+    toggle: () => playTone(440, 0.05, "sine", 0.08),
+    sliderTick: () => playTone(600, 0.02, "sine", 0.04),
+    suggest: () => {
+      playTone(1200, 0.05, "sine", 0.1);
+      setTimeout(() => playTone(1500, 0.08, "sine", 0.1), 60);
+    },
+    privacy: () => {
+      playTone(300, 0.08, "sine", 0.1);
+      setTimeout(() => playTone(400, 0.1, "sine", 0.1), 80);
+    },
+    success: () => {
+      playTone(523.25, 0.1, "sine", 0.15);
+      setTimeout(() => playTone(659.25, 0.1, "sine", 0.15), 100);
+      setTimeout(() => playTone(783.99, 0.18, "sine", 0.15), 200);
+    },
+    error: () => {
+      playTone(220, 0.15, "sawtooth", 0.12);
+      setTimeout(() => playTone(164.81, 0.25, "sawtooth", 0.12), 120);
+    },
+    exit: () => {
+      playTone(600, 0.06, "sine", 0.1);
+      setTimeout(() => playTone(400, 0.1, "sine", 0.1), 60);
+    },
+  };
+
+  const passwordStrength = useMemo(
+    () => getPasswordStrength(password),
+    [password]
+  );
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handleBlur = () => {
+      if (password) setPeekHidden(true);
+    };
+
+    const handleFocus = () => {
+      setPeekHidden(false);
+    };
+
+    const handleVisibility = () => {
+      if (document.hidden && password) {
+        setPeekHidden(true);
+      } else {
+        setPeekHidden(false);
+      }
+    };
+
+    window.addEventListener("blur", handleBlur);
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    return () => {
+      window.removeEventListener("blur", handleBlur);
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, [password]);
+
   // ============================================================
-  // SLIDER STATE
+  // EXIT (close login window)
   // ============================================================
 
-  const [sliderProgress, setSliderProgress] = useState(0);
-  const [isDragging, setIsDragging] = useState(false);
+  const handleExit = () => {
+    if (loading) return;
 
-  const sliderRef = useRef(null);
-  const handleRef = useRef(null);
+    sounds.exit();
+
+    setTimeout(() => {
+      navigate("/", { replace: true });
+    }, 150);
+  };
 
   // ============================================================
-  // LOGIN
+  // ESCAPE KEY → exit
+  // ============================================================
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape" && !loading) {
+        handleExit();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [loading]);
+
+  // ============================================================
+  // SUBMIT
   // ============================================================
 
   const handleSubmit = async (e) => {
@@ -58,6 +277,8 @@ const Login = () => {
     if (loading) {
       return;
     }
+
+    sounds.toggle();
 
     setError("");
     setLoading(true);
@@ -71,12 +292,16 @@ const Login = () => {
       );
 
       if (result?.success) {
-        navigate(from, {
-          replace: true,
-        });
+        sounds.success();
+
+        setTimeout(() => {
+          navigate(from, { replace: true });
+        }, 250);
 
         return;
       }
+
+      sounds.error();
 
       setError(
         result?.error ||
@@ -85,6 +310,7 @@ const Login = () => {
       );
     } catch (err) {
       console.error("❌ Login error:", err);
+      sounds.error();
 
       setError(
         err?.response?.data?.message ||
@@ -94,175 +320,11 @@ const Login = () => {
       );
     } finally {
       setLoading(false);
-      setSliderProgress(0);
     }
   };
-
-  // ============================================================
-  // SLIDER LOGIC
-  // ============================================================
-
-  const startDrag = (e) => {
-    if (loading) {
-      return;
-    }
-
-    setIsDragging(true);
-
-    if (e?.preventDefault) {
-      e.preventDefault();
-    }
-  };
-
-  const onDrag = (e) => {
-    if (!isDragging || loading) {
-      return;
-    }
-
-    const container = sliderRef.current;
-
-    if (!container) {
-      return;
-    }
-
-    const rect =
-      container.getBoundingClientRect();
-
-    const clientX = e.touches
-      ? e.touches[0].clientX
-      : e.clientX;
-
-    // ----------------------------------------------------------
-    // Handle dimensions
-    // ----------------------------------------------------------
-
-    const isMobile =
-      window.innerWidth <= 480;
-
-    const handleSize = isMobile
-      ? 54
-      : 58;
-
-    const padding = 3;
-
-    const maxX =
-      rect.width -
-      handleSize -
-      padding * 2;
-
-    let x =
-      clientX -
-      rect.left -
-      handleSize / 2;
-
-    x = Math.max(
-      0,
-      Math.min(x, maxX)
-    );
-
-    const progress =
-      maxX > 0
-        ? (x / maxX) * 100
-        : 0;
-
-    setSliderProgress(progress);
-
-    if (e?.preventDefault) {
-      e.preventDefault();
-    }
-  };
-
-  const endDrag = () => {
-    if (!isDragging) {
-      return;
-    }
-
-    setIsDragging(false);
-
-    if (sliderProgress >= 95) {
-      setSliderProgress(100);
-
-      handleSubmit(
-        new Event("submit")
-      );
-    } else {
-      setSliderProgress(0);
-    }
-  };
-
-  // ============================================================
-  // SLIDER EVENTS
-  // ============================================================
-
-  React.useEffect(() => {
-    const handleMouseMove = (e) => {
-      onDrag(e);
-    };
-
-    const handleTouchMove = (e) => {
-      onDrag(e);
-    };
-
-    const handleEnd = () => {
-      endDrag();
-    };
-
-    if (isDragging) {
-      document.addEventListener(
-        "mousemove",
-        handleMouseMove
-      );
-
-      document.addEventListener(
-        "touchmove",
-        handleTouchMove,
-        {
-          passive: false,
-        }
-      );
-
-      document.addEventListener(
-        "mouseup",
-        handleEnd
-      );
-
-      document.addEventListener(
-        "touchend",
-        handleEnd
-      );
-    }
-
-    return () => {
-      document.removeEventListener(
-        "mousemove",
-        handleMouseMove
-      );
-
-      document.removeEventListener(
-        "touchmove",
-        handleTouchMove
-      );
-
-      document.removeEventListener(
-        "mouseup",
-        handleEnd
-      );
-
-      document.removeEventListener(
-        "touchend",
-        handleEnd
-      );
-    };
-  }, [
-    isDragging,
-    sliderProgress,
-  ]);
-
-  // ============================================================
-  // SOCIAL LOGIN
-  // ============================================================
 
   const handleGoogleLogin = () => {
+    sounds.toggle();
     setError("");
 
     window.location.href =
@@ -270,11 +332,64 @@ const Login = () => {
   };
 
   const handleFacebookLogin = () => {
+    sounds.toggle();
     setError("");
 
     window.location.href =
       `${API_URL}/auth/facebook`;
   };
+
+  const toggleShowPassword = () => {
+    sounds.toggle();
+    setShowPassword((prev) => !prev);
+  };
+
+  const togglePrivacyMode = () => {
+    sounds.privacy();
+    setPrivacyMode((prev) => !prev);
+
+    if (!privacyMode) {
+      setShowPassword(false);
+    }
+  };
+
+  const toggleSound = () => {
+    initAudio();
+    setSoundEnabled((prev) => !prev);
+    if (!soundEnabled) {
+      setTimeout(() => {
+        playTone(880, 0.06, "sine", 0.1);
+      }, 20);
+    }
+  };
+
+  const handleSuggestPassword = () => {
+    sounds.suggest();
+    const suggestion = generateStrongPassword(16);
+    setPassword(suggestion);
+    setShowPassword(true);
+    setPeekHidden(false);
+  };
+
+  const handlePasswordChange = (e) => {
+    setPassword(e.target.value);
+    sounds.key();
+    if (peekHidden) setPeekHidden(false);
+  };
+
+  const handleEmailChange = (e) => {
+    setEmail(e.target.value);
+    sounds.key();
+  };
+
+  const handlePasswordKeyEvent = (e) => {
+    if (typeof e.getModifierState === "function") {
+      setCapsLockOn(e.getModifierState("CapsLock"));
+    }
+  };
+
+  const passwordBlurred =
+    privacyMode || peekHidden;
 
   // ============================================================
   // RENDER
@@ -285,7 +400,17 @@ const Login = () => {
       <style>{`
 
         /* ======================================================
-           GLOBAL LOGIN PAGE
+           STICKY FULL-VIEWPORT — NO PAGE SCROLLBAR
+        ====================================================== */
+
+        html,
+        body {
+          overflow: hidden !important;
+          height: 100% !important;
+        }
+
+        /* ======================================================
+           LOGIN WRAPPER — no green, white grid only
         ====================================================== */
 
         .login-wrapper,
@@ -294,22 +419,26 @@ const Login = () => {
         }
 
         .login-wrapper {
+          position: fixed;
+          inset: 0;
+
           width: 100%;
-          min-height: 100vh;
-          min-height: 100dvh;
+          height: 100vh;
+          height: 100dvh;
 
           display: flex;
           align-items: center;
           justify-content: center;
 
-          padding: 12px;
+          padding: 16px;
 
-          overflow-x: hidden;
+          overflow: hidden;
 
           background-image:
-            linear-gradient(
-              rgba(0, 0, 0, 0.55),
-              rgba(0, 0, 0, 0.55)
+            radial-gradient(
+              circle at center,
+              rgba(0, 0, 0, 0.55) 0%,
+              rgba(0, 0, 0, 0.88) 100%
             ),
             url("https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=1600&q=80");
 
@@ -317,53 +446,276 @@ const Login = () => {
           background-position: center;
           background-repeat: no-repeat;
 
-          overscroll-behavior-x: none;
+          overscroll-behavior: none;
+
+          touch-action: manipulation;
+        }
+
+        /* White grid overlay */
+
+        .login-wrapper::before {
+          content: '';
+          position: absolute;
+          inset: 0;
+
+          background-image:
+            linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+
+          background-size: 44px 44px;
+
+          pointer-events: none;
+
+          mask-image:
+            radial-gradient(ellipse at center, black 25%, transparent 75%);
+          -webkit-mask-image:
+            radial-gradient(ellipse at center, black 25%, transparent 75%);
+
+          z-index: 0;
         }
 
         /* ======================================================
-           LOGIN CARD
+           FLYING TAKEOVER PLANE — flies across repeatedly
+        ====================================================== */
+
+        .flying-plane {
+          position: fixed;
+          z-index: 0;
+          pointer-events: none;
+
+          font-size: 56px;
+          line-height: 1;
+
+          color: rgba(255, 255, 255, 0.72);
+
+          filter:
+            drop-shadow(0 0 18px rgba(255, 255, 255, 0.55))
+            drop-shadow(0 0 42px rgba(255, 255, 255, 0.25));
+
+          animation:
+            fly-across 14s linear infinite;
+
+          will-change: transform, opacity;
+        }
+
+        @keyframes fly-across {
+          0% {
+            transform: translate(-180px, calc(100vh + 120px));
+            opacity: 0;
+          }
+          8% {
+            opacity: 1;
+          }
+          92% {
+            opacity: 1;
+          }
+          100% {
+            transform: translate(calc(100vw + 180px), -120px);
+            opacity: 0;
+          }
+        }
+
+        /* ======================================================
+           LOGIN CARD — no green accent
         ====================================================== */
 
         .login-card {
+          position: relative;
+          z-index: 1;
+
           width: 100%;
           max-width: 400px;
 
-          padding: 16px 20px;
+          max-height: calc(100dvh - 32px);
 
-          background: #ffffff;
+          padding: 22px 22px;
 
-          border-radius: 14px;
+          overflow-y: auto;
+          overflow-x: hidden;
+
+          background: linear-gradient(
+            155deg,
+            rgba(15, 23, 42, 0.55) 0%,
+            rgba(2, 6, 23, 0.75) 100%
+          );
+
+          backdrop-filter: blur(32px) saturate(140%);
+          -webkit-backdrop-filter: blur(32px) saturate(140%);
+
+          border: 1px solid rgba(255, 255, 255, 0.1);
+
+          border-radius: 20px;
 
           box-shadow:
-            0 8px 28px rgba(0, 0, 0, 0.18);
+            inset 0 1px 0 0 rgba(255, 255, 255, 0.08),
+            inset 0 0 0 1px rgba(255, 255, 255, 0.02),
+            0 24px 80px rgba(0, 0, 0, 0.55);
 
-          overflow: hidden;
+          color: #f8fafc;
+
+          scrollbar-width: none;
+          -ms-overflow-style: none;
         }
 
+        .login-card::-webkit-scrollbar {
+          display: none;
+        }
+
+        /* ======================================================
+           EXIT BUTTON
+        ====================================================== */
+
+        .exit-button {
+          position: absolute;
+
+          top: 12px;
+          left: 12px;
+
+          width: 30px;
+          height: 30px;
+
+          display: flex;
+          align-items: center;
+          justify-content: center;
+
+          background: rgba(0, 0, 0, 0.3);
+          border: 1px solid rgba(255, 255, 255, 0.12);
+
+          border-radius: 50%;
+
+          color: rgba(255, 255, 255, 0.75);
+
+          cursor: pointer;
+
+          font-size: 17px;
+
+          transition:
+            background 0.2s ease,
+            color 0.2s ease,
+            transform 0.15s ease,
+            border-color 0.2s ease;
+
+          z-index: 10;
+
+          -webkit-tap-highlight-color: transparent;
+
+          backdrop-filter: blur(8px);
+          -webkit-backdrop-filter: blur(8px);
+        }
+
+        .exit-button:hover:not(:disabled) {
+          background: rgba(239, 68, 68, 0.15);
+          border-color: rgba(239, 68, 68, 0.45);
+          color: #f87171;
+          transform: scale(1.06);
+        }
+
+        .exit-button:active:not(:disabled) {
+          transform: scale(0.94);
+        }
+
+        .exit-button:disabled {
+          opacity: 0.4;
+          cursor: not-allowed;
+        }
+
+        /* ======================================================
+           SOUND TOGGLE
+        ====================================================== */
+
+        .sound-toggle {
+          position: absolute;
+
+          top: 12px;
+          right: 12px;
+
+          width: 30px;
+          height: 30px;
+
+          display: flex;
+          align-items: center;
+          justify-content: center;
+
+          background: rgba(0, 0, 0, 0.3);
+          border: 1px solid rgba(255, 255, 255, 0.12);
+
+          border-radius: 50%;
+
+          color: rgba(255, 255, 255, 0.75);
+
+          cursor: pointer;
+
+          font-size: 15px;
+
+          transition:
+            background 0.2s ease,
+            color 0.2s ease,
+            transform 0.15s ease,
+            border-color 0.2s ease;
+
+          z-index: 10;
+
+          -webkit-tap-highlight-color: transparent;
+
+          backdrop-filter: blur(8px);
+          -webkit-backdrop-filter: blur(8px);
+        }
+
+        .sound-toggle:hover {
+          background: rgba(255, 255, 255, 0.1);
+          border-color: rgba(255, 255, 255, 0.35);
+          color: #ffffff;
+          transform: scale(1.06);
+        }
+
+        .sound-toggle:active {
+          transform: scale(0.94);
+        }
+
+        /* ======================================================
+           TITLE — frosted pill
+        ====================================================== */
+
         .login-card h2 {
-          margin: 0 0 2px;
+          display: table;
+          margin: 10px auto 12px;
 
-          font-size: 20px;
+          padding: 8px 22px;
 
-          line-height: 1.25;
+          background: rgba(255, 255, 255, 0.03);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          border-radius: 9999px;
 
+          backdrop-filter: blur(8px);
+          -webkit-backdrop-filter: blur(8px);
+
+          color: rgba(255, 255, 255, 0.9);
+
+          font-size: 16px;
+          line-height: 1.2;
+          font-weight: 700;
+          letter-spacing: 0.02em;
           text-align: center;
 
-          font-weight: 800;
+          box-shadow:
+            inset 0 1px 0 0 rgba(255, 255, 255, 0.05),
+            0 2px 8px rgba(0, 0, 0, 0.15);
         }
 
         .login-card .subtitle {
-          margin: 0 0 14px;
+          margin: 0 0 16px;
 
-          font-size: 13px;
+          font-size: 12.5px;
 
-          line-height: 1.35;
+          line-height: 1.4;
 
           text-align: center;
 
-          color: var(--gray-500);
+          color: rgba(255, 255, 255, 0.5);
 
-          font-weight: 900;
+          font-weight: 700;
+
+          letter-spacing: 0.02em;
         }
 
         /* ======================================================
@@ -372,19 +724,25 @@ const Login = () => {
 
         .form-group {
           width: 100%;
-          margin-bottom: 8px;
+          margin-bottom: 10px;
         }
 
         .form-group label {
           display: block;
 
-          margin-bottom: 2px;
+          margin-bottom: 4px;
 
-          font-size: 12px;
+          font-size: 11px;
 
           line-height: 1.2;
 
-          font-weight: 600;
+          font-weight: 700;
+
+          text-transform: uppercase;
+
+          letter-spacing: 0.08em;
+
+          color: rgba(255, 255, 255, 0.6);
         }
 
         .form-group input {
@@ -394,27 +752,21 @@ const Login = () => {
 
           min-width: 0;
 
-          padding: 7px 12px;
+          padding: 9px 13px;
 
           border:
-            1.5px solid
-            var(--gray-200);
+            1px solid
+            rgba(255, 255, 255, 0.1);
 
-          border-radius:
-            var(--radius-md);
+          border-radius: 10px;
 
-          background: #ffffff;
+          background:
+            rgba(255, 255, 255, 0.04);
 
-          color: #111827;
+          color: #f8fafc;
 
           font-family: inherit;
 
-          /*
-           * IMPORTANT:
-           * 16px prevents mobile Safari from
-           * automatically zooming when input
-           * receives focus.
-           */
           font-size: 16px;
 
           line-height: 1.35;
@@ -423,19 +775,29 @@ const Login = () => {
 
           transition:
             border-color 0.2s ease,
-            box-shadow 0.2s ease;
+            box-shadow 0.2s ease,
+            background 0.2s ease,
+            filter 0.2s ease;
 
           -webkit-appearance: none;
           appearance: none;
         }
 
+        .form-group input::placeholder {
+          color: rgba(255, 255, 255, 0.3);
+        }
+
+        /* White focus ring (was green) */
         .form-group input:focus {
           border-color:
-            var(--primary);
+            rgba(255, 255, 255, 0.4);
+
+          background:
+            rgba(255, 255, 255, 0.06);
 
           box-shadow:
-            0 0 0 2px
-            rgba(0, 0, 0, 0.05);
+            0 0 0 3px rgba(255, 255, 255, 0.08),
+            0 0 24px rgba(255, 255, 255, 0.08);
         }
 
         .form-group input:disabled {
@@ -451,9 +813,16 @@ const Login = () => {
 
           font-size: 10px;
 
-          color: var(--gray-400);
+          color: rgba(255, 255, 255, 0.4);
 
           font-weight: 900;
+        }
+
+        .form-group input.peek-hidden {
+          filter: blur(6px);
+
+          -webkit-user-select: none;
+          user-select: none;
         }
 
         /* ======================================================
@@ -492,7 +861,7 @@ const Login = () => {
 
           border: none;
 
-          color: #64748b;
+          color: rgba(255, 255, 255, 0.5);
 
           cursor: pointer;
 
@@ -502,11 +871,149 @@ const Login = () => {
 
           -webkit-tap-highlight-color:
             transparent;
+
+          transition:
+            color 0.2s ease;
+        }
+
+        .password-toggle:hover:not(:disabled) {
+          color: rgba(255, 255, 255, 0.9);
         }
 
         .password-toggle:disabled {
           opacity: 0.5;
           cursor: not-allowed;
+        }
+
+        /* ======================================================
+           PASSWORD TOOLS
+        ====================================================== */
+
+        .password-tools {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+
+          gap: 8px;
+
+          margin-top: 8px;
+
+          flex-wrap: wrap;
+        }
+
+        .password-tool-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+
+          padding: 5px 11px;
+
+          font-size: 11px;
+          font-weight: 700;
+
+          letter-spacing: 0.01em;
+
+          color: rgba(255, 255, 255, 0.7);
+
+          background: rgba(255, 255, 255, 0.03);
+
+          border: 1px solid rgba(255, 255, 255, 0.08);
+
+          border-radius: 9999px;
+
+          cursor: pointer;
+
+          transition:
+            background 0.2s ease,
+            border-color 0.2s ease,
+            color 0.2s ease;
+
+          -webkit-tap-highlight-color: transparent;
+        }
+
+        .password-tool-btn:hover:not(:disabled) {
+          background: rgba(255, 255, 255, 0.08);
+          border-color: rgba(255, 255, 255, 0.25);
+          color: #ffffff;
+        }
+
+        .password-tool-btn:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
+        .password-tool-btn.active {
+          background: rgba(255, 255, 255, 0.1);
+          border-color: rgba(255, 255, 255, 0.3);
+          color: #ffffff;
+        }
+
+        .password-tool-btn svg {
+          font-size: 13px;
+        }
+
+        /* ======================================================
+           PASSWORD STRENGTH
+        ====================================================== */
+
+        .password-strength {
+          margin-top: 8px;
+        }
+
+        .password-strength-bar {
+          display: flex;
+          gap: 3px;
+          height: 3px;
+        }
+
+        .password-strength-segment {
+          flex: 1;
+          border-radius: 2px;
+          background: rgba(255, 255, 255, 0.06);
+          transition: background 0.25s ease;
+        }
+
+        .password-strength-label {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+
+          margin-top: 4px;
+
+          font-size: 10px;
+          font-weight: 700;
+
+          letter-spacing: 0.03em;
+          text-transform: uppercase;
+
+          color: rgba(255, 255, 255, 0.5);
+        }
+
+        .password-strength-label strong {
+          font-weight: 800;
+        }
+
+        /* ======================================================
+           CAPS LOCK WARNING
+        ====================================================== */
+
+        .caps-lock-warning {
+          display: flex;
+          align-items: center;
+          gap: 5px;
+
+          margin-top: 6px;
+
+          padding: 4px 8px;
+
+          background: rgba(245, 158, 11, 0.1);
+          border: 1px solid rgba(245, 158, 11, 0.3);
+          border-radius: 6px;
+
+          color: #fbbf24;
+
+          font-size: 11px;
+          font-weight: 700;
         }
 
         /* ======================================================
@@ -527,11 +1034,15 @@ const Login = () => {
           padding: 9px 12px;
 
           border:
-            1px solid #ddd;
+            1px solid
+            rgba(255, 255, 255, 0.1);
 
-          border-radius: 50px;
+          border-radius: 10px;
 
-          background: #fff;
+          background:
+            rgba(255, 255, 255, 0.04);
+
+          color: #f8fafc;
 
           cursor: pointer;
 
@@ -547,6 +1058,18 @@ const Login = () => {
 
           -webkit-tap-highlight-color:
             transparent;
+
+          transition:
+            background 0.2s ease,
+            border-color 0.2s ease;
+        }
+
+        .social-btn:hover:not(:disabled) {
+          background:
+            rgba(255, 255, 255, 0.08);
+
+          border-color:
+            rgba(255, 255, 255, 0.2);
         }
 
         .social-btn:disabled {
@@ -563,6 +1086,12 @@ const Login = () => {
           color: #fff;
         }
 
+        .social-btn.fb:hover:not(:disabled) {
+          background: #166fe5;
+
+          border-color: transparent;
+        }
+
         /* ======================================================
            DIVIDER
         ====================================================== */
@@ -573,7 +1102,7 @@ const Login = () => {
           display: flex;
           align-items: center;
 
-          margin: 8px 0 12px;
+          margin: 10px 0 12px;
         }
 
         .divider hr {
@@ -584,7 +1113,7 @@ const Login = () => {
           border: none;
 
           border-top:
-            1px solid #e5e7eb;
+            1px solid rgba(255, 255, 255, 0.08);
         }
 
         .divider span {
@@ -592,175 +1121,173 @@ const Login = () => {
 
           margin: 0 10px;
 
-          color: #777;
+          color: rgba(255, 255, 255, 0.4);
 
-          font-size: 13px;
+          font-size: 11px;
 
-          font-weight: 900;
+          font-weight: 800;
+
+          letter-spacing: 0.1em;
         }
 
         /* ======================================================
-           SLIDER
+           FORGOT PASSWORD — frosted pill
         ====================================================== */
 
-        .slider-container {
-          position: relative;
+        .forgot-password-row {
+          display: flex;
+          justify-content: flex-end;
 
           width: 100%;
 
-          height: 64px;
+          margin-top: 10px;
+          margin-bottom: 14px;
+        }
+
+        .forgot-password-link {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+
+          padding: 6px 14px;
+
+          background: rgba(255, 255, 255, 0.03);
+
+          border: 1px solid rgba(255, 255, 255, 0.08);
+
+          border-radius: 9999px;
+
+          color: rgba(255, 255, 255, 0.65);
+
+          font-size: 12px;
+          font-weight: 600;
+
+          letter-spacing: 0.02em;
+
+          text-decoration: none;
+
+          transition:
+            background 0.2s ease,
+            border-color 0.2s ease,
+            color 0.2s ease,
+            box-shadow 0.2s ease;
+
+          backdrop-filter: blur(8px);
+          -webkit-backdrop-filter: blur(8px);
+
+          -webkit-tap-highlight-color: transparent;
+        }
+
+        .forgot-password-link:hover {
+          background: rgba(255, 255, 255, 0.08);
+          border-color: rgba(255, 255, 255, 0.28);
+          color: #ffffff;
+          box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
+        }
+
+        /* ======================================================
+           LOGIN BUTTON — fully transparent, no green
+        ====================================================== */
+
+        .login-button {
+          width: 100%;
+
+          min-height: 52px;
+
+          padding: 14px 24px;
 
           margin: 4px 0 0;
 
-          background: #e5e7eb;
+          /* No fill */
+          background: transparent;
+
+          /* White text */
+          color: #ffffff;
+
+          /* Hairline border */
+          border: 1px solid rgba(255, 255, 255, 0.28);
 
           border-radius: 12px;
 
-          overflow: hidden;
+          font-family: inherit;
 
-          touch-action: none;
+          font-size: 15px;
 
-          user-select: none;
+          font-weight: 800;
 
-          -webkit-user-select: none;
+          letter-spacing: 0.1em;
 
-          -webkit-touch-callout: none;
+          text-transform: uppercase;
 
-          box-shadow:
-            inset 0 2px 4px
-            rgba(0, 0, 0, 0.06);
-        }
-
-        .slider-track {
-          position: absolute;
-
-          left: 0;
-          top: 0;
-
-          height: 100%;
-
-          background:
-            var(--primary);
-
-          border-radius: 12px 0 0 12px;
-
-          transition:
-            width 0.05s linear;
-
-          pointer-events: none;
-
-          z-index: 1;
-        }
-
-        .slider-text {
-          position: absolute;
-
-          left: 0;
-          top: 0;
-
-          width: 100%;
-          height: 100%;
+          cursor: pointer;
 
           display: flex;
           align-items: center;
           justify-content: center;
 
-          padding:
-            0 65px;
-
-          text-align: center;
-
-          font-size: 17px;
-
-          line-height: 1.2;
-
-          font-weight: 700;
-
-          color: #6b7280;
-
-          pointer-events: none;
+          gap: 10px;
 
           transition:
-            color 0.2s ease;
+            transform 0.15s ease,
+            background 0.2s ease,
+            border-color 0.2s ease,
+            color 0.2s ease,
+            box-shadow 0.2s ease,
+            opacity 0.2s ease;
 
-          z-index: 3;
+          /* Very subtle inner glow, no color */
+          box-shadow:
+            inset 0 1px 0 0 rgba(255, 255, 255, 0.08),
+            0 2px 12px rgba(0, 0, 0, 0.25);
+
+          touch-action: manipulation;
+
+          -webkit-tap-highlight-color: transparent;
+
+          backdrop-filter: blur(4px);
+          -webkit-backdrop-filter: blur(4px);
         }
 
-        .slider-text.active {
-          color: #ffffff;
-        }
+        .login-button:hover:not(:disabled) {
+          background: rgba(255, 255, 255, 0.06);
 
-        .slider-handle {
-          position: absolute;
-
-          top: 3px;
-
-          left: 3px;
-
-          width: 58px;
-          height: 58px;
-
-          display: flex;
-          align-items: center;
-          justify-content: center;
-
-          background: #ffffff;
-
-          border-radius: 50%;
+          border-color: rgba(255, 255, 255, 0.55);
 
           box-shadow:
-            0 6px 20px
-            rgba(0, 0, 0, 0.3);
+            inset 0 1px 0 0 rgba(255, 255, 255, 0.12),
+            0 0 24px rgba(255, 255, 255, 0.12),
+            0 4px 16px rgba(0, 0, 0, 0.3);
 
-          cursor: grab;
-
-          transition:
-            left 0.05s linear,
-            transform 0.15s ease;
-
-          touch-action: none;
-
-          z-index: 5;
-
-          -webkit-tap-highlight-color:
-            transparent;
+          transform: translateY(-1px);
         }
 
-        .slider-handle:active {
-          cursor: grabbing;
+        .login-button:active:not(:disabled) {
+          transform: translateY(0) scale(0.99);
 
-          transform:
-            scale(1.04);
+          background: rgba(255, 255, 255, 0.09);
+
+          box-shadow:
+            inset 0 1px 0 0 rgba(255, 255, 255, 0.1),
+            0 1px 6px rgba(0, 0, 0, 0.3);
         }
 
-        .slider-handle svg {
-          width: 38px;
-          height: 38px;
-
-          color:
-            var(--primary);
-
-          transition:
-            transform 0.2s ease;
-        }
-
-        .slider-handle.done svg {
-          color: #22c55e;
-        }
-
-        .slider-handle.disabled {
-          opacity: 0.5;
+        .login-button:disabled {
+          opacity: 0.55;
 
           cursor: not-allowed;
+
+          background: transparent;
+
+          border-color: rgba(255, 255, 255, 0.15);
         }
 
-        .slider-container.loading
-          .slider-track {
-          background: #9ca3af;
+        .login-button i,
+        .login-button svg {
+          font-size: 14px;
         }
 
         /* ======================================================
-           FOOTER
+           FOOTER — Create free account as frosted pill
         ====================================================== */
 
         .auth-footer {
@@ -768,24 +1295,61 @@ const Login = () => {
 
           text-align: center;
 
-          margin-top: 10px;
+          margin-top: 12px;
 
           font-size: 12px;
 
           line-height: 1.4;
 
-          color: var(--gray-500);
+          color: rgba(255, 255, 255, 0.5);
         }
 
         .auth-footer a {
-          color: var(--primary);
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
 
-          font-weight: 700;
+          padding: 6px 14px;
 
-          margin-left: 4px;
+          margin-left: 8px;
+
+          background: rgba(255, 255, 255, 0.03);
+
+          border: 1px solid rgba(255, 255, 255, 0.08);
+
+          border-radius: 9999px;
+
+          color: rgba(255, 255, 255, 0.65);
+
+          font-size: 12px;
+          font-weight: 600;
+
+          letter-spacing: 0.02em;
 
           text-decoration: none;
+
+          transition:
+            background 0.2s ease,
+            border-color 0.2s ease,
+            color 0.2s ease,
+            box-shadow 0.2s ease;
+
+          backdrop-filter: blur(8px);
+          -webkit-backdrop-filter: blur(8px);
+
+          -webkit-tap-highlight-color: transparent;
         }
+
+        .auth-footer a:hover {
+          background: rgba(255, 255, 255, 0.08);
+          border-color: rgba(255, 255, 255, 0.28);
+          color: #ffffff;
+          box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
+        }
+
+        /* ======================================================
+           BACK LINK
+        ====================================================== */
 
         .back-link {
           width: 100%;
@@ -794,16 +1358,23 @@ const Login = () => {
 
           margin-top: 6px;
 
-          font-size: 12px;
+          font-size: 11px;
 
           line-height: 1.4;
 
-          color: var(--gray-400);
+          color: rgba(255, 255, 255, 0.35);
         }
 
         .back-link a {
           color:
-            var(--gray-500);
+            rgba(255, 255, 255, 0.5);
+
+          transition: color 0.2s ease;
+        }
+
+        .back-link a:hover {
+          color:
+            rgba(255, 255, 255, 0.8);
         }
 
         /* ======================================================
@@ -815,15 +1386,20 @@ const Login = () => {
 
           overflow-wrap: anywhere;
 
-          background: #fee2e2;
+          background:
+            rgba(220, 38, 38, 0.12);
 
-          color: #dc2626;
+          color: #fca5a5;
 
-          padding: 6px 10px;
+          border:
+            1px solid
+            rgba(220, 38, 38, 0.3);
+
+          padding: 7px 11px;
 
           border-radius: 8px;
 
-          margin-bottom: 10px;
+          margin-bottom: 12px;
 
           font-size: 12px;
 
@@ -841,6 +1417,11 @@ const Login = () => {
 
           .login-card {
             max-width: 420px;
+            max-height: calc(100dvh - 24px);
+          }
+
+          .flying-plane {
+            font-size: 44px;
           }
         }
 
@@ -849,103 +1430,65 @@ const Login = () => {
         ====================================================== */
 
         @media (max-width: 480px) {
-
-          html,
-          body {
-            width: 100%;
-            max-width: 100%;
-            overflow-x: hidden;
-          }
-
           .login-wrapper {
-            width: 100%;
-
-            min-height: 100vh;
-            min-height: 100dvh;
-
-            display: flex;
-
-            align-items: flex-start;
-
-            justify-content: center;
-
-            padding:
-              12px 8px 16px;
-
-            overflow-x: hidden;
-
-            /*
-             * Don't allow the page to move
-             * sideways when keyboard opens.
-             */
-            position: relative;
-
-            left: 0;
-            right: 0;
+            padding: 8px;
+            align-items: center;
           }
 
           .login-card {
             width: 100%;
-
             max-width: 400px;
-
-            margin: 0 auto;
-
-            padding:
-              12px 12px 14px;
-
-            border-radius: 12px;
-
-            overflow: hidden;
+            max-height: calc(100dvh - 16px);
+            padding: 16px 14px;
+            border-radius: 16px;
           }
 
           .login-card h2 {
-            font-size: 18px;
-
-            line-height: 1.25;
-
-            margin-bottom: 2px;
+            font-size: 14px;
+            padding: 6px 16px;
+            margin: 10px auto 10px;
           }
 
           .login-card .subtitle {
-            font-size: 12px;
-
-            line-height: 1.35;
-
-            margin-bottom: 9px;
+            font-size: 11.5px;
+            margin-bottom: 12px;
           }
 
-          /* ====================================================
-             MOBILE FORM
-          ==================================================== */
+          .flying-plane {
+            font-size: 36px;
+          }
+
+          .exit-button,
+          .sound-toggle {
+            top: 10px;
+            width: 26px;
+            height: 26px;
+          }
+
+          .exit-button {
+            left: 10px;
+            font-size: 15px;
+          }
+
+          .sound-toggle {
+            right: 10px;
+            font-size: 13px;
+          }
 
           .form-group {
-            margin-bottom: 6px;
+            margin-bottom: 8px;
           }
 
           .form-group label {
-            font-size: 11px;
-
-            margin-bottom: 2px;
+            font-size: 10.5px;
+            margin-bottom: 3px;
           }
 
           .form-group input {
-            width: 100%;
-
-            /*
-             * CRITICAL:
-             * Keep input at 16px on mobile.
-             * This stops iOS Safari from zooming
-             * into the input.
-             */
             font-size: 16px !important;
-
             min-height: 42px;
-
-            padding:
-              8px 10px;
-
-            border-radius: 7px;
+            padding: 8px 11px;
+            border-radius: 8px;
           }
 
           .password-wrapper input {
@@ -954,146 +1497,83 @@ const Login = () => {
 
           .password-toggle {
             right: 6px;
-
             width: 34px;
             height: 34px;
-
             font-size: 18px;
           }
 
-          /* ====================================================
-             SOCIAL BUTTONS
-          ==================================================== */
+          .password-tool-btn {
+            font-size: 10px;
+            padding: 4px 9px;
+          }
+
+          .password-strength {
+            margin-top: 6px;
+          }
+
+          .password-strength-label {
+            font-size: 9px;
+          }
+
+          .caps-lock-warning {
+            font-size: 10px;
+            padding: 3px 7px;
+          }
 
           .social-btn {
             width: 100%;
-
-            min-height: 40px;
-
-            padding:
-              8px 10px;
-
+            min-height: 38px;
+            padding: 8px 10px;
             margin-bottom: 6px;
-
             font-size: 12px;
           }
 
-          /* ====================================================
-             DIVIDER
-          ==================================================== */
-
           .divider {
-            margin:
-              6px 0 9px;
+            margin: 8px 0 10px;
           }
 
           .divider span {
-            margin:
-              0 8px;
-
-            font-size: 11px;
+            margin: 0 8px;
+            font-size: 10px;
           }
-
-          /* ====================================================
-             FORGOT PASSWORD
-          ==================================================== */
 
           .forgot-password-row {
-            width: 100%;
-
-            margin-top: 4px;
-
-            margin-bottom: 10px;
+            margin-top: 8px;
+            margin-bottom: 12px;
           }
 
-          /* ====================================================
-             MOBILE SLIDER
-          ==================================================== */
-
-          .slider-container {
-            /*
-             * IMPORTANT:
-             * No calc(100% + ...)
-             * No negative margins.
-             *
-             * This keeps the slider completely
-             * inside the login card.
-             */
-            width: 100%;
-
-            height: 64px;
-
-            margin:
-              5px 0 0;
-
-            border-radius: 12px;
-
-            overflow: hidden;
+          .forgot-password-link {
+            font-size: 11px;
+            padding: 5px 12px;
           }
 
-          .slider-track {
-            height: 100%;
-
-            border-radius:
-              12px 0 0 12px;
+          .login-button {
+            min-height: 48px;
+            padding: 12px 20px;
+            font-size: 14px;
+            border-radius: 10px;
+            letter-spacing: 0.08em;
           }
-
-          .slider-text {
-            width: 100%;
-
-            height: 100%;
-
-            padding:
-              0 62px;
-
-            font-size: 15px;
-
-            font-weight: 800;
-
-            white-space: nowrap;
-          }
-
-          .slider-handle {
-            width: 54px;
-            height: 54px;
-
-            top: 5px;
-            left: 5px;
-
-            box-shadow:
-              0 4px 14px
-              rgba(0, 0, 0, 0.25);
-          }
-
-          .slider-handle svg {
-            width: 32px;
-            height: 32px;
-          }
-
-          /* ====================================================
-             FOOTERS
-          ==================================================== */
 
           .auth-footer {
-            margin-top: 8px;
-
+            margin-top: 10px;
             font-size: 11px;
+          }
 
-            line-height: 1.4;
+          .auth-footer a {
+            font-size: 11px;
+            padding: 5px 12px;
+            margin-left: 6px;
           }
 
           .back-link {
-            margin-top: 3px;
-
-            font-size: 11px;
+            margin-top: 4px;
+            font-size: 10.5px;
           }
 
           .login-error {
-            margin-bottom: 8px;
-
-            padding:
-              7px 9px;
-
+            margin-bottom: 10px;
+            padding: 7px 10px;
             font-size: 11px;
           }
         }
@@ -1103,31 +1583,50 @@ const Login = () => {
         ====================================================== */
 
         @media (max-width: 360px) {
-
           .login-wrapper {
-            padding:
-              8px 6px 12px;
+            padding: 6px;
           }
 
           .login-card {
-            padding:
-              10px 9px 12px;
-
-            border-radius: 10px;
+            padding: 14px 11px;
+            border-radius: 14px;
+            max-height: calc(100dvh - 12px);
           }
 
           .login-card h2 {
-            font-size: 17px;
+            font-size: 13px;
+            padding: 5px 14px;
+            margin: 8px auto 8px;
           }
 
           .login-card .subtitle {
             font-size: 11px;
+            margin-bottom: 10px;
+          }
 
-            margin-bottom: 7px;
+          .flying-plane {
+            font-size: 28px;
+          }
+
+          .exit-button,
+          .sound-toggle {
+            top: 8px;
+            width: 24px;
+            height: 24px;
+          }
+
+          .exit-button {
+            left: 8px;
+            font-size: 14px;
+          }
+
+          .sound-toggle {
+            right: 8px;
+            font-size: 12px;
           }
 
           .form-group {
-            margin-bottom: 5px;
+            margin-bottom: 6px;
           }
 
           .form-group label {
@@ -1136,49 +1635,37 @@ const Login = () => {
 
           .form-group input {
             min-height: 40px;
-
             font-size: 16px !important;
+            padding: 7px 10px;
+          }
 
-            padding:
-              7px 9px;
+          .password-tool-btn {
+            font-size: 9.5px;
+            padding: 3px 8px;
           }
 
           .social-btn {
-            min-height: 38px;
-
+            min-height: 36px;
             font-size: 11px;
-
-            padding:
-              7px 8px;
+            padding: 7px 8px;
           }
 
-          .slider-container {
-            height: 60px;
-          }
-
-          .slider-handle {
-            width: 50px;
-            height: 50px;
-
-            top: 5px;
-            left: 5px;
-          }
-
-          .slider-handle svg {
-            width: 29px;
-            height: 29px;
-          }
-
-          .slider-text {
-            padding:
-              0 56px;
-
+          .login-button {
+            min-height: 44px;
+            padding: 10px 16px;
             font-size: 13px;
+            border-radius: 9px;
           }
 
           .auth-footer,
           .back-link {
             font-size: 10px;
+          }
+
+          .auth-footer a {
+            font-size: 10.5px;
+            padding: 4px 10px;
+            margin-left: 5px;
           }
         }
 
@@ -1190,67 +1677,131 @@ const Login = () => {
           and (orientation: landscape) {
 
           .login-wrapper {
-            align-items: flex-start;
-
-            padding:
-              8px;
+            align-items: center;
+            padding: 8px;
           }
 
           .login-card {
-            max-width: 420px;
-
-            padding:
-              8px 12px;
+            max-width: 500px;
+            max-height: calc(100dvh - 16px);
+            padding: 12px 16px;
+            border-radius: 14px;
           }
 
           .login-card h2 {
-            font-size: 17px;
+            font-size: 13px;
+            padding: 5px 14px;
+            margin: 6px auto 8px;
           }
 
           .login-card .subtitle {
-            margin-bottom: 5px;
+            margin-bottom: 6px;
+            font-size: 11px;
           }
 
           .form-group {
-            margin-bottom: 4px;
+            margin-bottom: 5px;
           }
 
           .form-group input {
-            min-height: 38px;
+            min-height: 36px;
+            padding: 6px 10px;
           }
 
           .social-btn {
-            min-height: 36px;
-
-            padding:
-              6px 10px;
+            min-height: 34px;
+            padding: 6px 10px;
+            margin-bottom: 5px;
+            font-size: 12px;
           }
 
-          .slider-container {
-            height: 52px;
+          .divider {
+            margin: 6px 0 8px;
           }
 
-          .slider-handle {
-            width: 44px;
-            height: 44px;
-
-            top: 4px;
-            left: 4px;
+          .login-button {
+            min-height: 40px;
+            padding: 9px 16px;
+            font-size: 13px;
+            margin-top: 4px;
           }
 
-          .slider-handle svg {
-            width: 27px;
-            height: 27px;
+          .flying-plane {
+            font-size: 32px;
+          }
+        }
+
+        /* ======================================================
+           REDUCE MOTION — kill the fly-across animation
+        ====================================================== */
+
+        @media (prefers-reduced-motion: reduce) {
+          .exit-button,
+          .sound-toggle,
+          .password-tool-btn,
+          .password-toggle,
+          .form-group input,
+          .forgot-password-link,
+          .social-btn,
+          .auth-footer a,
+          .login-button {
+            transition: none;
+          }
+
+          .flying-plane {
+            animation: none;
+            display: none;
           }
         }
 
       `}</style>
 
+      {/* ====================================================
+          FLYING TAKEOVER PLANE — flies across repeatedly
+      ==================================================== */}
+
+      <div
+        className="flying-plane"
+        aria-hidden="true"
+        title=""
+      >
+        <FaPlaneDeparture />
+      </div>
+
       <div className="login-wrapper">
         <div className="login-card">
 
+          <button
+            type="button"
+            className="exit-button"
+            onClick={handleExit}
+            disabled={loading}
+            aria-label="Close login and return to home"
+            title="Close — back to home (Esc)"
+          >
+            <AiOutlineClose />
+          </button>
+
+          <button
+            type="button"
+            className="sound-toggle"
+            onClick={toggleSound}
+            aria-label={
+              soundEnabled
+                ? "Disable sound effects"
+                : "Enable sound effects"
+            }
+            title={
+              soundEnabled
+                ? "Sound on — click to mute"
+                : "Sound off — click to unmute"
+            }
+          >
+            {soundEnabled ? <MdVolumeUp /> : <MdVolumeOff />}
+          </button>
+
           <h2>
-            Welcome Back 👋
+            Welcome Back
           </h2>
 
           <p className="subtitle">
@@ -1258,10 +1809,6 @@ const Login = () => {
               ? "Login to continue posting your ad"
               : "Login to your account"}
           </p>
-
-          {/* ====================================================
-              ERROR
-          ==================================================== */}
 
           {error && (
             <div
@@ -1271,10 +1818,6 @@ const Login = () => {
               {error}
             </div>
           )}
-
-          {/* ====================================================
-              SOCIAL LOGIN
-          ==================================================== */}
 
           <div>
             <button
@@ -1300,32 +1843,18 @@ const Login = () => {
             </button>
           </div>
 
-          {/* ====================================================
-              DIVIDER
-          ==================================================== */}
-
           <div className="divider">
             <hr />
 
-            <span>
-              OR
-            </span>
+            <span>OR</span>
 
             <hr />
           </div>
-
-          {/* ====================================================
-              LOGIN FORM
-          ==================================================== */}
 
           <form
             onSubmit={handleSubmit}
             id="login-form"
           >
-
-            {/* ==================================================
-                EMAIL
-            ================================================== */}
 
             <div className="form-group">
               <label htmlFor="login-email">
@@ -1336,11 +1865,7 @@ const Login = () => {
                 id="login-email"
                 type="email"
                 value={email}
-                onChange={(e) =>
-                  setEmail(
-                    e.target.value
-                  )
-                }
+                onChange={handleEmailChange}
                 placeholder="your@email.com"
                 autoComplete="email"
                 inputMode="email"
@@ -1352,10 +1877,6 @@ const Login = () => {
               />
             </div>
 
-            {/* ==================================================
-                PASSWORD
-            ================================================== */}
-
             <div className="form-group">
               <label htmlFor="login-password">
                 Password
@@ -1366,30 +1887,30 @@ const Login = () => {
                 <input
                   id="login-password"
                   type={
-                    showPassword
+                    showPassword && !passwordBlurred
                       ? "text"
                       : "password"
                   }
                   value={password}
-                  onChange={(e) =>
-                    setPassword(
-                      e.target.value
-                    )
-                  }
+                  onChange={handlePasswordChange}
+                  onKeyDown={handlePasswordKeyEvent}
+                  onKeyUp={handlePasswordKeyEvent}
                   placeholder="Enter your password"
                   autoComplete="current-password"
                   required
                   disabled={loading}
+                  className={
+                    passwordBlurred
+                      ? "peek-hidden"
+                      : ""
+                  }
+                  aria-describedby="password-strength"
                 />
 
                 <button
                   type="button"
                   className="password-toggle"
-                  onClick={() =>
-                    setShowPassword(
-                      (prev) => !prev
-                    )
-                  }
+                  onClick={toggleShowPassword}
                   aria-label={
                     showPassword
                       ? "Hide password"
@@ -1397,7 +1918,7 @@ const Login = () => {
                   }
                   disabled={loading}
                 >
-                  {showPassword ? (
+                  {showPassword && !passwordBlurred ? (
                     <AiFillEyeInvisible />
                   ) : (
                     <AiFillEye />
@@ -1405,123 +1926,134 @@ const Login = () => {
                 </button>
 
               </div>
+
+              {capsLockOn && (
+                <div className="caps-lock-warning" role="status">
+                  <span aria-hidden="true">⚠️</span>
+                  <span>Caps Lock is on</span>
+                </div>
+              )}
+
+              <div className="password-tools">
+
+                <button
+                  type="button"
+                  className="password-tool-btn"
+                  onClick={handleSuggestPassword}
+                  disabled={loading}
+                  title="Fill with a strong random password (suggestion)"
+                >
+                  ✨ Suggest password
+                </button>
+
+                <button
+                  type="button"
+                  className={`password-tool-btn ${
+                    privacyMode ? "active" : ""
+                  }`}
+                  onClick={togglePrivacyMode}
+                  disabled={loading}
+                  aria-pressed={privacyMode}
+                  title={
+                    privacyMode
+                      ? "Privacy mode is ON — password is hidden"
+                      : "Turn on privacy mode to hide your password"
+                  }
+                >
+                  {privacyMode ? <AiOutlineLock /> : <AiOutlineUnlock />}
+                  {privacyMode ? "Privacy ON" : "Privacy OFF"}
+                </button>
+
+              </div>
+
+              {password && (
+                <div
+                  className="password-strength"
+                  id="password-strength"
+                  aria-live="polite"
+                >
+                  <div className="password-strength-bar">
+                    {[1, 2, 3, 4].map((segment) => {
+                      const filled =
+                        passwordStrength.score >= segment * 1.75;
+
+                      return (
+                        <span
+                          key={segment}
+                          className="password-strength-segment"
+                          style={
+                            filled
+                              ? {
+                                  background:
+                                    passwordStrength.color,
+                                }
+                              : undefined
+                          }
+                        />
+                      );
+                    })}
+                  </div>
+
+                  <div
+                    className="password-strength-label"
+                    style={{
+                      color: passwordStrength.color,
+                    }}
+                  >
+                    <span>Password strength</span>
+                    <strong>{passwordStrength.label}</strong>
+                  </div>
+                </div>
+              )}
+
+              {peekHidden && !privacyMode && (
+                <small
+                  style={{
+                    color: "rgba(255, 255, 255, 0.4)",
+                    fontSize: "10px",
+                    marginTop: "5px",
+                    display: "block",
+                    fontStyle: "italic",
+                  }}
+                >
+                  🔒 Password hidden — click the field to reveal
+                </small>
+              )}
+
             </div>
 
-            {/* ==================================================
-                FORGOT PASSWORD
-            ================================================== */}
-
-            <div
-              className="forgot-password-row"
-              style={{
-                display: "flex",
-                justifyContent:
-                  "flex-end",
-                width: "100%",
-                marginTop: "5px",
-                marginBottom: "14px",
-              }}
-            >
+            <div className="forgot-password-row">
               <Link
                 to="/forgot-password"
-                style={{
-                  color:
-                    "var(--primary)",
-                  fontSize: "13px",
-                  fontWeight: 900,
-                  textDecoration:
-                    "none",
-                }}
+                onClick={() => sounds.toggle()}
+                className="forgot-password-link"
               >
                 Forgot Password?
               </Link>
             </div>
 
-            {/* ==================================================
-                SLIDER LOGIN
-            ================================================== */}
+            {/* LOGIN BUTTON — transparent, no green */}
 
-            <div
-              className={
-                `slider-container ${
-                  loading
-                    ? "loading"
-                    : ""
-                }`
-              }
-              ref={sliderRef}
+            <button
+              type="submit"
+              className="login-button"
+              disabled={loading}
+              aria-label={loading ? "Logging in" : "Login"}
             >
-
-              <div
-                className="slider-track"
-                style={{
-                  width:
-                    `${sliderProgress}%`,
-                }}
-              />
-
-              <div
-                className={
-                  `slider-text ${
-                    sliderProgress >= 10
-                      ? "active"
-                      : ""
-                  }`
-                }
-              >
-                {loading
-                  ? "Logging in..."
-                  : "Slide to log in →"}
-              </div>
-
-              <div
-                className={
-                  `slider-handle ${
-                    loading
-                      ? "disabled"
-                      : ""
-                  } ${
-                    sliderProgress >= 95
-                      ? "done"
-                      : ""
-                  }`
-                }
-                ref={handleRef}
-                onMouseDown={startDrag}
-                onTouchStart={startDrag}
-                style={{
-                  left:
-                    `calc(${Math.min(
-                      sliderProgress,
-                      100
-                    )}% - ${
-                      window.innerWidth <= 480
-                        ? 27
-                        : 29
-                    }px)`,
-                }}
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M5 12h14" />
-
-                  <path d="M12 5l7 7-7 7" />
-                </svg>
-              </div>
-
-            </div>
+              {loading ? (
+                <>
+                  <i className="fas fa-circle-notch fa-spin" aria-hidden="true" />
+                  <span>Logging in...</span>
+                </>
+              ) : (
+                <>
+                  <i className="fas fa-sign-in-alt" aria-hidden="true" />
+                  <span>LOGIN</span>
+                </>
+              )}
+            </button>
 
           </form>
-
-          {/* ====================================================
-              CREATE ACCOUNT
-          ==================================================== */}
 
           <div className="auth-footer">
             No account?{" "}
@@ -1529,22 +2061,20 @@ const Login = () => {
             <Link
               to="/register"
               state={{ from }}
+              onClick={() => sounds.toggle()}
             >
               Create free account
             </Link>
           </div>
 
-          {/* ====================================================
-              BACK HOME
-          ==================================================== */}
-
           {from !== "/" && (
             <div className="back-link">
               <Link
                 to="/"
+                onClick={() => sounds.toggle()}
                 style={{
                   color:
-                    "var(--gray-500)",
+                    "rgba(255, 255, 255, 0.5)",
                   textDecoration:
                     "none",
                 }}

@@ -36,9 +36,6 @@ const getToken = () => {
 // ============================================================
 // API URL
 // ============================================================
-// ✅ FIX: fallback was http://localhost:5000 → every request
-//         failed on production and the badge never updated.
-//         Now matches api.js / Login.jsx / messageService.js.
 
 const getApiUrl = () => {
   try {
@@ -71,10 +68,6 @@ const safeCount = (value) => {
 // ============================================================
 // BADGE
 // ============================================================
-// ✅ Accepts an optional `pulse` prop — when true, applies a
-//    one-shot scale-bounce animation to draw the eye to a new
-//    message. Backwards-compatible: existing calls without the
-//    prop behave exactly as before.
 
 const Badge = ({ count, pulse = false }) => {
   const value = safeCount(count);
@@ -117,8 +110,6 @@ const Navbar = () => {
   const [unreadMessages, setUnreadMessages] =
     useState(0);
 
-  // ✅ New — drives the one-shot "new message arrived" pulse
-  //    on the badge (see effect below).
   const [badgePulse, setBadgePulse] =
     useState(false);
 
@@ -127,14 +118,7 @@ const Navbar = () => {
   const pollIntervalRef = useRef(null);
   const isMountedRef = useRef(true);
 
-  // ✅ Track the previous count so we can pulse ONLY on an
-  //    increase (not on every poll). Initialised to `null` so
-  //    the first poll (page load with unread) doesn't pulse.
   const prevUnreadRef = useRef(null);
-
-  // ✅ Cache the base document.title once so we can prefix it
-  //    with "(N)" and restore it cleanly without clobbering
-  //    any other route-specific title.
   const baseTitleRef = useRef(null);
 
   // ==========================================================
@@ -185,10 +169,6 @@ const Navbar = () => {
   // ==========================================================
   // FETCH UNREAD COUNTS
   // ==========================================================
-  // ✅ Polling reduced 30s → 15s for a more live feel.
-  //    Notifications stay at 30s (rarely change), messages at
-  //    15s (user expects near-real-time). Two intervals share
-  //    one ref-based cleanup.
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -239,10 +219,6 @@ const Navbar = () => {
 
       let count = 0;
 
-      // --------------------------------------------------------
-      // ADMIN NOTIFICATIONS
-      // --------------------------------------------------------
-
       if (user.role === "admin") {
         try {
           const data =
@@ -267,10 +243,6 @@ const Navbar = () => {
           // Ignore notification errors.
         }
       }
-
-      // --------------------------------------------------------
-      // USER NOTIFICATIONS
-      // --------------------------------------------------------
 
       try {
         const response = await fetch(
@@ -329,10 +301,6 @@ const Navbar = () => {
         setUnreadNotifications(count);
       }
     };
-
-    // ==========================================================
-    // MESSAGE COUNT
-    // ==========================================================
 
     const fetchMessageCount = async () => {
       if (!isMountedRef.current || !user) {
@@ -406,11 +374,9 @@ const Navbar = () => {
       }
     };
 
-    // Initial fetch.
     fetchNotificationCount();
     fetchMessageCount();
 
-    // Clear existing polling.
     if (pollIntervalRef.current) {
       clearInterval(
         pollIntervalRef.current
@@ -419,7 +385,6 @@ const Navbar = () => {
       pollIntervalRef.current = null;
     }
 
-    // ✅ Poll every 15 seconds for messages + notifications.
     pollIntervalRef.current =
       setInterval(() => {
         if (!user || !getToken()) {
@@ -459,10 +424,6 @@ const Navbar = () => {
   // ==========================================================
   // PULSE THE BADGE WHEN A NEW MESSAGE ARRIVES
   // ==========================================================
-  // Fires once per increase in `unreadMessages`. The sentinel
-  // `prevUnreadRef.current === null` skips the first poll so
-  // landing on the page with 3 existing unread messages
-  // doesn't cause an unprompted pulse.
 
   useEffect(() => {
     if (prevUnreadRef.current === null) {
@@ -490,15 +451,8 @@ const Navbar = () => {
   // ==========================================================
   // PAGE-TITLE FLASH FOR NEW MESSAGES
   // ==========================================================
-  // When the tab is focused:
-  //     "(3) BuyUKUsed"
-  // When the tab is hidden:
-  //     alternates between "(3) New message" and "BuyUKUsed"
-  //     every 1.5s so the tab title grabs attention in the tab
-  //     strip without a sound / browser permission popup.
 
   useEffect(() => {
-    // Capture the original title once.
     if (baseTitleRef.current === null) {
       const cleaned = document.title
         .replace(/^\(\d+\+?\)\s*/, "")
@@ -538,8 +492,6 @@ const Navbar = () => {
     timerId = setInterval(update, 1500);
 
     const handleVisibility = () => {
-      // Reset the toggle on visibility change so we always
-      // start the flash from the "(N) New message" state.
       show = true;
       update();
     };
@@ -685,7 +637,7 @@ const Navbar = () => {
       <style>
         {`
           /* =====================================================
-             FIXED NAVBAR
+             FIXED NAVBAR — dark glass, transparent bg
           ===================================================== */
 
           .navbar-sticky {
@@ -703,22 +655,25 @@ const Navbar = () => {
 
             box-sizing: border-box;
 
-            background:
-              rgba(255, 255, 255, 0.96);
+            background: linear-gradient(
+              155deg,
+              rgba(15, 23, 42, 0.72) 0%,
+              rgba(2, 6, 23, 0.88) 100%
+            );
 
             backdrop-filter:
-              blur(14px);
+              blur(24px) saturate(140%);
 
             -webkit-backdrop-filter:
-              blur(14px);
+              blur(24px) saturate(140%);
 
             border-bottom:
               1px solid
-              rgba(253, 254, 255, 0.8);
+              rgba(255, 255, 255, 0.08);
 
             box-shadow:
-              0 2px 10px
-              rgba(0, 0, 0, 0.05);
+              0 2px 24px
+              rgba(0, 0, 0, 0.3);
 
             isolation: isolate;
           }
@@ -761,7 +716,7 @@ const Navbar = () => {
 
             font-weight: 800;
 
-            color: #0b2a52;
+            color: #f8fafc;
 
             text-decoration: none;
 
@@ -810,6 +765,9 @@ const Navbar = () => {
             display: block;
 
             flex-shrink: 0;
+
+            filter:
+              drop-shadow(0 1px 3px rgba(0, 0, 0, 0.4));
           }
 
 
@@ -846,9 +804,11 @@ const Navbar = () => {
 
             border-radius: 50%;
 
-            background: #0b2a52;
+            background: rgba(255, 255, 255, 0.12);
 
-            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+
+            color: #ffffff;
 
             display: flex;
 
@@ -900,7 +860,7 @@ const Navbar = () => {
 
             height: 24px;
 
-            color: #475569;
+            color: rgba(255, 255, 255, 0.75);
 
             text-decoration: none;
 
@@ -925,7 +885,7 @@ const Navbar = () => {
           .navbar-heart:hover,
           .navbar-bell:hover,
           .navbar-envelope:hover {
-            color: #2ecc71;
+            color: #ffffff;
 
             transform:
               translateY(-1px);
@@ -959,7 +919,7 @@ const Navbar = () => {
 
             color: white;
 
-            border: 2px solid white;
+            border: 2px solid rgba(15, 23, 42, 0.9);
 
             border-radius: 9999px;
 
@@ -975,31 +935,24 @@ const Navbar = () => {
 
             white-space: nowrap;
 
-            /* Needed for the pulse + breathe transforms below */
             transform-origin: center center;
           }
 
 
           /* =====================================================
-             ✅ ENVELOPE — unread state
-          =====================================================
-             When the user has unread messages, the envelope icon
-             switches to the brand green and the badge gets a slow
-             breathing animation so it's noticeable without being
-             obnoxious. Both reset once the user reads the message
-             and the poll returns 0.
-          */
+             ENVELOPE — unread state
+          ===================================================== */
 
           .navbar-envelope.has-unread {
-            color: #2ecc71;
+            color: #4ade80;
           }
 
           .navbar-envelope.has-unread:hover {
-            color: #27ae60;
+            color: #86efac;
           }
 
           .navbar-envelope.has-unread i {
-            color: #2ecc71;
+            color: #4ade80;
           }
 
           .navbar-envelope.has-unread .navbar-badge {
@@ -1010,7 +963,7 @@ const Navbar = () => {
 
 
           /* =====================================================
-             ✅ BADGE — one-shot pop on new message arrival
+             BADGE — one-shot pop
           ===================================================== */
 
           .navbar-badge.navbar-badge-pulse {
@@ -1055,6 +1008,12 @@ const Navbar = () => {
             animation:
               dropdownFade
               0.18s ease;
+          }
+
+          .navbar-dropdown a:hover,
+          .navbar-dropdown button:hover {
+            background:
+              rgba(255, 255, 255, 0.08) !important;
           }
 
 
@@ -1440,8 +1399,6 @@ const Navbar = () => {
               transition: none;
             }
 
-            /* ✅ Respect user preference for reduced motion —
-               badge stays highlighted but doesn't animate. */
             .navbar-envelope.has-unread .navbar-badge,
             .navbar-badge.navbar-badge-pulse {
               animation: none;
@@ -1472,7 +1429,7 @@ const Navbar = () => {
             <span className="navbar-logo-text">
               <span
                 style={{
-                  color: "#0b2a52",
+                  color: "#f8fafc",
                 }}
               >
                 BuyUK
@@ -1489,15 +1446,18 @@ const Navbar = () => {
           </Link>
 
 
-          {/* START SELLING */}
+          {/* START SELLING — transparent, white border */}
 
           <Link
             to="/post-ad"
             className="navbar-post-ad-btn"
             style={{
-              background: "#2ecc71",
+              background: "transparent",
 
-              color: "white",
+              color: "#ffffff",
+
+              border:
+                "1px solid rgba(255, 255, 255, 0.3)",
 
               padding:
                 "6px 16px",
@@ -1527,21 +1487,27 @@ const Navbar = () => {
                 "all 0.2s ease",
 
               boxShadow:
-                "0 2px 4px rgba(46, 204, 113, 0.3)",
+                "inset 0 1px 0 0 rgba(255, 255, 255, 0.06)",
 
               whiteSpace:
                 "nowrap",
             }}
             onMouseEnter={(event) => {
               event.currentTarget.style.background =
-                "#27ae60";
+                "rgba(255, 255, 255, 0.1)";
+
+              event.currentTarget.style.borderColor =
+                "rgba(255, 255, 255, 0.6)";
 
               event.currentTarget.style.transform =
                 "translateY(-1px)";
             }}
             onMouseLeave={(event) => {
               event.currentTarget.style.background =
-                "#2ecc71";
+                "transparent";
+
+              event.currentTarget.style.borderColor =
+                "rgba(255, 255, 255, 0.3)";
 
               event.currentTarget.style.transform =
                 "translateY(0)";
@@ -1612,9 +1578,6 @@ const Navbar = () => {
 
 
             {/* MESSAGES */}
-            {/* ✅ Envelope gets `has-unread` class when there are
-                  unread messages → turns green + badge breathes.
-                  Badge gets `pulse` prop on new arrival → pops. */}
 
             {user && (
               <Link
@@ -1690,16 +1653,16 @@ const Navbar = () => {
                       "pointer",
 
                     padding:
-                      "4px 7px",
+                      "4px 8px",
 
                     borderRadius:
                       "9999px",
 
                     background:
-                      "rgba(241, 245, 249, 0.8)",
+                      "rgba(255, 255, 255, 0.06)",
 
                     border:
-                      "1px solid transparent",
+                      "1px solid rgba(255, 255, 255, 0.1)",
 
                     transition:
                       "all 0.2s ease",
@@ -1718,17 +1681,17 @@ const Navbar = () => {
                   }}
                   onMouseEnter={(event) => {
                     event.currentTarget.style.background =
-                      "#f1f5f9";
+                      "rgba(255, 255, 255, 0.1)";
 
                     event.currentTarget.style.borderColor =
-                      "#e2e8f0";
+                      "rgba(255, 255, 255, 0.22)";
                   }}
                   onMouseLeave={(event) => {
                     event.currentTarget.style.background =
-                      "rgba(241, 245, 249, 0.8)";
+                      "rgba(255, 255, 255, 0.06)";
 
                     event.currentTarget.style.borderColor =
-                      "transparent";
+                      "rgba(255, 255, 255, 0.1)";
                   }}
                 >
 
@@ -1800,7 +1763,7 @@ const Navbar = () => {
                             "1px 3px",
 
                           border:
-                            "1px solid white",
+                            "1px solid rgba(15, 23, 42, 0.9)",
                         }}
                       >
                         ★
@@ -1818,7 +1781,7 @@ const Navbar = () => {
                         "13px",
 
                       color:
-                        "#334155",
+                        "rgba(255, 255, 255, 0.9)",
 
                       fontWeight:
                         500,
@@ -1853,7 +1816,7 @@ const Navbar = () => {
                         "9px",
 
                       color:
-                        "#94a3b8",
+                        "rgba(255, 255, 255, 0.5)",
                     }}
                   />
                 </div>
@@ -1877,22 +1840,22 @@ const Navbar = () => {
                         "190px",
 
                       background:
-                        "rgba(255, 255, 255, 0.98)",
+                        "rgba(15, 23, 42, 0.98)",
 
                       backdropFilter:
-                        "blur(14px)",
+                        "blur(20px)",
 
                       WebkitBackdropFilter:
-                        "blur(14px)",
+                        "blur(20px)",
 
                       border:
-                        "1px solid #e5e7eb",
+                        "1px solid rgba(255, 255, 255, 0.1)",
 
                       borderRadius:
                         "12px",
 
                       boxShadow:
-                        "0 10px 35px rgba(0,0,0,0.14)",
+                        "0 10px 40px rgba(0, 0, 0, 0.4)",
 
                       padding:
                         "4px 0",
@@ -1922,7 +1885,7 @@ const Navbar = () => {
                           "9px 14px",
 
                         color:
-                          "#2ecc71",
+                          "#4ade80",
 
                         fontWeight:
                           600,
@@ -1960,7 +1923,7 @@ const Navbar = () => {
                           "9px 14px",
 
                         color:
-                          "#334155",
+                          "rgba(255, 255, 255, 0.85)",
 
                         fontSize:
                           "13px",
@@ -1995,7 +1958,7 @@ const Navbar = () => {
                           "9px 14px",
 
                         color:
-                          "#334155",
+                          "rgba(255, 255, 255, 0.85)",
 
                         fontSize:
                           "13px",
@@ -2030,7 +1993,7 @@ const Navbar = () => {
                           "9px 14px",
 
                         color:
-                          "#334155",
+                          "rgba(255, 255, 255, 0.85)",
 
                         fontSize:
                           "13px",
@@ -2051,7 +2014,7 @@ const Navbar = () => {
                               "auto",
 
                             color:
-                              "#e74c3c",
+                              "#fca5a5",
 
                             fontWeight:
                               700,
@@ -2087,7 +2050,7 @@ const Navbar = () => {
                             "9px 14px",
 
                           color:
-                            "#334155",
+                            "rgba(255, 255, 255, 0.85)",
 
                           fontSize:
                             "13px",
@@ -2112,7 +2075,7 @@ const Navbar = () => {
                           "none",
 
                         borderTop:
-                          "1px solid #e5e7eb",
+                          "1px solid rgba(255, 255, 255, 0.1)",
                       }}
                     />
 
@@ -2138,13 +2101,13 @@ const Navbar = () => {
                           "9px 14px",
 
                         background:
-                          "none",
+                          "transparent",
 
                         border:
                           "none",
 
                         color:
-                          "#dc2626",
+                          "#fca5a5",
 
                         fontSize:
                           "13px",
@@ -2188,13 +2151,13 @@ const Navbar = () => {
                   className="desktop-only"
                   style={{
                     border:
-                      "1px solid #0b2a52",
+                      "1px solid rgba(255, 255, 255, 0.3)",
 
                     color:
-                      "#0b2a52",
+                      "#ffffff",
 
                     padding:
-                      "4px 10px",
+                      "4px 12px",
 
                     borderRadius:
                       "9999px",
@@ -2223,19 +2186,22 @@ const Navbar = () => {
                   className="desktop-only"
                   style={{
                     background:
-                      "#0b2a52",
+                      "rgba(255, 255, 255, 0.06)",
+
+                    border:
+                      "1px solid rgba(255, 255, 255, 0.3)",
 
                     color:
-                      "white",
+                      "#ffffff",
 
                     padding:
-                      "4px 10px",
+                      "4px 12px",
 
                     borderRadius:
                       "9999px",
 
                     fontWeight:
-                      600,
+                      700,
 
                     fontSize:
                       "12px",
@@ -2289,7 +2255,10 @@ const Navbar = () => {
                         "9999px",
 
                       background:
-                        "rgba(241, 245, 249, 0.8)",
+                        "rgba(255, 255, 255, 0.06)",
+
+                      border:
+                        "1px solid rgba(255, 255, 255, 0.1)",
                     }}
                     onKeyDown={(event) => {
                       if (
@@ -2326,22 +2295,22 @@ const Navbar = () => {
                           "180px",
 
                         background:
-                          "rgba(255, 255, 255, 0.98)",
+                          "rgba(15, 23, 42, 0.98)",
 
                         backdropFilter:
-                          "blur(14px)",
+                          "blur(20px)",
 
                         WebkitBackdropFilter:
-                          "blur(14px)",
+                          "blur(20px)",
 
                         border:
-                          "1px solid #e5e7eb",
+                          "1px solid rgba(255, 255, 255, 0.1)",
 
                         borderRadius:
                           "12px",
 
                         boxShadow:
-                          "0 10px 35px rgba(0,0,0,0.14)",
+                          "0 10px 40px rgba(0, 0, 0, 0.4)",
 
                         padding:
                           "4px 0",
@@ -2371,7 +2340,7 @@ const Navbar = () => {
                             "9px 14px",
 
                           color:
-                            "#334155",
+                            "rgba(255, 255, 255, 0.85)",
 
                           fontSize:
                             "13px",
@@ -2392,7 +2361,7 @@ const Navbar = () => {
                                 "auto",
 
                               color:
-                                "#e74c3c",
+                                "#fca5a5",
 
                               fontWeight:
                                 700,
@@ -2426,7 +2395,7 @@ const Navbar = () => {
                             "9px 14px",
 
                           color:
-                            "#0b2a52",
+                            "#ffffff",
 
                           fontSize:
                             "13px",
@@ -2461,7 +2430,7 @@ const Navbar = () => {
                             "9px 14px",
 
                           color:
-                            "#0b2a52",
+                            "#ffffff",
 
                           fontSize:
                             "13px",
