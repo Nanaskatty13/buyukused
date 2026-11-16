@@ -77,10 +77,6 @@ const Hero = ({ onSearch }) => {
 
   // ==========================================================
   // PRELOAD HERO BACKGROUND
-  //
-  // This starts downloading the background as soon as
-  // the Hero component mounts instead of waiting for
-  // the CSS background-image to be discovered.
   // ==========================================================
 
   useEffect(() => {
@@ -135,9 +131,6 @@ const Hero = ({ onSearch }) => {
 
   // ==========================================================
   // PRELOAD NEXT SLIDE
-  //
-  // Only the next image is prepared instead of loading
-  // every carousel image aggressively on first visit.
   // ==========================================================
 
   useEffect(() => {
@@ -192,7 +185,7 @@ const Hero = ({ onSearch }) => {
       <style>
         {`
           /* =====================================================
-             HERO
+             HERO — pulled up to slide under the navbar
           ===================================================== */
 
           .hero-shopglowsy {
@@ -202,13 +195,13 @@ const Hero = ({ onSearch }) => {
 
             min-height: 700px;
 
-            padding:
-              110px 0 100px;
+            /* ✅ PULL UP: Slide section up under the fixed navbar */
+            margin-top: -76px;
 
-            margin: 0;
+            /* ✅ PADDING: Add the 76px back + original 110px top padding */
+            padding: 186px 0 100px;
 
-            background:
-              #0f172a;
+            background: transparent;
 
             overflow: hidden;
 
@@ -220,12 +213,6 @@ const Hero = ({ onSearch }) => {
 
           /* =====================================================
              HERO BACKGROUND IMAGE
-
-             IMPORTANT:
-             We use a real IMG instead of relying on a CSS
-             background image.
-
-             This allows the browser to start loading it earlier.
           ===================================================== */
 
           .hero-background-image {
@@ -274,13 +261,7 @@ const Hero = ({ onSearch }) => {
 
             inset: 0;
 
-            background:
-              linear-gradient(
-                135deg,
-                #0f172a 0%,
-                #16263f 50%,
-                #0f172a 100%
-              );
+            background: transparent;
 
             z-index: -3;
 
@@ -872,8 +853,11 @@ const Hero = ({ onSearch }) => {
               min-height:
                 760px;
 
+              margin-top:
+                -76px;
+
               padding:
-                120px 0 110px;
+                196px 0 110px;
             }
 
 
@@ -923,6 +907,12 @@ const Hero = ({ onSearch }) => {
             .hero-shopglowsy {
               min-height:
                 800px;
+
+              margin-top:
+                -76px;
+
+              padding:
+                196px 0 100px;
             }
 
 
@@ -973,8 +963,12 @@ const Hero = ({ onSearch }) => {
               min-height:
                 auto;
 
+              /* ✅ Navbar is slightly shorter on tablet (~72px) */
+              margin-top:
+                -72px;
+
               padding:
-                100px 0 80px;
+                172px 0 80px;
             }
 
 
@@ -1028,8 +1022,12 @@ const Hero = ({ onSearch }) => {
           @media (max-width: 768px) {
 
             .hero-shopglowsy {
+              /* ✅ Navbar is shorter on mobile (~60px) */
+              margin-top:
+                -60px;
+
               padding:
-                88px 0 60px;
+                148px 0 60px;
 
               min-height:
                 auto;
@@ -1143,8 +1141,12 @@ const Hero = ({ onSearch }) => {
           @media (max-width: 480px) {
 
             .hero-shopglowsy {
+              /* ✅ Navbar is shortest here (~54px) */
+              margin-top:
+                -54px;
+
               padding:
-                78px 0 50px;
+                132px 0 50px;
             }
 
 
@@ -1245,8 +1247,11 @@ const Hero = ({ onSearch }) => {
           @media (max-width: 380px) {
 
             .hero-shopglowsy {
+              margin-top:
+                -54px;
+
               padding:
-                70px 0 45px;
+                124px 0 45px;
             }
 
 
@@ -1337,9 +1342,6 @@ const Hero = ({ onSearch }) => {
 
         {/* ======================================================
             OPTIMIZED HERO BACKGROUND
-
-            The image is loaded independently from the CSS,
-            allowing the browser to begin fetching it earlier.
         ====================================================== */}
 
         <img
