@@ -76,60 +76,6 @@ const Hero = ({ onSearch }) => {
     useState(false);
 
   // ==========================================================
-  // PRELOAD HERO BACKGROUND
-  // ==========================================================
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const image = new Image();
-
-    image.decoding = "async";
-
-    image.fetchPriority = "high";
-
-    image.onload = () => {
-      if (!cancelled) {
-        setBackgroundLoaded(true);
-      }
-    };
-
-    image.onerror = () => {
-      if (!cancelled) {
-        setBackgroundLoaded(false);
-      }
-    };
-
-    image.src = heroBackground;
-
-    return () => {
-      cancelled = true;
-
-      image.onload = null;
-      image.onerror = null;
-    };
-  }, [heroBackground]);
-
-  // ==========================================================
-  // PRELOAD FIRST CAROUSEL IMAGE
-  // ==========================================================
-
-  useEffect(() => {
-    const firstImage =
-      slides?.[0]?.image;
-
-    if (!firstImage) return;
-
-    const image = new Image();
-
-    image.decoding = "async";
-
-    image.fetchPriority = "high";
-
-    image.src = firstImage;
-  }, [slides]);
-
-  // ==========================================================
   // PRELOAD NEXT SLIDE
   // ==========================================================
 
@@ -185,7 +131,7 @@ const Hero = ({ onSearch }) => {
       <style>
         {`
           /* =====================================================
-             HERO — fully transparent background
+             HERO — Optimized for Mobile & Desktop
           ===================================================== */
 
           .hero-shopglowsy {
@@ -195,19 +141,27 @@ const Hero = ({ onSearch }) => {
 
             min-height: 700px;
 
-            padding:
-              110px 0 100px;
+            /* Desktop navbar height ≈ 76px */
+            margin-top: -76px;
 
-            margin: 0;
+            /* 76px pull + 74px original gap = 150px top padding */
+            padding: 150px 0 100px;
 
-            /* ✅ CHANGED: solid #0f172a → transparent */
             background: transparent;
 
             overflow: hidden;
+            overflow-x: hidden;
 
             box-sizing: border-box;
 
             isolation: isolate;
+          }
+
+
+          .hero-shopglowsy *,
+          .hero-shopglowsy *::before,
+          .hero-shopglowsy *::after {
+            box-sizing: border-box;
           }
 
 
@@ -239,7 +193,7 @@ const Hero = ({ onSearch }) => {
               scale(1.01);
 
             transition:
-              opacity 0.18s ease;
+              opacity 0.4s ease-in-out;
 
             pointer-events: none;
 
@@ -254,7 +208,7 @@ const Hero = ({ onSearch }) => {
 
           /* =====================================================
              BACKGROUND FALLBACK
-             ✅ CHANGED: dark gradient → transparent
+             Dark solid so text stays readable before image loads
           ===================================================== */
 
           .hero-background-fallback {
@@ -262,7 +216,7 @@ const Hero = ({ onSearch }) => {
 
             inset: 0;
 
-            background: transparent;
+            background: #0f172a;
 
             z-index: -3;
 
@@ -272,7 +226,6 @@ const Hero = ({ onSearch }) => {
 
           /* =====================================================
              IMAGE OVERLAY
-             Kept for text readability against the image
           ===================================================== */
 
           .hero-shopglowsy::after {
@@ -280,13 +233,7 @@ const Hero = ({ onSearch }) => {
 
             position: absolute;
 
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-
-            width: 100%;
-            height: 100%;
+            inset: 0;
 
             background:
               linear-gradient(
@@ -317,13 +264,11 @@ const Hero = ({ onSearch }) => {
 
             margin: 0 auto;
 
-            padding:
-              0 24px;
+            padding: 0 24px;
 
             display: grid;
 
-            grid-template-columns:
-              1fr 1fr;
+            grid-template-columns: 1fr 1fr;
 
             gap: 60px;
 
@@ -349,14 +294,11 @@ const Hero = ({ onSearch }) => {
 
             line-height: 1.15;
 
-            margin:
-              0 0 16px;
+            margin: 0 0 16px;
 
-            color:
-              #ffffff;
+            color: #ffffff;
 
-            letter-spacing:
-              -0.8px;
+            letter-spacing: -0.8px;
 
             text-shadow:
               0 3px 18px
@@ -365,8 +307,7 @@ const Hero = ({ onSearch }) => {
 
 
           .hero-shopglowsy-content h1 span {
-            color:
-              #2ecc71;
+            color: #2ecc71;
           }
 
 
@@ -378,8 +319,7 @@ const Hero = ({ onSearch }) => {
 
             max-width: 480px;
 
-            margin:
-              0 0 32px;
+            margin: 0 0 32px;
 
             line-height: 1.7;
 
@@ -400,14 +340,9 @@ const Hero = ({ onSearch }) => {
 
             gap: 12px;
 
-            margin-bottom:
-              32px;
+            margin-bottom: 32px;
           }
 
-
-          /* =====================================================
-             PRIMARY BUTTON
-          ===================================================== */
 
           .hero-shopglowsy-actions .btn-primary {
             display: inline-flex;
@@ -418,29 +353,21 @@ const Hero = ({ onSearch }) => {
 
             gap: 8px;
 
-            background:
-              #2ecc71;
+            background: #2ecc71;
 
-            color:
-              #ffffff;
+            color: #ffffff;
 
-            padding:
-              14px 32px;
+            padding: 14px 32px;
 
-            border-radius:
-              9999px;
+            border-radius: 9999px;
 
-            font-weight:
-              700;
+            font-weight: 700;
 
-            font-size:
-              16px;
+            font-size: 16px;
 
-            border:
-              none;
+            border: none;
 
-            cursor:
-              pointer;
+            cursor: pointer;
 
             transition:
               transform 0.25s ease,
@@ -451,31 +378,23 @@ const Hero = ({ onSearch }) => {
               0 5px 18px
               rgba(46, 204, 113, 0.42);
 
-            text-decoration:
-              none;
+            text-decoration: none;
 
-            white-space:
-              nowrap;
+            white-space: nowrap;
           }
 
 
           .hero-shopglowsy-actions
           .btn-primary:hover {
-            background:
-              #27ae60;
+            background: #27ae60;
 
-            transform:
-              translateY(-2px);
+            transform: translateY(-2px);
 
             box-shadow:
               0 8px 24px
               rgba(46, 204, 113, 0.52);
           }
 
-
-          /* =====================================================
-             SECONDARY BUTTON
-          ===================================================== */
 
           .hero-shopglowsy-actions .btn-secondary {
             display: inline-flex;
@@ -489,44 +408,35 @@ const Hero = ({ onSearch }) => {
             background:
               rgba(0, 0, 0, 0.30);
 
-            backdrop-filter:
-              blur(8px);
+            backdrop-filter: blur(8px);
 
             -webkit-backdrop-filter:
               blur(8px);
 
-            color:
-              #ffffff;
+            color: #ffffff;
 
-            padding:
-              14px 32px;
+            padding: 14px 32px;
 
-            border-radius:
-              9999px;
+            border-radius: 9999px;
 
-            font-weight:
-              600;
+            font-weight: 600;
 
-            font-size:
-              16px;
+            font-size: 16px;
 
             border:
               1px solid
               rgba(255, 255, 255, 0.28);
 
-            cursor:
-              pointer;
+            cursor: pointer;
 
             transition:
               transform 0.25s ease,
               background 0.25s ease,
               border-color 0.25s ease;
 
-            text-decoration:
-              none;
+            text-decoration: none;
 
-            white-space:
-              nowrap;
+            white-space: nowrap;
           }
 
 
@@ -538,8 +448,7 @@ const Hero = ({ onSearch }) => {
             border-color:
               rgba(255, 255, 255, 0.45);
 
-            transform:
-              translateY(-2px);
+            transform: translateY(-2px);
           }
 
 
@@ -552,8 +461,7 @@ const Hero = ({ onSearch }) => {
 
             gap: 48px;
 
-            padding-top:
-              32px;
+            padding-top: 32px;
 
             border-top:
               1px solid
@@ -572,17 +480,13 @@ const Hero = ({ onSearch }) => {
 
           .hero-shopglowsy-stats
           .stat-number {
-            font-size:
-              28px;
+            font-size: 28px;
 
-            font-weight:
-              800;
+            font-weight: 800;
 
-            color:
-              #ffffff;
+            color: #ffffff;
 
-            line-height:
-              1.2;
+            line-height: 1.2;
 
             text-shadow:
               0 2px 12px
@@ -592,14 +496,12 @@ const Hero = ({ onSearch }) => {
 
           .hero-shopglowsy-stats
           .stat-label {
-            font-size:
-              14px;
+            font-size: 14px;
 
             color:
               rgba(255, 255, 255, 0.82);
 
-            margin-top:
-              4px;
+            margin-top: 4px;
 
             text-shadow:
               0 1px 8px
@@ -616,17 +518,13 @@ const Hero = ({ onSearch }) => {
 
             width: 100%;
 
-            max-width:
-              480px;
+            max-width: 480px;
 
-            margin:
-              0 auto;
+            margin: 0 auto;
 
-            border-radius:
-              18px;
+            border-radius: 18px;
 
-            overflow:
-              hidden;
+            overflow: hidden;
 
             box-shadow:
               0 16px 45px
@@ -639,8 +537,7 @@ const Hero = ({ onSearch }) => {
             background:
               rgba(15, 23, 42, 0.35);
 
-            backdrop-filter:
-              blur(4px);
+            backdrop-filter: blur(4px);
 
             -webkit-backdrop-filter:
               blur(4px);
@@ -648,83 +545,57 @@ const Hero = ({ onSearch }) => {
 
 
           .hero-carousel .slide-track {
-            display:
-              flex;
+            display: flex;
 
             transition:
-              transform 0.5s
-              ease-in-out;
+              transform 0.5s ease-in-out;
 
-            will-change:
-              transform;
+            will-change: transform;
           }
 
 
           .hero-carousel .slide {
-            min-width:
-              100%;
+            min-width: 100%;
 
-            height:
-              450px;
+            height: 450px;
 
-            position:
-              relative;
+            position: relative;
 
-            background:
-              #1e293b;
+            background: #1e293b;
 
-            display:
-              flex;
+            display: flex;
 
-            align-items:
-              center;
+            align-items: center;
 
-            justify-content:
-              center;
+            justify-content: center;
 
-            overflow:
-              hidden;
+            overflow: hidden;
           }
 
 
           .hero-carousel .slide img {
-            width:
-              100%;
+            width: 100%;
 
-            height:
-              100%;
+            height: 100%;
 
-            object-fit:
-              cover;
+            object-fit: cover;
 
-            background:
-              #1e293b;
+            background: #1e293b;
 
-            display:
-              block;
+            display: block;
           }
 
 
-          /* =====================================================
-             CAROUSEL OVERLAY
-          ===================================================== */
+          .hero-carousel .slide-overlay {
+            position: absolute;
 
-          .hero-carousel
-          .slide-overlay {
-            position:
-              absolute;
+            bottom: 0;
 
-            bottom:
-              0;
+            left: 0;
 
-            left:
-              0;
+            right: 0;
 
-            right:
-              0;
-
-            padding:
-              24px 20px 20px;
+            padding: 24px 20px 20px;
 
             background:
               linear-gradient(
@@ -734,37 +605,27 @@ const Hero = ({ onSearch }) => {
                 transparent 100%
               );
 
-            color:
-              #ffffff;
+            color: #ffffff;
           }
 
 
-          .hero-carousel
-          .slide-overlay h3 {
-            font-size:
-              20px;
+          .hero-carousel .slide-overlay h3 {
+            font-size: 20px;
 
-            font-weight:
-              700;
+            font-weight: 700;
 
-            margin:
-              0 0 3px;
+            margin: 0 0 3px;
           }
 
 
-          .hero-carousel
-          .slide-overlay p {
-            font-size:
-              14px;
+          .hero-carousel .slide-overlay p {
+            font-size: 14px;
 
-            opacity:
-              0.9;
+            opacity: 0.9;
 
-            margin:
-              0;
+            margin: 0;
 
-            line-height:
-              1.4;
+            line-height: 1.4;
           }
 
 
@@ -773,62 +634,45 @@ const Hero = ({ onSearch }) => {
           ===================================================== */
 
           .hero-carousel-dots {
-            position:
-              absolute;
+            position: absolute;
 
-            left:
-              0;
+            left: 0;
 
-            right:
-              0;
+            right: 0;
 
-            bottom:
-              12px;
+            bottom: 12px;
 
-            display:
-              flex;
+            display: flex;
 
-            justify-content:
-              center;
+            justify-content: center;
 
-            align-items:
-              center;
+            align-items: center;
 
-            gap:
-              7px;
+            gap: 7px;
 
-            z-index:
-              5;
+            z-index: 5;
 
-            pointer-events:
-              none;
+            pointer-events: none;
           }
 
 
           .hero-carousel-dot {
-            width:
-              7px;
+            width: 7px;
 
-            height:
-              7px;
+            height: 7px;
 
-            padding:
-              0;
+            padding: 0;
 
-            border:
-              none;
+            border: none;
 
-            border-radius:
-              50%;
+            border-radius: 50%;
 
             background:
               rgba(255, 255, 255, 0.48);
 
-            pointer-events:
-              auto;
+            pointer-events: auto;
 
-            cursor:
-              pointer;
+            cursor: pointer;
 
             transition:
               transform 0.2s ease,
@@ -837,11 +681,9 @@ const Hero = ({ onSearch }) => {
 
 
           .hero-carousel-dot.active {
-            background:
-              #ffffff;
+            background: #ffffff;
 
-            transform:
-              scale(1.35);
+            transform: scale(1.35);
           }
 
 
@@ -852,47 +694,40 @@ const Hero = ({ onSearch }) => {
           @media (min-width: 1440px) {
 
             .hero-shopglowsy {
-              min-height:
-                760px;
+              min-height: 760px;
 
-              padding:
-                120px 0 110px;
+              margin-top: -76px;
+
+              padding: 156px 0 110px;
             }
 
 
             .hero-shopglowsy .container {
-              max-width:
-                1320px;
+              max-width: 1320px;
 
-              gap:
-                80px;
+              gap: 80px;
             }
 
 
             .hero-shopglowsy-content h1 {
-              font-size:
-                56px;
+              font-size: 56px;
             }
 
 
             .hero-shopglowsy-content p {
-              font-size:
-                19px;
+              font-size: 19px;
 
-              max-width:
-                540px;
+              max-width: 540px;
             }
 
 
             .hero-carousel {
-              max-width:
-                540px;
+              max-width: 540px;
             }
 
 
             .hero-carousel .slide {
-              height:
-                500px;
+              height: 500px;
             }
           }
 
@@ -904,266 +739,226 @@ const Hero = ({ onSearch }) => {
           @media (min-width: 1800px) {
 
             .hero-shopglowsy {
-              min-height:
-                800px;
+              min-height: 800px;
+
+              margin-top: -76px;
+
+              padding: 166px 0 120px;
             }
 
 
             .hero-shopglowsy .container {
-              max-width:
-                1440px;
+              max-width: 1440px;
 
-              gap:
-                100px;
+              gap: 100px;
             }
 
 
             .hero-shopglowsy-content h1 {
-              font-size:
-                60px;
+              font-size: 60px;
             }
 
 
             .hero-shopglowsy-content p {
-              font-size:
-                20px;
+              font-size: 20px;
 
-              max-width:
-                580px;
+              max-width: 580px;
             }
 
 
             .hero-carousel {
-              max-width:
-                580px;
+              max-width: 580px;
             }
 
 
             .hero-carousel .slide {
-              height:
-                530px;
+              height: 530px;
             }
           }
 
 
           /* =====================================================
-             TABLET
+             TABLET (Navbar ≈ 72px)
           ===================================================== */
 
           @media (max-width: 1024px) {
 
             .hero-shopglowsy {
-              min-height:
-                auto;
+              min-height: auto;
 
-              padding:
-                100px 0 80px;
+              margin-top: -72px;
+
+              /* 72px pull + 58px gap */
+              padding: 130px 0 80px;
             }
 
 
             .hero-shopglowsy .container {
-              grid-template-columns:
-                1fr;
+              grid-template-columns: 1fr;
 
-              gap:
-                45px;
+              gap: 45px;
 
-              text-align:
-                center;
+              text-align: center;
             }
 
 
             .hero-shopglowsy-content p {
-              margin-left:
-                auto;
+              margin-left: auto;
 
-              margin-right:
-                auto;
+              margin-right: auto;
             }
 
 
             .hero-shopglowsy-actions {
-              justify-content:
-                center;
+              justify-content: center;
             }
 
 
             .hero-shopglowsy-stats {
-              justify-content:
-                center;
+              justify-content: center;
             }
 
 
             .hero-carousel {
-              margin:
-                0 auto;
+              margin: 0 auto;
 
-              max-width:
-                min(90%, 520px);
+              max-width: min(90%, 520px);
             }
           }
 
 
           /* =====================================================
-             MOBILE
+             MOBILE (Navbar ≈ 60px)
           ===================================================== */
 
           @media (max-width: 768px) {
 
             .hero-shopglowsy {
-              padding:
-                88px 0 60px;
+              margin-top: -60px;
 
-              min-height:
-                auto;
+              /* 60px pull + 50px gap */
+              padding: 110px 0 60px;
+
+              min-height: auto;
             }
 
 
             .hero-shopglowsy .container {
-              padding:
-                0 16px;
+              padding: 0 16px;
 
-              gap:
-                36px;
+              gap: 36px;
             }
 
 
             .hero-shopglowsy-content h1 {
-              font-size:
-                34px;
+              font-size: 34px;
 
-              line-height:
-                1.15;
+              line-height: 1.15;
 
-              letter-spacing:
-                -0.5px;
+              letter-spacing: -0.5px;
             }
 
 
             .hero-shopglowsy-content p {
-              font-size:
-                16px;
+              font-size: 16px;
 
-              line-height:
-                1.6;
+              line-height: 1.6;
 
-              margin-bottom:
-                24px;
+              margin-bottom: 24px;
             }
 
 
             .hero-shopglowsy-actions {
-              margin-bottom:
-                28px;
+              margin-bottom: 28px;
             }
 
 
             .hero-shopglowsy-stats {
-              gap:
-                18px;
+              gap: 18px;
 
-              padding-top:
-                24px;
+              padding-top: 24px;
 
-              flex-direction:
-                row;
+              flex-direction: row;
 
-              flex-wrap:
-                wrap;
+              flex-wrap: wrap;
             }
 
 
-            .hero-shopglowsy-stats
-            .stat {
-              flex:
-                1 1 80px;
+            .hero-shopglowsy-stats .stat {
+              flex: 1 1 80px;
 
-              align-items:
-                center;
+              align-items: center;
             }
 
 
             .hero-shopglowsy-stats
             .stat-number {
-              font-size:
-                24px;
+              font-size: 24px;
             }
 
 
             .hero-shopglowsy-stats
             .stat-label {
-              font-size:
-                12px;
+              font-size: 12px;
 
-              text-align:
-                center;
+              text-align: center;
             }
 
 
             .hero-carousel {
-              width:
-                100%;
+              width: 100%;
 
-              max-width:
-                100%;
+              max-width: 100%;
 
-              border-radius:
-                15px;
+              border-radius: 15px;
             }
 
 
             .hero-carousel .slide {
-              height:
-                350px;
+              height: 350px;
             }
           }
 
 
           /* =====================================================
-             SMALL MOBILE
+             SMALL MOBILE (Navbar ≈ 54px)
           ===================================================== */
 
           @media (max-width: 480px) {
 
             .hero-shopglowsy {
-              padding:
-                78px 0 50px;
+              margin-top: -54px;
+
+              /* 54px pull + 46px gap */
+              padding: 100px 0 50px;
             }
 
 
             .hero-shopglowsy .container {
-              padding:
-                0 12px;
+              padding: 0 12px;
 
-              gap:
-                28px;
+              gap: 28px;
             }
 
 
             .hero-shopglowsy-content h1 {
-              font-size:
-                29px;
+              font-size: 29px;
             }
 
 
             .hero-shopglowsy-content p {
-              font-size:
-                15px;
+              font-size: 15px;
 
-              margin-bottom:
-                22px;
+              margin-bottom: 22px;
             }
 
 
             .hero-shopglowsy-actions {
-              flex-direction:
-                column;
+              flex-direction: column;
 
-              align-items:
-                stretch;
+              align-items: stretch;
 
-              width:
-                100%;
+              width: 100%;
             }
 
 
@@ -1172,51 +967,41 @@ const Hero = ({ onSearch }) => {
 
             .hero-shopglowsy-actions
             .btn-secondary {
-              width:
-                100%;
-
-              box-sizing:
-                border-box;
+              width: 100%;
             }
 
 
             .hero-shopglowsy-stats {
-              gap:
-                12px;
+              gap: 12px;
             }
 
 
             .hero-shopglowsy-stats
             .stat-number {
-              font-size:
-                21px;
+              font-size: 21px;
             }
 
 
             .hero-carousel .slide {
-              height:
-                280px;
+              height: 280px;
             }
 
 
             .hero-carousel
             .slide-overlay {
-              padding:
-                20px 15px 15px;
+              padding: 20px 15px 15px;
             }
 
 
             .hero-carousel
             .slide-overlay h3 {
-              font-size:
-                16px;
+              font-size: 16px;
             }
 
 
             .hero-carousel
             .slide-overlay p {
-              font-size:
-                12px;
+              font-size: 12px;
             }
           }
 
@@ -1228,40 +1013,36 @@ const Hero = ({ onSearch }) => {
           @media (max-width: 380px) {
 
             .hero-shopglowsy {
-              padding:
-                70px 0 45px;
+              margin-top: -54px;
+
+              padding: 90px 0 45px;
             }
 
 
             .hero-shopglowsy-content h1 {
-              font-size:
-                26px;
+              font-size: 26px;
             }
 
 
             .hero-shopglowsy-content p {
-              font-size:
-                14px;
+              font-size: 14px;
             }
 
 
             .hero-carousel .slide {
-              height:
-                240px;
+              height: 240px;
             }
 
 
             .hero-shopglowsy-stats
             .stat-number {
-              font-size:
-                19px;
+              font-size: 19px;
             }
 
 
             .hero-shopglowsy-stats
             .stat-label {
-              font-size:
-                11px;
+              font-size: 11px;
             }
           }
 
@@ -1273,14 +1054,12 @@ const Hero = ({ onSearch }) => {
           @media (prefers-reduced-motion: reduce) {
 
             .hero-background-image {
-              transition:
-                none;
+              transition: none;
             }
 
 
             .hero-carousel .slide-track {
-              transition:
-                none;
+              transition: none;
             }
 
 
@@ -1291,8 +1070,7 @@ const Hero = ({ onSearch }) => {
             .btn-secondary,
 
             .hero-carousel-dot {
-              transition:
-                none;
+              transition: none;
             }
           }
         `}
@@ -1300,7 +1078,7 @@ const Hero = ({ onSearch }) => {
 
 
       {/* ========================================================
-          HERO
+          HERO SECTION
       ======================================================== */}
 
       <section
@@ -1310,7 +1088,6 @@ const Hero = ({ onSearch }) => {
 
         {/* ======================================================
             IMMEDIATE FALLBACK BACKGROUND
-            (Now transparent)
         ====================================================== */}
 
         <div
@@ -1320,7 +1097,8 @@ const Hero = ({ onSearch }) => {
 
 
         {/* ======================================================
-            OPTIMIZED HERO BACKGROUND
+            HERO BACKGROUND IMAGE
+            Uses native onLoad — no redundant preloader
         ====================================================== */}
 
         <img
@@ -1336,6 +1114,8 @@ const Hero = ({ onSearch }) => {
           loading="eager"
           decoding="async"
           draggable="false"
+          onLoad={() => setBackgroundLoaded(true)}
+          onError={() => setBackgroundLoaded(false)}
         />
 
 
@@ -1454,10 +1234,11 @@ const Hero = ({ onSearch }) => {
             <div
               className="slide-track"
               style={{
+                /* Hardware-accelerated transform for smooth mobile */
                 transform:
-                  `translateX(-${
+                  `translate3d(-${
                     currentSlide * 100
-                  }%)`,
+                  }%, 0, 0)`,
               }}
             >
 
