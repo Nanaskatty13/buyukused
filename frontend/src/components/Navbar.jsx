@@ -1,5 +1,5 @@
 // frontend/src/components/Navbar.jsx
-// BuyUKUsed - Fixed Responsive Navbar (Dark Glass / Transparent)
+// BuyUKUsed - Fixed Responsive Navbar (No Search)
 
 import React, {
   useState,
@@ -615,19 +615,6 @@ const Navbar = () => {
       ? favorites.length
       : 0;
 
-  const handleHeartClick = (event) => {
-    if (!user) {
-      event.preventDefault();
-
-      navigate("/login", {
-        state: {
-          from:
-            location.pathname,
-        },
-      });
-    }
-  };
-
   // ==========================================================
   // RENDER
   // ==========================================================
@@ -791,10 +778,9 @@ const Navbar = () => {
 
 
           /* =====================================================
-             ICON BUTTONS
+             ICON BUTTONS (Bell & Envelope only)
           ===================================================== */
 
-          .navbar-heart,
           .navbar-bell,
           .navbar-envelope {
             position: relative;
@@ -812,7 +798,6 @@ const Navbar = () => {
           }
 
 
-          .navbar-heart:hover,
           .navbar-bell:hover,
           .navbar-envelope:hover {
             color: #ffffff;
@@ -1053,7 +1038,6 @@ const Navbar = () => {
               gap: 9px;
             }
 
-            .navbar-heart,
             .navbar-bell,
             .navbar-envelope {
               width: 21px;
@@ -1122,7 +1106,6 @@ const Navbar = () => {
               gap: 7px;
             }
 
-            .navbar-heart,
             .navbar-bell,
             .navbar-envelope {
               width: 19px;
@@ -1184,7 +1167,6 @@ const Navbar = () => {
               gap: 5px;
             }
 
-            .navbar-heart,
             .navbar-bell,
             .navbar-envelope {
               width: 18px;
@@ -1208,7 +1190,6 @@ const Navbar = () => {
               animation: none;
             }
 
-            .navbar-heart,
             .navbar-bell,
             .navbar-envelope {
               transition: none;
@@ -1253,7 +1234,7 @@ const Navbar = () => {
           </Link>
 
 
-          {/* START SELLING — Transparent */}
+          {/* START SELLING */}
 
           <Link
             to="/post-ad"
@@ -1301,23 +1282,7 @@ const Navbar = () => {
 
           <div className="navbar-right">
 
-            {/* FAVORITES */}
-
-            <Link
-              to="/wishlist"
-              onClick={handleHeartClick}
-              className="navbar-heart"
-              aria-label={`Favorites${
-                favoriteCount > 0
-                  ? `, ${favoriteCount} saved`
-                  : ""
-              }`}
-              title="Favorites"
-            >
-              <i className="fas fa-heart" />
-              <Badge count={favoriteCount} />
-            </Link>
-
+            {/* HEART ICON REMOVED HERE */}
 
             {/* NOTIFICATIONS */}
 
@@ -1564,6 +1529,7 @@ const Navbar = () => {
                     </Link>
 
 
+                    {/* FAVORITES (Now inside avatar dropdown) */}
                     <Link
                       to="/wishlist"
                       onClick={() => setDropdownOpen(false)}
@@ -1754,6 +1720,7 @@ const Navbar = () => {
                       }}
                     >
 
+                      {/* FAVORITES (Now inside mobile avatar dropdown) */}
                       <Link
                         to="/wishlist"
                         onClick={() => setMobileDropdownOpen(false)}
