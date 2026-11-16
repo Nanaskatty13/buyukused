@@ -4,6 +4,7 @@ import React, {
   useState,
   useEffect,
   useMemo,
+  useRef,
 } from "react";
 
 import { Link } from "react-router-dom";
@@ -17,8 +18,7 @@ const Hero = ({ onSearch }) => {
   // HERO BACKGROUND
   // ==========================================================
 
-  const heroBackground =
-    "/public/assets/logo/hero.png";
+  const heroBackground = "/assets/logo/hero.png";
 
   // ==========================================================
   // CAROUSEL SLIDES
@@ -30,32 +30,25 @@ const Hero = ({ onSearch }) => {
         id: 1,
         image: "/categories/phones.webp",
         title: "Phones & Tablets",
-        subtitle:
-          "Latest smartphones and tablets",
+        subtitle: "Latest smartphones and tablets",
       },
-
       {
         id: 2,
         image: "/categories/laptops.webp",
         title: "Laptops & Computers",
-        subtitle:
-          "MacBook, Dell, HP and more",
+        subtitle: "MacBook, Dell, HP and more",
       },
-
       {
         id: 3,
         image: "/categories/cars.webp",
         title: "Cars & Vehicles",
-        subtitle:
-          "Trusted deals on wheels",
+        subtitle: "Trusted deals on wheels",
       },
-
       {
         id: 4,
         image: "/categories/real-estate.webp",
         title: "Real Estate",
-        subtitle:
-          "Houses, lands and apartments",
+        subtitle: "Houses, lands and apartments",
       },
     ],
     []
@@ -65,35 +58,54 @@ const Hero = ({ onSearch }) => {
   // CURRENT SLIDE
   // ==========================================================
 
-  const [currentSlide, setCurrentSlide] =
-    useState(0);
+  const [currentSlide, setCurrentSlide] = useState(0);
 
   // ==========================================================
   // BACKGROUND LOADED STATE
   // ==========================================================
 
-  const [backgroundLoaded, setBackgroundLoaded] =
-    useState(false);
+  const [backgroundLoaded, setBackgroundLoaded] = useState(false);
+
+  // ==========================================================
+  // HERO IMAGE REF — for cache detection
+  // ==========================================================
+
+  const heroImageRef = useRef(null);
+
+  // ==========================================================
+  // FIX: CACHED IMAGE DETECTION
+  // ==========================================================
+  // If the image is already in the browser cache when the
+  // component mounts (very common on mobile after the first
+  // visit or when navigating back to "/"), the browser fires
+  // onLoad synchronously — BEFORE React has attached the
+  // handler — so onLoad never runs and the image stays at
+  // opacity: 0 (invisible).
+  //
+  // We fix that by checking img.complete on mount.
+
+  useEffect(() => {
+    const img = heroImageRef.current;
+
+    if (img && img.complete && img.naturalWidth > 0) {
+      setBackgroundLoaded(true);
+    }
+  }, [heroBackground]);
 
   // ==========================================================
   // PRELOAD NEXT SLIDE
   // ==========================================================
 
   useEffect(() => {
-    const nextIndex =
-      (currentSlide + 1) % slides.length;
-
-    const nextImage =
-      slides?.[nextIndex]?.image;
+    const nextIndex = (currentSlide + 1) % slides.length;
+    const nextImage = slides?.[nextIndex]?.image;
 
     if (!nextImage) return;
 
     const image = new Image();
 
     image.decoding = "async";
-
     image.fetchPriority = "low";
-
     image.src = nextImage;
   }, [currentSlide, slides]);
 
@@ -103,10 +115,7 @@ const Hero = ({ onSearch }) => {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setCurrentSlide(
-        (previous) =>
-          (previous + 1) % slides.length
-      );
+      setCurrentSlide((previous) => (previous + 1) % slides.length);
     }, 7000);
 
     return () => {
@@ -180,8 +189,7 @@ const Hero = ({ onSearch }) => {
 
             object-fit: cover;
 
-            object-position:
-              center center;
+            object-position: center center;
 
             display: block;
 
@@ -189,15 +197,17 @@ const Hero = ({ onSearch }) => {
 
             opacity: 0;
 
-            transform:
-              scale(1.01);
+            transform: scale(1.01);
 
-            transition:
-              opacity 0.4s ease-in-out;
+            transition: opacity 0.4s ease-in-out;
 
             pointer-events: none;
 
             user-select: none;
+
+            /* Prevents paint issues on some Android browsers */
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
           }
 
 
@@ -300,9 +310,7 @@ const Hero = ({ onSearch }) => {
 
             letter-spacing: -0.8px;
 
-            text-shadow:
-              0 3px 18px
-              rgba(0, 0, 0, 0.65);
+            text-shadow: 0 3px 18px rgba(0, 0, 0, 0.65);
           }
 
 
@@ -314,8 +322,7 @@ const Hero = ({ onSearch }) => {
           .hero-shopglowsy-content p {
             font-size: 18px;
 
-            color:
-              rgba(255, 255, 255, 0.96);
+            color: rgba(255, 255, 255, 0.96);
 
             max-width: 480px;
 
@@ -323,9 +330,7 @@ const Hero = ({ onSearch }) => {
 
             line-height: 1.7;
 
-            text-shadow:
-              0 2px 12px
-              rgba(0, 0, 0, 0.55);
+            text-shadow: 0 2px 12px rgba(0, 0, 0, 0.55);
           }
 
 
@@ -374,9 +379,7 @@ const Hero = ({ onSearch }) => {
               background 0.25s ease,
               box-shadow 0.25s ease;
 
-            box-shadow:
-              0 5px 18px
-              rgba(46, 204, 113, 0.42);
+            box-shadow: 0 5px 18px rgba(46, 204, 113, 0.42);
 
             text-decoration: none;
 
@@ -384,15 +387,12 @@ const Hero = ({ onSearch }) => {
           }
 
 
-          .hero-shopglowsy-actions
-          .btn-primary:hover {
+          .hero-shopglowsy-actions .btn-primary:hover {
             background: #27ae60;
 
             transform: translateY(-2px);
 
-            box-shadow:
-              0 8px 24px
-              rgba(46, 204, 113, 0.52);
+            box-shadow: 0 8px 24px rgba(46, 204, 113, 0.52);
           }
 
 
@@ -405,13 +405,11 @@ const Hero = ({ onSearch }) => {
 
             gap: 8px;
 
-            background:
-              rgba(0, 0, 0, 0.30);
+            background: rgba(0, 0, 0, 0.30);
 
             backdrop-filter: blur(8px);
 
-            -webkit-backdrop-filter:
-              blur(8px);
+            -webkit-backdrop-filter: blur(8px);
 
             color: #ffffff;
 
@@ -423,9 +421,7 @@ const Hero = ({ onSearch }) => {
 
             font-size: 16px;
 
-            border:
-              1px solid
-              rgba(255, 255, 255, 0.28);
+            border: 1px solid rgba(255, 255, 255, 0.28);
 
             cursor: pointer;
 
@@ -440,13 +436,10 @@ const Hero = ({ onSearch }) => {
           }
 
 
-          .hero-shopglowsy-actions
-          .btn-secondary:hover {
-            background:
-              rgba(0, 0, 0, 0.45);
+          .hero-shopglowsy-actions .btn-secondary:hover {
+            background: rgba(0, 0, 0, 0.45);
 
-            border-color:
-              rgba(255, 255, 255, 0.45);
+            border-color: rgba(255, 255, 255, 0.45);
 
             transform: translateY(-2px);
           }
@@ -463,9 +456,7 @@ const Hero = ({ onSearch }) => {
 
             padding-top: 32px;
 
-            border-top:
-              1px solid
-              rgba(255, 255, 255, 0.28);
+            border-top: 1px solid rgba(255, 255, 255, 0.28);
           }
 
 
@@ -478,8 +469,7 @@ const Hero = ({ onSearch }) => {
           }
 
 
-          .hero-shopglowsy-stats
-          .stat-number {
+          .hero-shopglowsy-stats .stat-number {
             font-size: 28px;
 
             font-weight: 800;
@@ -488,24 +478,18 @@ const Hero = ({ onSearch }) => {
 
             line-height: 1.2;
 
-            text-shadow:
-              0 2px 12px
-              rgba(0, 0, 0, 0.55);
+            text-shadow: 0 2px 12px rgba(0, 0, 0, 0.55);
           }
 
 
-          .hero-shopglowsy-stats
-          .stat-label {
+          .hero-shopglowsy-stats .stat-label {
             font-size: 14px;
 
-            color:
-              rgba(255, 255, 255, 0.82);
+            color: rgba(255, 255, 255, 0.82);
 
             margin-top: 4px;
 
-            text-shadow:
-              0 1px 8px
-              rgba(0, 0, 0, 0.45);
+            text-shadow: 0 1px 8px rgba(0, 0, 0, 0.45);
           }
 
 
@@ -526,29 +510,22 @@ const Hero = ({ onSearch }) => {
 
             overflow: hidden;
 
-            box-shadow:
-              0 16px 45px
-              rgba(0, 0, 0, 0.40);
+            box-shadow: 0 16px 45px rgba(0, 0, 0, 0.40);
 
-            border:
-              1px solid
-              rgba(255, 255, 255, 0.14);
+            border: 1px solid rgba(255, 255, 255, 0.14);
 
-            background:
-              rgba(15, 23, 42, 0.35);
+            background: rgba(15, 23, 42, 0.35);
 
             backdrop-filter: blur(4px);
 
-            -webkit-backdrop-filter:
-              blur(4px);
+            -webkit-backdrop-filter: blur(4px);
           }
 
 
           .hero-carousel .slide-track {
             display: flex;
 
-            transition:
-              transform 0.5s ease-in-out;
+            transition: transform 0.5s ease-in-out;
 
             will-change: transform;
           }
@@ -667,8 +644,7 @@ const Hero = ({ onSearch }) => {
 
             border-radius: 50%;
 
-            background:
-              rgba(255, 255, 255, 0.48);
+            background: rgba(255, 255, 255, 0.48);
 
             pointer-events: auto;
 
@@ -788,7 +764,6 @@ const Hero = ({ onSearch }) => {
 
               margin-top: -72px;
 
-              /* 72px pull + 58px gap */
               padding: 130px 0 80px;
             }
 
@@ -824,6 +799,12 @@ const Hero = ({ onSearch }) => {
 
               max-width: min(90%, 520px);
             }
+
+            /* Slightly higher crop on tablet so faces/products
+               aren't cut off in the middle */
+            .hero-background-image {
+              object-position: center 40%;
+            }
           }
 
 
@@ -836,7 +817,6 @@ const Hero = ({ onSearch }) => {
             .hero-shopglowsy {
               margin-top: -60px;
 
-              /* 60px pull + 50px gap */
               padding: 110px 0 60px;
 
               min-height: auto;
@@ -891,14 +871,12 @@ const Hero = ({ onSearch }) => {
             }
 
 
-            .hero-shopglowsy-stats
-            .stat-number {
+            .hero-shopglowsy-stats .stat-number {
               font-size: 24px;
             }
 
 
-            .hero-shopglowsy-stats
-            .stat-label {
+            .hero-shopglowsy-stats .stat-label {
               font-size: 12px;
 
               text-align: center;
@@ -917,6 +895,14 @@ const Hero = ({ onSearch }) => {
             .hero-carousel .slide {
               height: 350px;
             }
+
+            /* FIX: On tall/narrow phones, object-fit: cover
+               with 'center center' crops the image to a tiny
+               zoomed-in sliver. Shifting the crop up to 30%
+               shows the interesting upper-middle of the image. */
+            .hero-background-image {
+              object-position: center 30%;
+            }
           }
 
 
@@ -929,7 +915,6 @@ const Hero = ({ onSearch }) => {
             .hero-shopglowsy {
               margin-top: -54px;
 
-              /* 54px pull + 46px gap */
               padding: 100px 0 50px;
             }
 
@@ -962,11 +947,8 @@ const Hero = ({ onSearch }) => {
             }
 
 
-            .hero-shopglowsy-actions
-            .btn-primary,
-
-            .hero-shopglowsy-actions
-            .btn-secondary {
+            .hero-shopglowsy-actions .btn-primary,
+            .hero-shopglowsy-actions .btn-secondary {
               width: 100%;
             }
 
@@ -976,8 +958,7 @@ const Hero = ({ onSearch }) => {
             }
 
 
-            .hero-shopglowsy-stats
-            .stat-number {
+            .hero-shopglowsy-stats .stat-number {
               font-size: 21px;
             }
 
@@ -987,20 +968,17 @@ const Hero = ({ onSearch }) => {
             }
 
 
-            .hero-carousel
-            .slide-overlay {
+            .hero-carousel .slide-overlay {
               padding: 20px 15px 15px;
             }
 
 
-            .hero-carousel
-            .slide-overlay h3 {
+            .hero-carousel .slide-overlay h3 {
               font-size: 16px;
             }
 
 
-            .hero-carousel
-            .slide-overlay p {
+            .hero-carousel .slide-overlay p {
               font-size: 12px;
             }
           }
@@ -1034,14 +1012,12 @@ const Hero = ({ onSearch }) => {
             }
 
 
-            .hero-shopglowsy-stats
-            .stat-number {
+            .hero-shopglowsy-stats .stat-number {
               font-size: 19px;
             }
 
 
-            .hero-shopglowsy-stats
-            .stat-label {
+            .hero-shopglowsy-stats .stat-label {
               font-size: 11px;
             }
           }
@@ -1063,12 +1039,8 @@ const Hero = ({ onSearch }) => {
             }
 
 
-            .hero-shopglowsy-actions
-            .btn-primary,
-
-            .hero-shopglowsy-actions
-            .btn-secondary,
-
+            .hero-shopglowsy-actions .btn-primary,
+            .hero-shopglowsy-actions .btn-secondary,
             .hero-carousel-dot {
               transition: none;
             }
@@ -1098,14 +1070,13 @@ const Hero = ({ onSearch }) => {
 
         {/* ======================================================
             HERO BACKGROUND IMAGE
-            Uses native onLoad — no redundant preloader
+            ref + onLoad + onError + cache detection
         ====================================================== */}
 
         <img
+          ref={heroImageRef}
           className={`hero-background-image ${
-            backgroundLoaded
-              ? "is-loaded"
-              : ""
+            backgroundLoaded ? "is-loaded" : ""
           }`}
           src={heroBackground}
           alt=""
@@ -1234,11 +1205,8 @@ const Hero = ({ onSearch }) => {
             <div
               className="slide-track"
               style={{
-                /* Hardware-accelerated transform for smooth mobile */
                 transform:
-                  `translate3d(-${
-                    currentSlide * 100
-                  }%, 0, 0)`,
+                  `translate3d(-${currentSlide * 100}%, 0, 0)`,
               }}
             >
 
@@ -1254,14 +1222,10 @@ const Hero = ({ onSearch }) => {
                       src={slide.image}
                       alt={slide.title}
                       loading={
-                        index === 0
-                          ? "eager"
-                          : "lazy"
+                        index === 0 ? "eager" : "lazy"
                       }
                       fetchPriority={
-                        index === 0
-                          ? "high"
-                          : "low"
+                        index === 0 ? "high" : "low"
                       }
                       decoding="async"
                     />
@@ -1269,14 +1233,9 @@ const Hero = ({ onSearch }) => {
 
                     <div className="slide-overlay">
 
-                      <h3>
-                        🛒{" "}
-                        {slide.title}
-                      </h3>
+                      <h3>🛒 {slide.title}</h3>
 
-                      <p>
-                        {slide.subtitle}
-                      </p>
+                      <p>{slide.subtitle}</p>
 
                     </div>
 
@@ -1304,21 +1263,15 @@ const Hero = ({ onSearch }) => {
                     key={slide.id}
                     type="button"
                     className={`hero-carousel-dot ${
-                      index === currentSlide
-                        ? "active"
-                        : ""
+                      index === currentSlide ? "active" : ""
                     }`}
-                    aria-label={`Go to slide ${
-                      index + 1
-                    }`}
+                    aria-label={`Go to slide ${index + 1}`}
                     aria-current={
                       index === currentSlide
                         ? "true"
                         : undefined
                     }
-                    onClick={() =>
-                      goToSlide(index)
-                    }
+                    onClick={() => goToSlide(index)}
                   />
 
                 )
