@@ -185,7 +185,7 @@ const Hero = ({ onSearch }) => {
       <style>
         {`
           /* =====================================================
-             HERO — pulled up to slide under the navbar
+             HERO — fully transparent background
           ===================================================== */
 
           .hero-shopglowsy {
@@ -195,12 +195,12 @@ const Hero = ({ onSearch }) => {
 
             min-height: 700px;
 
-            /* ✅ PULL UP: Slide section up under the fixed navbar */
-            margin-top: -76px;
+            padding:
+              110px 0 100px;
 
-            /* ✅ PADDING: Add the 76px back + original 110px top padding */
-            padding: 186px 0 100px;
+            margin: 0;
 
+            /* ✅ CHANGED: solid #0f172a → transparent */
             background: transparent;
 
             overflow: hidden;
@@ -254,6 +254,7 @@ const Hero = ({ onSearch }) => {
 
           /* =====================================================
              BACKGROUND FALLBACK
+             ✅ CHANGED: dark gradient → transparent
           ===================================================== */
 
           .hero-background-fallback {
@@ -271,6 +272,7 @@ const Hero = ({ onSearch }) => {
 
           /* =====================================================
              IMAGE OVERLAY
+             Kept for text readability against the image
           ===================================================== */
 
           .hero-shopglowsy::after {
@@ -853,11 +855,8 @@ const Hero = ({ onSearch }) => {
               min-height:
                 760px;
 
-              margin-top:
-                -76px;
-
               padding:
-                196px 0 110px;
+                120px 0 110px;
             }
 
 
@@ -907,12 +906,6 @@ const Hero = ({ onSearch }) => {
             .hero-shopglowsy {
               min-height:
                 800px;
-
-              margin-top:
-                -76px;
-
-              padding:
-                196px 0 100px;
             }
 
 
@@ -963,12 +956,8 @@ const Hero = ({ onSearch }) => {
               min-height:
                 auto;
 
-              /* ✅ Navbar is slightly shorter on tablet (~72px) */
-              margin-top:
-                -72px;
-
               padding:
-                172px 0 80px;
+                100px 0 80px;
             }
 
 
@@ -1022,12 +1011,8 @@ const Hero = ({ onSearch }) => {
           @media (max-width: 768px) {
 
             .hero-shopglowsy {
-              /* ✅ Navbar is shorter on mobile (~60px) */
-              margin-top:
-                -60px;
-
               padding:
-                148px 0 60px;
+                88px 0 60px;
 
               min-height:
                 auto;
@@ -1141,12 +1126,8 @@ const Hero = ({ onSearch }) => {
           @media (max-width: 480px) {
 
             .hero-shopglowsy {
-              /* ✅ Navbar is shortest here (~54px) */
-              margin-top:
-                -54px;
-
               padding:
-                132px 0 50px;
+                78px 0 50px;
             }
 
 
@@ -1247,11 +1228,8 @@ const Hero = ({ onSearch }) => {
           @media (max-width: 380px) {
 
             .hero-shopglowsy {
-              margin-top:
-                -54px;
-
               padding:
-                124px 0 45px;
+                70px 0 45px;
             }
 
 
@@ -1332,6 +1310,7 @@ const Hero = ({ onSearch }) => {
 
         {/* ======================================================
             IMMEDIATE FALLBACK BACKGROUND
+            (Now transparent)
         ====================================================== */}
 
         <div
