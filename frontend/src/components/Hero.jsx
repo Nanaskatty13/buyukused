@@ -197,9 +197,9 @@ const Hero = ({ onSearch }) => {
 
             opacity: 0;
 
-            transform: scale(1.01);
+            transform: scale(1.0);
 
-            transition: opacity 0.4s ease-in-out;
+            transition: opacity 0.1s ease-in-out;
 
             pointer-events: none;
 
@@ -212,7 +212,7 @@ const Hero = ({ onSearch }) => {
 
 
           .hero-background-image.is-loaded {
-            opacity: 0.88;
+            opacity: 0.99;
           }
 
 

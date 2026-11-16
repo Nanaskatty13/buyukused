@@ -1,5 +1,5 @@
 // frontend/src/components/Navbar.jsx
-// BuyUKUsed - Fixed Responsive Navbar (No Search)
+// BuyUKUsed - Fixed Responsive Navbar (Dark Glass / Transparent)
 
 import React, {
   useState,
@@ -36,9 +36,6 @@ const getToken = () => {
 // ============================================================
 // API URL
 // ============================================================
-// ✅ FIX: fallback was http://localhost:5000 → every request
-//         failed on production and the badge never updated.
-//         Now matches api.js / Login.jsx / messageService.js.
 
 const getApiUrl = () => {
   try {
@@ -71,10 +68,6 @@ const safeCount = (value) => {
 // ============================================================
 // BADGE
 // ============================================================
-// ✅ Accepts an optional `pulse` prop — when true, applies a
-//    one-shot scale-bounce animation to draw the eye to a new
-//    message. Backwards-compatible: existing calls without the
-//    prop behave exactly as before.
 
 const Badge = ({ count, pulse = false }) => {
   const value = safeCount(count);
@@ -117,8 +110,6 @@ const Navbar = () => {
   const [unreadMessages, setUnreadMessages] =
     useState(0);
 
-  // ✅ New — drives the one-shot "new message arrived" pulse
-  //    on the badge (see effect below).
   const [badgePulse, setBadgePulse] =
     useState(false);
 
@@ -127,14 +118,7 @@ const Navbar = () => {
   const pollIntervalRef = useRef(null);
   const isMountedRef = useRef(true);
 
-  // ✅ Track the previous count so we can pulse ONLY on an
-  //    increase (not on every poll). Initialised to `null` so
-  //    the first poll (page load with unread) doesn't pulse.
   const prevUnreadRef = useRef(null);
-
-  // ✅ Cache the base document.title once so we can prefix it
-  //    with "(N)" and restore it cleanly without clobbering
-  //    any other route-specific title.
   const baseTitleRef = useRef(null);
 
   // ==========================================================
@@ -185,10 +169,6 @@ const Navbar = () => {
   // ==========================================================
   // FETCH UNREAD COUNTS
   // ==========================================================
-  // ✅ Polling reduced 30s → 15s for a more live feel.
-  //    Notifications stay at 30s (rarely change), messages at
-  //    15s (user expects near-real-time). Two intervals share
-  //    one ref-based cleanup.
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -239,10 +219,6 @@ const Navbar = () => {
 
       let count = 0;
 
-      // --------------------------------------------------------
-      // ADMIN NOTIFICATIONS
-      // --------------------------------------------------------
-
       if (user.role === "admin") {
         try {
           const data =
@@ -267,10 +243,6 @@ const Navbar = () => {
           // Ignore notification errors.
         }
       }
-
-      // --------------------------------------------------------
-      // USER NOTIFICATIONS
-      // --------------------------------------------------------
 
       try {
         const response = await fetch(
@@ -329,10 +301,6 @@ const Navbar = () => {
         setUnreadNotifications(count);
       }
     };
-
-    // ==========================================================
-    // MESSAGE COUNT
-    // ==========================================================
 
     const fetchMessageCount = async () => {
       if (!isMountedRef.current || !user) {
@@ -406,11 +374,9 @@ const Navbar = () => {
       }
     };
 
-    // Initial fetch.
     fetchNotificationCount();
     fetchMessageCount();
 
-    // Clear existing polling.
     if (pollIntervalRef.current) {
       clearInterval(
         pollIntervalRef.current
@@ -419,7 +385,6 @@ const Navbar = () => {
       pollIntervalRef.current = null;
     }
 
-    // ✅ Poll every 15 seconds for messages + notifications.
     pollIntervalRef.current =
       setInterval(() => {
         if (!user || !getToken()) {
@@ -459,10 +424,6 @@ const Navbar = () => {
   // ==========================================================
   // PULSE THE BADGE WHEN A NEW MESSAGE ARRIVES
   // ==========================================================
-  // Fires once per increase in `unreadMessages`. The sentinel
-  // `prevUnreadRef.current === null` skips the first poll so
-  // landing on the page with 3 existing unread messages
-  // doesn't cause an unprompted pulse.
 
   useEffect(() => {
     if (prevUnreadRef.current === null) {
@@ -490,15 +451,8 @@ const Navbar = () => {
   // ==========================================================
   // PAGE-TITLE FLASH FOR NEW MESSAGES
   // ==========================================================
-  // When the tab is focused:
-  //     "(3) BuyUKUsed"
-  // When the tab is hidden:
-  //     alternates between "(3) New message" and "BuyUKUsed"
-  //     every 1.5s so the tab title grabs attention in the tab
-  //     strip without a sound / browser permission popup.
 
   useEffect(() => {
-    // Capture the original title once.
     if (baseTitleRef.current === null) {
       const cleaned = document.title
         .replace(/^\(\d+\+?\)\s*/, "")
@@ -538,8 +492,6 @@ const Navbar = () => {
     timerId = setInterval(update, 1500);
 
     const handleVisibility = () => {
-      // Reset the toggle on visibility change so we always
-      // start the flash from the "(N) New message" state.
       show = true;
       update();
     };
@@ -685,7 +637,7 @@ const Navbar = () => {
       <style>
         {`
           /* =====================================================
-             FIXED NAVBAR
+             FIXED NAVBAR — Dark Glass
           ===================================================== */
 
           .navbar-sticky {
@@ -703,22 +655,20 @@ const Navbar = () => {
 
             box-sizing: border-box;
 
-            background:
-              rgba(255, 255, 255, 0.96);
+            background: linear-gradient(
+              155deg,
+              rgba(15, 23, 42, 0.72) 0%,
+              rgba(2, 6, 23, 0.88) 100%
+            );
 
             backdrop-filter:
-              blur(14px);
+              blur(24px) saturate(140%);
 
             -webkit-backdrop-filter:
-              blur(14px);
+              blur(24px) saturate(140%);
 
-            border-bottom:
-              1px solid
-              rgba(253, 254, 255, 0.8);
-
-            box-shadow:
-              0 2px 10px
-              rgba(0, 0, 0, 0.05);
+            border-bottom: none;
+            box-shadow: none;
 
             isolation: isolate;
           }
@@ -730,24 +680,14 @@ const Navbar = () => {
 
           .navbar-container {
             width: 100%;
-
             max-width: 1600px;
-
             margin: 0 auto;
-
-            padding:
-              8px 24px;
-
+            padding: 8px 24px;
             min-height: 46px;
-
             display: flex;
-
             align-items: center;
-
             justify-content: space-between;
-
             gap: 20px;
-
             box-sizing: border-box;
           }
 
@@ -758,58 +698,38 @@ const Navbar = () => {
 
           .navbar-logo {
             font-size: 20px;
-
             font-weight: 800;
-
-            color: #0b2a52;
-
+            color: #f8fafc;
             text-decoration: none;
-
             display: flex;
-
             align-items: center;
-
             justify-content: flex-start;
-
             gap: 7px;
-
             flex: 0 1 auto;
-
             min-width: 0;
-
             white-space: nowrap;
-
             overflow: hidden;
           }
 
 
           .navbar-logo-text {
             display: flex;
-
             align-items: center;
-
             line-height: 1;
-
             font-size: 20px;
-
             font-weight: 800;
-
             flex-shrink: 0;
           }
 
 
           .navbar-logo img {
             height: 34px;
-
             width: 34px;
-
             max-width: 34px;
-
             object-fit: contain;
-
             display: block;
-
             flex-shrink: 0;
+            filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.4));
           }
 
 
@@ -824,7 +744,6 @@ const Navbar = () => {
 
           .navbar-post-ad-btn {
             flex: 0 0 auto;
-
             margin-left: auto;
             margin-right: auto;
           }
@@ -841,29 +760,18 @@ const Navbar = () => {
 
           .navbar-avatar {
             width: 28px;
-
             height: 28px;
-
             border-radius: 50%;
-
-            background: #0b2a52;
-
-            color: white;
-
+            background: rgba(255, 255, 255, 0.12);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #ffffff;
             display: flex;
-
             align-items: center;
-
             justify-content: center;
-
             font-weight: 700;
-
             font-size: 12px;
-
             position: relative;
-
             overflow: hidden;
-
             flex-shrink: 0;
           }
 
@@ -874,15 +782,10 @@ const Navbar = () => {
 
           .navbar-right {
             display: flex;
-
             align-items: center;
-
             justify-content: flex-end;
-
             gap: 14px;
-
             flex: 0 0 auto;
-
             min-width: 0;
           }
 
@@ -895,40 +798,25 @@ const Navbar = () => {
           .navbar-bell,
           .navbar-envelope {
             position: relative;
-
             width: 24px;
-
             height: 24px;
-
-            color: #475569;
-
+            color: rgba(255, 255, 255, 0.75);
             text-decoration: none;
-
             display: flex;
-
             align-items: center;
-
             justify-content: center;
-
             flex-shrink: 0;
-
             font-size: 18px;
-
             line-height: 1;
-
-            transition:
-              color 0.2s ease,
-              transform 0.2s ease;
+            transition: color 0.2s ease, transform 0.2s ease;
           }
 
 
           .navbar-heart:hover,
           .navbar-bell:hover,
           .navbar-envelope:hover {
-            color: #2ecc71;
-
-            transform:
-              translateY(-1px);
+            color: #ffffff;
+            transform: translateY(-1px);
           }
 
 
@@ -938,112 +826,68 @@ const Navbar = () => {
 
           .navbar-badge {
             position: absolute;
-
             top: -8px;
-
             right: -8px;
-
             min-width: 16px;
-
             height: 16px;
-
             padding: 0 4px;
-
             display: flex;
-
             align-items: center;
-
             justify-content: center;
-
             background: #e74c3c;
-
             color: white;
-
-            border: 2px solid white;
-
+            border: 2px solid rgba(15, 23, 42, 0.9);
             border-radius: 9999px;
-
             font-size: 9px;
-
             font-weight: 800;
-
             line-height: 1;
-
             box-sizing: border-box;
-
             pointer-events: none;
-
             white-space: nowrap;
-
-            /* Needed for the pulse + breathe transforms below */
             transform-origin: center center;
           }
 
 
           /* =====================================================
-             ✅ ENVELOPE — unread state
-          =====================================================
-             When the user has unread messages, the envelope icon
-             switches to the brand green and the badge gets a slow
-             breathing animation so it's noticeable without being
-             obnoxious. Both reset once the user reads the message
-             and the poll returns 0.
-          */
+             ENVELOPE — unread state
+          ===================================================== */
 
           .navbar-envelope.has-unread {
-            color: #2ecc71;
+            color: #4ade80;
           }
 
           .navbar-envelope.has-unread:hover {
-            color: #27ae60;
+            color: #86efac;
           }
 
           .navbar-envelope.has-unread i {
-            color: #2ecc71;
+            color: #4ade80;
           }
 
           .navbar-envelope.has-unread .navbar-badge {
-            animation:
-              navbar-badge-breathe
-              2s ease-in-out infinite;
+            animation: navbar-badge-breathe 2s ease-in-out infinite;
           }
 
 
           /* =====================================================
-             ✅ BADGE — one-shot pop on new message arrival
+             BADGE — one-shot pop
           ===================================================== */
 
           .navbar-badge.navbar-badge-pulse {
-            animation:
-              navbar-badge-pop
-              0.6s ease-out;
+            animation: navbar-badge-pop 0.6s ease-out;
           }
 
 
           @keyframes navbar-badge-breathe {
-            0%,
-            100% {
-              transform: scale(1);
-            }
-
-            50% {
-              transform: scale(1.15);
-            }
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.15); }
           }
 
 
           @keyframes navbar-badge-pop {
-            0% {
-              transform: scale(1);
-            }
-
-            40% {
-              transform: scale(1.6);
-            }
-
-            100% {
-              transform: scale(1);
-            }
+            0% { transform: scale(1); }
+            40% { transform: scale(1.6); }
+            100% { transform: scale(1); }
           }
 
 
@@ -1052,26 +896,18 @@ const Navbar = () => {
           ===================================================== */
 
           .navbar-dropdown {
-            animation:
-              dropdownFade
-              0.18s ease;
+            animation: dropdownFade 0.18s ease;
+          }
+
+          .navbar-dropdown a:hover,
+          .navbar-dropdown button:hover {
+            background: rgba(255, 255, 255, 0.08) !important;
           }
 
 
           @keyframes dropdownFade {
-            from {
-              opacity: 0;
-
-              transform:
-                translateY(-8px);
-            }
-
-            to {
-              opacity: 1;
-
-              transform:
-                translateY(0);
-            }
+            from { opacity: 0; transform: translateY(-8px); }
+            to { opacity: 1; transform: translateY(0); }
           }
 
 
@@ -1091,10 +927,8 @@ const Navbar = () => {
           @media (min-width: 1601px) {
             .navbar-container {
               max-width: 1800px;
-
               padding-left: 32px;
               padding-right: 32px;
-
               gap: 28px;
             }
 
@@ -1103,11 +937,8 @@ const Navbar = () => {
             }
 
             .navbar-post-ad-btn {
-              padding:
-                7px 18px !important;
-
-              font-size:
-                13px !important;
+              padding: 7px 18px !important;
+              font-size: 13px !important;
             }
           }
 
@@ -1119,7 +950,6 @@ const Navbar = () => {
           @media (min-width: 1921px) {
             .navbar-container {
               max-width: 1920px;
-
               padding-left: 40px;
               padding-right: 40px;
             }
@@ -1142,15 +972,12 @@ const Navbar = () => {
 
           @media (max-width: 1024px) {
             .navbar-container {
-              padding:
-                8px 12px;
-
+              padding: 8px 12px;
               gap: 10px;
             }
 
             .navbar-logo {
               font-size: 18px;
-
               gap: 6px;
             }
 
@@ -1160,9 +987,7 @@ const Navbar = () => {
 
             .navbar-logo img {
               width: 30px;
-
               height: 30px;
-
               max-width: 30px;
             }
 
@@ -1188,20 +1013,14 @@ const Navbar = () => {
           @media (max-width: 767px) {
             .navbar-container {
               min-height: 42px;
-
-              padding:
-                6px 10px;
-
+              padding: 6px 10px;
               gap: 6px;
             }
 
             .navbar-logo {
               font-size: 17px;
-
               gap: 4px;
-
               min-width: 0;
-
               flex-shrink: 1;
             }
 
@@ -1211,9 +1030,7 @@ const Navbar = () => {
 
             .navbar-logo img {
               width: 28px;
-
               height: 28px;
-
               max-width: 28px;
             }
 
@@ -1222,12 +1039,8 @@ const Navbar = () => {
             }
 
             .navbar-post-ad-btn {
-              padding:
-                4px 9px !important;
-
-              font-size:
-                10px !important;
-
+              padding: 4px 9px !important;
+              font-size: 10px !important;
               margin-left: auto;
               margin-right: auto;
             }
@@ -1244,34 +1057,23 @@ const Navbar = () => {
             .navbar-bell,
             .navbar-envelope {
               width: 21px;
-
               height: 21px;
-
               font-size: 15px;
             }
 
             .navbar-avatar {
               width: 23px;
-
               height: 23px;
-
               font-size: 9px;
             }
 
             .navbar-badge {
               top: -6px;
-
               right: -6px;
-
               min-width: 13px;
-
               height: 13px;
-
-              padding:
-                0 3px;
-
+              padding: 0 3px;
               font-size: 7px;
-
               border-width: 1.5px;
             }
 
@@ -1288,16 +1090,12 @@ const Navbar = () => {
           @media (max-width: 480px) {
             .navbar-container {
               min-height: 39px;
-
-              padding:
-                5px 7px;
-
+              padding: 5px 7px;
               gap: 4px;
             }
 
             .navbar-logo {
               font-size: 15px;
-
               gap: 3px;
             }
 
@@ -1307,9 +1105,7 @@ const Navbar = () => {
 
             .navbar-logo img {
               width: 25px;
-
               height: 25px;
-
               max-width: 25px;
             }
 
@@ -1318,11 +1114,8 @@ const Navbar = () => {
             }
 
             .navbar-post-ad-btn {
-              padding:
-                3px 7px !important;
-
-              font-size:
-                9px !important;
+              padding: 3px 7px !important;
+              font-size: 9px !important;
             }
 
             .navbar-right {
@@ -1333,32 +1126,22 @@ const Navbar = () => {
             .navbar-bell,
             .navbar-envelope {
               width: 19px;
-
               height: 19px;
-
               font-size: 13px;
             }
 
             .navbar-avatar {
               width: 20px;
-
               height: 20px;
-
               font-size: 8px;
             }
 
             .navbar-badge {
               top: -5px;
-
               right: -5px;
-
               min-width: 11px;
-
               height: 11px;
-
-              padding:
-                0 2px;
-
+              padding: 0 2px;
               font-size: 6px;
             }
           }
@@ -1370,15 +1153,12 @@ const Navbar = () => {
 
           @media (max-width: 360px) {
             .navbar-container {
-              padding:
-                4px 5px;
-
+              padding: 4px 5px;
               gap: 3px;
             }
 
             .navbar-logo {
               font-size: 14px;
-
               gap: 2px;
             }
 
@@ -1388,9 +1168,7 @@ const Navbar = () => {
 
             .navbar-logo img {
               width: 22px;
-
               height: 22px;
-
               max-width: 22px;
             }
 
@@ -1399,8 +1177,7 @@ const Navbar = () => {
             }
 
             .navbar-post-ad-btn {
-              padding:
-                3px 5px !important;
+              padding: 3px 5px !important;
             }
 
             .navbar-right {
@@ -1411,15 +1188,12 @@ const Navbar = () => {
             .navbar-bell,
             .navbar-envelope {
               width: 18px;
-
               height: 18px;
-
               font-size: 12px;
             }
 
             .navbar-avatar {
               width: 19px;
-
               height: 19px;
             }
           }
@@ -1440,8 +1214,6 @@ const Navbar = () => {
               transition: none;
             }
 
-            /* ✅ Respect user preference for reduced motion —
-               badge stays highlighted but doesn't animate. */
             .navbar-envelope.has-unread .navbar-badge,
             .navbar-badge.navbar-badge-pulse {
               animation: none;
@@ -1470,88 +1242,53 @@ const Navbar = () => {
             />
 
             <span className="navbar-logo-text">
-              <span
-                style={{
-                  color: "#0b2a52",
-                }}
-              >
+              <span style={{ color: "#f8fafc" }}>
                 BuyUK
               </span>
 
-              <span
-                style={{
-                  color: "#2ecc71",
-                }}
-              >
+              <span style={{ color: "#2ecc71" }}>
                 Used
               </span>
             </span>
           </Link>
 
 
-          {/* START SELLING */}
+          {/* START SELLING — Transparent */}
 
           <Link
             to="/post-ad"
             className="navbar-post-ad-btn"
             style={{
-              background: "#2ecc71",
-
-              color: "white",
-
-              padding:
-                "6px 16px",
-
-              borderRadius:
-                "9999px",
-
+              background: "transparent",
+              color: "#ffffff",
+              border: "1px solid rgba(255, 255, 255, 0.3)",
+              padding: "6px 16px",
+              borderRadius: "9999px",
               fontWeight: 700,
-
               fontSize: "13px",
-
-              textDecoration:
-                "none",
-
-              display:
-                "inline-flex",
-
-              alignItems:
-                "center",
-
-              justifyContent:
-                "center",
-
+              textDecoration: "none",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
               gap: "6px",
-
-              transition:
-                "all 0.2s ease",
-
-              boxShadow:
-                "0 2px 4px rgba(46, 204, 113, 0.3)",
-
-              whiteSpace:
-                "nowrap",
+              transition: "all 0.2s ease",
+              boxShadow: "inset 0 1px 0 0 rgba(255, 255, 255, 0.06)",
+              whiteSpace: "nowrap",
             }}
             onMouseEnter={(event) => {
-              event.currentTarget.style.background =
-                "#27ae60";
-
-              event.currentTarget.style.transform =
-                "translateY(-1px)";
+              event.currentTarget.style.background = "rgba(255, 255, 255, 0.1)";
+              event.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.6)";
+              event.currentTarget.style.transform = "translateY(-1px)";
             }}
             onMouseLeave={(event) => {
-              event.currentTarget.style.background =
-                "#2ecc71";
-
-              event.currentTarget.style.transform =
-                "translateY(0)";
+              event.currentTarget.style.background = "transparent";
+              event.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.3)";
+              event.currentTarget.style.transform = "translateY(0)";
             }}
           >
             <i
               className="fas fa-plus-circle"
-              style={{
-                fontSize: "13px",
-              }}
+              style={{ fontSize: "13px" }}
             />
 
             <span className="navbar-post-ad-text">
@@ -1578,12 +1315,7 @@ const Navbar = () => {
               title="Favorites"
             >
               <i className="fas fa-heart" />
-
-              <Badge
-                count={
-                  favoriteCount
-                }
-              />
+              <Badge count={favoriteCount} />
             </Link>
 
 
@@ -1601,20 +1333,12 @@ const Navbar = () => {
                 title="Notifications"
               >
                 <i className="fas fa-bell" />
-
-                <Badge
-                  count={
-                    unreadNotifications
-                  }
-                />
+                <Badge count={unreadNotifications} />
               </Link>
             )}
 
 
             {/* MESSAGES */}
-            {/* ✅ Envelope gets `has-unread` class when there are
-                  unread messages → turns green + badge breathes.
-                  Badge gets `pulse` prop on new arrival → pops. */}
 
             {user && (
               <Link
@@ -1640,15 +1364,7 @@ const Navbar = () => {
                 }
               >
                 <i className="fas fa-envelope" />
-
-                <Badge
-                  count={
-                    unreadMessages
-                  }
-                  pulse={
-                    badgePulse
-                  }
-                />
+                <Badge count={unreadMessages} pulse={badgePulse} />
               </Link>
             )}
 
@@ -1658,149 +1374,80 @@ const Navbar = () => {
             {user ? (
               <div
                 ref={dropdownRef}
-                style={{
-                  position:
-                    "relative",
-
-                  flexShrink: 0,
-                }}
+                style={{ position: "relative", flexShrink: 0 }}
               >
 
                 {/* USER BUTTON */}
 
                 <div
-                  onClick={
-                    toggleDropdown
-                  }
+                  onClick={toggleDropdown}
                   role="button"
                   tabIndex={0}
-                  aria-expanded={
-                    dropdownOpen
-                  }
+                  aria-expanded={dropdownOpen}
                   aria-label="Open account menu"
                   style={{
                     display: "flex",
-
-                    alignItems:
-                      "center",
-
+                    alignItems: "center",
                     gap: "6px",
-
-                    cursor:
-                      "pointer",
-
-                    padding:
-                      "4px 7px",
-
-                    borderRadius:
-                      "9999px",
-
-                    background:
-                      "rgba(241, 245, 249, 0.8)",
-
-                    border:
-                      "1px solid transparent",
-
-                    transition:
-                      "all 0.2s ease",
-
+                    cursor: "pointer",
+                    padding: "4px 8px",
+                    borderRadius: "9999px",
+                    background: "rgba(255, 255, 255, 0.06)",
+                    border: "1px solid rgba(255, 255, 255, 0.1)",
+                    transition: "all 0.2s ease",
                     minWidth: 0,
                   }}
                   onKeyDown={(event) => {
-                    if (
-                      event.key === "Enter" ||
-                      event.key === " "
-                    ) {
+                    if (event.key === "Enter" || event.key === " ") {
                       event.preventDefault();
-
                       toggleDropdown();
                     }
                   }}
                   onMouseEnter={(event) => {
-                    event.currentTarget.style.background =
-                      "#f1f5f9";
-
-                    event.currentTarget.style.borderColor =
-                      "#e2e8f0";
+                    event.currentTarget.style.background = "rgba(255, 255, 255, 0.1)";
+                    event.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.22)";
                   }}
                   onMouseLeave={(event) => {
-                    event.currentTarget.style.background =
-                      "rgba(241, 245, 249, 0.8)";
-
-                    event.currentTarget.style.borderColor =
-                      "transparent";
+                    event.currentTarget.style.background = "rgba(255, 255, 255, 0.06)";
+                    event.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.1)";
                   }}
                 >
 
                   {/* AVATAR */}
 
                   <div className="navbar-avatar">
-
                     {profileImageUrl ? (
                       <img
-                        src={
-                          profileImageUrl
-                        }
-                        alt={
-                          user.name ||
-                          "User"
-                        }
+                        src={profileImageUrl}
+                        alt={user.name || "User"}
                         style={{
-                          width:
-                            "100%",
-
-                          height:
-                            "100%",
-
-                          borderRadius:
-                            "50%",
-
-                          objectFit:
-                            "cover",
-
-                          display:
-                            "block",
+                          width: "100%",
+                          height: "100%",
+                          borderRadius: "50%",
+                          objectFit: "cover",
+                          display: "block",
                         }}
                         onError={(event) => {
-                          event.currentTarget.style.display =
-                            "none";
+                          event.currentTarget.style.display = "none";
                         }}
                       />
                     ) : (
                       userInitial
                     )}
 
-                    {user.role ===
-                      "admin" && (
+                    {user.role === "admin" && (
                       <span
                         style={{
-                          position:
-                            "absolute",
-
+                          position: "absolute",
                           top: "-2px",
-
                           right: "-2px",
-
-                          background:
-                            "#f59e0b",
-
-                          color:
-                            "white",
-
-                          fontSize:
-                            "7px",
-
-                          fontWeight:
-                            700,
-
-                          borderRadius:
-                            "50%",
-
-                          padding:
-                            "1px 3px",
-
-                          border:
-                            "1px solid white",
+                          background: "#f59e0b",
+                          color: "white",
+                          fontSize: "7px",
+                          fontWeight: 700,
+                          borderRadius: "50%",
+                          padding: "1px 3px",
+                          border: "1px solid rgba(15, 23, 42, 0.9)",
                         }}
                       >
                         ★
@@ -1814,26 +1461,13 @@ const Navbar = () => {
                   <span
                     className="desktop-only"
                     style={{
-                      fontSize:
-                        "13px",
-
-                      color:
-                        "#334155",
-
-                      fontWeight:
-                        500,
-
-                      maxWidth:
-                        "120px",
-
-                      overflow:
-                        "hidden",
-
-                      textOverflow:
-                        "ellipsis",
-
-                      whiteSpace:
-                        "nowrap",
+                      fontSize: "13px",
+                      color: "rgba(255, 255, 255, 0.9)",
+                      fontWeight: 500,
+                      maxWidth: "120px",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
                     }}
                   >
                     {user.name}
@@ -1844,16 +1478,11 @@ const Navbar = () => {
 
                   <i
                     className={`desktop-only fas fa-chevron-${
-                      dropdownOpen
-                        ? "up"
-                        : "down"
+                      dropdownOpen ? "up" : "down"
                     }`}
                     style={{
-                      fontSize:
-                        "9px",
-
-                      color:
-                        "#94a3b8",
+                      fontSize: "9px",
+                      color: "rgba(255, 255, 255, 0.5)",
                     }}
                   />
                 </div>
@@ -1865,239 +1494,121 @@ const Navbar = () => {
                   <div
                     className="navbar-dropdown"
                     style={{
-                      position:
-                        "absolute",
-
-                      top:
-                        "calc(100% + 8px)",
-
+                      position: "absolute",
+                      top: "calc(100% + 8px)",
                       right: 0,
-
-                      minWidth:
-                        "190px",
-
-                      background:
-                        "rgba(255, 255, 255, 0.98)",
-
-                      backdropFilter:
-                        "blur(14px)",
-
-                      WebkitBackdropFilter:
-                        "blur(14px)",
-
-                      border:
-                        "1px solid #e5e7eb",
-
-                      borderRadius:
-                        "12px",
-
-                      boxShadow:
-                        "0 10px 35px rgba(0,0,0,0.14)",
-
-                      padding:
-                        "4px 0",
-
-                      zIndex:
-                        100000,
+                      minWidth: "190px",
+                      background: "rgba(15, 23, 42, 0.98)",
+                      backdropFilter: "blur(20px)",
+                      WebkitBackdropFilter: "blur(20px)",
+                      border: "1px solid rgba(255, 255, 255, 0.1)",
+                      borderRadius: "12px",
+                      boxShadow: "0 10px 40px rgba(0, 0, 0, 0.4)",
+                      padding: "4px 0",
+                      zIndex: 100000,
                     }}
                   >
 
                     <Link
                       to="/post-ad"
-                      onClick={() =>
-                        setDropdownOpen(
-                          false
-                        )
-                      }
+                      onClick={() => setDropdownOpen(false)}
                       style={{
-                        display:
-                          "flex",
-
-                        alignItems:
-                          "center",
-
+                        display: "flex",
+                        alignItems: "center",
                         gap: "10px",
-
-                        padding:
-                          "9px 14px",
-
-                        color:
-                          "#2ecc71",
-
-                        fontWeight:
-                          600,
-
-                        fontSize:
-                          "13px",
-
-                        textDecoration:
-                          "none",
+                        padding: "9px 14px",
+                        color: "#4ade80",
+                        fontWeight: 600,
+                        fontSize: "13px",
+                        textDecoration: "none",
                       }}
                     >
                       <i className="fas fa-plus-circle" />
-
                       SELL
                     </Link>
 
 
                     <Link
                       to="/profile"
-                      onClick={() =>
-                        setDropdownOpen(
-                          false
-                        )
-                      }
+                      onClick={() => setDropdownOpen(false)}
                       style={{
-                        display:
-                          "flex",
-
-                        alignItems:
-                          "center",
-
+                        display: "flex",
+                        alignItems: "center",
                         gap: "10px",
-
-                        padding:
-                          "9px 14px",
-
-                        color:
-                          "#334155",
-
-                        fontSize:
-                          "13px",
-
-                        textDecoration:
-                          "none",
+                        padding: "9px 14px",
+                        color: "rgba(255, 255, 255, 0.85)",
+                        fontSize: "13px",
+                        textDecoration: "none",
                       }}
                     >
                       <i className="fas fa-user" />
-
                       My Shop
                     </Link>
 
 
                     <Link
                       to="/my-ads"
-                      onClick={() =>
-                        setDropdownOpen(
-                          false
-                        )
-                      }
+                      onClick={() => setDropdownOpen(false)}
                       style={{
-                        display:
-                          "flex",
-
-                        alignItems:
-                          "center",
-
+                        display: "flex",
+                        alignItems: "center",
                         gap: "10px",
-
-                        padding:
-                          "9px 14px",
-
-                        color:
-                          "#334155",
-
-                        fontSize:
-                          "13px",
-
-                        textDecoration:
-                          "none",
+                        padding: "9px 14px",
+                        color: "rgba(255, 255, 255, 0.85)",
+                        fontSize: "13px",
+                        textDecoration: "none",
                       }}
                     >
                       <i className="fas fa-box" />
-
                       My Ads
                     </Link>
 
 
                     <Link
                       to="/wishlist"
-                      onClick={() =>
-                        setDropdownOpen(
-                          false
-                        )
-                      }
+                      onClick={() => setDropdownOpen(false)}
                       style={{
-                        display:
-                          "flex",
-
-                        alignItems:
-                          "center",
-
+                        display: "flex",
+                        alignItems: "center",
                         gap: "10px",
-
-                        padding:
-                          "9px 14px",
-
-                        color:
-                          "#334155",
-
-                        fontSize:
-                          "13px",
-
-                        textDecoration:
-                          "none",
+                        padding: "9px 14px",
+                        color: "rgba(255, 255, 255, 0.85)",
+                        fontSize: "13px",
+                        textDecoration: "none",
                       }}
                     >
                       <i className="fas fa-heart" />
-
                       Favorites
 
-                      {favoriteCount >
-                        0 && (
+                      {favoriteCount > 0 && (
                         <span
                           style={{
-                            marginLeft:
-                              "auto",
-
-                            color:
-                              "#e74c3c",
-
-                            fontWeight:
-                              700,
+                            marginLeft: "auto",
+                            color: "#fca5a5",
+                            fontWeight: 700,
                           }}
                         >
-                          {
-                            favoriteCount
-                          }
+                          {favoriteCount}
                         </span>
                       )}
                     </Link>
 
 
-                    {user.role ===
-                      "admin" && (
+                    {user.role === "admin" && (
                       <Link
                         to="/admin"
-                        onClick={() =>
-                          setDropdownOpen(
-                            false
-                          )
-                        }
+                        onClick={() => setDropdownOpen(false)}
                         style={{
-                          display:
-                            "flex",
-
-                          alignItems:
-                            "center",
-
+                          display: "flex",
+                          alignItems: "center",
                           gap: "10px",
-
-                          padding:
-                            "9px 14px",
-
-                          color:
-                            "#334155",
-
-                          fontSize:
-                            "13px",
-
-                          textDecoration:
-                            "none",
+                          padding: "9px 14px",
+                          color: "rgba(255, 255, 255, 0.85)",
+                          fontSize: "13px",
+                          textDecoration: "none",
                         }}
                       >
                         <i className="fas fa-user-shield" />
-
                         Admin Dashboard
                       </Link>
                     )}
@@ -2105,59 +1616,31 @@ const Navbar = () => {
 
                     <hr
                       style={{
-                        margin:
-                          "4px 0",
-
-                        border:
-                          "none",
-
-                        borderTop:
-                          "1px solid #e5e7eb",
+                        margin: "4px 0",
+                        border: "none",
+                        borderTop: "1px solid rgba(255, 255, 255, 0.1)",
                       }}
                     />
 
 
                     <button
                       type="button"
-                      onClick={
-                        handleLogout
-                      }
+                      onClick={handleLogout}
                       style={{
-                        display:
-                          "flex",
-
-                        alignItems:
-                          "center",
-
+                        display: "flex",
+                        alignItems: "center",
                         gap: "10px",
-
-                        width:
-                          "100%",
-
-                        padding:
-                          "9px 14px",
-
-                        background:
-                          "none",
-
-                        border:
-                          "none",
-
-                        color:
-                          "#dc2626",
-
-                        fontSize:
-                          "13px",
-
-                        cursor:
-                          "pointer",
-
-                        textAlign:
-                          "left",
+                        width: "100%",
+                        padding: "9px 14px",
+                        background: "transparent",
+                        border: "none",
+                        color: "#fca5a5",
+                        fontSize: "13px",
+                        cursor: "pointer",
+                        textAlign: "left",
                       }}
                     >
                       <i className="fas fa-sign-out-alt" />
-
                       Logout
                     </button>
                   </div>
@@ -2169,14 +1652,9 @@ const Navbar = () => {
 
               <div
                 style={{
-                  display:
-                    "flex",
-
-                  alignItems:
-                    "center",
-
+                  display: "flex",
+                  alignItems: "center",
                   gap: "6px",
-
                   flexShrink: 0,
                 }}
               >
@@ -2187,29 +1665,14 @@ const Navbar = () => {
                   to="/login"
                   className="desktop-only"
                   style={{
-                    border:
-                      "1px solid #0b2a52",
-
-                    color:
-                      "#0b2a52",
-
-                    padding:
-                      "4px 10px",
-
-                    borderRadius:
-                      "9999px",
-
-                    fontWeight:
-                      600,
-
-                    fontSize:
-                      "12px",
-
-                    textDecoration:
-                      "none",
-
-                    whiteSpace:
-                      "nowrap",
+                    border: "1px solid rgba(255, 255, 255, 0.3)",
+                    color: "#ffffff",
+                    padding: "4px 12px",
+                    borderRadius: "9999px",
+                    fontWeight: 600,
+                    fontSize: "12px",
+                    textDecoration: "none",
+                    whiteSpace: "nowrap",
                   }}
                 >
                   Log In
@@ -2222,29 +1685,15 @@ const Navbar = () => {
                   to="/register"
                   className="desktop-only"
                   style={{
-                    background:
-                      "#0b2a52",
-
-                    color:
-                      "white",
-
-                    padding:
-                      "4px 10px",
-
-                    borderRadius:
-                      "9999px",
-
-                    fontWeight:
-                      600,
-
-                    fontSize:
-                      "12px",
-
-                    textDecoration:
-                      "none",
-
-                    whiteSpace:
-                      "nowrap",
+                    background: "rgba(255, 255, 255, 0.06)",
+                    border: "1px solid rgba(255, 255, 255, 0.3)",
+                    color: "#ffffff",
+                    padding: "4px 12px",
+                    borderRadius: "9999px",
+                    fontWeight: 700,
+                    fontSize: "12px",
+                    textDecoration: "none",
+                    whiteSpace: "nowrap",
                   }}
                 >
                   Sign Up
@@ -2254,52 +1703,28 @@ const Navbar = () => {
                 {/* MOBILE ACCOUNT MENU */}
 
                 <div
-                  ref={
-                    mobileDropdownRef
-                  }
-                  style={{
-                    position:
-                      "relative",
-                  }}
+                  ref={mobileDropdownRef}
+                  style={{ position: "relative" }}
                 >
 
                   <div
-                    onClick={
-                      toggleMobileDropdown
-                    }
+                    onClick={toggleMobileDropdown}
                     role="button"
                     tabIndex={0}
-                    aria-expanded={
-                      mobileDropdownOpen
-                    }
+                    aria-expanded={mobileDropdownOpen}
                     aria-label="Open account menu"
                     style={{
-                      display:
-                        "flex",
-
-                      alignItems:
-                        "center",
-
-                      cursor:
-                        "pointer",
-
+                      display: "flex",
+                      alignItems: "center",
+                      cursor: "pointer",
                       padding: "3px",
-
-                      borderRadius:
-                        "9999px",
-
-                      background:
-                        "rgba(241, 245, 249, 0.8)",
+                      borderRadius: "9999px",
+                      background: "rgba(255, 255, 255, 0.06)",
+                      border: "1px solid rgba(255, 255, 255, 0.1)",
                     }}
                     onKeyDown={(event) => {
-                      if (
-                        event.key ===
-                          "Enter" ||
-                        event.key ===
-                          " "
-                      ) {
+                      if (event.key === "Enter" || event.key === " ") {
                         event.preventDefault();
-
                         toggleMobileDropdown();
                       }
                     }}
@@ -2314,93 +1739,46 @@ const Navbar = () => {
                     <div
                       className="navbar-dropdown"
                       style={{
-                        position:
-                          "absolute",
-
-                        top:
-                          "calc(100% + 8px)",
-
+                        position: "absolute",
+                        top: "calc(100% + 8px)",
                         right: 0,
-
-                        minWidth:
-                          "180px",
-
-                        background:
-                          "rgba(255, 255, 255, 0.98)",
-
-                        backdropFilter:
-                          "blur(14px)",
-
-                        WebkitBackdropFilter:
-                          "blur(14px)",
-
-                        border:
-                          "1px solid #e5e7eb",
-
-                        borderRadius:
-                          "12px",
-
-                        boxShadow:
-                          "0 10px 35px rgba(0,0,0,0.14)",
-
-                        padding:
-                          "4px 0",
-
-                        zIndex:
-                          100000,
+                        minWidth: "180px",
+                        background: "rgba(15, 23, 42, 0.98)",
+                        backdropFilter: "blur(20px)",
+                        WebkitBackdropFilter: "blur(20px)",
+                        border: "1px solid rgba(255, 255, 255, 0.1)",
+                        borderRadius: "12px",
+                        boxShadow: "0 10px 40px rgba(0, 0, 0, 0.4)",
+                        padding: "4px 0",
+                        zIndex: 100000,
                       }}
                     >
 
                       <Link
                         to="/wishlist"
-                        onClick={() =>
-                          setMobileDropdownOpen(
-                            false
-                          )
-                        }
+                        onClick={() => setMobileDropdownOpen(false)}
                         style={{
-                          display:
-                            "flex",
-
-                          alignItems:
-                            "center",
-
+                          display: "flex",
+                          alignItems: "center",
                           gap: "10px",
-
-                          padding:
-                            "9px 14px",
-
-                          color:
-                            "#334155",
-
-                          fontSize:
-                            "13px",
-
-                          textDecoration:
-                            "none",
+                          padding: "9px 14px",
+                          color: "rgba(255, 255, 255, 0.85)",
+                          fontSize: "13px",
+                          textDecoration: "none",
                         }}
                       >
                         <i className="fas fa-heart" />
-
                         Favorites
 
-                        {favoriteCount >
-                          0 && (
+                        {favoriteCount > 0 && (
                           <span
                             style={{
-                              marginLeft:
-                                "auto",
-
-                              color:
-                                "#e74c3c",
-
-                              fontWeight:
-                                700,
+                              marginLeft: "auto",
+                              color: "#fca5a5",
+                              fontWeight: 700,
                             }}
                           >
-                            {
-                              favoriteCount
-                            }
+                            {favoriteCount}
                           </span>
                         )}
                       </Link>
@@ -2408,70 +1786,36 @@ const Navbar = () => {
 
                       <Link
                         to="/login"
-                        onClick={() =>
-                          setMobileDropdownOpen(
-                            false
-                          )
-                        }
+                        onClick={() => setMobileDropdownOpen(false)}
                         style={{
-                          display:
-                            "flex",
-
-                          alignItems:
-                            "center",
-
+                          display: "flex",
+                          alignItems: "center",
                           gap: "10px",
-
-                          padding:
-                            "9px 14px",
-
-                          color:
-                            "#0b2a52",
-
-                          fontSize:
-                            "13px",
-
-                          textDecoration:
-                            "none",
+                          padding: "9px 14px",
+                          color: "#ffffff",
+                          fontSize: "13px",
+                          textDecoration: "none",
                         }}
                       >
                         <i className="fas fa-sign-in-alt" />
-
                         Log In
                       </Link>
 
 
                       <Link
                         to="/register"
-                        onClick={() =>
-                          setMobileDropdownOpen(
-                            false
-                          )
-                        }
+                        onClick={() => setMobileDropdownOpen(false)}
                         style={{
-                          display:
-                            "flex",
-
-                          alignItems:
-                            "center",
-
+                          display: "flex",
+                          alignItems: "center",
                           gap: "10px",
-
-                          padding:
-                            "9px 14px",
-
-                          color:
-                            "#0b2a52",
-
-                          fontSize:
-                            "13px",
-
-                          textDecoration:
-                            "none",
+                          padding: "9px 14px",
+                          color: "#ffffff",
+                          fontSize: "13px",
+                          textDecoration: "none",
                         }}
                       >
                         <i className="fas fa-user-plus" />
-
                         Sign Up
                       </Link>
                     </div>
