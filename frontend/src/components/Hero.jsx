@@ -18,7 +18,7 @@ const Hero = ({ onSearch }) => {
   // ==========================================================
 
   const heroBackground =
-    "/assets/logo/hero.png";
+    "/public/assets/logo/hero.png";
 
   // ==========================================================
   // CAROUSEL SLIDES
