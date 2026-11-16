@@ -4,7 +4,6 @@ import React, {
   useState,
   useEffect,
   useMemo,
-  useRef,
 } from "react";
 
 import { Link } from "react-router-dom";
@@ -18,7 +17,8 @@ const Hero = ({ onSearch }) => {
   // HERO BACKGROUND
   // ==========================================================
 
-  const heroBackground = "/public/assets/logo/hero.png";
+  const heroBackground =
+    "/assets/logo/hero.png";
 
   // ==========================================================
   // CAROUSEL SLIDES
@@ -30,25 +30,32 @@ const Hero = ({ onSearch }) => {
         id: 1,
         image: "/categories/phones.webp",
         title: "Phones & Tablets",
-        subtitle: "Latest smartphones and tablets",
+        subtitle:
+          "Latest smartphones and tablets",
       },
+
       {
         id: 2,
         image: "/categories/laptops.webp",
         title: "Laptops & Computers",
-        subtitle: "MacBook, Dell, HP and more",
+        subtitle:
+          "MacBook, Dell, HP and more",
       },
+
       {
         id: 3,
         image: "/categories/cars.webp",
         title: "Cars & Vehicles",
-        subtitle: "Trusted deals on wheels",
+        subtitle:
+          "Trusted deals on wheels",
       },
+
       {
         id: 4,
         image: "/categories/real-estate.webp",
         title: "Real Estate",
-        subtitle: "Houses, lands and apartments",
+        subtitle:
+          "Houses, lands and apartments",
       },
     ],
     []
@@ -58,54 +65,96 @@ const Hero = ({ onSearch }) => {
   // CURRENT SLIDE
   // ==========================================================
 
-  const [currentSlide, setCurrentSlide] = useState(0);
+  const [currentSlide, setCurrentSlide] =
+    useState(0);
 
   // ==========================================================
   // BACKGROUND LOADED STATE
   // ==========================================================
 
-  const [backgroundLoaded, setBackgroundLoaded] = useState(false);
+  const [backgroundLoaded, setBackgroundLoaded] =
+    useState(false);
 
   // ==========================================================
-  // HERO IMAGE REF — for cache detection
-  // ==========================================================
-
-  const heroImageRef = useRef(null);
-
-  // ==========================================================
-  // FIX: CACHED IMAGE DETECTION
-  // ==========================================================
-  // If the image is already in the browser cache when the
-  // component mounts (very common on mobile after the first
-  // visit or when navigating back to "/"), the browser fires
-  // onLoad synchronously — BEFORE React has attached the
-  // handler — so onLoad never runs and the image stays at
-  // opacity: 0 (invisible).
+  // PRELOAD HERO BACKGROUND
   //
-  // We fix that by checking img.complete on mount.
+  // This starts downloading the background as soon as
+  // the Hero component mounts instead of waiting for
+  // the CSS background-image to be discovered.
+  // ==========================================================
 
   useEffect(() => {
-    const img = heroImageRef.current;
+    let cancelled = false;
 
-    if (img && img.complete && img.naturalWidth > 0) {
-      setBackgroundLoaded(true);
-    }
+    const image = new Image();
+
+    image.decoding = "async";
+
+    image.fetchPriority = "high";
+
+    image.onload = () => {
+      if (!cancelled) {
+        setBackgroundLoaded(true);
+      }
+    };
+
+    image.onerror = () => {
+      if (!cancelled) {
+        setBackgroundLoaded(false);
+      }
+    };
+
+    image.src = heroBackground;
+
+    return () => {
+      cancelled = true;
+
+      image.onload = null;
+      image.onerror = null;
+    };
   }, [heroBackground]);
 
   // ==========================================================
-  // PRELOAD NEXT SLIDE
+  // PRELOAD FIRST CAROUSEL IMAGE
   // ==========================================================
 
   useEffect(() => {
-    const nextIndex = (currentSlide + 1) % slides.length;
-    const nextImage = slides?.[nextIndex]?.image;
+    const firstImage =
+      slides?.[0]?.image;
+
+    if (!firstImage) return;
+
+    const image = new Image();
+
+    image.decoding = "async";
+
+    image.fetchPriority = "high";
+
+    image.src = firstImage;
+  }, [slides]);
+
+  // ==========================================================
+  // PRELOAD NEXT SLIDE
+  //
+  // Only the next image is prepared instead of loading
+  // every carousel image aggressively on first visit.
+  // ==========================================================
+
+  useEffect(() => {
+    const nextIndex =
+      (currentSlide + 1) % slides.length;
+
+    const nextImage =
+      slides?.[nextIndex]?.image;
 
     if (!nextImage) return;
 
     const image = new Image();
 
     image.decoding = "async";
+
     image.fetchPriority = "low";
+
     image.src = nextImage;
   }, [currentSlide, slides]);
 
@@ -115,7 +164,10 @@ const Hero = ({ onSearch }) => {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setCurrentSlide((previous) => (previous + 1) % slides.length);
+      setCurrentSlide(
+        (previous) =>
+          (previous + 1) % slides.length
+      );
     }, 7000);
 
     return () => {
@@ -140,7 +192,7 @@ const Hero = ({ onSearch }) => {
       <style>
         {`
           /* =====================================================
-             HERO — Optimized for Mobile & Desktop
+             HERO
           ===================================================== */
 
           .hero-shopglowsy {
@@ -150,16 +202,15 @@ const Hero = ({ onSearch }) => {
 
             min-height: 700px;
 
-            /* Desktop navbar height ≈ 76px */
-            margin-top: -76px;
+            padding:
+              110px 0 100px;
 
-            /* 76px pull + 74px original gap = 150px top padding */
-            padding: 150px 0 100px;
+            margin: 0;
 
-            background: transparent;
+            background:
+              #0f172a;
 
             overflow: hidden;
-            overflow-x: hidden;
 
             box-sizing: border-box;
 
@@ -167,15 +218,14 @@ const Hero = ({ onSearch }) => {
           }
 
 
-          .hero-shopglowsy *,
-          .hero-shopglowsy *::before,
-          .hero-shopglowsy *::after {
-            box-sizing: border-box;
-          }
-
-
           /* =====================================================
              HERO BACKGROUND IMAGE
+
+             IMPORTANT:
+             We use a real IMG instead of relying on a CSS
+             background image.
+
+             This allows the browser to start loading it earlier.
           ===================================================== */
 
           .hero-background-image {
@@ -189,7 +239,8 @@ const Hero = ({ onSearch }) => {
 
             object-fit: cover;
 
-            object-position: center center;
+            object-position:
+              center center;
 
             display: block;
 
@@ -197,17 +248,15 @@ const Hero = ({ onSearch }) => {
 
             opacity: 0;
 
-            transform: scale(1.01);
+            transform:
+              scale(1.01);
 
-            transition: opacity 0.4s ease-in-out;
+            transition:
+              opacity 0.18s ease;
 
             pointer-events: none;
 
             user-select: none;
-
-            /* Prevents paint issues on some Android browsers */
-            -webkit-backface-visibility: hidden;
-            backface-visibility: hidden;
           }
 
 
@@ -218,7 +267,6 @@ const Hero = ({ onSearch }) => {
 
           /* =====================================================
              BACKGROUND FALLBACK
-             Dark solid so text stays readable before image loads
           ===================================================== */
 
           .hero-background-fallback {
@@ -226,7 +274,13 @@ const Hero = ({ onSearch }) => {
 
             inset: 0;
 
-            background: #0f172a;
+            background:
+              linear-gradient(
+                135deg,
+                #0f172a 0%,
+                #16263f 50%,
+                #0f172a 100%
+              );
 
             z-index: -3;
 
@@ -243,7 +297,13 @@ const Hero = ({ onSearch }) => {
 
             position: absolute;
 
-            inset: 0;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+
+            width: 100%;
+            height: 100%;
 
             background:
               linear-gradient(
@@ -274,11 +334,13 @@ const Hero = ({ onSearch }) => {
 
             margin: 0 auto;
 
-            padding: 0 24px;
+            padding:
+              0 24px;
 
             display: grid;
 
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns:
+              1fr 1fr;
 
             gap: 60px;
 
@@ -304,33 +366,43 @@ const Hero = ({ onSearch }) => {
 
             line-height: 1.15;
 
-            margin: 0 0 16px;
+            margin:
+              0 0 16px;
 
-            color: #ffffff;
+            color:
+              #ffffff;
 
-            letter-spacing: -0.8px;
+            letter-spacing:
+              -0.8px;
 
-            text-shadow: 0 3px 18px rgba(0, 0, 0, 0.65);
+            text-shadow:
+              0 3px 18px
+              rgba(0, 0, 0, 0.65);
           }
 
 
           .hero-shopglowsy-content h1 span {
-            color: #2ecc71;
+            color:
+              #2ecc71;
           }
 
 
           .hero-shopglowsy-content p {
             font-size: 18px;
 
-            color: rgba(255, 255, 255, 0.96);
+            color:
+              rgba(255, 255, 255, 0.96);
 
             max-width: 480px;
 
-            margin: 0 0 32px;
+            margin:
+              0 0 32px;
 
             line-height: 1.7;
 
-            text-shadow: 0 2px 12px rgba(0, 0, 0, 0.55);
+            text-shadow:
+              0 2px 12px
+              rgba(0, 0, 0, 0.55);
           }
 
 
@@ -345,9 +417,14 @@ const Hero = ({ onSearch }) => {
 
             gap: 12px;
 
-            margin-bottom: 32px;
+            margin-bottom:
+              32px;
           }
 
+
+          /* =====================================================
+             PRIMARY BUTTON
+          ===================================================== */
 
           .hero-shopglowsy-actions .btn-primary {
             display: inline-flex;
@@ -358,43 +435,64 @@ const Hero = ({ onSearch }) => {
 
             gap: 8px;
 
-            background: #2ecc71;
+            background:
+              #2ecc71;
 
-            color: #ffffff;
+            color:
+              #ffffff;
 
-            padding: 14px 32px;
+            padding:
+              14px 32px;
 
-            border-radius: 9999px;
+            border-radius:
+              9999px;
 
-            font-weight: 700;
+            font-weight:
+              700;
 
-            font-size: 16px;
+            font-size:
+              16px;
 
-            border: none;
+            border:
+              none;
 
-            cursor: pointer;
+            cursor:
+              pointer;
 
             transition:
               transform 0.25s ease,
               background 0.25s ease,
               box-shadow 0.25s ease;
 
-            box-shadow: 0 5px 18px rgba(46, 204, 113, 0.42);
+            box-shadow:
+              0 5px 18px
+              rgba(46, 204, 113, 0.42);
 
-            text-decoration: none;
+            text-decoration:
+              none;
 
-            white-space: nowrap;
+            white-space:
+              nowrap;
           }
 
 
-          .hero-shopglowsy-actions .btn-primary:hover {
-            background: #27ae60;
+          .hero-shopglowsy-actions
+          .btn-primary:hover {
+            background:
+              #27ae60;
 
-            transform: translateY(-2px);
+            transform:
+              translateY(-2px);
 
-            box-shadow: 0 8px 24px rgba(46, 204, 113, 0.52);
+            box-shadow:
+              0 8px 24px
+              rgba(46, 204, 113, 0.52);
           }
 
+
+          /* =====================================================
+             SECONDARY BUTTON
+          ===================================================== */
 
           .hero-shopglowsy-actions .btn-secondary {
             display: inline-flex;
@@ -405,43 +503,60 @@ const Hero = ({ onSearch }) => {
 
             gap: 8px;
 
-            background: rgba(0, 0, 0, 0.30);
+            background:
+              rgba(0, 0, 0, 0.30);
 
-            backdrop-filter: blur(8px);
+            backdrop-filter:
+              blur(8px);
 
-            -webkit-backdrop-filter: blur(8px);
+            -webkit-backdrop-filter:
+              blur(8px);
 
-            color: #ffffff;
+            color:
+              #ffffff;
 
-            padding: 14px 32px;
+            padding:
+              14px 32px;
 
-            border-radius: 9999px;
+            border-radius:
+              9999px;
 
-            font-weight: 600;
+            font-weight:
+              600;
 
-            font-size: 16px;
+            font-size:
+              16px;
 
-            border: 1px solid rgba(255, 255, 255, 0.28);
+            border:
+              1px solid
+              rgba(255, 255, 255, 0.28);
 
-            cursor: pointer;
+            cursor:
+              pointer;
 
             transition:
               transform 0.25s ease,
               background 0.25s ease,
               border-color 0.25s ease;
 
-            text-decoration: none;
+            text-decoration:
+              none;
 
-            white-space: nowrap;
+            white-space:
+              nowrap;
           }
 
 
-          .hero-shopglowsy-actions .btn-secondary:hover {
-            background: rgba(0, 0, 0, 0.45);
+          .hero-shopglowsy-actions
+          .btn-secondary:hover {
+            background:
+              rgba(0, 0, 0, 0.45);
 
-            border-color: rgba(255, 255, 255, 0.45);
+            border-color:
+              rgba(255, 255, 255, 0.45);
 
-            transform: translateY(-2px);
+            transform:
+              translateY(-2px);
           }
 
 
@@ -454,9 +569,12 @@ const Hero = ({ onSearch }) => {
 
             gap: 48px;
 
-            padding-top: 32px;
+            padding-top:
+              32px;
 
-            border-top: 1px solid rgba(255, 255, 255, 0.28);
+            border-top:
+              1px solid
+              rgba(255, 255, 255, 0.28);
           }
 
 
@@ -469,27 +587,40 @@ const Hero = ({ onSearch }) => {
           }
 
 
-          .hero-shopglowsy-stats .stat-number {
-            font-size: 28px;
+          .hero-shopglowsy-stats
+          .stat-number {
+            font-size:
+              28px;
 
-            font-weight: 800;
+            font-weight:
+              800;
 
-            color: #ffffff;
+            color:
+              #ffffff;
 
-            line-height: 1.2;
+            line-height:
+              1.2;
 
-            text-shadow: 0 2px 12px rgba(0, 0, 0, 0.55);
+            text-shadow:
+              0 2px 12px
+              rgba(0, 0, 0, 0.55);
           }
 
 
-          .hero-shopglowsy-stats .stat-label {
-            font-size: 14px;
+          .hero-shopglowsy-stats
+          .stat-label {
+            font-size:
+              14px;
 
-            color: rgba(255, 255, 255, 0.82);
+            color:
+              rgba(255, 255, 255, 0.82);
 
-            margin-top: 4px;
+            margin-top:
+              4px;
 
-            text-shadow: 0 1px 8px rgba(0, 0, 0, 0.45);
+            text-shadow:
+              0 1px 8px
+              rgba(0, 0, 0, 0.45);
           }
 
 
@@ -502,77 +633,115 @@ const Hero = ({ onSearch }) => {
 
             width: 100%;
 
-            max-width: 480px;
+            max-width:
+              480px;
 
-            margin: 0 auto;
+            margin:
+              0 auto;
 
-            border-radius: 18px;
+            border-radius:
+              18px;
 
-            overflow: hidden;
+            overflow:
+              hidden;
 
-            box-shadow: 0 16px 45px rgba(0, 0, 0, 0.40);
+            box-shadow:
+              0 16px 45px
+              rgba(0, 0, 0, 0.40);
 
-            border: 1px solid rgba(255, 255, 255, 0.14);
+            border:
+              1px solid
+              rgba(255, 255, 255, 0.14);
 
-            background: rgba(15, 23, 42, 0.35);
+            background:
+              rgba(15, 23, 42, 0.35);
 
-            backdrop-filter: blur(4px);
+            backdrop-filter:
+              blur(4px);
 
-            -webkit-backdrop-filter: blur(4px);
+            -webkit-backdrop-filter:
+              blur(4px);
           }
 
 
           .hero-carousel .slide-track {
-            display: flex;
+            display:
+              flex;
 
-            transition: transform 0.5s ease-in-out;
+            transition:
+              transform 0.5s
+              ease-in-out;
 
-            will-change: transform;
+            will-change:
+              transform;
           }
 
 
           .hero-carousel .slide {
-            min-width: 100%;
+            min-width:
+              100%;
 
-            height: 450px;
+            height:
+              450px;
 
-            position: relative;
+            position:
+              relative;
 
-            background: #1e293b;
+            background:
+              #1e293b;
 
-            display: flex;
+            display:
+              flex;
 
-            align-items: center;
+            align-items:
+              center;
 
-            justify-content: center;
+            justify-content:
+              center;
 
-            overflow: hidden;
+            overflow:
+              hidden;
           }
 
 
           .hero-carousel .slide img {
-            width: 100%;
+            width:
+              100%;
 
-            height: 100%;
+            height:
+              100%;
 
-            object-fit: cover;
+            object-fit:
+              cover;
 
-            background: #1e293b;
+            background:
+              #1e293b;
 
-            display: block;
+            display:
+              block;
           }
 
 
-          .hero-carousel .slide-overlay {
-            position: absolute;
+          /* =====================================================
+             CAROUSEL OVERLAY
+          ===================================================== */
 
-            bottom: 0;
+          .hero-carousel
+          .slide-overlay {
+            position:
+              absolute;
 
-            left: 0;
+            bottom:
+              0;
 
-            right: 0;
+            left:
+              0;
 
-            padding: 24px 20px 20px;
+            right:
+              0;
+
+            padding:
+              24px 20px 20px;
 
             background:
               linear-gradient(
@@ -582,27 +751,37 @@ const Hero = ({ onSearch }) => {
                 transparent 100%
               );
 
-            color: #ffffff;
+            color:
+              #ffffff;
           }
 
 
-          .hero-carousel .slide-overlay h3 {
-            font-size: 20px;
+          .hero-carousel
+          .slide-overlay h3 {
+            font-size:
+              20px;
 
-            font-weight: 700;
+            font-weight:
+              700;
 
-            margin: 0 0 3px;
+            margin:
+              0 0 3px;
           }
 
 
-          .hero-carousel .slide-overlay p {
-            font-size: 14px;
+          .hero-carousel
+          .slide-overlay p {
+            font-size:
+              14px;
 
-            opacity: 0.9;
+            opacity:
+              0.9;
 
-            margin: 0;
+            margin:
+              0;
 
-            line-height: 1.4;
+            line-height:
+              1.4;
           }
 
 
@@ -611,44 +790,62 @@ const Hero = ({ onSearch }) => {
           ===================================================== */
 
           .hero-carousel-dots {
-            position: absolute;
+            position:
+              absolute;
 
-            left: 0;
+            left:
+              0;
 
-            right: 0;
+            right:
+              0;
 
-            bottom: 12px;
+            bottom:
+              12px;
 
-            display: flex;
+            display:
+              flex;
 
-            justify-content: center;
+            justify-content:
+              center;
 
-            align-items: center;
+            align-items:
+              center;
 
-            gap: 7px;
+            gap:
+              7px;
 
-            z-index: 5;
+            z-index:
+              5;
 
-            pointer-events: none;
+            pointer-events:
+              none;
           }
 
 
           .hero-carousel-dot {
-            width: 7px;
+            width:
+              7px;
 
-            height: 7px;
+            height:
+              7px;
 
-            padding: 0;
+            padding:
+              0;
 
-            border: none;
+            border:
+              none;
 
-            border-radius: 50%;
+            border-radius:
+              50%;
 
-            background: rgba(255, 255, 255, 0.48);
+            background:
+              rgba(255, 255, 255, 0.48);
 
-            pointer-events: auto;
+            pointer-events:
+              auto;
 
-            cursor: pointer;
+            cursor:
+              pointer;
 
             transition:
               transform 0.2s ease,
@@ -657,9 +854,11 @@ const Hero = ({ onSearch }) => {
 
 
           .hero-carousel-dot.active {
-            background: #ffffff;
+            background:
+              #ffffff;
 
-            transform: scale(1.35);
+            transform:
+              scale(1.35);
           }
 
 
@@ -670,40 +869,47 @@ const Hero = ({ onSearch }) => {
           @media (min-width: 1440px) {
 
             .hero-shopglowsy {
-              min-height: 760px;
+              min-height:
+                760px;
 
-              margin-top: -76px;
-
-              padding: 156px 0 110px;
+              padding:
+                120px 0 110px;
             }
 
 
             .hero-shopglowsy .container {
-              max-width: 1320px;
+              max-width:
+                1320px;
 
-              gap: 80px;
+              gap:
+                80px;
             }
 
 
             .hero-shopglowsy-content h1 {
-              font-size: 56px;
+              font-size:
+                56px;
             }
 
 
             .hero-shopglowsy-content p {
-              font-size: 19px;
+              font-size:
+                19px;
 
-              max-width: 540px;
+              max-width:
+                540px;
             }
 
 
             .hero-carousel {
-              max-width: 540px;
+              max-width:
+                540px;
             }
 
 
             .hero-carousel .slide {
-              height: 500px;
+              height:
+                500px;
             }
           }
 
@@ -715,271 +921,319 @@ const Hero = ({ onSearch }) => {
           @media (min-width: 1800px) {
 
             .hero-shopglowsy {
-              min-height: 800px;
-
-              margin-top: -76px;
-
-              padding: 166px 0 120px;
+              min-height:
+                800px;
             }
 
 
             .hero-shopglowsy .container {
-              max-width: 1440px;
+              max-width:
+                1440px;
 
-              gap: 100px;
+              gap:
+                100px;
             }
 
 
             .hero-shopglowsy-content h1 {
-              font-size: 60px;
+              font-size:
+                60px;
             }
 
 
             .hero-shopglowsy-content p {
-              font-size: 20px;
+              font-size:
+                20px;
 
-              max-width: 580px;
+              max-width:
+                580px;
             }
 
 
             .hero-carousel {
-              max-width: 580px;
+              max-width:
+                580px;
             }
 
 
             .hero-carousel .slide {
-              height: 530px;
+              height:
+                530px;
             }
           }
 
 
           /* =====================================================
-             TABLET (Navbar ≈ 72px)
+             TABLET
           ===================================================== */
 
           @media (max-width: 1024px) {
 
             .hero-shopglowsy {
-              min-height: auto;
+              min-height:
+                auto;
 
-              margin-top: -72px;
-
-              padding: 130px 0 80px;
+              padding:
+                100px 0 80px;
             }
 
 
             .hero-shopglowsy .container {
-              grid-template-columns: 1fr;
+              grid-template-columns:
+                1fr;
 
-              gap: 45px;
+              gap:
+                45px;
 
-              text-align: center;
+              text-align:
+                center;
             }
 
 
             .hero-shopglowsy-content p {
-              margin-left: auto;
+              margin-left:
+                auto;
 
-              margin-right: auto;
+              margin-right:
+                auto;
             }
 
 
             .hero-shopglowsy-actions {
-              justify-content: center;
+              justify-content:
+                center;
             }
 
 
             .hero-shopglowsy-stats {
-              justify-content: center;
+              justify-content:
+                center;
             }
 
 
             .hero-carousel {
-              margin: 0 auto;
+              margin:
+                0 auto;
 
-              max-width: min(90%, 520px);
-            }
-
-            /* Slightly higher crop on tablet so faces/products
-               aren't cut off in the middle */
-            .hero-background-image {
-              object-position: center 40%;
+              max-width:
+                min(90%, 520px);
             }
           }
 
 
           /* =====================================================
-             MOBILE (Navbar ≈ 60px)
+             MOBILE
           ===================================================== */
 
           @media (max-width: 768px) {
 
             .hero-shopglowsy {
-              margin-top: -60px;
+              padding:
+                88px 0 60px;
 
-              padding: 110px 0 60px;
-
-              min-height: auto;
+              min-height:
+                auto;
             }
 
 
             .hero-shopglowsy .container {
-              padding: 0 16px;
+              padding:
+                0 16px;
 
-              gap: 36px;
+              gap:
+                36px;
             }
 
 
             .hero-shopglowsy-content h1 {
-              font-size: 34px;
+              font-size:
+                34px;
 
-              line-height: 1.15;
+              line-height:
+                1.15;
 
-              letter-spacing: -0.5px;
+              letter-spacing:
+                -0.5px;
             }
 
 
             .hero-shopglowsy-content p {
-              font-size: 16px;
+              font-size:
+                16px;
 
-              line-height: 1.6;
+              line-height:
+                1.6;
 
-              margin-bottom: 24px;
+              margin-bottom:
+                24px;
             }
 
 
             .hero-shopglowsy-actions {
-              margin-bottom: 28px;
+              margin-bottom:
+                28px;
             }
 
 
             .hero-shopglowsy-stats {
-              gap: 18px;
+              gap:
+                18px;
 
-              padding-top: 24px;
+              padding-top:
+                24px;
 
-              flex-direction: row;
+              flex-direction:
+                row;
 
-              flex-wrap: wrap;
+              flex-wrap:
+                wrap;
             }
 
 
-            .hero-shopglowsy-stats .stat {
-              flex: 1 1 80px;
+            .hero-shopglowsy-stats
+            .stat {
+              flex:
+                1 1 80px;
 
-              align-items: center;
+              align-items:
+                center;
             }
 
 
-            .hero-shopglowsy-stats .stat-number {
-              font-size: 24px;
+            .hero-shopglowsy-stats
+            .stat-number {
+              font-size:
+                24px;
             }
 
 
-            .hero-shopglowsy-stats .stat-label {
-              font-size: 12px;
+            .hero-shopglowsy-stats
+            .stat-label {
+              font-size:
+                12px;
 
-              text-align: center;
+              text-align:
+                center;
             }
 
 
             .hero-carousel {
-              width: 100%;
+              width:
+                100%;
 
-              max-width: 100%;
+              max-width:
+                100%;
 
-              border-radius: 15px;
+              border-radius:
+                15px;
             }
 
 
             .hero-carousel .slide {
-              height: 350px;
-            }
-
-            /* FIX: On tall/narrow phones, object-fit: cover
-               with 'center center' crops the image to a tiny
-               zoomed-in sliver. Shifting the crop up to 30%
-               shows the interesting upper-middle of the image. */
-            .hero-background-image {
-              object-position: center 30%;
+              height:
+                350px;
             }
           }
 
 
           /* =====================================================
-             SMALL MOBILE (Navbar ≈ 54px)
+             SMALL MOBILE
           ===================================================== */
 
           @media (max-width: 480px) {
 
             .hero-shopglowsy {
-              margin-top: -54px;
-
-              padding: 100px 0 50px;
+              padding:
+                78px 0 50px;
             }
 
 
             .hero-shopglowsy .container {
-              padding: 0 12px;
+              padding:
+                0 12px;
 
-              gap: 28px;
+              gap:
+                28px;
             }
 
 
             .hero-shopglowsy-content h1 {
-              font-size: 29px;
+              font-size:
+                29px;
             }
 
 
             .hero-shopglowsy-content p {
-              font-size: 15px;
+              font-size:
+                15px;
 
-              margin-bottom: 22px;
+              margin-bottom:
+                22px;
             }
 
 
             .hero-shopglowsy-actions {
-              flex-direction: column;
+              flex-direction:
+                column;
 
-              align-items: stretch;
+              align-items:
+                stretch;
 
-              width: 100%;
+              width:
+                100%;
             }
 
 
-            .hero-shopglowsy-actions .btn-primary,
-            .hero-shopglowsy-actions .btn-secondary {
-              width: 100%;
+            .hero-shopglowsy-actions
+            .btn-primary,
+
+            .hero-shopglowsy-actions
+            .btn-secondary {
+              width:
+                100%;
+
+              box-sizing:
+                border-box;
             }
 
 
             .hero-shopglowsy-stats {
-              gap: 12px;
+              gap:
+                12px;
             }
 
 
-            .hero-shopglowsy-stats .stat-number {
-              font-size: 21px;
+            .hero-shopglowsy-stats
+            .stat-number {
+              font-size:
+                21px;
             }
 
 
             .hero-carousel .slide {
-              height: 280px;
+              height:
+                280px;
             }
 
 
-            .hero-carousel .slide-overlay {
-              padding: 20px 15px 15px;
+            .hero-carousel
+            .slide-overlay {
+              padding:
+                20px 15px 15px;
             }
 
 
-            .hero-carousel .slide-overlay h3 {
-              font-size: 16px;
+            .hero-carousel
+            .slide-overlay h3 {
+              font-size:
+                16px;
             }
 
 
-            .hero-carousel .slide-overlay p {
-              font-size: 12px;
+            .hero-carousel
+            .slide-overlay p {
+              font-size:
+                12px;
             }
           }
 
@@ -991,34 +1245,40 @@ const Hero = ({ onSearch }) => {
           @media (max-width: 380px) {
 
             .hero-shopglowsy {
-              margin-top: -54px;
-
-              padding: 90px 0 45px;
+              padding:
+                70px 0 45px;
             }
 
 
             .hero-shopglowsy-content h1 {
-              font-size: 26px;
+              font-size:
+                26px;
             }
 
 
             .hero-shopglowsy-content p {
-              font-size: 14px;
+              font-size:
+                14px;
             }
 
 
             .hero-carousel .slide {
-              height: 240px;
+              height:
+                240px;
             }
 
 
-            .hero-shopglowsy-stats .stat-number {
-              font-size: 19px;
+            .hero-shopglowsy-stats
+            .stat-number {
+              font-size:
+                19px;
             }
 
 
-            .hero-shopglowsy-stats .stat-label {
-              font-size: 11px;
+            .hero-shopglowsy-stats
+            .stat-label {
+              font-size:
+                11px;
             }
           }
 
@@ -1030,19 +1290,26 @@ const Hero = ({ onSearch }) => {
           @media (prefers-reduced-motion: reduce) {
 
             .hero-background-image {
-              transition: none;
+              transition:
+                none;
             }
 
 
             .hero-carousel .slide-track {
-              transition: none;
+              transition:
+                none;
             }
 
 
-            .hero-shopglowsy-actions .btn-primary,
-            .hero-shopglowsy-actions .btn-secondary,
+            .hero-shopglowsy-actions
+            .btn-primary,
+
+            .hero-shopglowsy-actions
+            .btn-secondary,
+
             .hero-carousel-dot {
-              transition: none;
+              transition:
+                none;
             }
           }
         `}
@@ -1050,7 +1317,7 @@ const Hero = ({ onSearch }) => {
 
 
       {/* ========================================================
-          HERO SECTION
+          HERO
       ======================================================== */}
 
       <section
@@ -1069,14 +1336,17 @@ const Hero = ({ onSearch }) => {
 
 
         {/* ======================================================
-            HERO BACKGROUND IMAGE
-            ref + onLoad + onError + cache detection
+            OPTIMIZED HERO BACKGROUND
+
+            The image is loaded independently from the CSS,
+            allowing the browser to begin fetching it earlier.
         ====================================================== */}
 
         <img
-          ref={heroImageRef}
           className={`hero-background-image ${
-            backgroundLoaded ? "is-loaded" : ""
+            backgroundLoaded
+              ? "is-loaded"
+              : ""
           }`}
           src={heroBackground}
           alt=""
@@ -1085,8 +1355,6 @@ const Hero = ({ onSearch }) => {
           loading="eager"
           decoding="async"
           draggable="false"
-          onLoad={() => setBackgroundLoaded(true)}
-          onError={() => setBackgroundLoaded(false)}
         />
 
 
@@ -1206,7 +1474,9 @@ const Hero = ({ onSearch }) => {
               className="slide-track"
               style={{
                 transform:
-                  `translate3d(-${currentSlide * 100}%, 0, 0)`,
+                  `translateX(-${
+                    currentSlide * 100
+                  }%)`,
               }}
             >
 
@@ -1222,10 +1492,14 @@ const Hero = ({ onSearch }) => {
                       src={slide.image}
                       alt={slide.title}
                       loading={
-                        index === 0 ? "eager" : "lazy"
+                        index === 0
+                          ? "eager"
+                          : "lazy"
                       }
                       fetchPriority={
-                        index === 0 ? "high" : "low"
+                        index === 0
+                          ? "high"
+                          : "low"
                       }
                       decoding="async"
                     />
@@ -1233,9 +1507,14 @@ const Hero = ({ onSearch }) => {
 
                     <div className="slide-overlay">
 
-                      <h3>🛒 {slide.title}</h3>
+                      <h3>
+                        🛒{" "}
+                        {slide.title}
+                      </h3>
 
-                      <p>{slide.subtitle}</p>
+                      <p>
+                        {slide.subtitle}
+                      </p>
 
                     </div>
 
@@ -1263,15 +1542,21 @@ const Hero = ({ onSearch }) => {
                     key={slide.id}
                     type="button"
                     className={`hero-carousel-dot ${
-                      index === currentSlide ? "active" : ""
+                      index === currentSlide
+                        ? "active"
+                        : ""
                     }`}
-                    aria-label={`Go to slide ${index + 1}`}
+                    aria-label={`Go to slide ${
+                      index + 1
+                    }`}
                     aria-current={
                       index === currentSlide
                         ? "true"
                         : undefined
                     }
-                    onClick={() => goToSlide(index)}
+                    onClick={() =>
+                      goToSlide(index)
+                    }
                   />
 
                 )
