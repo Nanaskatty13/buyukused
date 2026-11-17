@@ -163,7 +163,293 @@ const EditProduct = () => {
   if (error) return <div className="container" style={{ padding: '40px', textAlign: 'center', color: '#dc2626' }}>{error}</div>;
 
   return (
-    <div className="container" style={{ maxWidth: '600px', padding: '30px 20px' }}>
+    <div className="container liquid-edit-page" style={{ maxWidth: '600px', padding: '30px 20px' }}>
+      {/* ═══════════════════════════════════════════════════════
+          LIQUID iOS27 — STYLES
+          ═══════════════════════════════════════════════════════ */}
+      <style>{`
+        @keyframes liquid-edit-float {
+          0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+          33%      { transform: translate3d(-30px, 24px, 0) scale(1.06); }
+          66%      { transform: translate3d(24px, -20px, 0) scale(0.97); }
+        }
+
+        /* ─── Page — liquid mirror background ──────────── */
+        .liquid-edit-page {
+          position: relative;
+          isolation: isolate;
+          overflow: hidden;
+          border-radius: 20px;
+          background: linear-gradient(
+            135deg,
+            #eef4ff 0%,
+            #f5f0ff 40%,
+            #eaf7ff 70%,
+            #f2f8ff 100%
+          );
+        }
+
+        .liquid-edit-page::before {
+          content: "";
+          position: absolute;
+          inset: 0;
+          z-index: -1;
+          pointer-events: none;
+          background:
+            radial-gradient(circle at 8% 15%, rgba(0,102,204,0.22) 0%, rgba(0,102,204,0.08) 25%, transparent 55%),
+            radial-gradient(circle at 92% 60%, rgba(139,92,246,0.18) 0%, rgba(139,92,246,0.06) 25%, transparent 55%),
+            radial-gradient(circle at 50% 115%, rgba(6,182,212,0.18) 0%, rgba(6,182,212,0.06) 25%, transparent 55%),
+            radial-gradient(circle at 30% 80%, rgba(59,130,246,0.12) 0%, transparent 50%);
+          animation: liquid-edit-float 24s ease-in-out infinite;
+          will-change: transform;
+        }
+
+        /* ─── Form fields — liquid glass ───────────────── */
+        .liquid-edit-page input[type="text"],
+        .liquid-edit-page input[type="number"],
+        .liquid-edit-page input[type="tel"],
+        .liquid-edit-page select,
+        .liquid-edit-page textarea {
+          width: 100%;
+          padding: 11px 14px;
+          border-radius: 12px;
+          border: 1px solid rgba(255,255,255,0.75);
+          background: linear-gradient(
+            135deg,
+            rgba(255,255,255,0.72) 0%,
+            rgba(255,255,255,0.38) 100%
+          );
+          backdrop-filter: blur(10px) saturate(180%);
+          -webkit-backdrop-filter: blur(10px) saturate(180%);
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.9),
+            0 2px 10px rgba(31,38,135,0.06);
+          color: #111827;
+          font-size: 14px;
+          font-family: inherit;
+          outline: none;
+          transition: border-color 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        .liquid-edit-page input[type="text"]:focus,
+        .liquid-edit-page input[type="number"]:focus,
+        .liquid-edit-page input[type="tel"]:focus,
+        .liquid-edit-page select:focus,
+        .liquid-edit-page textarea:focus {
+          border-color: rgba(0,102,204,0.6);
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,1),
+            0 0 0 3px rgba(0,102,204,0.14),
+            0 4px 14px rgba(31,38,135,0.10);
+        }
+
+        /* ─── File input — liquid glass label feel ────── */
+        .liquid-edit-page input[type="file"] {
+          padding: 10px 12px;
+          border-radius: 12px;
+          border: 1px solid rgba(255,255,255,0.75);
+          background: linear-gradient(
+            135deg,
+            rgba(255,255,255,0.68) 0%,
+            rgba(255,255,255,0.32) 100%
+          );
+          backdrop-filter: blur(10px) saturate(180%);
+          -webkit-backdrop-filter: blur(10px) saturate(180%);
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.9),
+            0 2px 10px rgba(31,38,135,0.06);
+          font-size: 13px;
+          color: #374151;
+          width: 100%;
+          cursor: pointer;
+        }
+
+        /* ─── Error banner — red liquid glass ─────────── */
+        .liquid-edit-page .error-banner {
+          background: linear-gradient(
+            135deg,
+            rgba(255,255,255,0.65) 0%,
+            rgba(254,226,226,0.6) 100%
+          );
+          backdrop-filter: blur(12px) saturate(180%);
+          -webkit-backdrop-filter: blur(12px) saturate(180%);
+          border: 1px solid rgba(252,165,165,0.55);
+          color: #b91c1c;
+          padding: 12px 16px;
+          border-radius: 12px;
+          margin-bottom: 16px;
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.9),
+            0 4px 18px rgba(220,38,38,0.08);
+        }
+
+        /* ─── Image thumbnail — liquid glass frame ────── */
+        .liquid-edit-page .liquid-edit-thumb {
+          position: relative;
+          width: 80px;
+          height: 80px;
+          border-radius: 10px;
+          overflow: hidden;
+          border: 1px solid rgba(255,255,255,0.75);
+          background: linear-gradient(
+            135deg,
+            rgba(255,255,255,0.5) 0%,
+            rgba(238,246,255,0.3) 100%
+          );
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.9),
+            0 2px 8px rgba(31,38,135,0.08);
+        }
+
+        /* ─── Thumbnail remove button — liquid red glass ─ */
+        .liquid-edit-page .liquid-edit-thumb-remove {
+          position: absolute;
+          top: 2px;
+          right: 2px;
+          width: 22px;
+          height: 22px;
+          font-size: 11px;
+          line-height: 1;
+          color: #ffffff;
+          border: 1px solid rgba(255,255,255,0.4);
+          border-radius: 50%;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: linear-gradient(
+            135deg,
+            rgba(239,68,68,0.94) 0%,
+            rgba(220,38,38,0.88) 100%
+          );
+          backdrop-filter: blur(8px) saturate(180%);
+          -webkit-backdrop-filter: blur(8px) saturate(180%);
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.35),
+            0 2px 8px rgba(239,68,68,0.35);
+          transition: transform 0.15s ease;
+        }
+        .liquid-edit-page .liquid-edit-thumb-remove:hover {
+          transform: scale(1.08);
+        }
+
+        /* ─── Save button — liquid blue glass ─────────── */
+        .liquid-edit-page .btn-primary {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          padding: 12px 22px;
+          border-radius: 14px;
+          font-weight: 700;
+          font-size: 15px;
+          cursor: pointer;
+          color: #ffffff;
+          border: 1px solid rgba(255,255,255,0.4);
+          background: linear-gradient(
+            135deg,
+            rgba(0,102,204,0.94) 0%,
+            rgba(0,85,165,0.88) 100%
+          );
+          backdrop-filter: blur(14px) saturate(180%);
+          -webkit-backdrop-filter: blur(14px) saturate(180%);
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.35),
+            0 4px 14px rgba(0,102,204,0.30);
+          transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+        .liquid-edit-page .btn-primary:hover:not(:disabled) {
+          transform: translateY(-1px);
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.45),
+            0 8px 24px rgba(0,102,204,0.42);
+        }
+        .liquid-edit-page .btn-primary:active:not(:disabled) {
+          transform: translateY(0) scale(0.98);
+        }
+        .liquid-edit-page .btn-primary:disabled {
+          opacity: 0.55;
+          cursor: not-allowed;
+          transform: none;
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.3),
+            0 2px 8px rgba(0,102,204,0.15);
+        }
+
+        /* ─── Delete button — liquid red glass ────────── */
+        .liquid-edit-page .btn-outline {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          padding: 12px 22px;
+          border-radius: 14px;
+          font-weight: 700;
+          font-size: 15px;
+          cursor: pointer;
+          color: #ffffff;
+          border: 1px solid rgba(255,255,255,0.35);
+          background: linear-gradient(
+            135deg,
+            rgba(239,68,68,0.92) 0%,
+            rgba(220,38,38,0.85) 100%
+          );
+          backdrop-filter: blur(14px) saturate(180%);
+          -webkit-backdrop-filter: blur(14px) saturate(180%);
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.35),
+            0 4px 14px rgba(239,68,68,0.30);
+          transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+        .liquid-edit-page .btn-outline:hover:not(:disabled) {
+          transform: translateY(-1px);
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.45),
+            0 8px 24px rgba(239,68,68,0.42);
+        }
+        .liquid-edit-page .btn-outline:active:not(:disabled) {
+          transform: translateY(0) scale(0.98);
+        }
+        .liquid-edit-page .btn-outline:disabled {
+          opacity: 0.55;
+          cursor: not-allowed;
+          transform: none;
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.3),
+            0 2px 8px rgba(239,68,68,0.15);
+        }
+
+        /* ─── Text label readability on pastel bg ─────── */
+        .liquid-edit-page label {
+          color: #111827;
+          font-weight: 600;
+          font-size: 13px;
+          display: block;
+          margin-bottom: 6px;
+        }
+        .liquid-edit-page h2 {
+          color: #111827;
+        }
+
+        /* ─── Reduced motion ──────────────────────────── */
+        @media (prefers-reduced-motion: reduce) {
+          .liquid-edit-page::before { animation: none !important; }
+          .liquid-edit-page .btn-primary,
+          .liquid-edit-page .btn-outline,
+          .liquid-edit-page .liquid-edit-thumb-remove,
+          .liquid-edit-page input,
+          .liquid-edit-page select,
+          .liquid-edit-page textarea {
+            transition: none !important;
+          }
+          .liquid-edit-page .btn-primary:hover:not(:disabled),
+          .liquid-edit-page .btn-outline:hover:not(:disabled),
+          .liquid-edit-page .liquid-edit-thumb-remove:hover {
+            transform: none !important;
+          }
+        }
+      `}</style>
+
       <h2 style={{ fontSize: '28px', fontWeight: 800, marginBottom: '8px' }}>✏️ Edit Product</h2>
       <p style={{ color: 'var(--gray-500)', marginBottom: '24px' }}>Update your ad details</p>
 
@@ -329,9 +615,9 @@ const EditProduct = () => {
           <label>Current Images</label>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
             {imagesToKeep.map((img, idx) => (
-              <div key={idx} style={{ position: 'relative', width: '80px', height: '80px', border: '1px solid #ddd', borderRadius: '8px', overflow: 'hidden' }}>
+              <div key={idx} className="liquid-edit-thumb">
                 <img src={getImageUrl(img)} alt={`current ${idx}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                <button type="button" onClick={() => handleRemoveExistingImage(idx)} style={{ position: 'absolute', top: '2px', right: '2px', background: 'rgba(220,38,38,0.8)', color: 'white', border: 'none', borderRadius: '50%', width: '20px', height: '20px', fontSize: '12px', cursor: 'pointer' }}>✕</button>
+                <button type="button" onClick={() => handleRemoveExistingImage(idx)} className="liquid-edit-thumb-remove">✕</button>
               </div>
             ))}
             {imagesToKeep.length === 0 && <span style={{ color: '#9ca3af' }}>No images</span>}
@@ -344,9 +630,9 @@ const EditProduct = () => {
           {newFilePreviews.length > 0 && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '8px' }}>
               {newFilePreviews.map((preview, idx) => (
-                <div key={idx} style={{ position: 'relative', width: '80px', height: '80px', border: '1px solid #ddd', borderRadius: '8px', overflow: 'hidden' }}>
+                <div key={idx} className="liquid-edit-thumb">
                   <img src={preview} alt={`new ${idx}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  <button type="button" onClick={() => removeNewFile(idx)} style={{ position: 'absolute', top: '2px', right: '2px', background: 'rgba(220,38,38,0.8)', color: 'white', border: 'none', borderRadius: '50%', width: '20px', height: '20px', fontSize: '12px', cursor: 'pointer' }}>✕</button>
+                  <button type="button" onClick={() => removeNewFile(idx)} className="liquid-edit-thumb-remove">✕</button>
                 </div>
               ))}
             </div>
@@ -358,7 +644,7 @@ const EditProduct = () => {
           <button type="submit" className="btn-primary" disabled={submitting} style={{ flex: 2 }}>
             {submitting ? 'Saving...' : 'Save Changes'}
           </button>
-          <button type="button" className="btn-outline" onClick={handleDelete} disabled={deleting} style={{ flex: 1, background: '#dc2626', color: 'white', borderColor: '#dc2626' }}>
+          <button type="button" className="btn-outline" onClick={handleDelete} disabled={deleting} style={{ flex: 1 }}>
             {deleting ? 'Deleting...' : 'Delete'}
           </button>
         </div>

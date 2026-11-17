@@ -159,10 +159,20 @@ const ForgotPassword = () => {
     <>
       <style>{`
         /* =====================================================
-           FORGOT PASSWORD PAGE
-        ===================================================== */
+           LIQUID iOS27 — FORGOT PASSWORD PAGE
+           ===================================================== */
 
+        @keyframes forgot-liquid-float {
+          0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+          33%      { transform: translate3d(-30px, 24px, 0) scale(1.06); }
+          66%      { transform: translate3d(24px, -20px, 0) scale(0.97); }
+        }
+
+        /* ─── Page — liquid mirror backdrop ─────────────── */
         .forgot-password-wrapper {
+          position: relative;
+          isolation: isolate;
+          overflow: hidden;
           width: 100%;
           min-height: 100vh;
           min-height: 100dvh;
@@ -173,16 +183,28 @@ const ForgotPassword = () => {
           padding: 20px;
           overflow-x: hidden;
 
-          background-image:
-            linear-gradient(
-              rgba(0,0,0,0.55),
-              rgba(0,0,0,0.55)
-            ),
-            url('https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=1600&q=80');
+          background: linear-gradient(
+            135deg,
+            #eef4ff 0%,
+            #f5f0ff 40%,
+            #eaf7ff 70%,
+            #f2f8ff 100%
+          );
+        }
 
-          background-size: cover;
-          background-position: center;
-          background-repeat: no-repeat;
+        .forgot-password-wrapper::before {
+          content: "";
+          position: absolute;
+          inset: 0;
+          z-index: -1;
+          pointer-events: none;
+          background:
+            radial-gradient(circle at 8% 15%, rgba(0,102,204,0.24) 0%, rgba(0,102,204,0.08) 25%, transparent 55%),
+            radial-gradient(circle at 92% 60%, rgba(139,92,246,0.20) 0%, rgba(139,92,246,0.06) 25%, transparent 55%),
+            radial-gradient(circle at 50% 115%, rgba(6,182,212,0.20) 0%, rgba(6,182,212,0.06) 25%, transparent 55%),
+            radial-gradient(circle at 30% 80%, rgba(59,130,246,0.14) 0%, transparent 50%);
+          animation: forgot-liquid-float 24s ease-in-out infinite;
+          will-change: transform;
         }
 
         .forgot-password-container {
@@ -192,66 +214,88 @@ const ForgotPassword = () => {
           box-sizing: border-box;
         }
 
+        /* ─── Card — liquid glass ───────────────────────── */
         .forgot-password-card {
+          position: relative;
           width: 100%;
           max-width: 440px;
           box-sizing: border-box;
           padding: 32px;
-          background: #ffffff;
-          border-radius: 14px;
-          box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+          border-radius: 20px;
           overflow: hidden;
+
+          background: linear-gradient(
+            135deg,
+            rgba(255,255,255,0.72) 0%,
+            rgba(238,246,255,0.42) 50%,
+            rgba(255,255,255,0.62) 100%
+          );
+          backdrop-filter: blur(20px) saturate(180%);
+          -webkit-backdrop-filter: blur(20px) saturate(180%);
+          border: 1px solid rgba(255,255,255,0.75);
+          box-shadow:
+            0 24px 60px rgba(31,38,135,0.20),
+            inset 0 1px 0 rgba(255,255,255,0.95),
+            inset 0 -1px 0 rgba(255,255,255,0.25);
         }
 
-        /* =====================================================
-           HEADER
-        ===================================================== */
-
+        /* ─── Header ────────────────────────────────────── */
         .forgot-password-title {
           text-align: center;
           font-size: 24px;
           line-height: 1.2;
           font-weight: 800;
           margin: 0 0 8px;
+          color: #111827;
         }
 
         .forgot-password-subtitle {
           text-align: center;
-          color: var(--gray-500);
+          color: #4b5563;
           font-size: 14px;
           line-height: 1.6;
           margin: 0 0 24px;
         }
 
-        /* =====================================================
-           MESSAGES
-        ===================================================== */
-
+        /* ─── Messages — liquid glass banners ───────────── */
         .forgot-password-message {
           width: 100%;
           box-sizing: border-box;
           padding: 12px 14px;
-          border-radius: 8px;
+          border-radius: 12px;
           margin-bottom: 18px;
           font-size: 14px;
           line-height: 1.5;
           overflow-wrap: anywhere;
+          backdrop-filter: blur(12px) saturate(180%);
+          -webkit-backdrop-filter: blur(12px) saturate(180%);
+          border: 1px solid rgba(255,255,255,0.75);
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.9),
+            0 4px 18px rgba(31,38,135,0.08);
         }
 
         .forgot-password-success {
-          background: #dcfce7;
+          background: linear-gradient(
+            135deg,
+            rgba(255,255,255,0.65) 0%,
+            rgba(220,252,231,0.65) 100%
+          );
           color: #166534;
+          border-color: rgba(187,247,208,0.75);
         }
 
         .forgot-password-error {
-          background: #fee2e2;
+          background: linear-gradient(
+            135deg,
+            rgba(255,255,255,0.65) 0%,
+            rgba(254,226,226,0.6) 100%
+          );
           color: #b91c1c;
+          border-color: rgba(252,165,165,0.55);
         }
 
-        /* =====================================================
-           FORM
-        ===================================================== */
-
+        /* ─── Form ──────────────────────────────────────── */
         .forgot-password-form-group {
           width: 100%;
           margin-bottom: 18px;
@@ -264,40 +308,49 @@ const ForgotPassword = () => {
           font-weight: 600;
           font-size: 13px;
           margin-bottom: 6px;
+          color: #111827;
         }
 
+        /* ─── Input — liquid glass ──────────────────────── */
         .forgot-password-input {
           display: block;
           width: 100%;
           max-width: 100%;
           min-width: 0;
           box-sizing: border-box;
-
           padding: 13px 15px;
-
-          border: 1.5px solid var(--gray-200);
-          border-radius: var(--radius-md);
-
+          border: 1px solid rgba(255,255,255,0.75);
+          border-radius: 12px;
           font-size: 14px;
           line-height: 1.4;
           font-family: inherit;
-
-          background: #ffffff;
-          color: inherit;
-
+          color: #111827;
+          background: linear-gradient(
+            135deg,
+            rgba(255,255,255,0.72) 0%,
+            rgba(255,255,255,0.38) 100%
+          );
+          backdrop-filter: blur(10px) saturate(180%);
+          -webkit-backdrop-filter: blur(10px) saturate(180%);
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.9),
+            0 2px 10px rgba(31,38,135,0.06);
           outline: none;
-
           appearance: none;
           -webkit-appearance: none;
-
-          transition:
-            border-color 0.2s ease,
-            box-shadow 0.2s ease;
+          transition: border-color 0.2s ease, box-shadow 0.2s ease;
         }
 
         .forgot-password-input:focus {
-          border-color: var(--primary);
-          box-shadow: 0 0 0 2px rgba(0,0,0,0.04);
+          border-color: rgba(0,102,204,0.6);
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,1),
+            0 0 0 3px rgba(0,102,204,0.14),
+            0 4px 14px rgba(31,38,135,0.10);
+        }
+
+        .forgot-password-input::placeholder {
+          color: #8696a0;
         }
 
         .forgot-password-input:disabled {
@@ -305,78 +358,78 @@ const ForgotPassword = () => {
           cursor: not-allowed;
         }
 
-        /* =====================================================
-           SEND BUTTON
-        ===================================================== */
-
+        /* ─── Send button — liquid blue glass ───────────── */
         .forgot-password-submit {
           display: block;
           width: 100%;
           min-width: 0;
           box-sizing: border-box;
-
           padding: 14px;
-
-          border: none;
-          border-radius: 50px;
-
-          background: var(--primary);
+          border: 1px solid rgba(255,255,255,0.4);
+          border-radius: 14px;
           color: #ffffff;
-
           font-family: inherit;
           font-weight: 700;
           font-size: 16px;
           line-height: 1.2;
-
           cursor: pointer;
-
-          transition:
-            opacity 0.2s ease,
-            transform 0.15s ease;
+          background: linear-gradient(
+            135deg,
+            rgba(0,102,204,0.94) 0%,
+            rgba(0,85,165,0.88) 100%
+          );
+          backdrop-filter: blur(14px) saturate(180%);
+          -webkit-backdrop-filter: blur(14px) saturate(180%);
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.35),
+            0 4px 14px rgba(0,102,204,0.30);
+          transition: transform 0.15s ease, box-shadow 0.15s ease;
         }
 
         .forgot-password-submit:hover:not(:disabled) {
-          opacity: 0.92;
+          transform: translateY(-1px);
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.45),
+            0 8px 24px rgba(0,102,204,0.42);
         }
 
         .forgot-password-submit:active:not(:disabled) {
-          transform: scale(0.99);
+          transform: translateY(0) scale(0.99);
         }
 
         .forgot-password-submit:disabled {
           cursor: not-allowed;
           opacity: 0.7;
+          transform: none;
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.3),
+            0 2px 8px rgba(0,102,204,0.15);
         }
 
-        /* =====================================================
-           BACK TO LOGIN
-        ===================================================== */
-
+        /* ─── Back to login link ────────────────────────── */
         .forgot-password-back {
           width: 100%;
           box-sizing: border-box;
           text-align: center;
           margin-top: 20px;
           font-size: 14px;
+          color: #4b5563;
         }
 
         .forgot-password-back a {
-          color: var(--primary);
+          color: #0066cc;
           font-weight: 700;
           text-decoration: none;
+          transition: color 0.15s ease;
+        }
+        .forgot-password-back a:hover {
+          color: #0055a5;
         }
 
         /* =====================================================
            MOBILE
-           
-           IMPORTANT:
-           16px input font prevents iOS Safari from
-           automatically zooming the page when the input
-           receives focus.
-        ===================================================== */
-
+           ===================================================== */
         @media (max-width: 480px) {
-
           html,
           body {
             width: 100%;
@@ -388,12 +441,9 @@ const ForgotPassword = () => {
             width: 100%;
             min-height: 100vh;
             min-height: 100dvh;
-
             padding: 12px 8px;
-
             align-items: flex-start;
             justify-content: center;
-
             overflow-x: hidden;
           }
 
@@ -406,13 +456,10 @@ const ForgotPassword = () => {
           .forgot-password-card {
             width: 100%;
             max-width: 100%;
-
             padding: 16px 12px;
-
-            border-radius: 10px;
-
-            box-shadow:
-              0 5px 20px rgba(0,0,0,0.16);
+            border-radius: 16px;
+            backdrop-filter: blur(14px) saturate(180%);
+            -webkit-backdrop-filter: blur(14px) saturate(180%);
           }
 
           .forgot-password-title {
@@ -431,7 +478,7 @@ const ForgotPassword = () => {
             margin-bottom: 12px;
             font-size: 12px;
             line-height: 1.45;
-            border-radius: 7px;
+            border-radius: 10px;
           }
 
           .forgot-password-form-group {
@@ -446,24 +493,18 @@ const ForgotPassword = () => {
           .forgot-password-input {
             width: 100%;
             max-width: 100%;
-
             padding: 10px 11px;
-
-            /*
-             * DO NOT reduce this below 16px.
-             * iPhone Safari zooms inputs below 16px.
-             */
+            /* DO NOT reduce below 16px — prevents iOS auto-zoom */
             font-size: 16px !important;
-
             line-height: 1.35;
-
-            border-radius: 7px;
+            border-radius: 10px;
           }
 
           .forgot-password-submit {
             width: 100%;
             padding: 12px 10px;
             font-size: 14px;
+            border-radius: 12px;
           }
 
           .forgot-password-back {
@@ -472,50 +513,50 @@ const ForgotPassword = () => {
           }
         }
 
-        /* =====================================================
-           VERY SMALL PHONES
-        ===================================================== */
-
+        /* ─── Very small phones ─────────────────────────── */
         @media (max-width: 360px) {
-
           .forgot-password-wrapper {
             padding: 8px 5px;
           }
-
           .forgot-password-card {
             padding: 14px 10px;
-            border-radius: 9px;
+            border-radius: 14px;
           }
-
           .forgot-password-title {
             font-size: 18px;
           }
-
           .forgot-password-subtitle {
             font-size: 12px;
           }
-
           .forgot-password-input {
             padding: 9px 10px;
             font-size: 16px !important;
           }
-
           .forgot-password-submit {
             padding: 11px 10px;
             font-size: 13px;
           }
         }
 
-        /* =====================================================
-           LANDSCAPE MOBILE
-        ===================================================== */
-
+        /* ─── Landscape mobile ──────────────────────────── */
         @media (max-width: 768px) and (orientation: landscape) {
-
           .forgot-password-wrapper {
             align-items: flex-start;
             padding-top: 10px;
             padding-bottom: 10px;
+          }
+        }
+
+        /* ─── Reduced motion ────────────────────────────── */
+        @media (prefers-reduced-motion: reduce) {
+          .forgot-password-wrapper::before { animation: none !important; }
+          .forgot-password-input,
+          .forgot-password-submit,
+          .forgot-password-back a {
+            transition: none !important;
+          }
+          .forgot-password-submit:hover:not(:disabled) {
+            transform: none !important;
           }
         }
       `}</style>

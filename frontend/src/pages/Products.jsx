@@ -53,8 +53,9 @@ const LoadingDots = () => {
             display: block;
             width: 14px;
             height: 14px;
-            background: #0066cc;
+            background: linear-gradient(135deg, #0066cc 0%, #3b82f6 100%);
             border-radius: 50%;
+            box-shadow: 0 2px 10px rgba(0,102,204,0.35), inset 0 1px 0 rgba(255,255,255,0.4);
             animation: loading-dot-bounce 1.2s ease-in-out infinite;
           }
 
@@ -406,7 +407,7 @@ const ProductCard = memo(({ product }) => {
       return {
         label: "💎 DIAMOND",
         color: "#0ea5e9",
-        bg: "#e0f2fe",
+        bg: "rgba(224,242,254,0.75)",
       };
     }
 
@@ -414,7 +415,7 @@ const ProductCard = memo(({ product }) => {
       return {
         label: "⭐ VIP",
         color: "#f59e0b",
-        bg: "#fef3c7",
+        bg: "rgba(254,243,199,0.75)",
       };
     }
 
@@ -422,7 +423,7 @@ const ProductCard = memo(({ product }) => {
       return {
         label: "🏢 ENTERPRISE",
         color: "#8b5cf6",
-        bg: "#ede9fe",
+        bg: "rgba(237,233,254,0.75)",
       };
     }
 
@@ -850,20 +851,24 @@ const ProductCard = memo(({ product }) => {
     <div
       className="product-card"
       style={{
-        background: "#fff",
-        borderRadius: "12px",
+        background:
+          "linear-gradient(135deg, rgba(255,255,255,0.72) 0%, rgba(238,246,255,0.42) 50%, rgba(255,255,255,0.62) 100%)",
+        backdropFilter: "blur(14px) saturate(180%)",
+        WebkitBackdropFilter: "blur(14px) saturate(180%)",
+        borderRadius: "16px",
         overflow: "hidden",
         border: isVerified
-          ? "2px solid #0055a5"
-          : "1px solid #e5e7eb",
-        transition: "all 0.2s ease",
+          ? "1.5px solid rgba(0,85,165,0.55)"
+          : "1px solid rgba(255,255,255,0.75)",
+        transition: "all 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
         boxShadow:
-          "0 1px 3px rgba(0,0,0,0.04)",
+          "0 8px 28px rgba(31,38,135,0.10), inset 0 1px 0 rgba(255,255,255,0.95), inset 0 -1px 0 rgba(255,255,255,0.25)",
         display: "flex",
         flexDirection: "column",
         width: "100%",
         height: "100%",
         position: "relative",
+        isolation: "isolate",
       }}
     >
       {/* =========================================================
@@ -928,7 +933,10 @@ const ProductCard = memo(({ product }) => {
           {isVerified && (
             <span
               style={{
-                background: "#1DA1F2",
+                background:
+                  "linear-gradient(135deg, rgba(29,161,242,0.94) 0%, rgba(29,161,242,0.78) 100%)",
+                backdropFilter: "blur(8px) saturate(180%)",
+                WebkitBackdropFilter: "blur(8px) saturate(180%)",
                 color: "white",
                 fontSize: "8px",
                 fontWeight: 700,
@@ -937,8 +945,9 @@ const ProductCard = memo(({ product }) => {
                 textTransform: "uppercase",
                 display: "inline-block",
                 boxShadow:
-                  "0 1px 2px rgba(0,0,0,0.15)",
+                  "0 2px 8px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.3)",
                 letterSpacing: "0.3px",
+                border: "1px solid rgba(255,255,255,0.3)",
               }}
             >
               ✓ Verified ID
@@ -948,7 +957,10 @@ const ProductCard = memo(({ product }) => {
           {popular && (
             <span
               style={{
-                background: "#f59e0b",
+                background:
+                  "linear-gradient(135deg, rgba(245,158,11,0.94) 0%, rgba(245,158,11,0.78) 100%)",
+                backdropFilter: "blur(8px) saturate(180%)",
+                WebkitBackdropFilter: "blur(8px) saturate(180%)",
                 color: "white",
                 fontSize: "8px",
                 fontWeight: 700,
@@ -957,7 +969,8 @@ const ProductCard = memo(({ product }) => {
                 textTransform: "uppercase",
                 display: "inline-block",
                 boxShadow:
-                  "0 1px 2px rgba(0,0,0,0.15)",
+                  "0 2px 8px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.3)",
+                border: "1px solid rgba(255,255,255,0.3)",
               }}
             >
               ★ Popular
@@ -967,7 +980,10 @@ const ProductCard = memo(({ product }) => {
           {yearsOnPlatform >= 5 && (
             <span
               style={{
-                background: "#10b981",
+                background:
+                  "linear-gradient(135deg, rgba(16,185,129,0.94) 0%, rgba(16,185,129,0.78) 100%)",
+                backdropFilter: "blur(8px) saturate(180%)",
+                WebkitBackdropFilter: "blur(8px) saturate(180%)",
                 color: "white",
                 fontSize: "8px",
                 fontWeight: 700,
@@ -976,7 +992,8 @@ const ProductCard = memo(({ product }) => {
                 textTransform: "uppercase",
                 display: "inline-block",
                 boxShadow:
-                  "0 1px 2px rgba(0,0,0,0.15)",
+                  "0 2px 8px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.3)",
+                border: "1px solid rgba(255,255,255,0.3)",
               }}
             >
               {yearsOnPlatform}+ yrs
@@ -1009,9 +1026,11 @@ const ProductCard = memo(({ product }) => {
             width: "32px",
             height: "32px",
             borderRadius: "50%",
-            border: "none",
+            border: "1px solid rgba(255,255,255,0.65)",
             background:
-              "rgba(255,255,255,0.94)",
+              "linear-gradient(135deg, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.35) 100%)",
+            backdropFilter: "blur(10px) saturate(180%)",
+            WebkitBackdropFilter: "blur(10px) saturate(180%)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -1020,9 +1039,8 @@ const ProductCard = memo(({ product }) => {
             color: liked ? "#e11d48" : "#374151",
             fontSize: "15px",
             boxShadow:
-              "0 2px 8px rgba(0,0,0,0.16)",
+              "0 2px 10px rgba(0,0,0,0.14), inset 0 1px 0 rgba(255,255,255,0.9)",
             transition: "all 0.2s ease",
-            backdropFilter: "blur(6px)",
           }}
         >
           <i
@@ -1101,7 +1119,10 @@ const ProductCard = memo(({ product }) => {
                 fontSize: "10px",
                 fontWeight: 700,
                 color: "#dc2626",
-                background: "#fee2e2",
+                background: "rgba(254,226,226,0.85)",
+                backdropFilter: "blur(6px)",
+                WebkitBackdropFilter: "blur(6px)",
+                border: "1px solid rgba(255,255,255,0.6)",
                 padding: "1px 6px",
                 borderRadius: "3px",
               }}
@@ -1156,9 +1177,13 @@ const ProductCard = memo(({ product }) => {
                 gap: "3px",
                 fontSize: "11px",
                 color: "#374151",
-                background: "#f3f4f6",
+                background: "rgba(255,255,255,0.55)",
+                backdropFilter: "blur(6px) saturate(180%)",
+                WebkitBackdropFilter: "blur(6px) saturate(180%)",
+                border: "1px solid rgba(255,255,255,0.7)",
                 padding: "1px 6px",
                 borderRadius: "4px",
+                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.85)",
               }}
             >
               {spec.icon} {spec.label}
@@ -1171,10 +1196,14 @@ const ProductCard = memo(({ product }) => {
                 display: "flex",
                 alignItems: "center",
                 gap: "2px",
-                background: "#f3f4f6",
+                background: "rgba(255,255,255,0.55)",
+                backdropFilter: "blur(6px) saturate(180%)",
+                WebkitBackdropFilter: "blur(6px) saturate(180%)",
+                border: "1px solid rgba(255,255,255,0.7)",
                 padding: "1px 6px",
                 borderRadius: "4px",
                 color: "#374151",
+                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.85)",
               }}
             >
               <i className="fas fa-shield-alt" />
@@ -1188,11 +1217,15 @@ const ProductCard = memo(({ product }) => {
                 display: "flex",
                 alignItems: "center",
                 gap: "2px",
-                background: "#e0f2fe",
+                background: "rgba(224,242,254,0.85)",
+                backdropFilter: "blur(6px) saturate(180%)",
+                WebkitBackdropFilter: "blur(6px) saturate(180%)",
+                border: "1px solid rgba(191,219,254,0.85)",
                 padding: "1px 6px",
                 borderRadius: "4px",
                 color: "#0055a5",
                 fontWeight: 600,
+                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.9)",
               }}
             >
               <i className="fas fa-sim-card" />
@@ -1202,10 +1235,14 @@ const ProductCard = memo(({ product }) => {
 
           <span
             style={{
-              background: "#f3f4f6",
+              background: "rgba(255,255,255,0.55)",
+              backdropFilter: "blur(6px) saturate(180%)",
+              WebkitBackdropFilter: "blur(6px) saturate(180%)",
+              border: "1px solid rgba(255,255,255,0.7)",
               padding: "1px 6px",
               borderRadius: "4px",
               color: "#374151",
+              boxShadow: "inset 0 1px 0 rgba(255,255,255,0.85)",
             }}
           >
             {swapAccepted
@@ -1241,7 +1278,7 @@ const ProductCard = memo(({ product }) => {
             alignItems: "center",
             gap: "6px",
             paddingTop: "6px",
-            borderTop: "1px solid #f3f4f6",
+            borderTop: "1px solid rgba(255,255,255,0.6)",
           }}
         >
           {sellerImageUrl ? (
@@ -1255,7 +1292,8 @@ const ProductCard = memo(({ product }) => {
                 height: "24px",
                 borderRadius: "50%",
                 objectFit: "cover",
-                border: "1px solid #e5e7eb",
+                border: "1px solid rgba(255,255,255,0.85)",
+                boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
               }}
               onError={(e) => {
                 e.currentTarget.style.display =
@@ -1268,12 +1306,16 @@ const ProductCard = memo(({ product }) => {
                 width: "24px",
                 height: "24px",
                 borderRadius: "50%",
-                background: "#e5e7eb",
+                background: "rgba(255,255,255,0.55)",
+                backdropFilter: "blur(6px) saturate(180%)",
+                WebkitBackdropFilter: "blur(6px) saturate(180%)",
+                border: "1px solid rgba(255,255,255,0.7)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 fontSize: "10px",
                 color: "#9ca3af",
+                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.85)",
               }}
             >
               <i className="fas fa-user" />
@@ -1316,10 +1358,14 @@ const ProductCard = memo(({ product }) => {
                   fontWeight: 700,
                   color: accountBadge.color,
                   background: accountBadge.bg,
+                  backdropFilter: "blur(6px) saturate(180%)",
+                  WebkitBackdropFilter: "blur(6px) saturate(180%)",
+                  border: "1px solid rgba(255,255,255,0.65)",
                   padding: "1px 5px",
                   borderRadius: "8px",
                   display: "inline-block",
                   marginTop: "1px",
+                  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.85)",
                 }}
               >
                 {accountBadge.label}
@@ -1351,7 +1397,7 @@ const ProductCard = memo(({ product }) => {
               gap: "5px",
               marginTop: "5px",
               paddingTop: "5px",
-              borderTop: "1px solid #f3f4f6",
+              borderTop: "1px solid rgba(255,255,255,0.6)",
             }}
           >
             <button
@@ -1365,14 +1411,19 @@ const ProductCard = memo(({ product }) => {
                 gap: "3px",
                 padding: "4px 10px",
                 borderRadius: "12px",
-                border: "none",
-                background: "#25D366",
+                border: "1px solid rgba(255,255,255,0.35)",
+                background:
+                  "linear-gradient(135deg, #2ecc71 0%, #25D366 100%)",
+                backdropFilter: "blur(8px) saturate(180%)",
+                WebkitBackdropFilter: "blur(8px) saturate(180%)",
                 color: "white",
                 fontSize: "11px",
                 fontWeight: 600,
                 cursor: "pointer",
                 flex: 1,
                 minHeight: "22px",
+                boxShadow:
+                  "inset 0 1px 0 rgba(255,255,255,0.3), 0 2px 8px rgba(37,211,102,0.25)",
               }}
             >
               <i
@@ -1395,14 +1446,19 @@ const ProductCard = memo(({ product }) => {
                 gap: "3px",
                 padding: "4px 10px",
                 borderRadius: "12px",
-                border: "none",
-                background: "#3b82f6",
+                border: "1px solid rgba(255,255,255,0.35)",
+                background:
+                  "linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%)",
+                backdropFilter: "blur(8px) saturate(180%)",
+                WebkitBackdropFilter: "blur(8px) saturate(180%)",
                 color: "white",
                 fontSize: "11px",
                 fontWeight: 600,
                 cursor: "pointer",
                 flex: 1,
                 minHeight: "22px",
+                boxShadow:
+                  "inset 0 1px 0 rgba(255,255,255,0.3), 0 2px 8px rgba(59,130,246,0.25)",
               }}
             >
               <i
@@ -1428,7 +1484,7 @@ const ProductCard = memo(({ product }) => {
             fontWeight: 600,
             color: "#0066cc",
             textDecoration: "none",
-            borderTop: "1px solid #f3f4f6",
+            borderTop: "1px solid rgba(255,255,255,0.6)",
             display: "block",
           }}
         >
@@ -1445,70 +1501,47 @@ const ProductCard = memo(({ product }) => {
 
 const ProductSkeleton = () => {
   return (
-    <div
-      className="product-card"
-      style={{
-        background: "#fff",
-        borderRadius: "12px",
-        overflow: "hidden",
-        border: "1px solid #e5e7eb",
-      }}
-    >
-      <div
-        style={{
-          width: "100%",
-          background: "#f4f5f7",
-          height: "200px",
-        }}
-      />
+    <div className="product-card">
+      <div className="skeleton-image" />
 
-      <div style={{ padding: "10px" }}>
+      <div className="skeleton-body">
         <div
+          className="skeleton-line"
           style={{
             width: "80%",
             height: "16px",
-            background: "#e5e7eb",
-            borderRadius: "3px",
-            marginBottom: "6px",
           }}
         />
 
         <div
+          className="skeleton-line"
           style={{
             width: "45%",
             height: "18px",
-            background: "#e5e7eb",
-            borderRadius: "3px",
-            marginBottom: "6px",
           }}
         />
 
         <div
+          className="skeleton-line"
           style={{
             width: "60%",
             height: "12px",
-            background: "#e5e7eb",
-            borderRadius: "3px",
-            marginBottom: "6px",
           }}
         />
 
         <div
+          className="skeleton-line"
           style={{
             width: "90%",
             height: "40px",
-            background: "#e5e7eb",
-            borderRadius: "3px",
-            marginBottom: "10px",
           }}
         />
 
         <div
+          className="skeleton-line"
           style={{
             width: "100%",
             height: "26px",
-            background: "#e5e7eb",
-            borderRadius: "3px",
           }}
         />
       </div>
@@ -1920,7 +1953,6 @@ const Products = () => {
           );
         }
 
-        // Keep search param if present (optional, but we keep it)
         if (filters.search) {
           nextParams.set(
             "search",
@@ -1995,28 +2027,81 @@ const Products = () => {
             box-sizing: border-box;
           }
 
+          /* =====================================================
+             LIQUID MIRROR — PAGE BACKGROUND (iOS27)
+          ====================================================== */
+
           .products-page {
+            position: relative;
             width: 100%;
             max-width: 1440px;
             margin: 0 auto;
             padding: 16px;
+            overflow: hidden;
+            background: linear-gradient(
+              135deg,
+              #eef4ff 0%,
+              #f5f0ff 40%,
+              #eaf7ff 70%,
+              #f2f8ff 100%
+            );
+          }
+
+          .products-page::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            z-index: 0;
+            background:
+              radial-gradient(circle at 8% 15%, rgba(0,102,204,0.22) 0%, rgba(0,102,204,0.08) 25%, transparent 55%),
+              radial-gradient(circle at 92% 60%, rgba(139,92,246,0.18) 0%, rgba(139,92,246,0.06) 25%, transparent 55%),
+              radial-gradient(circle at 50% 115%, rgba(6,182,212,0.18) 0%, rgba(6,182,212,0.06) 25%, transparent 55%),
+              radial-gradient(circle at 30% 80%, rgba(59,130,246,0.12) 0%, transparent 50%);
+            animation: liquid-bg-float 24s ease-in-out infinite;
+            will-change: transform;
           }
 
           .products-main {
+            position: relative;
+            z-index: 1;
             width: 100%;
           }
 
+          @keyframes liquid-bg-float {
+            0%, 100% {
+              transform: translate3d(0, 0, 0) scale(1);
+            }
+            33% {
+              transform: translate3d(-30px, 24px, 0) scale(1.06);
+            }
+            66% {
+              transform: translate3d(24px, -20px, 0) scale(0.97);
+            }
+          }
+
           /* =====================================================
-             GROUP FILTER
+             GROUP FILTER — LIQUID PANEL
           ====================================================== */
 
           .group-filter-container {
             width: 100%;
-            background: #ffffff;
-            border: 1px solid #e5e7eb;
-            border-radius: 12px;
+            background: linear-gradient(
+              135deg,
+              rgba(255,255,255,0.62) 0%,
+              rgba(255,255,255,0.22) 50%,
+              rgba(255,255,255,0.52) 100%
+            );
+            backdrop-filter: blur(14px) saturate(180%);
+            -webkit-backdrop-filter: blur(14px) saturate(180%);
+            border: 1px solid rgba(255,255,255,0.7);
+            border-radius: 16px;
             padding: 12px;
             margin-bottom: 18px;
+            box-shadow:
+              0 6px 24px rgba(31,38,135,0.08),
+              inset 0 1px 0 rgba(255,255,255,0.9),
+              inset 0 -1px 0 rgba(255,255,255,0.2);
           }
 
           .group-filter-header {
@@ -2041,13 +2126,31 @@ const Products = () => {
           }
 
           .group-filter-clear {
-            border: none;
-            background: transparent;
+            border: 1px solid rgba(255,255,255,0.65);
+            background: linear-gradient(
+              135deg,
+              rgba(255,255,255,0.6) 0%,
+              rgba(255,255,255,0.25) 100%
+            );
+            backdrop-filter: blur(8px) saturate(180%);
+            -webkit-backdrop-filter: blur(8px) saturate(180%);
             color: #0066cc;
             font-size: 12px;
             font-weight: 600;
             cursor: pointer;
-            padding: 5px 8px;
+            padding: 5px 10px;
+            border-radius: 8px;
+            box-shadow:
+              0 2px 8px rgba(31,38,135,0.06),
+              inset 0 1px 0 rgba(255,255,255,0.85);
+            transition: all 0.15s ease;
+          }
+
+          .group-filter-clear:hover {
+            border-color: rgba(255,255,255,0.95);
+            box-shadow:
+              0 4px 12px rgba(0,102,204,0.15),
+              inset 0 1px 0 rgba(255,255,255,1);
           }
 
           .group-filter-list {
@@ -2073,9 +2176,18 @@ const Products = () => {
             justify-content: center;
             gap: 7px;
             padding: 7px 13px;
-            border-radius: 9px;
-            border: 1px solid #e5e7eb;
-            background: #f9fafb;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.65);
+            background: linear-gradient(
+              135deg,
+              rgba(255,255,255,0.6) 0%,
+              rgba(255,255,255,0.24) 100%
+            );
+            backdrop-filter: blur(10px) saturate(180%);
+            -webkit-backdrop-filter: blur(10px) saturate(180%);
+            box-shadow:
+              0 2px 10px rgba(31,38,135,0.06),
+              inset 0 1px 0 rgba(255,255,255,0.85);
             color: #374151;
             font-size: 12px;
             font-weight: 600;
@@ -2085,23 +2197,39 @@ const Products = () => {
               background 0.18s ease,
               border-color 0.18s ease,
               color 0.18s ease,
-              transform 0.18s ease;
+              transform 0.18s ease,
+              box-shadow 0.18s ease;
           }
 
           .group-filter-item:hover {
-            border-color: #93c5fd;
-            background: #eff6ff;
+            border-color: rgba(255,255,255,0.95);
+            background: linear-gradient(
+              135deg,
+              rgba(255,255,255,0.8) 0%,
+              rgba(239,246,255,0.5) 100%
+            );
             color: #0066cc;
+            box-shadow:
+              0 4px 14px rgba(31,38,135,0.10),
+              inset 0 1px 0 rgba(255,255,255,1);
           }
 
           .group-filter-item:active {
             transform: scale(0.97);
           }
 
-          .group-filter-item-active {
-            background: #0066cc !important;
-            border-color: #0066cc !important;
+          .group-filter-item-active,
+          .group-filter-item-active:hover {
+            background: linear-gradient(
+              135deg,
+              rgba(0,102,204,0.94) 0%,
+              rgba(0,85,165,0.9) 100%
+            ) !important;
+            border-color: rgba(255,255,255,0.4) !important;
             color: #ffffff !important;
+            box-shadow:
+              0 6px 18px rgba(0,102,204,0.35),
+              inset 0 1px 0 rgba(255,255,255,0.4) !important;
           }
 
           .group-filter-icon {
@@ -2144,9 +2272,17 @@ const Products = () => {
             align-items: center;
             gap: 5px;
             margin-left: 5px;
-            padding: 3px 9px;
-            border-radius: 6px;
-            background: #e0f2fe;
+            padding: 3px 10px;
+            border-radius: 10px;
+            background: linear-gradient(
+              135deg,
+              rgba(224,242,254,0.9) 0%,
+              rgba(191,219,254,0.72) 100%
+            );
+            backdrop-filter: blur(8px) saturate(180%);
+            -webkit-backdrop-filter: blur(8px) saturate(180%);
+            border: 1px solid rgba(255,255,255,0.75);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.9);
             color: #0066cc;
             font-size: 14px;
             font-weight: 600;
@@ -2155,18 +2291,29 @@ const Products = () => {
           .sort-select {
             min-height: 36px;
             padding: 7px 11px;
-            border: 1px solid #e5e7eb;
-            border-radius: 7px;
+            border: 1px solid rgba(255,255,255,0.7);
+            border-radius: 10px;
             font-size: 13px;
             outline: none;
-            background: #ffffff;
+            background: linear-gradient(
+              135deg,
+              rgba(255,255,255,0.65) 0%,
+              rgba(255,255,255,0.28) 100%
+            );
+            backdrop-filter: blur(10px) saturate(180%);
+            -webkit-backdrop-filter: blur(10px) saturate(180%);
+            box-shadow:
+              0 2px 10px rgba(31,38,135,0.06),
+              inset 0 1px 0 rgba(255,255,255,0.9);
             color: #374151;
             cursor: pointer;
           }
 
           .sort-select:focus {
-            border-color: #0066cc;
-            box-shadow: 0 0 0 2px rgba(0,102,204,0.08);
+            border-color: rgba(0,102,204,0.6);
+            box-shadow:
+              0 0 0 2px rgba(0,102,204,0.12),
+              inset 0 1px 0 rgba(255,255,255,0.9);
           }
 
           /* =====================================================
@@ -2182,6 +2329,48 @@ const Products = () => {
 
           .product-card {
             min-width: 0;
+            position: relative;
+            isolation: isolate;
+          }
+
+          .product-card > * {
+            position: relative;
+            z-index: 1;
+          }
+
+          /* Liquid shine sweep on card */
+          .product-card::before {
+            content: "";
+            position: absolute;
+            top: -50%;
+            left: 0;
+            width: 60%;
+            height: 200%;
+            background: linear-gradient(
+              90deg,
+              transparent 0%,
+              rgba(255,255,255,0.55) 50%,
+              transparent 100%
+            );
+            transform: translate3d(-200%, 0, 0) skewX(-25deg);
+            transition: transform 0.75s ease;
+            pointer-events: none;
+            z-index: 0;
+          }
+
+          @media (hover: hover) and (prefers-reduced-motion: no-preference) {
+            .product-card:hover::before {
+              transform: translate3d(300%, 0, 0) skewX(-25deg);
+            }
+          }
+
+          .product-card:hover {
+            border-color: rgba(255,255,255,0.98) !important;
+            box-shadow:
+              0 14px 40px rgba(31,38,135,0.16),
+              inset 0 1px 0 rgba(255,255,255,1),
+              inset 0 -1px 0 rgba(255,255,255,0.3) !important;
+            transform: translateY(-3px);
           }
 
           .product-card .product-image-wrapper {
@@ -2201,7 +2390,9 @@ const Products = () => {
 
           .favorite-button:hover {
             box-shadow:
-              0 4px 12px rgba(0,0,0,0.18) !important;
+              0 4px 16px rgba(0,0,0,0.18),
+              inset 0 1px 0 rgba(255,255,255,1) !important;
+            transform: scale(1.05);
           }
 
           .favorite-button:active {
@@ -2209,24 +2400,161 @@ const Products = () => {
           }
 
           /* =====================================================
-             EMPTY / ERROR
+             SKELETON — LIQUID GLASS
+          ====================================================== */
+
+          .skeleton-image {
+            width: 100%;
+            height: 200px;
+            background: linear-gradient(
+              135deg,
+              rgba(255,255,255,0.5) 0%,
+              rgba(238,246,255,0.35) 50%,
+              rgba(255,255,255,0.45) 100%
+            );
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            position: relative;
+            overflow: hidden;
+          }
+
+          .skeleton-image::after,
+          .skeleton-line::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(
+              90deg,
+              transparent 0%,
+              rgba(255,255,255,0.7) 50%,
+              transparent 100%
+            );
+            animation: skeleton-shimmer 1.4s ease-in-out infinite;
+            will-change: transform;
+          }
+
+          .skeleton-body {
+            padding: 10px;
+          }
+
+          .skeleton-line {
+            background: rgba(255,255,255,0.55);
+            border: 1px solid rgba(255,255,255,0.7);
+            border-radius: 3px;
+            margin-bottom: 6px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.85);
+          }
+
+          @keyframes skeleton-shimmer {
+            0%   { transform: translate3d(-100%, 0, 0); }
+            100% { transform: translate3d(100%, 0, 0); }
+          }
+
+          /* =====================================================
+             EMPTY PRODUCTS — LIQUID GLASS PANEL
           ====================================================== */
 
           .empty-products {
             text-align: center;
             padding: 60px 20px;
-            color: #777;
+            color: #4b5563;
+            background: linear-gradient(
+              135deg,
+              rgba(255,255,255,0.62) 0%,
+              rgba(255,255,255,0.25) 100%
+            );
+            backdrop-filter: blur(14px) saturate(180%);
+            -webkit-backdrop-filter: blur(14px) saturate(180%);
+            border: 1px solid rgba(255,255,255,0.7);
+            border-radius: 16px;
+            box-shadow:
+              0 6px 24px rgba(31,38,135,0.08),
+              inset 0 1px 0 rgba(255,255,255,0.9);
           }
 
           .empty-products a {
             display: inline-block;
-            margin-top: 10px;
+            margin-top: 12px;
+            padding: 8px 20px;
             color: #0066cc;
             font-weight: 600;
+            text-decoration: none;
+            background: linear-gradient(
+              135deg,
+              rgba(255,255,255,0.7) 0%,
+              rgba(255,255,255,0.3) 100%
+            );
+            backdrop-filter: blur(10px) saturate(180%);
+            -webkit-backdrop-filter: blur(10px) saturate(180%);
+            border: 1px solid rgba(0,102,204,0.4);
+            border-radius: 12px;
+            box-shadow:
+              0 4px 14px rgba(0,102,204,0.15),
+              inset 0 1px 0 rgba(255,255,255,0.9);
+            transition: all 0.2s ease;
+          }
+
+          .empty-products a:hover {
+            transform: translateY(-1px);
+            box-shadow:
+              0 6px 20px rgba(0,102,204,0.22),
+              inset 0 1px 0 rgba(255,255,255,1);
           }
 
           /* =====================================================
-             LOAD MORE
+             ERROR BOX — LIQUID GLASS
+          ====================================================== */
+
+          .error-box {
+            text-align: center;
+            padding: 24px 20px;
+            margin-bottom: 16px;
+            color: #b91c1c;
+            background: linear-gradient(
+              135deg,
+              rgba(255,255,255,0.65) 0%,
+              rgba(254,226,226,0.55) 100%
+            );
+            backdrop-filter: blur(12px) saturate(180%);
+            -webkit-backdrop-filter: blur(12px) saturate(180%);
+            border: 1px solid rgba(252,165,165,0.55);
+            border-radius: 12px;
+            box-shadow:
+              0 4px 18px rgba(220,38,38,0.08),
+              inset 0 1px 0 rgba(255,255,255,0.9);
+          }
+
+          .error-retry-btn {
+            border: 1px solid rgba(255,255,255,0.4);
+            border-radius: 10px;
+            padding: 8px 18px;
+            cursor: pointer;
+            font-weight: 600;
+            background: linear-gradient(
+              135deg,
+              rgba(0,102,204,0.94) 0%,
+              rgba(0,85,165,0.9) 100%
+            );
+            backdrop-filter: blur(12px) saturate(180%);
+            -webkit-backdrop-filter: blur(12px) saturate(180%);
+            color: white;
+            box-shadow:
+              0 4px 14px rgba(0,102,204,0.3),
+              inset 0 1px 0 rgba(255,255,255,0.35);
+            transition: all 0.15s ease;
+          }
+
+          .error-retry-btn:hover {
+            transform: translateY(-1px);
+            box-shadow:
+              0 6px 20px rgba(0,102,204,0.4),
+              inset 0 1px 0 rgba(255,255,255,0.45);
+          }
+
+          /* =====================================================
+             LOAD MORE — LIQUID GLASS BUTTON
           ====================================================== */
 
           .load-more-container {
@@ -2237,20 +2565,43 @@ const Products = () => {
           .load-more-button {
             min-height: 42px;
             padding: 10px 28px;
-            background: #0066cc;
+            background: linear-gradient(
+              135deg,
+              rgba(0,102,204,0.94) 0%,
+              rgba(0,85,165,0.9) 100%
+            );
+            backdrop-filter: blur(12px) saturate(180%);
+            -webkit-backdrop-filter: blur(12px) saturate(180%);
             color: #ffffff;
-            border: none;
-            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.4);
+            border-radius: 12px;
             font-size: 14px;
             font-weight: 600;
             cursor: pointer;
             box-shadow:
-              0 2px 6px rgba(0,0,0,0.1);
+              0 6px 22px rgba(0,102,204,0.28),
+              inset 0 1px 0 rgba(255,255,255,0.45);
+            transition: all 0.2s ease;
+          }
+
+          .load-more-button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow:
+              0 10px 28px rgba(0,102,204,0.36),
+              inset 0 1px 0 rgba(255,255,255,0.55);
           }
 
           .load-more-button:disabled {
-            background: #9ca3af;
+            background: linear-gradient(
+              135deg,
+              rgba(209,213,219,0.9) 0%,
+              rgba(156,163,175,0.85) 100%
+            );
+            border-color: rgba(255,255,255,0.3);
             cursor: default;
+            box-shadow:
+              0 2px 8px rgba(0,0,0,0.06),
+              inset 0 1px 0 rgba(255,255,255,0.3);
           }
 
           .all-loaded {
@@ -2285,7 +2636,7 @@ const Products = () => {
 
             .group-filter-container {
               padding: 10px;
-              border-radius: 10px;
+              border-radius: 14px;
             }
 
             .group-filter-list {
@@ -2329,7 +2680,7 @@ const Products = () => {
               min-height: 38px;
               padding: 7px 11px;
               font-size: 11px;
-              border-radius: 8px;
+              border-radius: 10px;
             }
 
             .group-filter-icon {
@@ -2347,7 +2698,7 @@ const Products = () => {
 
             .active-group {
               font-size: 12px;
-              padding: 2px 7px;
+              padding: 2px 8px;
             }
 
             .sort-select {
@@ -2475,6 +2826,38 @@ const Products = () => {
               font-size: 19px !important;
             }
           }
+
+          /* =====================================================
+             REDUCED MOTION
+          ====================================================== */
+
+          @media (prefers-reduced-motion: reduce) {
+            .products-page::before,
+            .product-card::before,
+            .skeleton-image::after,
+            .skeleton-line::after,
+            .loading-dots span {
+              animation: none !important;
+              transition: none !important;
+            }
+            .product-card:hover::before {
+              transform: translate3d(-200%, 0, 0) skewX(-25deg) !important;
+            }
+            .product-card,
+            .favorite-button,
+            .contact-btn,
+            .load-more-button,
+            .group-filter-item,
+            .group-filter-clear,
+            .sort-select,
+            .error-retry-btn,
+            .empty-products a {
+              transition: none !important;
+            }
+            .product-card:hover {
+              transform: none !important;
+            }
+          }
         `}
       </style>
 
@@ -2539,18 +2922,7 @@ const Products = () => {
           ===================================================== */}
 
           {error && !loading && (
-            <div
-              style={{
-                textAlign: "center",
-                padding: "30px 20px",
-                marginBottom: "16px",
-                color: "#dc2626",
-                background: "#fef2f2",
-                border:
-                  "1px solid #fecaca",
-                borderRadius: "8px",
-              }}
-            >
+            <div className="error-box">
               <p
                 style={{
                   marginBottom: "12px",
@@ -2564,15 +2936,7 @@ const Products = () => {
                 onClick={() =>
                   window.location.reload()
                 }
-                style={{
-                  border: "none",
-                  borderRadius: "4px",
-                  padding: "8px 18px",
-                  cursor: "pointer",
-                  fontWeight: 600,
-                  background: "#0066cc",
-                  color: "white",
-                }}
+                className="error-retry-btn"
               >
                 Try Again
               </button>

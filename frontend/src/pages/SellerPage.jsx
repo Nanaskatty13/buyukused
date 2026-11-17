@@ -2,7 +2,7 @@
 // frontend/src/pages/SellerPage.jsx
 // ============================================================
 
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 
 import {
   useParams,
@@ -225,6 +225,10 @@ const SellerPage = () => {
   const [pagination, setPagination] = useState(null);
   const [imageError, setImageError] = useState(false);
 
+  // ✅ Separate state for "load more products" (fixes full-page loader)
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [loadMoreError, setLoadMoreError] = useState("");
+
   // ==========================================================
   // REVIEWS
   // ==========================================================
@@ -297,9 +301,12 @@ const SellerPage = () => {
 
   // ==========================================================
   // FETCH SELLER DATA – with graceful fallback on 404
+  //
+  // ✅ FIX: `error` is no longer in the dependency array, so
+  //    navigating from one seller to another re-runs the
+  //    effect even after a previous error. The early-return
+  //    guard and `fetchAttemptedRef` were removed too.
   // ==========================================================
-
-  const fetchAttemptedRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -317,18 +324,13 @@ const SellerPage = () => {
         return;
       }
 
-      // Avoid re‑fetching if we already have a terminal error
-      if (error && fetchAttemptedRef.current) {
-        return;
-      }
-
       try {
         setLoading(true);
         setError("");
         setProfileWarning("");
         setImageError(false);
         setReviewsLoading(true);
-        fetchAttemptedRef.current = true;
+        setLoadMoreError("");
 
         // ─── Parallel fetch: profile, products, reviews ───
         const [profileResult, productsResult, reviewsResult] = await Promise.all([
@@ -353,7 +355,6 @@ const SellerPage = () => {
         if (cancelled || !isMounted) return;
 
         // ─── Process profile ──────────────────────────────────
-        // If profile fails, we set a warning but do NOT throw.
         if (profileResult.success && profileResult.seller) {
           const sellerData = profileResult.seller;
           setSeller({
@@ -378,7 +379,7 @@ const SellerPage = () => {
             productsCount: Number(sellerData.productsCount || 0),
           });
         } else {
-          // Profile not found – create a fallback seller object using only the ID.
+          // Profile not found – create a fallback seller object.
           setProfileWarning(
             "This seller has not set up a public profile yet, but you can still view their products."
           );
@@ -463,7 +464,7 @@ const SellerPage = () => {
       cancelled = true;
       isMounted = false;
     };
-  }, [sellerId, user, navigate, error]);
+  }, [sellerId, currentUserId, navigate]);
 
   // ==========================================================
   // RESET FORM
@@ -555,7 +556,6 @@ const SellerPage = () => {
     // ==========================================================
 
     if (!editingReviewId && hasUserReviewed && userReview) {
-      // Switch to edit mode – pre‑fill the form with existing review data
       setReviewError("");
       setReviewSuccess("You already have a review – you can edit it below.");
       setEditingReviewId(userReview._id);
@@ -588,7 +588,6 @@ const SellerPage = () => {
             response.message || "Your review has been updated successfully."
           );
           resetForm();
-          // Refresh reviews
           const refreshed = await getSellerReviews(sellerId, { page: 1, limit: 10 });
           if (refreshed.success) {
             setReviews(refreshed.reviews || []);
@@ -602,12 +601,11 @@ const SellerPage = () => {
 
       // ─── CREATE MODE ────────────────────────────────────────
 
-      // ✅ FIX: Add type: 'SELLER' to the payload
       const response = await createReview({
         sellerId,
         rating: selectedRating,
         comment: cleanComment,
-        type: 'SELLER', // <-- THIS WAS MISSING
+        type: 'SELLER',
       });
 
       console.log("⭐ Review created:", response);
@@ -624,7 +622,6 @@ const SellerPage = () => {
 
       resetForm();
 
-      // Refresh reviews
       const refreshed = await getSellerReviews(sellerId, { page: 1, limit: 10 });
       if (refreshed.success) {
         setReviews(refreshed.reviews || []);
@@ -633,17 +630,11 @@ const SellerPage = () => {
     } catch (err) {
       console.error("❌ Create review error:", err);
 
-      // ==========================================================
-      // 409 FALLBACK – reload and auto‑edit
-      // ==========================================================
-
       if (err?.response?.status === 409) {
-        // Reload reviews to get the latest list
         const refreshed = await getSellerReviews(sellerId, { page: 1, limit: 10 });
         if (refreshed.success) {
           setReviews(refreshed.reviews || []);
           if (refreshed.summary) setReviewSummary(refreshed.summary);
-          // After reload, check if we can find the user's review
           const updatedUserReview = refreshed.reviews?.find((r) => {
             const reviewerId = r.reviewer?._id || r.reviewer?.id || r.reviewer;
             return (
@@ -1176,12 +1167,18 @@ const SellerPage = () => {
 
   // ==========================================================
   // LOAD MORE PRODUCTS
+  //
+  // ✅ FIX: Uses `loadingMore` instead of `loading` so clicking
+  //    "Load More" does NOT replace the entire page with the
+  //    LoadingDots. Uses `loadMoreError` (not `error`) so a
+  //    failed load-more does NOT swap the page for "Seller
+  //    Not Found".
   // ==========================================================
 
   const handleLoadMoreProducts =
     async () => {
       if (
-        loading ||
+        loadingMore ||
         !pagination
       ) {
         return;
@@ -1204,7 +1201,8 @@ const SellerPage = () => {
       }
 
       try {
-        setLoading(true);
+        setLoadingMore(true);
+        setLoadMoreError("");
 
         const nextPage =
           currentPage + 1;
@@ -1250,12 +1248,12 @@ const SellerPage = () => {
           err
         );
 
-        setError(
+        setLoadMoreError(
           err?.message ||
-            "Unable to load more products."
+            "Unable to load more products. Please try again."
         );
       } finally {
-        setLoading(false);
+        setLoadingMore(false);
       }
     };
 
@@ -2761,7 +2759,8 @@ const SellerPage = () => {
               )}
             </div>
 
-            {/* LOAD MORE PRODUCTS */}
+            {/* LOAD MORE PRODUCTS — uses `loadingMore` now, so the page
+                stays intact while more products load. */}
 
             {pagination &&
               Number(
@@ -2784,11 +2783,11 @@ const SellerPage = () => {
                     onClick={
                       handleLoadMoreProducts
                     }
-                    disabled={loading}
+                    disabled={loadingMore}
                     style={{
                       padding: "11px 25px",
                       background:
-                        loading
+                        loadingMore
                           ? "var(--gray-300)"
                           : "var(--primary)",
                       color: "white",
@@ -2796,7 +2795,7 @@ const SellerPage = () => {
                       borderRadius:
                         "var(--radius-full)",
                       fontWeight: 700,
-                      cursor: loading
+                      cursor: loadingMore
                         ? "not-allowed"
                         : "pointer",
                       display:
@@ -2806,7 +2805,7 @@ const SellerPage = () => {
                       gap: "8px",
                     }}
                   >
-                    {loading ? (
+                    {loadingMore ? (
                       <>
                         <i className="fas fa-spinner fa-spin" />
                         Loading...
@@ -2820,6 +2819,21 @@ const SellerPage = () => {
                   </button>
                 </div>
               )}
+
+            {/* Load-more error (inline, does not replace the page) */}
+
+            {loadMoreError && (
+              <div
+                style={{
+                  marginTop: "15px",
+                  textAlign: "center",
+                  color: "#dc2626",
+                  fontSize: "14px",
+                }}
+              >
+                {loadMoreError}
+              </div>
+            )}
           </>
         )}
       </div>

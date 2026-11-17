@@ -160,18 +160,28 @@ const RelatedProductCard = memo(({ product }) => {
     <div
       className="related-product-card"
       style={{
-        background: "white", borderRadius: "var(--radius-md)", overflow: "hidden",
-        boxShadow: "0 2px 10px rgba(0,0,0,0.06)", transition: "transform 0.2s, box-shadow 0.2s",
-        cursor: "pointer", position: "relative",
+        background: "linear-gradient(135deg, rgba(255,255,255,0.72) 0%, rgba(238,246,255,0.42) 50%, rgba(255,255,255,0.62) 100%)",
+        backdropFilter: "blur(14px) saturate(180%)",
+        WebkitBackdropFilter: "blur(14px) saturate(180%)",
+        borderRadius: "16px",
+        overflow: "hidden",
+        border: "1px solid rgba(255,255,255,0.75)",
+        boxShadow: "0 8px 28px rgba(31,38,135,0.10), inset 0 1px 0 rgba(255,255,255,0.95), inset 0 -1px 0 rgba(255,255,255,0.25)",
+        transition: "transform 0.25s cubic-bezier(0.4,0,0.2,1), box-shadow 0.25s cubic-bezier(0.4,0,0.2,1), border-color 0.2s ease",
+        cursor: "pointer",
+        position: "relative",
+        isolation: "isolate",
       }}
       onClick={() => navigate(`/product/${product._id}`)}
       onMouseEnter={(e) => {
         e.currentTarget.style.transform = "translateY(-4px)";
-        e.currentTarget.style.boxShadow = "0 8px 25px rgba(0,0,0,0.12)";
+        e.currentTarget.style.boxShadow = "0 14px 40px rgba(31,38,135,0.16), inset 0 1px 0 rgba(255,255,255,1), inset 0 -1px 0 rgba(255,255,255,0.3)";
+        e.currentTarget.style.borderColor = "rgba(255,255,255,0.98)";
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.transform = "translateY(0)";
-        e.currentTarget.style.boxShadow = "0 2px 10px rgba(0,0,0,0.06)";
+        e.currentTarget.style.boxShadow = "0 8px 28px rgba(31,38,135,0.10), inset 0 1px 0 rgba(255,255,255,0.95), inset 0 -1px 0 rgba(255,255,255,0.25)";
+        e.currentTarget.style.borderColor = "rgba(255,255,255,0.75)";
       }}
     >
       <div style={{ position: "relative", width: "100%", paddingBottom: "100%", background: "#f1f5f9", overflow: "hidden" }}>
@@ -181,7 +191,7 @@ const RelatedProductCard = memo(({ product }) => {
           onError={(e) => { e.currentTarget.src = "https://placehold.co/300x300?text=No+Image"; }}
         />
         {isSold && (
-          <div style={{ position: "absolute", top: "6px", right: "6px", background: "#dc2626", color: "white", padding: "2px 10px", borderRadius: "4px", fontSize: "10px", fontWeight: 700, textTransform: "uppercase" }}>
+          <div style={{ position: "absolute", top: "6px", right: "6px", background: "linear-gradient(135deg, rgba(220,38,38,0.94) 0%, rgba(185,28,28,0.88) 100%)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)", color: "white", padding: "2px 10px", borderRadius: "6px", fontSize: "10px", fontWeight: 700, textTransform: "uppercase", border: "1px solid rgba(255,255,255,0.35)", boxShadow: "0 2px 8px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.3)" }}>
             Sold
           </div>
         )}
@@ -208,7 +218,7 @@ const LoadingDots = () => {
         {`
           .loading-dots-wrapper { display: flex; justify-content: center; align-items: center; padding: 40px 20px; width: 100%; }
           .loading-dots { display: flex; gap: 8px; align-items: center; }
-          .loading-dots span { display: block; width: 14px; height: 14px; background: #0066cc; border-radius: 50%; animation: loading-dot-bounce 1.2s ease-in-out infinite; }
+          .loading-dots span { display: block; width: 14px; height: 14px; background: linear-gradient(135deg, #0066cc 0%, #3b82f6 100%); border-radius: 50%; box-shadow: 0 2px 10px rgba(0,102,204,0.35), inset 0 1px 0 rgba(255,255,255,0.4); animation: loading-dot-bounce 1.2s ease-in-out infinite; }
           .loading-dots span:nth-child(1) { animation-delay: 0s; }
           .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
           .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
@@ -1017,6 +1027,354 @@ const ProductDetails = () => {
     <>
       <style>
         {`
+          /* ═══════════════════════════════════════════════════════
+             LIQUID MIRROR — iOS27-STYLE PAGE / PANELS / BUTTONS
+             ═══════════════════════════════════════════════════════ */
+
+          .liquid-pd-page {
+            position: relative;
+            overflow: hidden;
+            border-radius: 16px;
+            background: linear-gradient(
+              135deg,
+              #eef4ff 0%,
+              #f5f0ff 40%,
+              #eaf7ff 70%,
+              #f2f8ff 100%
+            );
+          }
+
+          .liquid-pd-page::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            border-radius: inherit;
+            background:
+              radial-gradient(circle at 8% 15%, rgba(0,102,204,0.22) 0%, rgba(0,102,204,0.08) 25%, transparent 55%),
+              radial-gradient(circle at 92% 60%, rgba(139,92,246,0.18) 0%, rgba(139,92,246,0.06) 25%, transparent 55%),
+              radial-gradient(circle at 50% 115%, rgba(6,182,212,0.18) 0%, rgba(6,182,212,0.06) 25%, transparent 55%),
+              radial-gradient(circle at 30% 80%, rgba(59,130,246,0.12) 0%, transparent 50%);
+            animation: liquid-pd-float 24s ease-in-out infinite;
+            will-change: transform;
+            z-index: 0;
+          }
+          .liquid-pd-page > * { position: relative; z-index: 1; }
+
+          @keyframes liquid-pd-float {
+            0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+            33%      { transform: translate3d(-30px, 24px, 0) scale(1.06); }
+            66%      { transform: translate3d(24px, -20px, 0) scale(0.97); }
+          }
+
+          .liquid-pd-panel {
+            background: linear-gradient(
+              135deg,
+              rgba(255,255,255,0.62) 0%,
+              rgba(255,255,255,0.22) 50%,
+              rgba(255,255,255,0.52) 100%
+            );
+            backdrop-filter: blur(14px) saturate(180%);
+            -webkit-backdrop-filter: blur(14px) saturate(180%);
+            border: 1px solid rgba(255,255,255,0.7);
+            border-radius: 16px;
+            box-shadow:
+              0 6px 24px rgba(31,38,135,0.08),
+              inset 0 1px 0 rgba(255,255,255,0.9),
+              inset 0 -1px 0 rgba(255,255,255,0.2);
+          }
+
+          .liquid-pd-panel-warm {
+            background: linear-gradient(
+              135deg,
+              rgba(255,255,255,0.7) 0%,
+              rgba(254,249,195,0.4) 50%,
+              rgba(255,255,255,0.55) 100%
+            );
+            backdrop-filter: blur(14px) saturate(180%);
+            -webkit-backdrop-filter: blur(14px) saturate(180%);
+            border: 1px solid rgba(255,255,255,0.75);
+            border-radius: 16px;
+            box-shadow:
+              0 6px 24px rgba(180,130,30,0.10),
+              inset 0 1px 0 rgba(255,255,255,0.9),
+              inset 0 -1px 0 rgba(255,255,255,0.2);
+          }
+
+          .liquid-pd-image-frame {
+            background: linear-gradient(
+              135deg,
+              rgba(255,255,255,0.55) 0%,
+              rgba(241,245,249,0.35) 50%,
+              rgba(255,255,255,0.5) 100%
+            );
+            backdrop-filter: blur(12px) saturate(180%);
+            -webkit-backdrop-filter: blur(12px) saturate(180%);
+            border: 1px solid rgba(255,255,255,0.75);
+            border-radius: 16px;
+            box-shadow:
+              0 8px 28px rgba(31,38,135,0.10),
+              inset 0 1px 0 rgba(255,255,255,0.95),
+              inset 0 -1px 0 rgba(255,255,255,0.25);
+            overflow: hidden;
+          }
+
+          .liquid-pd-btn {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            border-radius: var(--radius-full);
+            font-weight: 700;
+            cursor: pointer;
+            backdrop-filter: blur(10px) saturate(180%);
+            -webkit-backdrop-filter: blur(10px) saturate(180%);
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+            touch-action: manipulation;
+            white-space: nowrap;
+            border: 1px solid rgba(255,255,255,0.35);
+            box-shadow:
+              inset 0 1px 0 rgba(255,255,255,0.35),
+              0 4px 14px rgba(0,0,0,0.1);
+          }
+          .liquid-pd-btn:hover:not(:disabled) { transform: translateY(-1px); }
+          .liquid-pd-btn:active:not(:disabled) { transform: translateY(0) scale(0.98); }
+          .liquid-pd-btn:disabled { cursor: not-allowed; opacity: 0.7; }
+
+          .liquid-pd-btn-wa {
+            background: linear-gradient(135deg, rgba(37,211,102,0.94) 0%, rgba(29,177,84,0.88) 100%);
+            color: #ffffff;
+            box-shadow:
+              inset 0 1px 0 rgba(255,255,255,0.35),
+              0 4px 14px rgba(37,211,102,0.3);
+          }
+          .liquid-pd-btn-msg {
+            background: linear-gradient(135deg, rgba(7,94,84,0.94) 0%, rgba(5,75,67,0.88) 100%);
+            color: #ffffff;
+            box-shadow:
+              inset 0 1px 0 rgba(255,255,255,0.3),
+              0 4px 14px rgba(7,94,84,0.3);
+          }
+          .liquid-pd-btn-blue {
+            background: linear-gradient(135deg, rgba(0,102,204,0.94) 0%, rgba(0,85,165,0.88) 100%);
+            color: #ffffff;
+            box-shadow:
+              inset 0 1px 0 rgba(255,255,255,0.35),
+              0 4px 14px rgba(0,102,204,0.3);
+          }
+          .liquid-pd-btn-light {
+            background: linear-gradient(135deg, rgba(255,255,255,0.68) 0%, rgba(255,255,255,0.3) 100%);
+            color: #111827;
+            border: 1px solid rgba(255,255,255,0.75);
+            box-shadow:
+              inset 0 1px 0 rgba(255,255,255,0.9),
+              0 2px 10px rgba(31,38,135,0.06);
+          }
+          .liquid-pd-btn-red {
+            background: linear-gradient(135deg, rgba(220,38,38,0.94) 0%, rgba(185,28,28,0.88) 100%);
+            color: #ffffff;
+            box-shadow:
+              inset 0 1px 0 rgba(255,255,255,0.3),
+              0 4px 14px rgba(220,38,38,0.3);
+          }
+          .liquid-pd-btn-green {
+            background: linear-gradient(135deg, rgba(34,197,94,0.94) 0%, rgba(22,163,74,0.88) 100%);
+            color: #ffffff;
+            box-shadow:
+              inset 0 1px 0 rgba(255,255,255,0.3),
+              0 4px 14px rgba(34,197,94,0.3);
+          }
+          .liquid-pd-btn-outline-blue {
+            background: linear-gradient(135deg, rgba(255,255,255,0.68) 0%, rgba(255,255,255,0.3) 100%);
+            color: #0066cc;
+            border: 1px solid rgba(0,102,204,0.45);
+            box-shadow:
+              inset 0 1px 0 rgba(255,255,255,0.9),
+              0 2px 10px rgba(0,102,204,0.15);
+          }
+          .liquid-pd-btn-outline-gray {
+            background: linear-gradient(135deg, rgba(255,255,255,0.58) 0%, rgba(255,255,255,0.24) 100%);
+            color: #374151;
+            border: 1px solid rgba(255,255,255,0.68);
+            box-shadow:
+              inset 0 1px 0 rgba(255,255,255,0.85),
+              0 2px 10px rgba(31,38,135,0.06);
+          }
+          .liquid-pd-btn-outline-gray.liked {
+            color: #e74c3c;
+            border-color: rgba(231,76,60,0.45);
+            box-shadow:
+              inset 0 1px 0 rgba(255,255,255,0.85),
+              0 2px 10px rgba(231,76,60,0.15);
+          }
+          .liquid-pd-btn-gray {
+            background: linear-gradient(135deg, rgba(156,163,175,0.85) 0%, rgba(107,114,128,0.75) 100%);
+            color: #ffffff;
+            cursor: not-allowed;
+            opacity: 0.7;
+          }
+
+          .liquid-pd-badge-glass {
+            background: linear-gradient(135deg, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0.55) 100%);
+            backdrop-filter: blur(8px) saturate(180%);
+            -webkit-backdrop-filter: blur(8px) saturate(180%);
+            border: 1px solid rgba(255,255,255,0.7);
+            box-shadow:
+              inset 0 1px 0 rgba(255,255,255,0.9),
+              0 2px 8px rgba(31,38,135,0.06);
+            border-radius: 20px;
+            padding: 2px 10px;
+            font-size: 10px;
+            font-style: italic;
+            font-weight: 600;
+            color: #1a56db;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            transition: all 0.2s ease;
+          }
+          .liquid-pd-badge-glass:hover {
+            background: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(232,240,254,0.75) 100%);
+            border-color: rgba(0,102,204,0.55);
+            box-shadow:
+              inset 0 1px 0 rgba(255,255,255,1),
+              0 4px 14px rgba(0,102,204,0.18);
+            transform: translateY(-1px);
+          }
+
+          .liquid-pd-image-nav {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: linear-gradient(135deg, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.4) 100%);
+            backdrop-filter: blur(10px) saturate(180%);
+            -webkit-backdrop-filter: blur(10px) saturate(180%);
+            color: #ffffff;
+            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            font-size: 18px;
+            cursor: pointer;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow:
+              0 4px 12px rgba(0,0,0,0.25),
+              inset 0 1px 0 rgba(255,255,255,0.25);
+            transition: transform 0.15s ease, background 0.15s ease;
+          }
+          .liquid-pd-image-nav:hover {
+            background: linear-gradient(135deg, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.55) 100%);
+            transform: translateY(-50%) scale(1.08);
+          }
+
+          .liquid-pd-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            border: 1px solid rgba(255,255,255,0.6);
+            cursor: pointer;
+            padding: 0;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+          }
+
+          .liquid-pd-thumb {
+            width: 60px;
+            height: 60px;
+            object-fit: cover;
+            border-radius: 8px;
+            cursor: pointer;
+            flex-shrink: 0;
+            background: #f1f5f9;
+            transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+          }
+          .liquid-pd-thumb:hover { transform: translateY(-2px); }
+
+          .liquid-pd-lightbox-close {
+            position: fixed;
+            top: 70px;
+            right: 20px;
+            background: linear-gradient(135deg, rgba(255,255,255,0.92) 0%, rgba(255,255,255,0.7) 100%);
+            backdrop-filter: blur(14px) saturate(180%);
+            -webkit-backdrop-filter: blur(14px) saturate(180%);
+            color: #1a1a1a;
+            border: 1px solid rgba(255,255,255,0.6);
+            border-radius: 50%;
+            width: 48px;
+            height: 48px;
+            font-size: 24px;
+            cursor: pointer;
+            z-index: 10004;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            box-shadow:
+              0 8px 28px rgba(0,0,0,0.35),
+              inset 0 1px 0 rgba(255,255,255,0.9);
+            line-height: 1;
+          }
+          .liquid-pd-lightbox-close:hover {
+            transform: scale(1.06);
+            box-shadow:
+              0 12px 36px rgba(0,0,0,0.45),
+              inset 0 1px 0 rgba(255,255,255,1);
+          }
+
+          .liquid-pd-lightbox-nav {
+            position: fixed;
+            top: 50%;
+            transform: translateY(-50%);
+            background: linear-gradient(135deg, rgba(255,255,255,0.28) 0%, rgba(255,255,255,0.12) 100%);
+            backdrop-filter: blur(14px) saturate(180%);
+            -webkit-backdrop-filter: blur(14px) saturate(180%);
+            color: #ffffff;
+            border: 1px solid rgba(255,255,255,0.35);
+            border-radius: 50%;
+            width: 52px;
+            height: 52px;
+            font-size: 24px;
+            cursor: pointer;
+            z-index: 10003;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s ease, background 0.2s ease;
+            box-shadow:
+              0 8px 24px rgba(0,0,0,0.35),
+              inset 0 1px 0 rgba(255,255,255,0.35);
+          }
+          .liquid-pd-lightbox-nav:hover {
+            background: linear-gradient(135deg, rgba(255,255,255,0.42) 0%, rgba(255,255,255,0.22) 100%);
+            transform: translateY(-50%) scale(1.06);
+          }
+
+          .liquid-pd-lightbox-counter {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #ffffff;
+            background: linear-gradient(135deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.1) 100%);
+            backdrop-filter: blur(14px) saturate(180%);
+            -webkit-backdrop-filter: blur(14px) saturate(180%);
+            border: 1px solid rgba(255,255,255,0.3);
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            z-index: 10003;
+            box-shadow:
+              0 6px 20px rgba(0,0,0,0.35),
+              inset 0 1px 0 rgba(255,255,255,0.3);
+          }
+
+          /* ═══════════════════════════════════════════════════════
+             RESPONSIVE
+             ═══════════════════════════════════════════════════════ */
           @media (max-width: 768px) {
             .product-detail { grid-template-columns: 1fr !important; gap: 16px !important; }
             .thumbnails img { width: 50px !important; height: 50px !important; }
@@ -1037,23 +1395,18 @@ const ProductDetails = () => {
           .related-products-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
           @media (max-width: 600px) { .related-products-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; } }
 
-          /* ─── Lightbox ──────────────────────────── */
+          /* ─── Lightbox overlay ──────────────────────────── */
           .lightbox-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.92); display: flex; align-items: center; justify-content: center; z-index: 10002; padding: 16px; cursor: pointer; }
-          .lightbox-image { max-width: 90vw; max-height: 90vh; object-fit: contain; cursor: default; border-radius: 4px; box-shadow: 0 8px 40px rgba(0,0,0,0.6); }
-          .lightbox-close { position: fixed; top: 70px; right: 20px; background: rgba(255,255,255,0.95); color: #1a1a1a; border: 2px solid rgba(0,0,0,0.2); border-radius: 50%; width: 48px; height: 48px; font-size: 28px; cursor: pointer; z-index: 10004; display: flex; align-items: center; justify-content: center; transition: all 0.2s; box-shadow: 0 2px 12px rgba(0,0,0,0.3); backdrop-filter: blur(4px); line-height: 1; }
-          .lightbox-close:hover { background: #ffffff; transform: scale(1.05); border-color: #333; }
-          .lightbox-nav { position: fixed; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.6); color: white; border: none; border-radius: 50%; width: 52px; height: 52px; font-size: 24px; cursor: pointer; z-index: 10003; display: flex; align-items: center; justify-content: center; transition: background 0.2s; backdrop-filter: blur(4px); }
-          .lightbox-nav:hover { background: rgba(255,255,255,0.2); }
+          .lightbox-image { max-width: 90vw; max-height: 90vh; object-fit: contain; cursor: default; border-radius: 8px; box-shadow: 0 8px 40px rgba(0,0,0,0.6); }
           .lightbox-prev { left: 16px; }
           .lightbox-next { right: 16px; }
-          .lightbox-counter { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); color: white; background: rgba(0,0,0,0.5); padding: 6px 16px; border-radius: 20px; font-size: 14px; backdrop-filter: blur(4px); z-index: 10003; }
           @media (max-width: 600px) {
-            .lightbox-close { top: 60px; right: 12px; width: 44px; height: 44px; font-size: 26px; }
-            .lightbox-nav { width: 44px; height: 44px; font-size: 20px; }
+            .liquid-pd-lightbox-close { top: 60px; right: 12px; width: 44px; height: 44px; font-size: 22px; }
+            .liquid-pd-lightbox-nav { width: 44px; height: 44px; font-size: 20px; }
             .lightbox-prev { left: 8px; }
             .lightbox-next { right: 8px; }
             .lightbox-image { max-width: 95vw; max-height: 80vh; }
-            .lightbox-counter { bottom: 16px; font-size: 12px; padding: 4px 12px; }
+            .liquid-pd-lightbox-counter { bottom: 16px; font-size: 12px; padding: 4px 12px; }
           }
 
           /* ═══════════════════════════════════════════════════════
@@ -1071,12 +1424,6 @@ const ProductDetails = () => {
           }
           @keyframes wa-fade-in { from { opacity: 0; } to { opacity: 1; } }
 
-          /* ─── HEIGHT REDUCED ──────────────────────────────────
-             Was: 660px (overflowed 1280x720, 1366x768, 1024x600).
-             Now: min(560px, calc(100dvh - 48px)) — always fits
-             with ~24px breathing room above/below the modal.
-             Same feel as a native popup, no scroll-to-see-composer.
-             ───────────────────────────────────────────────────── */
           .wa-chat-modal {
             width: 100%;
             max-width: 520px;
@@ -1268,28 +1615,13 @@ const ProductDetails = () => {
             gap: 6px;
           }
 
-          /* ═══════════════════════════════════════════════════════
-             PHONE (≤ 600px) — full-screen WhatsApp-style chat
-             ═══════════════════════════════════════════════════════
-             Full screen is the CORRECT WhatsApp behaviour on
-             mobile — no reduction. Safe-area insets + 16px input
-             + visualViewport (JS) handle notch, home bar, keyboard.
-          */
           @media (max-width: 600px) {
-            .wa-chat-overlay {
-              padding: 0;
-              align-items: stretch;
-              justify-content: stretch;
-            }
+            .wa-chat-overlay { padding: 0; align-items: stretch; justify-content: stretch; }
             .wa-chat-modal {
-              width: 100%;
-              max-width: 100%;
-              height: 100vh;
-              height: 100dvh;
-              max-height: 100vh;
-              max-height: 100dvh;
-              border-radius: 0;
-              margin: 0;
+              width: 100%; max-width: 100%;
+              height: 100vh; height: 100dvh;
+              max-height: 100vh; max-height: 100dvh;
+              border-radius: 0; margin: 0;
             }
             .wa-chat-header {
               padding-top: calc(10px + env(safe-area-inset-top, 0px));
@@ -1297,9 +1629,7 @@ const ProductDetails = () => {
               padding-left: calc(12px + env(safe-area-inset-left, 0px));
               padding-right: calc(12px + env(safe-area-inset-right, 0px));
             }
-            .wa-chat-body {
-              padding: 10px 8px;
-            }
+            .wa-chat-body { padding: 10px 8px; }
             .wa-chat-composer {
               padding-top: 8px;
               padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
@@ -1314,34 +1644,12 @@ const ProductDetails = () => {
               max-height: 90px;
               line-height: 20px;
             }
-            .wa-send-btn {
-              width: 40px;
-              height: 40px;
-              font-size: 15px;
-            }
-            .wa-bubble {
-              max-width: 82%;
-              font-size: 14px;
-            }
-            .wa-chat-avatar {
-              width: 36px;
-              height: 36px;
-              font-size: 14px;
-            }
-            .wa-chat-back-btn {
-              width: 34px;
-              height: 34px;
-              font-size: 16px;
-            }
-            .wa-error-banner {
-              font-size: 11.5px;
-              padding: 5px 12px;
-            }
+            .wa-send-btn { width: 40px; height: 40px; font-size: 15px; }
+            .wa-bubble { max-width: 82%; font-size: 14px; }
+            .wa-chat-avatar { width: 36px; height: 36px; font-size: 14px; }
+            .wa-chat-back-btn { width: 34px; height: 34px; font-size: 16px; }
+            .wa-error-banner { font-size: 11.5px; padding: 5px 12px; }
           }
-
-          /* ═══════════════════════════════════════════════════════
-             TINY PHONE (≤ 380px) — iPhone SE, older Androids
-             ═══════════════════════════════════════════════════════ */
           @media (max-width: 380px) {
             .wa-chat-header {
               padding-top: calc(8px + env(safe-area-inset-top, 0px));
@@ -1350,9 +1658,7 @@ const ProductDetails = () => {
               padding-right: calc(8px + env(safe-area-inset-right, 0px));
               gap: 6px;
             }
-            .wa-chat-body {
-              padding: 8px 4px;
-            }
+            .wa-chat-body { padding: 8px 4px; }
             .wa-chat-composer {
               padding-top: 6px;
               padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px));
@@ -1360,54 +1666,19 @@ const ProductDetails = () => {
               padding-right: calc(6px + env(safe-area-inset-right, 0px));
               gap: 3px;
             }
-            .wa-chat-input {
-              padding: 7px 10px;
-              min-height: 34px;
-              max-height: 80px;
-              font-size: 16px;
-              line-height: 18px;
-            }
-            .wa-send-btn {
-              width: 36px;
-              height: 36px;
-              font-size: 14px;
-            }
-            .wa-chat-avatar {
-              width: 32px;
-              height: 32px;
-              font-size: 13px;
-            }
-            .wa-chat-back-btn {
-              width: 30px;
-              height: 30px;
-              font-size: 14px;
-            }
-            .wa-bubble {
-              max-width: 88%;
-              font-size: 13.5px;
-            }
-            .wa-date-divider > span {
-              font-size: 10.5px;
-              padding: 4px 10px;
-            }
+            .wa-chat-input { padding: 7px 10px; min-height: 34px; max-height: 80px; font-size: 16px; line-height: 18px; }
+            .wa-send-btn { width: 36px; height: 36px; font-size: 14px; }
+            .wa-chat-avatar { width: 32px; height: 32px; font-size: 13px; }
+            .wa-chat-back-btn { width: 30px; height: 30px; font-size: 14px; }
+            .wa-bubble { max-width: 88%; font-size: 13.5px; }
+            .wa-date-divider > span { font-size: 10.5px; padding: 4px 10px; }
           }
-
-          /* ═══════════════════════════════════════════════════════
-             LANDSCAPE PHONE — short viewport, wide
-             ═══════════════════════════════════════════════════════ */
           @media (max-width: 900px) and (max-height: 500px) and (orientation: landscape) {
-            .wa-chat-overlay {
-              padding: 0;
-              align-items: stretch;
-              justify-content: stretch;
-            }
+            .wa-chat-overlay { padding: 0; align-items: stretch; justify-content: stretch; }
             .wa-chat-modal {
-              width: 100%;
-              max-width: 100%;
-              height: 100vh;
-              height: 100dvh;
-              max-height: 100vh;
-              max-height: 100dvh;
+              width: 100%; max-width: 100%;
+              height: 100vh; height: 100dvh;
+              max-height: 100vh; max-height: 100dvh;
               border-radius: 0;
             }
             .wa-chat-header {
@@ -1416,38 +1687,18 @@ const ProductDetails = () => {
               padding-left: calc(12px + env(safe-area-inset-left, 0px));
               padding-right: calc(12px + env(safe-area-inset-right, 0px));
             }
-            .wa-chat-body {
-              padding: 6px 16px;
-            }
+            .wa-chat-body { padding: 6px 16px; }
             .wa-chat-composer {
               padding-top: 6px;
               padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px));
               padding-left: calc(12px + env(safe-area-inset-left, 0px));
               padding-right: calc(12px + env(safe-area-inset-right, 0px));
             }
-            .wa-chat-input {
-              min-height: 32px;
-              max-height: 60px;
-            }
-            .wa-send-btn {
-              width: 36px;
-              height: 36px;
-            }
-            .wa-chat-avatar {
-              width: 32px;
-              height: 32px;
-            }
-            .wa-bubble {
-              max-width: 60%;
-            }
+            .wa-chat-input { min-height: 32px; max-height: 60px; }
+            .wa-send-btn { width: 36px; height: 36px; }
+            .wa-chat-avatar { width: 32px; height: 32px; }
+            .wa-bubble { max-width: 60%; }
           }
-
-          /* ═══════════════════════════════════════════════════════
-             TABLET (601px – 1024px) — iPad portrait & landscape
-             ═══════════════════════════════════════════════════════
-             HEIGHT REDUCED: was 78dvh (799px on iPad portrait),
-             now min(560px, 72dvh) so it stays compact & centered.
-          */
           @media (min-width: 601px) and (max-width: 1024px) {
             .wa-chat-modal {
               max-width: 560px;
@@ -1455,27 +1706,59 @@ const ProductDetails = () => {
               max-height: min(560px, 72dvh);
             }
           }
+
+          /* ═══════════════════════════════════════════════════════
+             REDUCED MOTION
+             ═══════════════════════════════════════════════════════ */
+          @media (prefers-reduced-motion: reduce) {
+            .liquid-pd-page::before {
+              animation: none !important;
+            }
+            .liquid-pd-btn,
+            .liquid-pd-thumb,
+            .liquid-pd-image-nav,
+            .liquid-pd-lightbox-close,
+            .liquid-pd-lightbox-nav {
+              transition: none !important;
+            }
+            .liquid-pd-btn:hover:not(:disabled),
+            .liquid-pd-thumb:hover,
+            .liquid-pd-lightbox-close:hover,
+            .liquid-pd-image-nav:hover {
+              transform: none !important;
+            }
+          }
         `}
       </style>
 
-      <div className="container" style={{ padding: "16px 12px" }}>
+      <div className="container liquid-pd-page" style={{ padding: "16px 12px" }}>
         <div className="product-detail" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
           {/* GALLERY */}
           <div className="gallery">
             <div
-              className="main-image"
-              style={{ position: "relative", background: "#f1f5f9", borderRadius: "var(--radius-md)", overflow: "hidden", aspectRatio: "1/1", cursor: hasImages ? "pointer" : "default" }}
+              className="main-image liquid-pd-image-frame"
+              style={{ position: "relative", aspectRatio: "1/1", cursor: hasImages ? "pointer" : "default" }}
               onClick={() => hasImages && openLightbox(currentImageIndex)}
             >
               <img src={getCurrentImage()} alt={product.title} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
               {isSold && <SoldBadge variant="ribbon" />}
               {totalImages > 1 && (
                 <>
-                  <button type="button" onClick={handlePrev} style={{ position: "absolute", top: "50%", left: "6px", transform: "translateY(-50%)", background: "rgba(0,0,0,0.5)", color: "white", border: "none", borderRadius: "50%", width: "28px", height: "28px", fontSize: "16px", cursor: "pointer", zIndex: 10 }}>‹</button>
-                  <button type="button" onClick={handleNext} style={{ position: "absolute", top: "50%", right: "6px", transform: "translateY(-50%)", background: "rgba(0,0,0,0.5)", color: "white", border: "none", borderRadius: "50%", width: "28px", height: "28px", fontSize: "16px", cursor: "pointer", zIndex: 10 }}>›</button>
+                  <button type="button" onClick={handlePrev} className="liquid-pd-image-nav" style={{ left: "6px" }}>‹</button>
+                  <button type="button" onClick={handleNext} className="liquid-pd-image-nav" style={{ right: "6px" }}>›</button>
                   <div style={{ position: "absolute", bottom: "10px", left: "50%", transform: "translateX(-50%)", display: "flex", gap: "4px", zIndex: 10 }}>
                     {images.map((_, idx) => (
-                      <button key={idx} type="button" onClick={() => handleThumbClick(idx)} style={{ width: "7px", height: "7px", borderRadius: "50%", background: idx === currentImageIndex ? "white" : "rgba(255,255,255,0.5)", border: "none", cursor: "pointer", padding: 0 }} />
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => handleThumbClick(idx)}
+                        className="liquid-pd-dot"
+                        style={{
+                          background: idx === currentImageIndex
+                            ? "linear-gradient(135deg, rgba(255,255,255,0.98) 0%, rgba(255,255,255,0.85) 100%)"
+                            : "rgba(255,255,255,0.5)",
+                        }}
+                      />
                     ))}
                   </div>
                 </>
@@ -1484,7 +1767,22 @@ const ProductDetails = () => {
             {hasImages && totalImages > 1 && (
               <div className="thumbnails" style={{ display: "flex", gap: "6px", marginTop: "8px", overflowX: "auto", paddingBottom: "4px" }}>
                 {images.map((_, idx) => (
-                  <img key={idx} src={getThumbnail(idx)} alt={`Thumb ${idx + 1}`} loading="lazy" onClick={() => handleThumbClick(idx)} style={{ width: "60px", height: "60px", objectFit: "cover", borderRadius: "var(--radius-sm)", cursor: "pointer", border: currentImageIndex === idx ? "3px solid var(--primary)" : "2px solid transparent", flexShrink: 0, background: "#f1f5f9" }} />
+                  <img
+                    key={idx}
+                    src={getThumbnail(idx)}
+                    alt={`Thumb ${idx + 1}`}
+                    loading="lazy"
+                    onClick={() => handleThumbClick(idx)}
+                    className="liquid-pd-thumb"
+                    style={{
+                      border: currentImageIndex === idx
+                        ? "3px solid rgba(0,102,204,0.85)"
+                        : "2px solid rgba(255,255,255,0.75)",
+                      boxShadow: currentImageIndex === idx
+                        ? "0 4px 14px rgba(0,102,204,0.35), inset 0 1px 0 rgba(255,255,255,0.9)"
+                        : "0 2px 8px rgba(31,38,135,0.08), inset 0 1px 0 rgba(255,255,255,0.85)",
+                    }}
+                  />
                 ))}
               </div>
             )}
@@ -1495,7 +1793,21 @@ const ProductDetails = () => {
             <h1 style={{ fontSize: "24px", fontWeight: 800, marginBottom: "2px" }}>
               {product.title}
               {isSold && (
-                <span style={{ fontSize: "13px", fontWeight: 700, color: "#dc2626", background: "#fee2e2", padding: "2px 8px", borderRadius: "4px", marginLeft: "6px", display: "inline-block", verticalAlign: "middle" }}>SOLD</span>
+                <span style={{
+                  fontSize: "13px",
+                  fontWeight: 700,
+                  color: "#b91c1c",
+                  background: "linear-gradient(135deg, rgba(254,226,226,0.92) 0%, rgba(254,202,202,0.75) 100%)",
+                  backdropFilter: "blur(8px)",
+                  WebkitBackdropFilter: "blur(8px)",
+                  border: "1px solid rgba(252,165,165,0.6)",
+                  padding: "2px 8px",
+                  borderRadius: "6px",
+                  marginLeft: "6px",
+                  display: "inline-block",
+                  verticalAlign: "middle",
+                  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.9), 0 2px 8px rgba(220,38,38,0.15)",
+                }}>SOLD</span>
               )}
             </h1>
 
@@ -1517,7 +1829,7 @@ const ProductDetails = () => {
             </div>
 
             {hasAnySpec() && (
-              <div className="specs" style={{ marginBottom: "10px", padding: "10px", background: "var(--gray-50)", borderRadius: "var(--radius-md)" }}>
+              <div className="specs liquid-pd-panel" style={{ marginBottom: "10px", padding: "12px 14px" }}>
                 <h3 style={{ fontSize: "14px", fontWeight: 700, marginBottom: "6px" }}>{specsTitle}</h3>
                 <div className="specs-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: "4px", fontSize: "13px" }}>
                   {renderSpecs()}
@@ -1530,8 +1842,8 @@ const ProductDetails = () => {
             </div>
 
             {/* SELLER CARD */}
-            <div className="seller" style={{ background: 'var(--gray-50)', borderRadius: 'var(--radius-md)', padding: '10px 14px', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-              <div className="seller-avatar-wrapper" style={{ position: 'relative', width: '44px', height: '44px', borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: 'var(--gray-200)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: 700, color: 'var(--primary)' }}>
+            <div className="seller liquid-pd-panel" style={{ marginBottom: '10px', padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+              <div className="seller-avatar-wrapper" style={{ position: 'relative', width: '44px', height: '44px', borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: 'linear-gradient(135deg, rgba(255,255,255,0.6) 0%, rgba(226,232,240,0.4) 100%)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.75)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.9), 0 2px 8px rgba(31,38,135,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: 700, color: 'var(--primary)' }}>
                 {(() => {
                   const seller = product.seller || product.sellerId || {};
                   const imageField = seller.profileImage || seller.photo || seller.avatar || seller.profilePicture || seller.profilePic || seller.picture || seller.image || seller.profile_pic || seller.profile_picture || null;
@@ -1552,7 +1864,11 @@ const ProductDetails = () => {
                   <Link to={`/seller/${sellerId}`} style={{ fontWeight: 700, fontSize: '14px', color: 'var(--primary)', textDecoration: 'underline', textDecorationColor: 'var(--primary)', display: 'inline-flex', alignItems: 'center', gap: '6px' }} onClick={(e) => e.stopPropagation()}>
                     <i className="fas fa-user" />{sellerName}
                   </Link>
-                  <Link to={`/seller/${sellerId}`} style={{ padding: '2px 10px', fontSize: '10px', fontStyle: 'italic', fontWeight: 600, borderRadius: '20px', background: '#e8f0fe', color: '#1a56db', border: '1px solid #c5d5f0', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px', transition: 'background 0.2s, color 0.2s, border-color 0.2s' }} onMouseEnter={(e) => { e.currentTarget.style.background = '#d2e0fd'; e.currentTarget.style.borderColor = '#1a56db'; }} onMouseLeave={(e) => { e.currentTarget.style.background = '#e8f0fe'; e.currentTarget.style.borderColor = '#c5d5f0'; }}>
+                  <Link
+                    to={`/seller/${sellerId}`}
+                    className="liquid-pd-badge-glass"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <i className="fas fa-external-link-alt" style={{ fontSize: '8px' }} />VIEW PROFILE
                   </Link>
                 </div>
@@ -1566,39 +1882,62 @@ const ProductDetails = () => {
             {/* ACTIONS */}
             <div className="actions" style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
               {isSold ? (
-                <button type="button" disabled style={{ padding: "8px 20px", background: "#9ca3af", color: "white", border: "none", borderRadius: "var(--radius-full)", fontWeight: 700, fontSize: "14px", cursor: "not-allowed", display: "flex", alignItems: "center", gap: "6px", opacity: 0.7 }}><i className="fas fa-ban" />Sold Out</button>
+                <button type="button" disabled className="liquid-pd-btn liquid-pd-btn-gray" style={{ padding: "8px 20px", fontSize: "14px" }}><i className="fas fa-ban" />Sold Out</button>
               ) : user ? (
                 <>
-                  <button type="button" onClick={handleContact} className="btn-secondary" style={{ padding: "8px 20px", background: "var(--secondary)", color: "white", border: "none", borderRadius: "var(--radius-full)", fontWeight: 700, fontSize: "14px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", touchAction: "manipulation" }}><i className="fab fa-whatsapp" />Contact Seller</button>
+                  <button type="button" onClick={handleContact} className="liquid-pd-btn liquid-pd-btn-wa" style={{ padding: "8px 20px", fontSize: "14px" }}><i className="fab fa-whatsapp" />Contact Seller</button>
                   {!isSeller && (
-                    <button type="button" onClick={openChat} style={{ padding: "8px 20px", background: "#075e54", color: "white", border: "none", borderRadius: "var(--radius-full)", fontWeight: 700, fontSize: "14px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", touchAction: "manipulation" }}><i className="fas fa-comment-dots" />Message Seller</button>
+                    <button type="button" onClick={openChat} className="liquid-pd-btn liquid-pd-btn-msg" style={{ padding: "8px 20px", fontSize: "14px" }}><i className="fas fa-comment-dots" />Message Seller</button>
                   )}
                 </>
               ) : (
-                <button type="button" onClick={() => navigate('/login')} className="btn-secondary" style={{ padding: "8px 20px", background: "#0055a5", color: "white", border: "none", borderRadius: "var(--radius-full)", fontWeight: 700, fontSize: "14px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}><i className="fas fa-sign-in-alt" />Sign up to contact seller</button>
+                <button type="button" onClick={() => navigate('/login')} className="liquid-pd-btn liquid-pd-btn-blue" style={{ padding: "8px 20px", fontSize: "14px" }}><i className="fas fa-sign-in-alt" />Sign up to contact seller</button>
               )}
 
-              <button type="button" onClick={() => navigate("/book-rider", { state: { productId: product?._id || product?.id, productTitle: product?.title || product?.name || "", productPrice: product?.price || 0, sellerId: product?.sellerId?._id || product?.sellerId || "", sellerName: product?.sellerName || "", sellerPhone: product?.sellerPhone || "" } })} style={{ padding: "8px 16px", border: "1px solid #e5e7eb", borderRadius: "var(--radius-full)", background: "#fff", color: "#111827", fontWeight: 700, fontSize: "13px", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" }}>
+              <button
+                type="button"
+                onClick={() => navigate("/book-rider", { state: { productId: product?._id || product?.id, productTitle: product?.title || product?.name || "", productPrice: product?.price || 0, sellerId: product?.sellerId?._id || product?.sellerId || "", sellerName: product?.sellerName || "", sellerPhone: product?.sellerPhone || "" } })}
+                className="liquid-pd-btn liquid-pd-btn-light"
+                style={{ padding: "8px 16px", fontSize: "13px" }}
+              >
                 <FaMotorcycle size={15} />BOOK A BIKE RIDER
               </button>
 
               {canEdit && (
-                <button type="button" onClick={handleMarkAsSold} disabled={isUpdating} style={{ padding: "8px 16px", background: isSold ? "#22c55e" : "#dc2626", color: "white", border: "none", borderRadius: "var(--radius-full)", fontWeight: 600, fontSize: "13px", cursor: isUpdating ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: "6px", opacity: isUpdating ? 0.7 : 1, touchAction: "manipulation" }}>
+                <button
+                  type="button"
+                  onClick={handleMarkAsSold}
+                  disabled={isUpdating}
+                  className={`liquid-pd-btn ${isSold ? "liquid-pd-btn-green" : "liquid-pd-btn-red"}`}
+                  style={{ padding: "8px 16px", fontSize: "13px", fontWeight: 600 }}
+                >
                   {isUpdating ? "⏳ Updating..." : (<><i className={isSold ? "fas fa-undo" : "fas fa-check-circle"} />{isSold ? "Mark Available" : "Mark as Sold"}</>)}
                 </button>
               )}
 
               {canEdit && (
-                <button type="button" onClick={() => setShowEditModal(true)} style={{ padding: "8px 16px", border: "1.5px solid var(--primary)", borderRadius: "var(--radius-full)", background: "white", color: "var(--primary)", fontWeight: 600, fontSize: "13px", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" }}><i className="fas fa-pen" />Edit</button>
+                <button
+                  type="button"
+                  onClick={() => setShowEditModal(true)}
+                  className="liquid-pd-btn liquid-pd-btn-outline-blue"
+                  style={{ padding: "8px 16px", fontSize: "13px", fontWeight: 600 }}
+                >
+                  <i className="fas fa-pen" />Edit
+                </button>
               )}
 
-              <button type="button" onClick={() => toggleFavorite(product._id)} className="btn-outline" style={{ padding: "8px 16px", border: "1.5px solid var(--gray-300)", borderRadius: "var(--radius-full)", background: "transparent", fontWeight: 600, fontSize: "13px", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px", color: liked ? "#e74c3c" : "var(--gray-700)" }}>
+              <button
+                type="button"
+                onClick={() => toggleFavorite(product._id)}
+                className={`liquid-pd-btn liquid-pd-btn-outline-gray ${liked ? "liked" : ""}`}
+                style={{ padding: "8px 16px", fontSize: "13px", fontWeight: 600 }}
+              >
                 <i className={liked ? "fas fa-heart" : "far fa-heart"} />{liked ? "Saved" : "Save"}
               </button>
             </div>
 
             {/* SAFETY */}
-            <div className="safety" style={{ marginTop: "8px", background: "#fef9c3", borderRadius: "var(--radius-md)", padding: "10px 12px", fontSize: "11px", color: "#854d0e" }}>
+            <div className="safety liquid-pd-panel-warm" style={{ marginTop: "8px", padding: "12px 14px", fontSize: "11px", color: "#854d0e" }}>
               <strong><i className="fas fa-shield-alt" /> Safety tips</strong>
               <ul style={{ paddingLeft: "16px", marginTop: "3px", marginBottom: 0 }}>
                 <li>Avoid paying in advance, even for delivery.</li>
@@ -1610,13 +1949,13 @@ const ProductDetails = () => {
         </div>
 
         {/* REVIEW SECTION */}
-        <div style={{ marginTop: "20px", paddingTop: "16px", borderTop: "1px solid #e5e7eb" }}>
+        <div style={{ marginTop: "20px", paddingTop: "16px", borderTop: "1px solid rgba(255,255,255,0.6)" }}>
           <ReviewSection sellerId={sellerId} productId={product._id} sellerName={sellerName} currentUser={user} showWriteReview={!isSeller && !isSold} />
         </div>
 
         {/* RELATED PRODUCTS */}
         {relatedProducts.length > 0 && (
-          <div style={{ marginTop: "20px", paddingTop: "16px", borderTop: "1px solid #e5e7eb" }}>
+          <div style={{ marginTop: "20px", paddingTop: "16px", borderTop: "1px solid rgba(255,255,255,0.6)" }}>
             <h2 style={{ fontSize: "20px", fontWeight: 800, marginBottom: "12px" }}>You might also like</h2>
             {relatedLoading ? (
               <div style={{ textAlign: "center", padding: "30px", color: "var(--gray-400)" }}>Loading related products...</div>
@@ -1630,18 +1969,30 @@ const ProductDetails = () => {
 
         {/* EDIT MODAL */}
         {showEditModal && (
-          <div style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", backgroundColor: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999, padding: "20px" }} onClick={() => setShowEditModal(false)}>
-            <div style={{ background: "white", borderRadius: "var(--radius-xl)", maxWidth: "600px", width: "100%", padding: "32px", position: "relative", maxHeight: "90vh", overflowY: "auto" }} onClick={(e) => e.stopPropagation()}>
-              <button type="button" onClick={() => setShowEditModal(false)} style={{ position: "absolute", top: "14px", right: "18px", fontSize: "28px", cursor: "pointer", color: "var(--gray-400)", background: "none", border: "none" }}>&times;</button>
+          <div style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", backgroundColor: "rgba(11,20,26,0.6)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999, padding: "20px" }} onClick={() => setShowEditModal(false)}>
+            <div
+              className="liquid-pd-panel"
+              style={{ maxWidth: "600px", width: "100%", padding: "32px", position: "relative", maxHeight: "90vh", overflowY: "auto", borderRadius: "var(--radius-xl)" }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                type="button"
+                onClick={() => setShowEditModal(false)}
+                style={{ position: "absolute", top: "14px", right: "18px", fontSize: "24px", cursor: "pointer", color: "#6b7280", background: "linear-gradient(135deg, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.35) 100%)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)", border: "1px solid rgba(255,255,255,0.75)", borderRadius: "50%", width: "36px", height: "36px", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.9), 0 2px 8px rgba(31,38,135,0.08)", lineHeight: 1 }}
+              >
+                ×
+              </button>
               <h2 style={{ fontSize: "24px", fontWeight: 800, marginBottom: "20px", textAlign: "center" }}>Edit Product</h2>
-              {editError && (<div style={{ background: "#fee2e2", color: "#dc2626", padding: "10px 14px", borderRadius: "var(--radius-sm)", marginBottom: "16px" }}>{editError}</div>)}
+              {editError && (
+                <div style={{ background: "linear-gradient(135deg, rgba(254,226,226,0.9) 0%, rgba(254,202,202,0.75) 100%)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)", border: "1px solid rgba(252,165,165,0.55)", color: "#b91c1c", padding: "10px 14px", borderRadius: "var(--radius-sm)", marginBottom: "16px", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.9)" }}>{editError}</div>
+              )}
               <form onSubmit={handleEditSubmit}>{/* The edit form remains unchanged – keep your existing code */}</form>
             </div>
           </div>
         )}
 
         {/* ═══════════════════════════════════════════════════════════
-            WHATSAPP-STYLE CHAT MODAL
+            WHATSAPP-STYLE CHAT MODAL (kept WhatsApp styled)
             ═══════════════════════════════════════════════════════════ */}
         {showChatModal && (
           <div className="wa-chat-overlay" onClick={closeChat}>
@@ -1650,8 +2001,6 @@ const ProductDetails = () => {
               ref={chatModalRef}
               onClick={(e) => e.stopPropagation()}
             >
-
-              {/* Header */}
               <div className="wa-chat-header">
                 <button type="button" className="wa-chat-back-btn" onClick={closeChat} aria-label="Close chat">
                   <i className="fas fa-arrow-left" />
@@ -1671,7 +2020,6 @@ const ProductDetails = () => {
                 </div>
               </div>
 
-              {/* Body */}
               <div className="wa-chat-body">
                 {chatLoading ? (
                   <div style={{ display: 'flex', justifyContent: 'center', padding: '30px 0' }}>
@@ -1729,14 +2077,12 @@ const ProductDetails = () => {
                 <div ref={messagesEndRef} />
               </div>
 
-              {/* Error banner */}
               {chatError && (
                 <div className="wa-error-banner">
                   <i className="fas fa-exclamation-circle" /> {chatError}
                 </div>
               )}
 
-              {/* Composer */}
               <form className="wa-chat-composer" onSubmit={sendMessage}>
                 <textarea
                   ref={chatInputRef}
@@ -1771,14 +2117,13 @@ const ProductDetails = () => {
                   <i className={sending ? 'fas fa-circle-notch fa-spin' : 'fas fa-paper-plane'} />
                 </button>
               </form>
-
             </div>
           </div>
         )}
 
         {/* LIGHTBOX for chat images */}
         {viewingImage && (
-          <div style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", background: "rgba(0,0,0,0.92)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 10001, cursor: "pointer", padding: 20 }} onClick={() => setViewingImage(null)}>
+          <div style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", background: "rgba(0,0,0,0.92)", backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 10001, cursor: "pointer", padding: 20 }} onClick={() => setViewingImage(null)}>
             <img src={viewingImage} alt="Full screen" style={{ maxWidth: "90vw", maxHeight: "90vh", objectFit: "contain", borderRadius: 8 }} onClick={(e) => e.stopPropagation()} />
           </div>
         )}
@@ -1786,12 +2131,12 @@ const ProductDetails = () => {
         {/* PRODUCT GALLERY LIGHTBOX */}
         {lightboxOpen && (
           <div className="lightbox-overlay" onClick={closeLightbox}>
-            <button type="button" className="lightbox-close" onClick={closeLightbox} aria-label="Close fullscreen image">✕</button>
+            <button type="button" className="liquid-pd-lightbox-close" onClick={closeLightbox} aria-label="Close fullscreen image">✕</button>
             {totalImages > 1 && (
               <>
-                <button type="button" className="lightbox-nav lightbox-prev" onClick={(e) => { e.stopPropagation(); prevLightboxImage(); }} aria-label="Previous image">‹</button>
-                <button type="button" className="lightbox-nav lightbox-next" onClick={(e) => { e.stopPropagation(); nextLightboxImage(); }} aria-label="Next image">›</button>
-                <div className="lightbox-counter">{lightboxIndex + 1} / {totalImages}</div>
+                <button type="button" className="liquid-pd-lightbox-nav lightbox-prev" onClick={(e) => { e.stopPropagation(); prevLightboxImage(); }} aria-label="Previous image">‹</button>
+                <button type="button" className="liquid-pd-lightbox-nav lightbox-next" onClick={(e) => { e.stopPropagation(); nextLightboxImage(); }} aria-label="Next image">›</button>
+                <div className="liquid-pd-lightbox-counter">{lightboxIndex + 1} / {totalImages}</div>
               </>
             )}
             <img className="lightbox-image" src={getLightboxImage(lightboxIndex)} alt={product.title} onClick={(e) => e.stopPropagation()} />

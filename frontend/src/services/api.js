@@ -107,7 +107,7 @@ const handleResponse = async (response, options = {}) => {
     }
   }
 
-  // ✅ NEW: Graceful 404 handling when throwOnNotFound is false
+  // ✅ Graceful 404 handling when throwOnNotFound is false
   if (response.status === 404 && options.throwOnNotFound === false) {
     return {
       success: false,
@@ -172,7 +172,7 @@ const request = async (
   let controller;
   let timeoutId;
 
-  // ✅ NEW: extract throwOnNotFound from options, default true
+  // ✅ extract throwOnNotFound from options, default true
   const { throwOnNotFound = true, ...fetchOptions } = options;
 
   try {
@@ -385,6 +385,54 @@ const request = async (
 
 export const publicRequest = async (url, options = {}) => {
   return request(url, { ...options, throwOnNotFound: false });
+};
+
+// ================================================================
+// REQUEST WITH URL FALLBACK
+//
+// Tries each URL in order until one succeeds (non-404).
+// Returns null if every URL 404s. Re-throws any non-404 error.
+// ================================================================
+
+const requestWithFallback = async (urls = [], options = {}) => {
+  if (!Array.isArray(urls) || urls.length === 0) {
+    return null;
+  }
+
+  let lastResult = null;
+
+  for (const url of urls) {
+    try {
+      const result = await request(url, {
+        ...options,
+        throwOnNotFound: false,
+      });
+
+      // If the response is a 404 wrapper, try the next URL
+      if (
+        result &&
+        typeof result === "object" &&
+        result.success === false &&
+        result.status === 404
+      ) {
+        lastResult = result;
+        continue;
+      }
+
+      // Success — return this result immediately
+      return result;
+    } catch (error) {
+      // Non-404 error — rethrow immediately
+      if (!error || error.status !== 404) {
+        throw error;
+      }
+
+      lastResult = error;
+    }
+  }
+
+  // Every URL 404'd — caller decides what to do
+  return null;
 };
 
 // ================================================================
@@ -1415,7 +1463,57 @@ export const favorites = {
 
 // ================================================================
 // REVIEWS
+//
+// Read endpoints use requestWithFallback so a missing backend route
+// does NOT throw — the page receives an empty result instead.
+// Write endpoints (create / update / delete / reply) stay strict.
 // ================================================================
+
+const EMPTY_SELLER_REVIEWS = {
+  success: false,
+  reviews: [],
+  data: [],
+  total: 0,
+  page: 1,
+  limit: 0,
+  pages: 1,
+  averageRating: 0,
+  totalReviews: 0,
+  summary: {
+    averageRating: 0,
+    totalReviews: 0,
+    breakdown: {},
+  },
+};
+
+const EMPTY_PRODUCT_REVIEWS = {
+  success: false,
+  reviews: [],
+  data: [],
+  total: 0,
+  page: 1,
+  limit: 0,
+  pages: 1,
+  averageRating: 0,
+  totalReviews: 0,
+  summary: {
+    averageRating: 0,
+    totalReviews: 0,
+    breakdown: {},
+  },
+};
+
+const EMPTY_REVIEW_SUMMARY = {
+  success: false,
+  averageRating: 0,
+  totalReviews: 0,
+  breakdown: {},
+  summary: {
+    averageRating: 0,
+    totalReviews: 0,
+    breakdown: {},
+  },
+};
 
 export const reviews = {
   getAll: async (
@@ -1446,20 +1544,38 @@ export const reviews = {
       );
     }
 
-    const query =
-      buildQuery({
-        sellerId,
-        ...params,
-      });
+    const encodedSellerId =
+      encodeURIComponent(sellerId);
 
-    return request(
-      `${API_URL}/api/reviews${query}`,
-      {
-        method: "GET",
-        headers:
-          getHeaders(token),
-      }
-    );
+    // Query for the flat /api/reviews endpoint (uses ?sellerId=)
+    const flatQuery = buildQuery({
+      sellerId,
+      ...params,
+    });
+
+    // Query for the path-based endpoints (use ?page&limit)
+    const pathQuery = buildQuery({
+      ...params,
+    });
+
+    const urls = [
+      `${API_URL}/api/reviews${flatQuery}`,
+      `${API_URL}/api/sellers/${encodedSellerId}/reviews${pathQuery}`,
+      `${API_URL}/sellers/${encodedSellerId}/reviews${pathQuery}`,
+      `${API_URL}/api/users/${encodedSellerId}/reviews${pathQuery}`,
+      `${API_URL}/users/${encodedSellerId}/reviews${pathQuery}`,
+    ];
+
+    const result = await requestWithFallback(urls, {
+      method: "GET",
+      headers: getHeaders(token),
+    });
+
+    if (result === null) {
+      return { ...EMPTY_SELLER_REVIEWS };
+    }
+
+    return result;
   },
 
   getProductReviews: async (
@@ -1473,20 +1589,34 @@ export const reviews = {
       );
     }
 
-    const query =
-      buildQuery({
-        productId,
-        ...params,
-      });
+    const encodedProductId =
+      encodeURIComponent(productId);
 
-    return request(
-      `${API_URL}/api/reviews${query}`,
-      {
-        method: "GET",
-        headers:
-          getHeaders(token),
-      }
-    );
+    const flatQuery = buildQuery({
+      productId,
+      ...params,
+    });
+
+    const pathQuery = buildQuery({
+      ...params,
+    });
+
+    const urls = [
+      `${API_URL}/api/reviews${flatQuery}`,
+      `${API_URL}/api/products/${encodedProductId}/reviews${pathQuery}`,
+      `${API_URL}/products/${encodedProductId}/reviews${pathQuery}`,
+    ];
+
+    const result = await requestWithFallback(urls, {
+      method: "GET",
+      headers: getHeaders(token),
+    });
+
+    if (result === null) {
+      return { ...EMPTY_PRODUCT_REVIEWS };
+    }
+
+    return result;
   },
 
   create: async (
@@ -1928,16 +2058,25 @@ export const reviews = {
       );
     }
 
-    return request(
-      `${API_URL}/api/reviews/seller/${encodeURIComponent(
-        sellerId
-      )}/summary`,
-      {
-        method: "GET",
-        headers:
-          getHeaders(token),
-      }
-    );
+    const encodedSellerId =
+      encodeURIComponent(sellerId);
+
+    const urls = [
+      `${API_URL}/api/reviews/seller/${encodedSellerId}/summary`,
+      `${API_URL}/api/sellers/${encodedSellerId}/reviews/summary`,
+      `${API_URL}/sellers/${encodedSellerId}/reviews/summary`,
+    ];
+
+    const result = await requestWithFallback(urls, {
+      method: "GET",
+      headers: getHeaders(token),
+    });
+
+    if (result === null) {
+      return { ...EMPTY_REVIEW_SUMMARY };
+    }
+
+    return result;
   },
 
   getProductSummary: async (
@@ -1950,16 +2089,25 @@ export const reviews = {
       );
     }
 
-    return request(
-      `${API_URL}/api/reviews/product/${encodeURIComponent(
-        productId
-      )}/summary`,
-      {
-        method: "GET",
-        headers:
-          getHeaders(token),
-      }
-    );
+    const encodedProductId =
+      encodeURIComponent(productId);
+
+    const urls = [
+      `${API_URL}/api/reviews/product/${encodedProductId}/summary`,
+      `${API_URL}/api/products/${encodedProductId}/reviews/summary`,
+      `${API_URL}/products/${encodedProductId}/reviews/summary`,
+    ];
+
+    const result = await requestWithFallback(urls, {
+      method: "GET",
+      headers: getHeaders(token),
+    });
+
+    if (result === null) {
+      return { ...EMPTY_REVIEW_SUMMARY };
+    }
+
+    return result;
   },
 };
 
@@ -2382,9 +2530,7 @@ export const admin = {
     );
   },
 
-  // ============================================================
-  // ✅ NEW: Verify a specific user (admin only)
-  // ============================================================
+  // ✅ Verify a specific user (admin only)
   verifyUserById: async (
     userId,
     token = getToken()
@@ -2407,9 +2553,7 @@ export const admin = {
     );
   },
 
-  // ============================================================
-  // ✅ NEW: Unverify a specific user (admin only)
-  // ============================================================
+  // ✅ Unverify a specific user (admin only)
   unverifyUserById: async (
     userId,
     token = getToken()
@@ -2927,11 +3071,11 @@ export const getUnverifiedSellers =
 export const verifySeller =
   admin.verifySeller;
 
-// ─── NEW aliases for user verification ──────────────────────
+// ─── Aliases for user verification ──────────────────────────
 export const verifyUser = admin.verifyUserById;
 export const unverifyUser = admin.unverifyUserById;
 
-// Also export the long names if needed
+// Long names
 export const verifyUserById = admin.verifyUserById;
 export const unverifyUserById = admin.unverifyUserById;
 
@@ -3089,10 +3233,10 @@ const api = {
   getUnverifiedSellers,
   verifySeller,
 
-  verifyUser,       // ✅ added
-  unverifyUser,     // ✅ added
-  verifyUserById,   // ✅ added
-  unverifyUserById, // ✅ added
+  verifyUser,
+  unverifyUser,
+  verifyUserById,
+  unverifyUserById,
 
   createDelivery,
   getCustomerDeliveries,
@@ -3111,7 +3255,6 @@ const api = {
   getToken,
   clearAuthData,
 
-  // ✅ NEW: publicRequest exported for use in other modules
   publicRequest,
 };
 

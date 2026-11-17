@@ -210,21 +210,25 @@ const BookRider = () => {
   };
 
   // ==========================================================
-  // INPUT STYLE
+  // INPUT STYLE – liquid glass
   // ==========================================================
 
   const inputStyle = {
     width: "100%",
     boxSizing: "border-box",
     padding: "13px 14px",
-    border:
-      "1px solid var(--gray-200, #e5e7eb)",
-    borderRadius:
-      "10px",
+    border: "1px solid rgba(255,255,255,0.75)",
+    borderRadius: "12px",
     fontSize: "14px",
     fontFamily: "inherit",
     outline: "none",
-    background: "#fff",
+    color: "#111827",
+    background:
+      "linear-gradient(135deg, rgba(255,255,255,0.72) 0%, rgba(255,255,255,0.38) 100%)",
+    backdropFilter: "blur(10px) saturate(180%)",
+    WebkitBackdropFilter: "blur(10px) saturate(180%)",
+    boxShadow:
+      "inset 0 1px 0 rgba(255,255,255,0.9), 0 2px 10px rgba(31,38,135,0.06)",
   };
 
   const labelStyle = {
@@ -241,9 +245,9 @@ const BookRider = () => {
 
   return (
     <div
+      className="liquid-rider-page"
       style={{
         minHeight: "100vh",
-        background: "#f8fafc",
         padding:
           "30px 16px 60px",
       }}
@@ -280,14 +284,11 @@ const BookRider = () => {
         ================================================== */}
 
         <div
+          className="liquid-rider-panel"
           style={{
-            background: "#fff",
-            borderRadius: "18px",
             padding:
               "28px 24px",
             marginBottom: "18px",
-            boxShadow:
-              "0 4px 20px rgba(0,0,0,0.05)",
           }}
         >
           <div
@@ -295,13 +296,19 @@ const BookRider = () => {
               width: "54px",
               height: "54px",
               borderRadius: "50%",
-              background: "#eef2ff",
+              background:
+                "linear-gradient(135deg, rgba(199,210,254,0.85) 0%, rgba(165,180,252,0.65) 100%)",
+              backdropFilter: "blur(8px) saturate(180%)",
+              WebkitBackdropFilter: "blur(8px) saturate(180%)",
+              border: "1px solid rgba(255,255,255,0.75)",
               color: "#4f46e5",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               fontSize: "23px",
               marginBottom: "14px",
+              boxShadow:
+                "inset 0 1px 0 rgba(255,255,255,0.9), 0 4px 14px rgba(79,70,229,0.15)",
             }}
           >
             <FaMotorcycle />
@@ -339,18 +346,23 @@ const BookRider = () => {
         {success && (
           <div
             style={{
-              background: "#dcfce7",
+              background:
+                "linear-gradient(135deg, rgba(255,255,255,0.7) 0%, rgba(220,252,231,0.7) 100%)",
+              backdropFilter: "blur(12px) saturate(180%)",
+              WebkitBackdropFilter: "blur(12px) saturate(180%)",
               color: "#166534",
               border:
-                "1px solid #bbf7d0",
+                "1px solid rgba(187,247,208,0.75)",
               padding: "14px 16px",
-              borderRadius: "12px",
+              borderRadius: "14px",
               marginBottom: "18px",
               display: "flex",
               alignItems: "center",
               gap: "10px",
               fontSize: "14px",
               fontWeight: 600,
+              boxShadow:
+                "inset 0 1px 0 rgba(255,255,255,0.9), 0 4px 18px rgba(22,101,52,0.10)",
             }}
           >
             <FaCheckCircle />
@@ -366,15 +378,20 @@ const BookRider = () => {
           <div
             role="alert"
             style={{
-              background: "#fee2e2",
+              background:
+                "linear-gradient(135deg, rgba(255,255,255,0.65) 0%, rgba(254,226,226,0.6) 100%)",
+              backdropFilter: "blur(12px) saturate(180%)",
+              WebkitBackdropFilter: "blur(12px) saturate(180%)",
               color: "#991b1b",
               border:
-                "1px solid #fecaca",
+                "1px solid rgba(252,165,165,0.55)",
               padding: "14px 16px",
-              borderRadius: "12px",
+              borderRadius: "14px",
               marginBottom: "18px",
               fontSize: "14px",
               lineHeight: 1.5,
+              boxShadow:
+                "inset 0 1px 0 rgba(255,255,255,0.9), 0 4px 18px rgba(220,38,38,0.08)",
             }}
           >
             {error}
@@ -387,13 +404,10 @@ const BookRider = () => {
 
         <form
           onSubmit={handleSubmit}
+          className="liquid-rider-panel"
           style={{
-            background: "#fff",
-            borderRadius: "18px",
             padding:
               "28px 24px",
-            boxShadow:
-              "0 4px 20px rgba(0,0,0,0.05)",
           }}
         >
           {/* ==================================================
@@ -779,21 +793,12 @@ const BookRider = () => {
           <button
             type="submit"
             disabled={loading}
+            className={loading ? "liquid-rider-btn liquid-rider-btn-disabled" : "liquid-rider-btn"}
             style={{
               width: "100%",
-              border: "none",
-              borderRadius: "12px",
               padding: "15px",
-              background:
-                loading
-                  ? "#9ca3af"
-                  : "#111827",
-              color: "#fff",
               fontSize: "16px",
               fontWeight: 800,
-              cursor: loading
-                ? "not-allowed"
-                : "pointer",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -835,25 +840,138 @@ const BookRider = () => {
       </div>
 
       {/* ======================================================
-          SPINNER ANIMATION
+          LIQUID iOS27 + SPINNER STYLES
       ====================================================== */}
 
       <style>
         {`
+          /* ─── Spinner ─────────────────────────────────── */
           @keyframes spin {
-            from {
-              transform: rotate(0deg);
-            }
-
-            to {
-              transform: rotate(360deg);
-            }
+            from { transform: rotate(0deg); }
+            to   { transform: rotate(360deg); }
           }
 
+          /* ─── Page — liquid mirror background ────────── */
+          @keyframes liquid-rider-float {
+            0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+            33%      { transform: translate3d(-30px, 24px, 0) scale(1.06); }
+            66%      { transform: translate3d(24px, -20px, 0) scale(0.97); }
+          }
+
+          .liquid-rider-page {
+            position: relative;
+            isolation: isolate;
+            overflow: hidden;
+            border-radius: 20px;
+            background: linear-gradient(
+              135deg,
+              #eef4ff 0%,
+              #f5f0ff 40%,
+              #eaf7ff 70%,
+              #f2f8ff 100%
+            );
+          }
+
+          .liquid-rider-page::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            z-index: -1;
+            pointer-events: none;
+            background:
+              radial-gradient(circle at 8% 15%, rgba(0,102,204,0.22) 0%, rgba(0,102,204,0.08) 25%, transparent 55%),
+              radial-gradient(circle at 92% 60%, rgba(139,92,246,0.18) 0%, rgba(139,92,246,0.06) 25%, transparent 55%),
+              radial-gradient(circle at 50% 115%, rgba(6,182,212,0.18) 0%, rgba(6,182,212,0.06) 25%, transparent 55%),
+              radial-gradient(circle at 30% 80%, rgba(59,130,246,0.12) 0%, transparent 50%);
+            animation: liquid-rider-float 24s ease-in-out infinite;
+            will-change: transform;
+          }
+
+          /* ─── Panels — liquid glass ──────────────────── */
+          .liquid-rider-panel {
+            background: linear-gradient(
+              135deg,
+              rgba(255,255,255,0.72) 0%,
+              rgba(238,246,255,0.42) 50%,
+              rgba(255,255,255,0.62) 100%
+            );
+            backdrop-filter: blur(14px) saturate(180%);
+            -webkit-backdrop-filter: blur(14px) saturate(180%);
+            border: 1px solid rgba(255,255,255,0.75);
+            border-radius: 18px;
+            box-shadow:
+              0 8px 28px rgba(31,38,135,0.10),
+              inset 0 1px 0 rgba(255,255,255,0.95),
+              inset 0 -1px 0 rgba(255,255,255,0.25);
+          }
+
+          /* ─── Inputs — liquid glass focus ───────────── */
+          .liquid-rider-panel input:focus,
+          .liquid-rider-panel textarea:focus {
+            border-color: rgba(0,102,204,0.6) !important;
+            box-shadow:
+              inset 0 1px 0 rgba(255,255,255,1),
+              0 0 0 3px rgba(0,102,204,0.14),
+              0 4px 14px rgba(31,38,135,0.10) !important;
+          }
+
+          /* ─── Submit button — liquid blue glass ─────── */
+          .liquid-rider-btn {
+            position: relative;
+            border: 1px solid rgba(255,255,255,0.4);
+            border-radius: 14px;
+            cursor: pointer;
+            color: #ffffff;
+            background: linear-gradient(
+              135deg,
+              rgba(0,102,204,0.94) 0%,
+              rgba(0,85,165,0.88) 100%
+            );
+            backdrop-filter: blur(14px) saturate(180%);
+            -webkit-backdrop-filter: blur(14px) saturate(180%);
+            box-shadow:
+              inset 0 1px 0 rgba(255,255,255,0.35),
+              0 4px 14px rgba(0,102,204,0.30);
+            transition:
+              transform 0.15s ease,
+              box-shadow 0.15s ease;
+          }
+          .liquid-rider-btn:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow:
+              inset 0 1px 0 rgba(255,255,255,0.45),
+              0 8px 24px rgba(0,102,204,0.42);
+          }
+          .liquid-rider-btn:active:not(:disabled) {
+            transform: translateY(0) scale(0.98);
+          }
+
+          /* ─── Disabled state — liquid gray glass ────── */
+          .liquid-rider-btn-disabled,
+          .liquid-rider-btn:disabled {
+            cursor: not-allowed;
+            background: linear-gradient(
+              135deg,
+              rgba(156,163,175,0.85) 0%,
+              rgba(107,114,128,0.75) 100%
+            );
+            box-shadow:
+              inset 0 1px 0 rgba(255,255,255,0.3),
+              0 2px 10px rgba(0,0,0,0.08);
+          }
+
+          /* ─── Mobile — stack two-column grids ───────── */
           @media (max-width: 600px) {
             form section div[style*="grid-template-columns"] {
               grid-template-columns: 1fr !important;
             }
+          }
+
+          /* ─── Reduced motion ────────────────────────── */
+          @media (prefers-reduced-motion: reduce) {
+            .liquid-rider-page::before { animation: none !important; }
+            .liquid-rider-btn { transition: none !important; }
+            .liquid-rider-btn:hover:not(:disabled) { transform: none !important; }
           }
         `}
       </style>

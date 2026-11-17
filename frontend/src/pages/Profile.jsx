@@ -413,6 +413,85 @@ const Profile = () => {
   if (!user) {
     return (
       <div className="container profile-page">
+        <style>{`
+          .profile-page {
+            position: relative;
+            isolation: isolate;
+            overflow: hidden;
+            border-radius: 20px;
+            background: linear-gradient(
+              135deg,
+              #eef4ff 0%,
+              #f5f0ff 40%,
+              #eaf7ff 70%,
+              #f2f8ff 100%
+            );
+          }
+          .profile-page::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            z-index: -1;
+            pointer-events: none;
+            background:
+              radial-gradient(circle at 8% 15%, rgba(0,102,204,0.22) 0%, rgba(0,102,204,0.08) 25%, transparent 55%),
+              radial-gradient(circle at 92% 60%, rgba(139,92,246,0.18) 0%, rgba(139,92,246,0.06) 25%, transparent 55%),
+              radial-gradient(circle at 50% 115%, rgba(6,182,212,0.18) 0%, rgba(6,182,212,0.06) 25%, transparent 55%);
+            animation: liquid-profile-page-float 24s ease-in-out infinite;
+            will-change: transform;
+          }
+          @keyframes liquid-profile-page-float {
+            0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+            33%      { transform: translate3d(-30px, 24px, 0) scale(1.06); }
+            66%      { transform: translate3d(24px, -20px, 0) scale(0.97); }
+          }
+          .profile-empty {
+            background: linear-gradient(
+              135deg,
+              rgba(255,255,255,0.68) 0%,
+              rgba(238,246,255,0.42) 50%,
+              rgba(255,255,255,0.58) 100%
+            );
+            backdrop-filter: blur(14px) saturate(180%);
+            -webkit-backdrop-filter: blur(14px) saturate(180%);
+            border: 1px solid rgba(255,255,255,0.75);
+            border-radius: 18px;
+            padding: 40px 24px;
+            box-shadow:
+              0 8px 28px rgba(31,38,135,0.10),
+              inset 0 1px 0 rgba(255,255,255,0.95);
+            text-align: center;
+            color: #4b5563;
+            margin-top: 16px;
+          }
+          .profile-page .btn-primary {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 10px 22px;
+            border-radius: 14px;
+            font-weight: 700;
+            font-size: 15px;
+            cursor: pointer;
+            backdrop-filter: blur(14px) saturate(180%);
+            -webkit-backdrop-filter: blur(14px) saturate(180%);
+            border: 1px solid rgba(255,255,255,0.45);
+            background: linear-gradient(135deg, rgba(0,102,204,0.94) 0%, rgba(0,85,165,0.88) 100%);
+            color: #ffffff;
+            text-decoration: none;
+            box-shadow:
+              inset 0 1px 0 rgba(255,255,255,0.35),
+              0 4px 14px rgba(0,102,204,0.30);
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+          }
+          .profile-page .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow:
+              inset 0 1px 0 rgba(255,255,255,0.45),
+              0 8px 24px rgba(0,102,204,0.40);
+          }
+        `}</style>
         <div className="profile-empty">
           <i className="fas fa-user-circle" style={{ fontSize: "64px", color: "var(--gray-300)", marginBottom: "16px" }} />
           <h2>Please Login</h2>
@@ -737,61 +816,143 @@ const Profile = () => {
 
       {/* ── Styles ── */}
       <style>{`
+        /* ═══════════════════════════════════════════════════════
+           LIQUID iOS27 — PAGE + BLURRED MIRROR BACKDROP
+           ═══════════════════════════════════════════════════════ */
+
+        @keyframes liquid-pf-float {
+          0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+          33%      { transform: translate3d(-30px, 24px, 0) scale(1.06); }
+          66%      { transform: translate3d(24px, -20px, 0) scale(0.97); }
+        }
+
         /* ─── Page wrapper ──────────────────────────────────── */
         .fb-profile-page {
+          position: relative;
+          isolation: isolate;
+          overflow: hidden;
           max-width: 960px;
           margin: 0 auto;
           padding: 20px 16px 40px;
-          background: #f0f2f5;
           min-height: 100vh;
           box-sizing: border-box;
+          border-radius: 20px;
+          background: linear-gradient(
+            135deg,
+            #eef4ff 0%,
+            #f5f0ff 40%,
+            #eaf7ff 70%,
+            #f2f8ff 100%
+          );
         }
 
-        /* ─── Cover photo ────────────────────────────────────── */
+        .fb-profile-page::before {
+          content: "";
+          position: absolute;
+          inset: 0;
+          z-index: -1;
+          pointer-events: none;
+          background:
+            radial-gradient(circle at 8% 15%, rgba(0,102,204,0.22) 0%, rgba(0,102,204,0.08) 25%, transparent 55%),
+            radial-gradient(circle at 92% 60%, rgba(139,92,246,0.18) 0%, rgba(139,92,246,0.06) 25%, transparent 55%),
+            radial-gradient(circle at 50% 115%, rgba(6,182,212,0.18) 0%, rgba(6,182,212,0.06) 25%, transparent 55%),
+            radial-gradient(circle at 30% 80%, rgba(59,130,246,0.12) 0%, transparent 50%);
+          animation: liquid-pf-float 24s ease-in-out infinite;
+          will-change: transform;
+        }
+
+        /* ─── Cover photo — liquid mirror ────────────────────── */
         .fb-cover {
           position: relative;
           height: 240px;
-          border-radius: 12px 12px 0 0;
+          border-radius: 16px 16px 0 0;
           overflow: hidden;
-          background: #d1d5db;
+          background: transparent;
+          border: 1px solid rgba(255,255,255,0.75);
+          border-bottom: none;
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.9),
+            0 6px 24px rgba(31,38,135,0.10);
         }
         .fb-cover-image {
           width: 100%;
           height: 100%;
-          background: linear-gradient(145deg, #3b82f6, #9333ea);
           position: relative;
+          background: linear-gradient(
+            135deg,
+            rgba(59,130,246,0.92) 0%,
+            rgba(139,92,246,0.82) 50%,
+            rgba(6,182,212,0.85) 100%
+          );
+        }
+        .fb-cover-image::before {
+          content: "";
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(
+            100deg,
+            transparent 0%,
+            rgba(255,255,255,0.35) 40%,
+            transparent 70%
+          );
+          animation: liquid-cover-shine 6s ease-in-out infinite;
+        }
+        @keyframes liquid-cover-shine {
+          0%, 100% { transform: translateX(-30%); }
+          50%      { transform: translateX(30%); }
         }
         .fb-cover-gradient {
           position: absolute;
           inset: 0;
-          background: linear-gradient(to bottom, rgba(0,0,0,0.1) 0%, transparent 70%);
+          background: linear-gradient(to bottom, rgba(0,0,0,0.08) 0%, transparent 70%);
         }
 
-        /* ─── Profile info (overlap) ────────────────────────── */
+        /* ─── Profile info (overlap) — liquid glass ──────────── */
         .fb-profile-info {
           display: flex;
           flex-wrap: wrap;
           align-items: flex-end;
           gap: 16px 24px;
           padding: 0 20px 16px;
-          background: #ffffff;
           margin: -60px 0 0;
-          border-radius: 0 0 12px 12px;
-          box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+          border-radius: 0 0 16px 16px;
           position: relative;
           z-index: 2;
+          background: linear-gradient(
+            135deg,
+            rgba(255,255,255,0.72) 0%,
+            rgba(238,246,255,0.42) 50%,
+            rgba(255,255,255,0.62) 100%
+          );
+          backdrop-filter: blur(14px) saturate(180%);
+          -webkit-backdrop-filter: blur(14px) saturate(180%);
+          border: 1px solid rgba(255,255,255,0.75);
+          border-top: none;
+          box-shadow:
+            0 8px 28px rgba(31,38,135,0.10),
+            inset 0 1px 0 rgba(255,255,255,0.95),
+            inset 0 -1px 0 rgba(255,255,255,0.25);
         }
 
         .fb-avatar {
           width: 120px;
           height: 120px;
           border-radius: 50%;
-          border: 4px solid #ffffff;
-          background: #e5e7eb;
+          border: 4px solid rgba(255,255,255,0.95);
+          background: linear-gradient(
+            135deg,
+            rgba(255,255,255,0.72) 0%,
+            rgba(238,246,255,0.42) 50%,
+            rgba(255,255,255,0.62) 100%
+          );
+          backdrop-filter: blur(10px) saturate(180%);
+          -webkit-backdrop-filter: blur(10px) saturate(180%);
           overflow: hidden;
           flex-shrink: 0;
           margin-top: -30px;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+          box-shadow:
+            0 4px 20px rgba(31,38,135,0.18),
+            inset 0 1px 0 rgba(255,255,255,0.95);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -802,7 +963,7 @@ const Profile = () => {
         .fb-avatar img {
           width: 100%;
           height: 100%;
-          object-fit: cover; /* ✅ Ensures image fills the circle without distortion */
+          object-fit: cover;
           object-position: center;
         }
 
@@ -828,7 +989,7 @@ const Profile = () => {
         .fb-verified-badge {
           display: inline-flex;
           align-items: center;
-          color: #1d9bf0; /* Facebook blue */
+          color: #1d9bf0;
           font-size: 22px;
           margin-left: 2px;
         }
@@ -864,71 +1025,126 @@ const Profile = () => {
           margin-left: auto;
           align-items: center;
         }
+
+        /* ─── Action buttons — liquid glass ─────────────────── */
         .fb-action-btn {
           padding: 8px 16px;
           border-radius: 999px;
           font-size: 13px;
           font-weight: 600;
-          border: none;
+          border: 1px solid rgba(255,255,255,0.45);
           cursor: pointer;
           display: inline-flex;
           align-items: center;
           gap: 6px;
-          transition: 0.2s;
+          transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
           text-decoration: none;
+          backdrop-filter: blur(12px) saturate(180%);
+          -webkit-backdrop-filter: blur(12px) saturate(180%);
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.35),
+            0 4px 14px rgba(0,0,0,0.10);
         }
         .fb-action-btn.primary {
-          background: #1877f2;
-          color: #fff;
+          background: linear-gradient(135deg, rgba(24,119,242,0.94) 0%, rgba(0,102,204,0.88) 100%);
+          color: #ffffff;
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.35),
+            0 4px 14px rgba(24,119,242,0.30);
         }
         .fb-action-btn.primary:hover {
-          background: #0d65d9;
+          transform: translateY(-1px);
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.45),
+            0 8px 24px rgba(24,119,242,0.42);
         }
         .fb-action-btn.secondary {
-          background: #e4e6eb;
+          background: linear-gradient(135deg, rgba(255,255,255,0.72) 0%, rgba(255,255,255,0.35) 100%);
           color: #1f2937;
+          border: 1px solid rgba(255,255,255,0.75);
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.9),
+            0 2px 10px rgba(31,38,135,0.08);
         }
         .fb-action-btn.secondary:hover {
-          background: #d1d5db;
+          transform: translateY(-1px);
+          background: linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(239,246,255,0.55) 100%);
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,1),
+            0 6px 20px rgba(31,38,135,0.14);
         }
         .fb-action-btn:disabled {
           opacity: 0.6;
           cursor: not-allowed;
         }
 
-        /* ─── Tabs ───────────────────────────────────────────── */
+        /* ─── Tabs — liquid glass ───────────────────────────── */
         .fb-tabs {
           display: flex;
-          gap: 4px;
-          background: #ffffff;
-          border-bottom: 1px solid #e5e7eb;
-          padding: 0 16px;
+          gap: 6px;
+          background: linear-gradient(
+            135deg,
+            rgba(255,255,255,0.62) 0%,
+            rgba(255,255,255,0.24) 100%
+          );
+          border: 1px solid rgba(255,255,255,0.7);
+          backdrop-filter: blur(14px) saturate(180%);
+          -webkit-backdrop-filter: blur(14px) saturate(180%);
+          padding: 8px;
           margin: 12px 0 16px;
-          border-radius: 12px;
-          box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+          border-radius: 16px;
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.9),
+            0 4px 16px rgba(31,38,135,0.08);
           overflow-x: auto;
         }
         .fb-tab {
-          padding: 12px 18px;
+          padding: 10px 16px;
           font-size: 14px;
           font-weight: 600;
-          color: #6b7280;
-          background: none;
-          border: none;
-          border-bottom: 3px solid transparent;
+          color: #374151;
+          background: linear-gradient(
+            135deg,
+            rgba(255,255,255,0.6) 0%,
+            rgba(255,255,255,0.24) 100%
+          );
+          border: 1px solid rgba(255,255,255,0.65);
+          border-radius: 12px;
           cursor: pointer;
-          transition: 0.15s;
+          transition: all 0.18s ease;
           white-space: nowrap;
           display: flex;
           align-items: center;
           gap: 6px;
+          backdrop-filter: blur(10px) saturate(180%);
+          -webkit-backdrop-filter: blur(10px) saturate(180%);
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.85),
+            0 2px 8px rgba(31,38,135,0.06);
         }
         .fb-tab:hover {
-          color: #1f2937;
+          color: #0066cc;
+          background: linear-gradient(
+            135deg,
+            rgba(255,255,255,0.82) 0%,
+            rgba(239,246,255,0.5) 100%
+          );
+          border-color: rgba(255,255,255,0.95);
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,1),
+            0 4px 14px rgba(31,38,135,0.10);
         }
         .fb-tab.active {
-          color: #1877f2;
-          border-bottom-color: #1877f2;
+          color: #ffffff;
+          background: linear-gradient(135deg, rgba(24,119,242,0.94) 0%, rgba(0,102,204,0.88) 100%);
+          border-color: rgba(255,255,255,0.4);
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.4),
+            0 6px 18px rgba(24,119,242,0.35);
+        }
+        .fb-tab.active:hover {
+          background: linear-gradient(135deg, rgba(24,119,242,1) 0%, rgba(0,102,204,0.94) 100%);
+          color: #ffffff;
         }
 
         /* ─── Tab content ────────────────────────────────────── */
@@ -938,7 +1154,7 @@ const Profile = () => {
           gap: 20px;
         }
 
-        /* ─── Quick actions ──────────────────────────────────── */
+        /* ─── Quick actions — liquid glass cards ─────────────── */
         .fb-quick-actions {
           display: flex;
           flex-direction: column;
@@ -948,19 +1164,32 @@ const Profile = () => {
           display: flex;
           align-items: center;
           gap: 12px;
-          background: #ffffff;
-          border: 1px solid #e5e7eb;
-          border-radius: 12px;
+          background: linear-gradient(
+            135deg,
+            rgba(255,255,255,0.68) 0%,
+            rgba(238,246,255,0.38) 50%,
+            rgba(255,255,255,0.58) 100%
+          );
+          border: 1px solid rgba(255,255,255,0.75);
+          backdrop-filter: blur(14px) saturate(180%);
+          -webkit-backdrop-filter: blur(14px) saturate(180%);
+          border-radius: 14px;
           padding: 12px 16px;
           cursor: pointer;
-          transition: 0.15s;
+          transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
           text-align: left;
           width: 100%;
           box-sizing: border-box;
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.9),
+            0 4px 16px rgba(31,38,135,0.08);
         }
         .fb-action-card:hover {
-          background: #f9fafb;
-          border-color: #d1d5db;
+          transform: translateY(-1px);
+          border-color: rgba(255,255,255,0.98);
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,1),
+            0 8px 24px rgba(31,38,135,0.14);
         }
         .fb-action-icon {
           width: 44px;
@@ -971,13 +1200,17 @@ const Profile = () => {
           align-items: center;
           justify-content: center;
           font-size: 20px;
+          border: 1px solid rgba(255,255,255,0.75);
+          backdrop-filter: blur(8px) saturate(180%);
+          -webkit-backdrop-filter: blur(8px) saturate(180%);
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.9);
         }
         .fb-action-icon.messages {
-          background: #e0f2fe;
+          background: linear-gradient(135deg, rgba(224,242,254,0.85) 0%, rgba(186,230,253,0.65) 100%);
           color: #0284c7;
         }
         .fb-action-icon.reviews {
-          background: #fef3c7;
+          background: linear-gradient(135deg, rgba(254,243,199,0.85) 0%, rgba(253,230,138,0.65) 100%);
           color: #d97706;
         }
         .fb-action-text {
@@ -993,40 +1226,62 @@ const Profile = () => {
           color: #6b7280;
         }
         .fb-unread-badge, .fb-action-count {
-          background: #e5e7eb;
-          color: #1f2937;
           padding: 2px 10px;
           border-radius: 999px;
           font-size: 12px;
           font-weight: 600;
+          border: 1px solid rgba(255,255,255,0.6);
+          backdrop-filter: blur(6px);
+          -webkit-backdrop-filter: blur(6px);
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.85);
+        }
+        .fb-action-count {
+          background: linear-gradient(135deg, rgba(255,255,255,0.75) 0%, rgba(255,255,255,0.4) 100%);
+          color: #1f2937;
         }
         .fb-unread-badge {
-          background: #ef4444;
+          background: linear-gradient(135deg, rgba(239,68,68,0.94) 0%, rgba(220,38,38,0.85) 100%);
           color: #fff;
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.35),
+            0 2px 8px rgba(239,68,68,0.3);
         }
         .fb-action-arrow {
           color: #9ca3af;
           font-size: 14px;
         }
 
-        /* ─── Stats grid ─────────────────────────────────────── */
+        /* ─── Stats grid — liquid glass ─────────────────────── */
         .fb-stats-grid {
           display: grid;
           grid-template-columns: repeat(4, 1fr);
           gap: 12px;
         }
         .fb-stat-card {
-          background: #ffffff;
-          border: 1px solid #e5e7eb;
-          border-radius: 12px;
+          background: linear-gradient(
+            135deg,
+            rgba(255,255,255,0.68) 0%,
+            rgba(238,246,255,0.38) 50%,
+            rgba(255,255,255,0.58) 100%
+          );
+          border: 1px solid rgba(255,255,255,0.75);
+          backdrop-filter: blur(14px) saturate(180%);
+          -webkit-backdrop-filter: blur(14px) saturate(180%);
+          border-radius: 14px;
           padding: 16px 10px;
           text-align: center;
           cursor: pointer;
-          transition: 0.15s;
+          transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.9),
+            0 4px 16px rgba(31,38,135,0.08);
         }
         .fb-stat-card:hover {
-          background: #f9fafb;
           transform: translateY(-2px);
+          border-color: rgba(255,255,255,0.98);
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,1),
+            0 8px 24px rgba(31,38,135,0.14);
         }
         .fb-stat-number {
           display: block;
@@ -1051,22 +1306,34 @@ const Profile = () => {
           margin-top: 4px;
           padding: 2px 8px;
           border-radius: 999px;
-          background: #fee2e2;
+          background: linear-gradient(135deg, rgba(254,226,226,0.9) 0%, rgba(252,165,165,0.65) 100%);
           color: #dc2626;
           font-size: 10px;
           font-weight: 600;
+          border: 1px solid rgba(255,255,255,0.7);
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.9);
         }
 
-        /* ─── Reviews section ────────────────────────────────── */
+        /* ─── Reviews section — liquid glass ────────────────── */
         .fb-reviews-section {
-          background: #ffffff;
-          border-radius: 12px;
-          border: 1px solid #e5e7eb;
+          background: linear-gradient(
+            135deg,
+            rgba(255,255,255,0.68) 0%,
+            rgba(238,246,255,0.38) 50%,
+            rgba(255,255,255,0.58) 100%
+          );
+          border: 1px solid rgba(255,255,255,0.75);
+          backdrop-filter: blur(14px) saturate(180%);
+          -webkit-backdrop-filter: blur(14px) saturate(180%);
+          border-radius: 16px;
           overflow: hidden;
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.9),
+            0 8px 24px rgba(31,38,135,0.08);
         }
         .fb-section-header {
           padding: 16px 18px;
-          border-bottom: 1px solid #e5e7eb;
+          border-bottom: 1px solid rgba(255,255,255,0.55);
         }
         .fb-section-header h2 {
           margin: 0;
@@ -1082,8 +1349,15 @@ const Profile = () => {
 
         .fb-review-summary {
           padding: 16px 18px;
-          background: #f9fafb;
-          border-bottom: 1px solid #e5e7eb;
+          background: linear-gradient(
+            135deg,
+            rgba(255,255,255,0.5) 0%,
+            rgba(238,246,255,0.28) 100%
+          );
+          backdrop-filter: blur(8px);
+          -webkit-backdrop-filter: blur(8px);
+          border-bottom: 1px solid rgba(255,255,255,0.55);
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.7);
         }
         .fb-review-average {
           display: flex;
@@ -1110,14 +1384,23 @@ const Profile = () => {
         .fb-review-error {
           margin: 12px 18px;
           padding: 10px 12px;
-          background: #fef2f2;
-          border: 1px solid #fecaca;
-          border-radius: 8px;
+          background: linear-gradient(
+            135deg,
+            rgba(255,255,255,0.65) 0%,
+            rgba(254,226,226,0.55) 100%
+          );
+          backdrop-filter: blur(10px);
+          -webkit-backdrop-filter: blur(10px);
+          border: 1px solid rgba(252,165,165,0.55);
+          border-radius: 10px;
           color: #b91c1c;
           font-size: 13px;
           display: flex;
           align-items: center;
           gap: 6px;
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.9),
+            0 4px 14px rgba(220,38,38,0.08);
         }
 
         .fb-loading {
@@ -1139,12 +1422,18 @@ const Profile = () => {
           height: 60px;
           margin: 0 auto 12px;
           border-radius: 50%;
-          background: #fef3c7;
+          background: linear-gradient(135deg, rgba(254,243,199,0.85) 0%, rgba(253,230,138,0.65) 100%);
           color: #d97706;
           display: flex;
           align-items: center;
           justify-content: center;
           font-size: 24px;
+          border: 1px solid rgba(255,255,255,0.75);
+          backdrop-filter: blur(8px);
+          -webkit-backdrop-filter: blur(8px);
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.9),
+            0 4px 14px rgba(217,119,6,0.12);
         }
         .fb-no-reviews h3 {
           margin: 0 0 6px;
@@ -1163,7 +1452,7 @@ const Profile = () => {
         }
         .fb-review-card {
           padding: 16px 18px;
-          border-bottom: 1px solid #f3f4f6;
+          border-bottom: 1px solid rgba(255,255,255,0.5);
         }
         .fb-review-card:last-child {
           border-bottom: none;
@@ -1183,7 +1472,14 @@ const Profile = () => {
           width: 40px;
           height: 40px;
           border-radius: 50%;
-          background: #e5e7eb;
+          background: linear-gradient(
+            135deg,
+            rgba(255,255,255,0.7) 0%,
+            rgba(238,246,255,0.4) 100%
+          );
+          backdrop-filter: blur(8px);
+          -webkit-backdrop-filter: blur(8px);
+          border: 1px solid rgba(255,255,255,0.75);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -1191,6 +1487,9 @@ const Profile = () => {
           color: #374151;
           overflow: hidden;
           flex-shrink: 0;
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.9),
+            0 2px 8px rgba(31,38,135,0.06);
         }
         .fb-review-avatar img {
           width: 100%;
@@ -1212,26 +1511,39 @@ const Profile = () => {
           font-size: 12px;
           color: #6b7280;
         }
+
+        /* ─── Delete review — liquid red glass ──────────────── */
         .fb-review-delete {
-          background: #fef2f2;
-          border: 1px solid #fecaca;
-          color: #dc2626;
-          padding: 4px 12px;
-          border-radius: 6px;
+          background: linear-gradient(135deg, rgba(239,68,68,0.92) 0%, rgba(220,38,38,0.85) 100%);
+          border: 1px solid rgba(255,255,255,0.35);
+          backdrop-filter: blur(10px) saturate(180%);
+          -webkit-backdrop-filter: blur(10px) saturate(180%);
+          color: #ffffff;
+          padding: 5px 12px;
+          border-radius: 10px;
           font-size: 12px;
           font-weight: 600;
           cursor: pointer;
           display: flex;
           align-items: center;
           gap: 4px;
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.35),
+            0 4px 14px rgba(239,68,68,0.28);
+          transition: transform 0.15s ease, box-shadow 0.15s ease;
         }
         .fb-review-delete:hover {
-          background: #fee2e2;
+          transform: translateY(-1px);
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.45),
+            0 6px 20px rgba(239,68,68,0.4);
         }
         .fb-review-delete:disabled {
           opacity: 0.5;
           cursor: not-allowed;
+          transform: none;
         }
+
         .fb-review-product {
           margin-top: 8px;
           display: flex;
@@ -1258,12 +1570,22 @@ const Profile = () => {
           gap: 4px;
         }
 
-        /* ─── Ads section ────────────────────────────────────── */
+        /* ─── Ads section — liquid glass ────────────────────── */
         .fb-ads-section {
-          background: #ffffff;
-          border-radius: 12px;
-          border: 1px solid #e5e7eb;
+          background: linear-gradient(
+            135deg,
+            rgba(255,255,255,0.68) 0%,
+            rgba(238,246,255,0.38) 50%,
+            rgba(255,255,255,0.58) 100%
+          );
+          border: 1px solid rgba(255,255,255,0.75);
+          backdrop-filter: blur(14px) saturate(180%);
+          -webkit-backdrop-filter: blur(14px) saturate(180%);
+          border-radius: 16px;
           overflow: hidden;
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.9),
+            0 8px 24px rgba(31,38,135,0.08);
         }
         .fb-no-ads {
           padding: 40px 18px;
@@ -1274,12 +1596,18 @@ const Profile = () => {
           height: 60px;
           margin: 0 auto 12px;
           border-radius: 50%;
-          background: #e0f2fe;
+          background: linear-gradient(135deg, rgba(224,242,254,0.85) 0%, rgba(186,230,253,0.65) 100%);
           color: #0284c7;
           display: flex;
           align-items: center;
           justify-content: center;
           font-size: 24px;
+          border: 1px solid rgba(255,255,255,0.75);
+          backdrop-filter: blur(8px);
+          -webkit-backdrop-filter: blur(8px);
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.9),
+            0 4px 14px rgba(2,132,199,0.12);
         }
         .fb-no-ads h3 {
           margin: 0 0 6px;
@@ -1291,19 +1619,31 @@ const Profile = () => {
           color: #6b7280;
           font-size: 14px;
         }
+
+        /* ─── Post Ad CTA — liquid blue glass ───────────────── */
         .fb-post-ad-btn {
           display: inline-flex;
           align-items: center;
           gap: 6px;
-          background: #1877f2;
-          color: #fff;
-          padding: 8px 20px;
-          border-radius: 999px;
+          padding: 10px 22px;
+          border-radius: 14px;
           text-decoration: none;
-          font-weight: 600;
+          font-weight: 700;
+          color: #ffffff;
+          border: 1px solid rgba(255,255,255,0.45);
+          background: linear-gradient(135deg, rgba(24,119,242,0.94) 0%, rgba(0,102,204,0.88) 100%);
+          backdrop-filter: blur(14px) saturate(180%);
+          -webkit-backdrop-filter: blur(14px) saturate(180%);
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.35),
+            0 4px 14px rgba(24,119,242,0.30);
+          transition: transform 0.15s ease, box-shadow 0.15s ease;
         }
         .fb-post-ad-btn:hover {
-          background: #0d65d9;
+          transform: translateY(-1px);
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.45),
+            0 8px 24px rgba(24,119,242,0.42);
         }
 
         .fb-ads-list {
@@ -1313,18 +1653,32 @@ const Profile = () => {
           padding: 16px;
         }
         .fb-ad-card {
-          border: 1px solid #e5e7eb;
-          border-radius: 10px;
+          border: 1px solid rgba(255,255,255,0.75);
+          border-radius: 14px;
           overflow: hidden;
-          background: #fff;
-          transition: 0.15s;
+          background: linear-gradient(
+            135deg,
+            rgba(255,255,255,0.72) 0%,
+            rgba(238,246,255,0.42) 50%,
+            rgba(255,255,255,0.62) 100%
+          );
+          backdrop-filter: blur(12px) saturate(180%);
+          -webkit-backdrop-filter: blur(12px) saturate(180%);
+          transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.9),
+            0 4px 14px rgba(31,38,135,0.08);
         }
         .fb-ad-card:hover {
-          box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+          transform: translateY(-2px);
+          border-color: rgba(255,255,255,0.98);
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,1),
+            0 8px 24px rgba(31,38,135,0.14);
         }
         .fb-ad-image {
           height: 150px;
-          background: #f3f4f6;
+          background: linear-gradient(135deg, rgba(241,245,249,0.85) 0%, rgba(226,232,240,0.5) 100%);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -1361,35 +1715,48 @@ const Profile = () => {
           display: flex;
           gap: 6px;
         }
+
+        /* ─── Delete ad — liquid red glass ──────────────────── */
         .fb-ad-delete {
-          background: #fef2f2;
-          border: 1px solid #fecaca;
-          color: #dc2626;
-          padding: 4px 12px;
-          border-radius: 6px;
+          background: linear-gradient(135deg, rgba(239,68,68,0.92) 0%, rgba(220,38,38,0.85) 100%);
+          border: 1px solid rgba(255,255,255,0.35);
+          backdrop-filter: blur(10px) saturate(180%);
+          -webkit-backdrop-filter: blur(10px) saturate(180%);
+          color: #ffffff;
+          padding: 5px 12px;
+          border-radius: 10px;
           font-size: 12px;
           font-weight: 600;
           cursor: pointer;
           display: flex;
           align-items: center;
           gap: 4px;
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.35),
+            0 4px 14px rgba(239,68,68,0.28);
+          transition: transform 0.15s ease, box-shadow 0.15s ease;
         }
         .fb-ad-delete:hover {
-          background: #fee2e2;
+          transform: translateY(-1px);
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.45),
+            0 6px 20px rgba(239,68,68,0.4);
         }
         .fb-ad-delete:disabled {
           opacity: 0.5;
           cursor: not-allowed;
+          transform: none;
         }
 
         /* ─── Mobile responsiveness ──────────────────────────── */
         @media (max-width: 760px) {
           .fb-profile-page {
             padding: 10px 8px 30px;
+            border-radius: 16px;
           }
           .fb-cover {
             height: 140px;
-            border-radius: 8px 8px 0 0;
+            border-radius: 14px 14px 0 0;
           }
           .fb-profile-info {
             flex-direction: column;
@@ -1397,7 +1764,7 @@ const Profile = () => {
             text-align: center;
             margin-top: -40px;
             padding: 0 12px 12px;
-            border-radius: 0 0 8px 8px;
+            border-radius: 0 0 14px 14px;
           }
           .fb-avatar {
             width: 80px;
@@ -1427,14 +1794,14 @@ const Profile = () => {
             padding: 6px 14px;
           }
           .fb-tabs {
-            padding: 0 8px;
+            padding: 6px;
             margin: 8px 0 12px;
             overflow-x: auto;
-            border-radius: 8px;
+            border-radius: 14px;
           }
           .fb-tab {
             font-size: 13px;
-            padding: 10px 12px;
+            padding: 8px 12px;
           }
           .fb-stats-grid {
             grid-template-columns: repeat(2, 1fr);
@@ -1457,6 +1824,10 @@ const Profile = () => {
         }
 
         @media (max-width: 480px) {
+          .fb-profile-page {
+            padding: 6px 6px 24px;
+            border-radius: 14px;
+          }
           .fb-cover {
             height: 100px;
           }
@@ -1510,18 +1881,19 @@ const Profile = () => {
           }
         }
 
-        /* ─── Modal styles (unchanged) ───────────────────────── */
+        /* ─── Modal — liquid glass ───────────────────────────── */
         .edit-profile-overlay {
           position: fixed;
           inset: 0;
           z-index: 99999;
-          background: rgba(15, 23, 42, 0.62);
+          background: rgba(11, 20, 26, 0.6);
+          backdrop-filter: blur(6px);
+          -webkit-backdrop-filter: blur(6px);
           display: flex;
           align-items: center;
           justify-content: center;
           padding: 18px;
           overflow-y: auto;
-          backdrop-filter: blur(3px);
         }
         .edit-profile-modal {
           position: relative;
@@ -1529,11 +1901,22 @@ const Profile = () => {
           max-width: 520px;
           max-height: calc(100vh - 36px);
           overflow-y: auto;
-          background: #ffffff;
-          border-radius: 18px;
+          border-radius: 20px;
           padding: 22px;
-          box-shadow: 0 25px 70px rgba(0,0,0,0.22);
           box-sizing: border-box;
+          background: linear-gradient(
+            135deg,
+            rgba(255,255,255,0.72) 0%,
+            rgba(238,246,255,0.42) 50%,
+            rgba(255,255,255,0.62) 100%
+          );
+          backdrop-filter: blur(20px) saturate(180%);
+          -webkit-backdrop-filter: blur(20px) saturate(180%);
+          border: 1px solid rgba(255,255,255,0.75);
+          box-shadow:
+            0 25px 70px rgba(31,38,135,0.22),
+            inset 0 1px 0 rgba(255,255,255,0.95),
+            inset 0 -1px 0 rgba(255,255,255,0.25);
         }
         .edit-profile-close {
           position: absolute;
@@ -1541,13 +1924,25 @@ const Profile = () => {
           right: 12px;
           width: 34px;
           height: 34px;
-          border: none;
+          border: 1px solid rgba(255,255,255,0.75);
           border-radius: 50%;
-          background: var(--gray-100);
-          color: var(--gray-600);
-          font-size: 22px;
+          background: linear-gradient(135deg, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.35) 100%);
+          backdrop-filter: blur(10px);
+          -webkit-backdrop-filter: blur(10px);
+          color: #4b5563;
+          font-size: 20px;
           line-height: 1;
           cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.9),
+            0 2px 8px rgba(31,38,135,0.08);
+          transition: transform 0.15s ease;
+        }
+        .edit-profile-close:hover {
+          transform: scale(1.05);
         }
         .edit-profile-heading {
           display: flex;
@@ -1559,35 +1954,51 @@ const Profile = () => {
         .edit-profile-heading-icon {
           width: 42px;
           height: 42px;
-          border-radius: 11px;
-          background: #dcfce7;
+          border-radius: 12px;
+          background: linear-gradient(135deg, rgba(220,252,231,0.9) 0%, rgba(187,247,208,0.65) 100%);
           color: #16a34a;
           display: flex;
           align-items: center;
           justify-content: center;
           font-size: 17px;
+          border: 1px solid rgba(255,255,255,0.75);
+          backdrop-filter: blur(8px);
+          -webkit-backdrop-filter: blur(8px);
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.9),
+            0 2px 8px rgba(22,163,74,0.12);
         }
         .edit-profile-heading h2 {
           margin: 0;
           font-size: 19px;
           font-weight: 800;
+          color: #1f2937;
         }
         .edit-profile-heading p {
           margin: 3px 0 0;
-          color: var(--gray-500);
+          color: #6b7280;
           font-size: 11px;
         }
         .edit-profile-error {
           display: flex;
           align-items: flex-start;
           gap: 7px;
-          background: #fef2f2;
+          background: linear-gradient(
+            135deg,
+            rgba(255,255,255,0.65) 0%,
+            rgba(254,226,226,0.55) 100%
+          );
+          backdrop-filter: blur(10px);
+          -webkit-backdrop-filter: blur(10px);
           color: #b91c1c;
-          border: 1px solid #fecaca;
+          border: 1px solid rgba(252,165,165,0.55);
           padding: 9px 11px;
           border-radius: 9px;
           font-size: 11px;
           margin-bottom: 14px;
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.9),
+            0 4px 14px rgba(220,38,38,0.08);
         }
         .edit-form-group {
           margin-bottom: 14px;
@@ -1595,7 +2006,7 @@ const Profile = () => {
         .edit-form-group > label {
           display: block;
           margin-bottom: 5px;
-          color: var(--gray-700);
+          color: #374151;
           font-size: 11px;
           font-weight: 700;
         }
@@ -1607,7 +2018,7 @@ const Profile = () => {
           left: 12px;
           top: 50%;
           transform: translateY(-50%);
-          color: var(--gray-400);
+          color: #9ca3af;
           font-size: 12px;
           pointer-events: none;
         }
@@ -1615,24 +2026,37 @@ const Profile = () => {
         .edit-input-wrapper select {
           width: 100%;
           height: 42px;
-          border: 1px solid var(--gray-300);
-          border-radius: 9px;
-          background: #ffffff;
+          border: 1px solid rgba(255,255,255,0.75);
+          border-radius: 11px;
+          background: linear-gradient(
+            135deg,
+            rgba(255,255,255,0.72) 0%,
+            rgba(255,255,255,0.38) 100%
+          );
+          backdrop-filter: blur(10px) saturate(180%);
+          -webkit-backdrop-filter: blur(10px) saturate(180%);
           padding: 0 12px 0 34px;
           outline: none;
           font-size: 12px;
-          color: var(--gray-800);
+          color: #1f2937;
           box-sizing: border-box;
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.9),
+            0 2px 8px rgba(31,38,135,0.06);
+          transition: border-color 0.15s ease, box-shadow 0.15s ease;
         }
         .edit-input-wrapper input:focus,
         .edit-input-wrapper select:focus {
-          border-color: var(--primary);
-          box-shadow: 0 0 0 3px rgba(0,0,0,0.04);
+          border-color: rgba(0,102,204,0.6);
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,1),
+            0 0 0 3px rgba(0,102,204,0.14),
+            0 4px 14px rgba(31,38,135,0.10);
         }
         .edit-role-help {
           display: block;
           margin-top: 5px;
-          color: var(--gray-500);
+          color: #6b7280;
           font-size: 9px;
           line-height: 1.4;
         }
@@ -1647,13 +2071,23 @@ const Profile = () => {
           min-width: 66px;
           border-radius: 50%;
           overflow: hidden;
-          background: var(--gray-100);
-          color: var(--gray-400);
+          background: linear-gradient(
+            135deg,
+            rgba(255,255,255,0.7) 0%,
+            rgba(238,246,255,0.4) 100%
+          );
+          backdrop-filter: blur(8px);
+          -webkit-backdrop-filter: blur(8px);
+          border: 1px solid rgba(255,255,255,0.75);
+          color: #9ca3af;
           display: flex;
           align-items: center;
           justify-content: center;
           font-size: 24px;
           font-weight: 800;
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.9),
+            0 2px 8px rgba(31,38,135,0.06);
         }
         .edit-photo-preview img {
           width: 100%;
@@ -1666,11 +2100,13 @@ const Profile = () => {
           gap: 7px;
           flex-wrap: wrap;
         }
+
+        /* ─── Choose Photo — liquid glass button ────────────── */
         .choose-photo-btn,
         .remove-photo-btn {
           min-height: 34px;
-          border-radius: 8px;
-          padding: 0 10px;
+          border-radius: 10px;
+          padding: 0 12px;
           display: inline-flex;
           align-items: center;
           gap: 5px;
@@ -1678,19 +2114,50 @@ const Profile = () => {
           font-weight: 700;
           cursor: pointer;
           box-sizing: border-box;
+          backdrop-filter: blur(10px) saturate(180%);
+          -webkit-backdrop-filter: blur(10px) saturate(180%);
+          transition: transform 0.15s ease, box-shadow 0.15s ease;
         }
         .choose-photo-btn {
-          background: var(--gray-100);
-          color: var(--gray-700);
+          border: 1px solid rgba(255,255,255,0.75);
+          background: linear-gradient(
+            135deg,
+            rgba(255,255,255,0.72) 0%,
+            rgba(255,255,255,0.35) 100%
+          );
+          color: #374151;
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.9),
+            0 2px 8px rgba(31,38,135,0.06);
+        }
+        .choose-photo-btn:hover {
+          transform: translateY(-1px);
+          background: linear-gradient(
+            135deg,
+            rgba(255,255,255,0.9) 0%,
+            rgba(239,246,255,0.55) 100%
+          );
         }
         .choose-photo-btn input {
           display: none;
         }
+
+        /* ─── Remove Photo — liquid red glass ───────────────── */
         .remove-photo-btn {
-          border: 1px solid #fecaca;
-          background: #fef2f2;
-          color: #dc2626;
+          border: 1px solid rgba(255,255,255,0.35);
+          background: linear-gradient(135deg, rgba(239,68,68,0.92) 0%, rgba(220,38,38,0.85) 100%);
+          color: #ffffff;
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.35),
+            0 4px 14px rgba(239,68,68,0.28);
         }
+        .remove-photo-btn:hover {
+          transform: translateY(-1px);
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.45),
+            0 6px 20px rgba(239,68,68,0.4);
+        }
+
         .edit-photo-warning {
           display: block;
           margin-top: 6px;
@@ -1703,12 +2170,13 @@ const Profile = () => {
           gap: 7px;
           margin-top: 18px;
           padding-top: 14px;
-          border-top: 1px solid var(--gray-200);
+          border-top: 1px solid rgba(255,255,255,0.6);
         }
-        .edit-cancel-btn,
-        .edit-save-btn {
+
+        /* ─── Cancel — liquid glass outline ─────────────────── */
+        .edit-cancel-btn {
           min-height: 40px;
-          border-radius: 9px;
+          border-radius: 11px;
           padding: 0 15px;
           font-size: 11px;
           font-weight: 700;
@@ -1717,22 +2185,63 @@ const Profile = () => {
           align-items: center;
           justify-content: center;
           gap: 6px;
+          border: 1px solid rgba(255,255,255,0.75);
+          background: linear-gradient(
+            135deg,
+            rgba(255,255,255,0.68) 0%,
+            rgba(255,255,255,0.32) 100%
+          );
+          backdrop-filter: blur(10px) saturate(180%);
+          -webkit-backdrop-filter: blur(10px) saturate(180%);
+          color: #374151;
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.9),
+            0 2px 10px rgba(31,38,135,0.06);
+          transition: transform 0.15s ease, box-shadow 0.15s ease;
         }
-        .edit-cancel-btn {
-          border: 1px solid var(--gray-300);
-          background: #ffffff;
-          color: var(--gray-700);
+        .edit-cancel-btn:hover {
+          transform: translateY(-1px);
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,1),
+            0 6px 20px rgba(31,38,135,0.12);
         }
+
+        /* ─── Save Changes — liquid blue glass ──────────────── */
         .edit-save-btn {
-          border: none;
-          background: var(--primary);
+          min-height: 40px;
+          border-radius: 11px;
+          padding: 0 16px;
+          font-size: 11px;
+          font-weight: 700;
+          cursor: pointer;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          border: 1px solid rgba(255,255,255,0.4);
+          background: linear-gradient(135deg, rgba(0,102,204,0.94) 0%, rgba(0,85,165,0.88) 100%);
+          backdrop-filter: blur(14px) saturate(180%);
+          -webkit-backdrop-filter: blur(14px) saturate(180%);
           color: #ffffff;
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.35),
+            0 4px 14px rgba(0,102,204,0.30);
+          transition: transform 0.15s ease, box-shadow 0.15s ease;
         }
+        .edit-save-btn:hover {
+          transform: translateY(-1px);
+          box-shadow:
+            inset 0 1px 0 rgba(255,255,255,0.45),
+            0 8px 24px rgba(0,102,204,0.42);
+        }
+
         .edit-cancel-btn:disabled,
         .edit-save-btn:disabled {
           opacity: 0.55;
           cursor: not-allowed;
+          transform: none;
         }
+
         @media (max-width: 700px) {
           .edit-profile-overlay {
             padding: 10px;
@@ -1742,7 +2251,7 @@ const Profile = () => {
             max-height: calc(100vh - 20px);
             margin-top: 5px;
             padding: 18px 15px;
-            border-radius: 15px;
+            border-radius: 16px;
           }
           .edit-photo-section {
             align-items: flex-start;
@@ -1750,7 +2259,58 @@ const Profile = () => {
           .edit-profile-buttons {
             position: sticky;
             bottom: 0;
-            background: #ffffff;
+            background: linear-gradient(
+              135deg,
+              rgba(255,255,255,0.75) 0%,
+              rgba(238,246,255,0.5) 100%
+            );
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border-radius: 12px;
+            padding: 10px;
+            margin: 12px -10px -10px;
+          }
+        }
+
+        /* ─── Reduced motion ────────────────────────────────── */
+        @media (prefers-reduced-motion: reduce) {
+          .fb-profile-page::before,
+          .fb-cover-image::before {
+            animation: none !important;
+          }
+          .fb-action-btn,
+          .fb-action-card,
+          .fb-stat-card,
+          .fb-tab,
+          .fb-ad-card,
+          .fb-review-delete,
+          .fb-ad-delete,
+          .fb-post-ad-btn,
+          .edit-profile-close,
+          .choose-photo-btn,
+          .remove-photo-btn,
+          .edit-cancel-btn,
+          .edit-save-btn,
+          .edit-input-wrapper input,
+          .edit-input-wrapper select {
+            transition: none !important;
+          }
+          .fb-action-btn:hover,
+          .fb-action-btn.primary:hover,
+          .fb-action-btn.secondary:hover,
+          .fb-action-card:hover,
+          .fb-stat-card:hover,
+          .fb-tab:hover,
+          .fb-ad-card:hover,
+          .fb-review-delete:hover,
+          .fb-ad-delete:hover,
+          .fb-post-ad-btn:hover,
+          .edit-profile-close:hover,
+          .choose-photo-btn:hover,
+          .remove-photo-btn:hover,
+          .edit-cancel-btn:hover,
+          .edit-save-btn:hover {
+            transform: none !important;
           }
         }
       `}</style>

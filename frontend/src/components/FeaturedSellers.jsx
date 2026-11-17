@@ -22,10 +22,30 @@ const FeaturedSellers = ({ sellers = [] }) => {
     <section className="top-sellers-section">
       <style>
         {`
+          /* ═══════════════════════════════════════════════════
+             LIQUID iOS27 — FEATURED SELLERS
+             ═══════════════════════════════════════════════════ */
+
           .top-sellers-section {
+            position: relative;
+            isolation: isolate;
+            overflow: hidden;
             max-width: 1200px;
             margin: 0 auto;
             padding: 40px 20px 60px;
+            border-radius: 20px;
+            background: linear-gradient(
+              135deg,
+              rgba(238,244,255,0.7) 0%,
+              rgba(245,240,255,0.55) 40%,
+              rgba(234,247,255,0.7) 70%,
+              rgba(242,248,255,0.65) 100%
+            );
+            backdrop-filter: blur(14px) saturate(180%);
+            -webkit-backdrop-filter: blur(14px) saturate(180%);
+            box-shadow:
+              inset 0 1px 0 rgba(255,255,255,0.9),
+              0 8px 28px rgba(31,38,135,0.08);
           }
 
           .top-sellers-header {
@@ -60,46 +80,72 @@ const FeaturedSellers = ({ sellers = [] }) => {
             gap: 16px;
           }
 
+          /* ─── Seller card — liquid glass ─────────────── */
           .top-seller-card {
-            background: #fff;
-            border: 1px solid #e5e7eb;
-            border-radius: 12px;
-            padding: 20px 18px;
-            transition: all 0.2s ease;
+            position: relative;
             display: flex;
             align-items: center;
             gap: 14px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+            padding: 20px 18px;
+            border-radius: 16px;
+            background: linear-gradient(
+              135deg,
+              rgba(255,255,255,0.72) 0%,
+              rgba(238,246,255,0.42) 50%,
+              rgba(255,255,255,0.62) 100%
+            );
+            backdrop-filter: blur(14px) saturate(180%);
+            -webkit-backdrop-filter: blur(14px) saturate(180%);
+            border: 1px solid rgba(255,255,255,0.75);
+            box-shadow:
+              0 8px 24px rgba(31,38,135,0.08),
+              inset 0 1px 0 rgba(255,255,255,0.95),
+              inset 0 -1px 0 rgba(255,255,255,0.25);
+            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
           }
 
           .top-seller-card:hover {
-            border-color: #0055a5;
-            box-shadow: 0 4px 16px rgba(0, 85, 165, 0.10);
+            border-color: rgba(0,85,165,0.55);
+            box-shadow:
+              0 14px 32px rgba(0,85,165,0.15),
+              inset 0 1px 0 rgba(255,255,255,1),
+              inset 0 -1px 0 rgba(255,255,255,0.3);
             transform: translateY(-2px);
           }
 
           .top-seller-rank {
             font-size: 24px;
             font-weight: 800;
-            color: #d1d5db;
+            color: #94a3b8;
             min-width: 36px;
             text-align: center;
             line-height: 1;
           }
 
+          /* ─── Avatar — liquid glass circle ───────────── */
           .top-seller-avatar {
             width: 48px;
             height: 48px;
             border-radius: 50%;
-            background: #e5e7eb;
             display: flex;
             align-items: center;
             justify-content: center;
             font-weight: 700;
             font-size: 18px;
-            color: #6b7280;
+            color: #475569;
             flex-shrink: 0;
             overflow: hidden;
+            background: linear-gradient(
+              135deg,
+              rgba(255,255,255,0.72) 0%,
+              rgba(238,246,255,0.42) 100%
+            );
+            backdrop-filter: blur(8px) saturate(180%);
+            -webkit-backdrop-filter: blur(8px) saturate(180%);
+            border: 1px solid rgba(255,255,255,0.85);
+            box-shadow:
+              inset 0 1px 0 rgba(255,255,255,0.9),
+              0 2px 8px rgba(31,38,135,0.08);
           }
 
           .top-seller-avatar img {
@@ -152,58 +198,124 @@ const FeaturedSellers = ({ sellers = [] }) => {
             flex-shrink: 0;
           }
 
+          /* ─── Visit Store — liquid blue glass ────────── */
           .top-seller-actions .btn-visit {
-            background: #0055a5;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            padding: 4px 14px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 6px 16px;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.4);
+            color: #ffffff;
+            background: linear-gradient(
+              135deg,
+              rgba(0,85,165,0.94) 0%,
+              rgba(0,63,122,0.88) 100%
+            );
+            backdrop-filter: blur(12px) saturate(180%);
+            -webkit-backdrop-filter: blur(12px) saturate(180%);
             font-size: 12px;
             font-weight: 600;
             cursor: pointer;
             text-decoration: none;
             text-align: center;
-            transition: background 0.2s;
             white-space: nowrap;
+            box-shadow:
+              inset 0 1px 0 rgba(255,255,255,0.35),
+              0 4px 14px rgba(0,85,165,0.30);
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
           }
 
           .top-seller-actions .btn-visit:hover {
-            background: #003f7a;
+            transform: translateY(-1px);
+            box-shadow:
+              inset 0 1px 0 rgba(255,255,255,0.45),
+              0 8px 20px rgba(0,85,165,0.42);
           }
 
+          .top-seller-actions .btn-visit:active {
+            transform: translateY(0) scale(0.98);
+          }
+
+          /* ─── Follow — liquid glass outline ──────────── */
           .top-seller-actions .btn-follow {
-            background: transparent;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 5px 16px;
+            border-radius: 10px;
+            border: 1px solid rgba(0,85,165,0.55);
             color: #0055a5;
-            border: 1px solid #0055a5;
-            border-radius: 6px;
-            padding: 3px 14px;
+            background: linear-gradient(
+              135deg,
+              rgba(255,255,255,0.68) 0%,
+              rgba(255,255,255,0.32) 100%
+            );
+            backdrop-filter: blur(12px) saturate(180%);
+            -webkit-backdrop-filter: blur(12px) saturate(180%);
             font-size: 12px;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.2s;
             white-space: nowrap;
+            box-shadow:
+              inset 0 1px 0 rgba(255,255,255,0.9),
+              0 2px 10px rgba(31,38,135,0.06);
+            transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease, border-color 0.15s ease;
           }
 
           .top-seller-actions .btn-follow:hover {
-            background: #e8f0fe;
+            transform: translateY(-1px);
+            background: linear-gradient(
+              135deg,
+              rgba(232,240,254,0.85) 0%,
+              rgba(199,210,254,0.55) 100%
+            );
+            border-color: rgba(0,85,165,0.85);
+            box-shadow:
+              inset 0 1px 0 rgba(255,255,255,1),
+              0 6px 18px rgba(0,85,165,0.22);
           }
 
+          .top-seller-actions .btn-follow:active {
+            transform: translateY(0) scale(0.98);
+          }
+
+          /* ─── Following — solid liquid blue glass ────── */
           .top-seller-actions .btn-follow.following {
-            background: #0055a5;
-            color: white;
-            border-color: #0055a5;
+            color: #ffffff;
+            border-color: rgba(255,255,255,0.4);
+            background: linear-gradient(
+              135deg,
+              rgba(0,85,165,0.94) 0%,
+              rgba(0,63,122,0.88) 100%
+            );
+            box-shadow:
+              inset 0 1px 0 rgba(255,255,255,0.35),
+              0 4px 14px rgba(0,85,165,0.30);
           }
 
           .top-seller-actions .btn-follow.following:hover {
-            background: #003f7a;
+            transform: translateY(-1px);
+            box-shadow:
+              inset 0 1px 0 rgba(255,255,255,0.45),
+              0 8px 20px rgba(0,85,165,0.42);
           }
 
+          /* ─── Responsive ────────────────────────────── */
           @media (max-width: 768px) {
             .top-sellers-grid {
               grid-template-columns: 1fr;
             }
             .top-sellers-header h2 {
               font-size: 22px;
+            }
+            .top-sellers-section {
+              backdrop-filter: blur(10px) saturate(180%);
+              -webkit-backdrop-filter: blur(10px) saturate(180%);
+            }
+            .top-seller-card {
+              backdrop-filter: blur(10px) saturate(180%);
+              -webkit-backdrop-filter: blur(10px) saturate(180%);
             }
           }
 
@@ -235,6 +347,29 @@ const FeaturedSellers = ({ sellers = [] }) => {
             .top-seller-actions .btn-follow {
               flex: 1;
               text-align: center;
+            }
+            /* Lighter blur for smooth mobile scroll */
+            .top-sellers-section,
+            .top-seller-card,
+            .top-seller-avatar,
+            .top-seller-actions .btn-visit,
+            .top-seller-actions .btn-follow {
+              backdrop-filter: blur(6px) saturate(180%);
+              -webkit-backdrop-filter: blur(6px) saturate(180%);
+            }
+          }
+
+          /* ─── Reduced motion ────────────────────────── */
+          @media (prefers-reduced-motion: reduce) {
+            .top-seller-card,
+            .top-seller-actions .btn-visit,
+            .top-seller-actions .btn-follow {
+              transition: none !important;
+            }
+            .top-seller-card:hover,
+            .top-seller-actions .btn-visit:hover,
+            .top-seller-actions .btn-follow:hover {
+              transform: none !important;
             }
           }
         `}

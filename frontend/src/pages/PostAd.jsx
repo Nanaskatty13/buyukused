@@ -1153,6 +1153,371 @@ const PostAd = () => {
 
   return (
     <div className="post-ad-container">
+      {/* ============================================================
+          LIQUID iOS27 — STYLES
+          ============================================================ */}
+      <style>
+        {`
+          @keyframes liquid-pd-float {
+            0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+            33%      { transform: translate3d(-30px, 24px, 0) scale(1.06); }
+            66%      { transform: translate3d(24px, -20px, 0) scale(0.97); }
+          }
+
+          /* ── Page container — liquid mirror bg ─────────────── */
+          .post-ad-container {
+            position: relative;
+            isolation: isolate;
+            overflow: hidden;
+            border-radius: 20px;
+            background: linear-gradient(
+              135deg,
+              #eef4ff 0%,
+              #f5f0ff 40%,
+              #eaf7ff 70%,
+              #f2f8ff 100%
+            );
+            box-shadow:
+              0 8px 32px rgba(31,38,135,0.08),
+              inset 0 1px 0 rgba(255,255,255,0.9);
+          }
+
+          .post-ad-container::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            z-index: -1;
+            background:
+              radial-gradient(circle at 8% 15%, rgba(0,102,204,0.22) 0%, rgba(0,102,204,0.08) 25%, transparent 55%),
+              radial-gradient(circle at 92% 60%, rgba(139,92,246,0.18) 0%, rgba(139,92,246,0.06) 25%, transparent 55%),
+              radial-gradient(circle at 50% 115%, rgba(6,182,212,0.18) 0%, rgba(6,182,212,0.06) 25%, transparent 55%),
+              radial-gradient(circle at 30% 80%, rgba(59,130,246,0.12) 0%, transparent 50%);
+            animation: liquid-pd-float 24s ease-in-out infinite;
+            will-change: transform;
+          }
+
+          /* ── All primary / secondary / outline buttons ─────── */
+          .post-ad-container .btn-primary,
+          .post-ad-container .btn-secondary,
+          .post-ad-container .btn-outline {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 11px 22px;
+            border-radius: 14px;
+            font-weight: 700;
+            font-size: 15px;
+            cursor: pointer;
+            backdrop-filter: blur(14px) saturate(180%);
+            -webkit-backdrop-filter: blur(14px) saturate(180%);
+            border: 1px solid rgba(255,255,255,0.45);
+            transition:
+              transform 0.15s ease,
+              box-shadow 0.15s ease,
+              background 0.15s ease,
+              border-color 0.15s ease;
+            box-shadow:
+              inset 0 1px 0 rgba(255,255,255,0.35),
+              0 4px 14px rgba(0,0,0,0.10);
+          }
+
+          .post-ad-container .btn-primary {
+            background: linear-gradient(135deg, rgba(0,102,204,0.94) 0%, rgba(0,85,165,0.88) 100%);
+            color: #ffffff;
+            box-shadow:
+              inset 0 1px 0 rgba(255,255,255,0.35),
+              0 4px 14px rgba(0,102,204,0.30);
+          }
+          .post-ad-container .btn-primary:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow:
+              inset 0 1px 0 rgba(255,255,255,0.45),
+              0 8px 24px rgba(0,102,204,0.40);
+          }
+
+          .post-ad-container .btn-secondary {
+            background: linear-gradient(135deg, rgba(37,211,102,0.94) 0%, rgba(29,177,84,0.88) 100%);
+            color: #ffffff;
+            box-shadow:
+              inset 0 1px 0 rgba(255,255,255,0.35),
+              0 4px 14px rgba(37,211,102,0.30);
+          }
+          .post-ad-container .btn-secondary:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow:
+              inset 0 1px 0 rgba(255,255,255,0.45),
+              0 8px 24px rgba(37,211,102,0.40);
+          }
+
+          .post-ad-container .btn-outline {
+            background: linear-gradient(135deg, rgba(255,255,255,0.68) 0%, rgba(255,255,255,0.30) 100%);
+            color: #1f2937;
+            border: 1px solid rgba(255,255,255,0.75);
+            box-shadow:
+              inset 0 1px 0 rgba(255,255,255,0.9),
+              0 2px 10px rgba(31,38,135,0.08);
+          }
+          .post-ad-container .btn-outline:hover:not(:disabled) {
+            transform: translateY(-1px);
+            background: linear-gradient(135deg, rgba(255,255,255,0.85) 0%, rgba(239,246,255,0.5) 100%);
+            box-shadow:
+              inset 0 1px 0 rgba(255,255,255,1),
+              0 6px 20px rgba(31,38,135,0.14);
+          }
+
+          .post-ad-container .btn-primary:disabled,
+          .post-ad-container .btn-secondary:disabled,
+          .post-ad-container .btn-outline:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+            transform: none;
+          }
+
+          .post-ad-container .btn-primary:active:not(:disabled),
+          .post-ad-container .btn-secondary:active:not(:disabled),
+          .post-ad-container .btn-outline:active:not(:disabled) {
+            transform: translateY(0) scale(0.98);
+          }
+
+          /* ── Form fields — liquid glass ───────────────────── */
+          .post-ad-container input[type="text"],
+          .post-ad-container input[type="number"],
+          .post-ad-container input[type="tel"],
+          .post-ad-container input[type="email"],
+          .post-ad-container input[type="password"],
+          .post-ad-container select,
+          .post-ad-container textarea {
+            width: 100%;
+            padding: 11px 14px;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.75);
+            background: linear-gradient(135deg, rgba(255,255,255,0.72) 0%, rgba(255,255,255,0.38) 100%);
+            backdrop-filter: blur(10px) saturate(180%);
+            -webkit-backdrop-filter: blur(10px) saturate(180%);
+            box-shadow:
+              inset 0 1px 0 rgba(255,255,255,0.9),
+              0 2px 10px rgba(31,38,135,0.06);
+            color: #111827;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.15s ease, box-shadow 0.15s ease;
+          }
+
+          .post-ad-container input[type="text"]:focus,
+          .post-ad-container input[type="number"]:focus,
+          .post-ad-container input[type="tel"]:focus,
+          .post-ad-container input[type="email"]:focus,
+          .post-ad-container input[type="password"]:focus,
+          .post-ad-container select:focus,
+          .post-ad-container textarea:focus {
+            border-color: rgba(0,102,204,0.6);
+            box-shadow:
+              inset 0 1px 0 rgba(255,255,255,1),
+              0 0 0 3px rgba(0,102,204,0.14),
+              0 4px 14px rgba(31,38,135,0.10);
+          }
+
+          /* ── Error banner — red liquid glass ──────────────── */
+          .post-ad-container .error-banner {
+            background: linear-gradient(135deg, rgba(255,255,255,0.65) 0%, rgba(254,226,226,0.55) 100%);
+            backdrop-filter: blur(12px) saturate(180%);
+            -webkit-backdrop-filter: blur(12px) saturate(180%);
+            border: 1px solid rgba(252,165,165,0.55);
+            color: #b91c1c;
+            padding: 12px 16px;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            box-shadow:
+              inset 0 1px 0 rgba(255,255,255,0.9),
+              0 4px 18px rgba(220,38,38,0.08);
+          }
+
+          /* ── Media grid & items — liquid glass ────────────── */
+          .post-ad-container .media-item {
+            position: relative;
+            overflow: hidden;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.75);
+            background: linear-gradient(135deg, rgba(255,255,255,0.60) 0%, rgba(255,255,255,0.28) 100%);
+            backdrop-filter: blur(10px) saturate(180%);
+            -webkit-backdrop-filter: blur(10px) saturate(180%);
+            box-shadow:
+              inset 0 1px 0 rgba(255,255,255,0.9),
+              0 4px 14px rgba(31,38,135,0.08);
+          }
+
+          .post-ad-container .remove-btn {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            z-index: 5;
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            border: 1px solid rgba(255,255,255,0.4);
+            background: linear-gradient(135deg, rgba(220,38,38,0.94) 0%, rgba(185,28,28,0.88) 100%);
+            color: #ffffff;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            backdrop-filter: blur(8px) saturate(180%);
+            -webkit-backdrop-filter: blur(8px) saturate(180%);
+            box-shadow:
+              inset 0 1px 0 rgba(255,255,255,0.3),
+              0 2px 8px rgba(220,38,38,0.35);
+            transition: transform 0.15s ease;
+          }
+          .post-ad-container .remove-btn:hover { transform: scale(1.08); }
+
+          .post-ad-container .video-badge {
+            position: absolute;
+            bottom: 4px;
+            left: 4px;
+            background: linear-gradient(135deg, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0.55) 100%);
+            backdrop-filter: blur(8px) saturate(180%);
+            -webkit-backdrop-filter: blur(8px) saturate(180%);
+            border: 1px solid rgba(255,255,255,0.75);
+            padding: 2px 6px;
+            border-radius: 8px;
+            font-size: 11px;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.9);
+          }
+
+          /* ── Auth modal — liquid glass ────────────────────── */
+          .auth-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(11,20,26,0.6);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            padding: 20px;
+          }
+
+          .auth-modal {
+            position: relative;
+            width: 100%;
+            max-width: 460px;
+            border-radius: 20px;
+            padding: 28px 24px;
+            background: linear-gradient(
+              135deg,
+              rgba(255,255,255,0.72) 0%,
+              rgba(238,246,255,0.42) 50%,
+              rgba(255,255,255,0.62) 100%
+            );
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            border: 1px solid rgba(255,255,255,0.75);
+            box-shadow:
+              0 24px 60px rgba(31,38,135,0.22),
+              inset 0 1px 0 rgba(255,255,255,0.95),
+              inset 0 -1px 0 rgba(255,255,255,0.25);
+            color: #111827;
+          }
+
+          .auth-modal .close-btn {
+            position: absolute;
+            top: 12px;
+            right: 14px;
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            border: 1px solid rgba(255,255,255,0.75);
+            background: linear-gradient(135deg, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.35) 100%);
+            backdrop-filter: blur(10px) saturate(180%);
+            -webkit-backdrop-filter: blur(10px) saturate(180%);
+            color: #374151;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            line-height: 1;
+            box-shadow:
+              inset 0 1px 0 rgba(255,255,255,0.9),
+              0 2px 8px rgba(31,38,135,0.08);
+            transition: transform 0.15s ease;
+          }
+          .auth-modal .close-btn:hover { transform: scale(1.05); }
+
+          /* ── Headings / labels / hints readable on glass ──── */
+          .post-ad-container .form-group { margin-bottom: 16px; }
+          .post-ad-container .form-group label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            color: #111827;
+            margin-bottom: 6px;
+          }
+          .post-ad-container .hint {
+            display: block;
+            font-size: 12px;
+            color: #4b5563;
+            margin-top: 4px;
+          }
+          .post-ad-container .subtitle {
+            color: #4b5563;
+            font-size: 14px;
+            margin-bottom: 16px;
+          }
+          .post-ad-container h2 {
+            color: #111827;
+            font-weight: 800;
+            margin-bottom: 4px;
+          }
+          .post-ad-container .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            color: #374151;
+          }
+          .post-ad-container .step-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+          }
+          .auth-modal h2 { color: #111827; }
+          .auth-modal .auth-subtitle { color: #4b5563; }
+          .auth-modal .auth-footer {
+            text-align: center;
+            margin-top: 16px;
+            color: #4b5563;
+            font-size: 14px;
+          }
+          .auth-modal .auth-footer span {
+            color: #0066cc;
+            font-weight: 700;
+            cursor: pointer;
+          }
+
+          /* ── Reduced motion ───────────────────────────────── */
+          @media (prefers-reduced-motion: reduce) {
+            .post-ad-container::before { animation: none !important; }
+            .post-ad-container .btn-primary,
+            .post-ad-container .btn-secondary,
+            .post-ad-container .btn-outline,
+            .post-ad-container .remove-btn,
+            .auth-modal .close-btn {
+              transition: none !important;
+            }
+            .post-ad-container .btn-primary:hover:not(:disabled),
+            .post-ad-container .btn-secondary:hover:not(:disabled),
+            .post-ad-container .btn-outline:hover:not(:disabled),
+            .post-ad-container .remove-btn:hover,
+            .auth-modal .close-btn:hover { transform: none !important; }
+          }
+        `}
+      </style>
+
       <h2>📢 Post Free Ad</h2>
       <p className="subtitle">
         {step === 1 ? "Step 1 of 2 – Basic details" : "Step 2 of 2 – Additional details"}
@@ -1527,7 +1892,7 @@ const PostAd = () => {
                   {selectedStorage.length > 0 && (
                     <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginTop: "10px" }}>
                       {selectedStorage.map((storage) => (
-                        <span key={storage} style={{ display: "inline-flex", alignItems: "center", gap: "7px", padding: "7px 10px", background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: "999px", color: "#1e40af", fontSize: "14px", fontWeight: "500" }}>
+                        <span key={storage} style={{ display: "inline-flex", alignItems: "center", gap: "7px", padding: "7px 10px", background: "linear-gradient(135deg, rgba(239,246,255,0.85) 0%, rgba(191,219,254,0.55) 100%)", border: "1px solid rgba(255,255,255,0.75)", borderRadius: "999px", color: "#1e40af", fontSize: "14px", fontWeight: "500", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.9), 0 2px 8px rgba(31,38,135,0.06)" }}>
                           {storage}
                           <button type="button" onClick={() => removeStorage(storage)} style={{ border: "none", background: "transparent", color: "#1e40af", cursor: "pointer", padding: "0", fontSize: "17px", lineHeight: "1", fontWeight: "700" }}>×</button>
                         </span>
@@ -1548,7 +1913,7 @@ const PostAd = () => {
                   {selectedColors.length > 0 && (
                     <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginTop: "10px" }}>
                       {selectedColors.map((color) => (
-                        <span key={color} style={{ display: "inline-flex", alignItems: "center", gap: "7px", padding: "7px 10px", background: "#f8fafc", border: "1px solid #cbd5e1", borderRadius: "999px", color: "#334155", fontSize: "14px", fontWeight: "500" }}>
+                        <span key={color} style={{ display: "inline-flex", alignItems: "center", gap: "7px", padding: "7px 10px", background: "linear-gradient(135deg, rgba(248,250,252,0.85) 0%, rgba(226,232,240,0.5) 100%)", border: "1px solid rgba(255,255,255,0.75)", borderRadius: "999px", color: "#334155", fontSize: "14px", fontWeight: "500", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.9), 0 2px 8px rgba(31,38,135,0.06)" }}>
                           {color}
                           <button type="button" onClick={() => removeColor(color)} style={{ border: "none", background: "transparent", color: "#475569", cursor: "pointer", padding: "0", fontSize: "17px", lineHeight: "1", fontWeight: "700" }}>×</button>
                         </span>
