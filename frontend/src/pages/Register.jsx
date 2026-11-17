@@ -443,11 +443,12 @@ const Register = () => {
               rgba(0, 0, 0, 0.55) 0%,
               rgba(0, 0, 0, 0.88) 100%
             ),
+            url("/assets/logo/hero.png"),
             url("https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=1600&q=80");
 
-          background-size: cover;
-          background-position: center;
-          background-repeat: no-repeat;
+          background-size: cover, cover, cover;
+          background-position: center, center, center;
+          background-repeat: no-repeat, no-repeat, no-repeat;
 
           overscroll-behavior: none;
 

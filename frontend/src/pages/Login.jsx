@@ -35,46 +35,6 @@ console.log("🔗 Login API_URL:", API_URL);
 // PASSWORD UTILITIES
 // ============================================================
 
-const generateStrongPassword = (length = 16) => {
-  const lower = "abcdefghijkmnopqrstuvwxyz";
-  const upper = "ABCDEFGHJKLMNPQRSTUVWXYZ";
-  const digits = "23456789";
-  const symbols = "!@#$%^&*";
-
-  const all = lower + upper + digits + symbols;
-
-  const random = (max) => {
-    if (
-      typeof window !== "undefined" &&
-      window.crypto &&
-      window.crypto.getRandomValues
-    ) {
-      const arr = new Uint32Array(1);
-      window.crypto.getRandomValues(arr);
-      return arr[0] % max;
-    }
-    return Math.floor(Math.random() * max);
-  };
-
-  const pwd = [
-    lower[random(lower.length)],
-    upper[random(upper.length)],
-    digits[random(digits.length)],
-    symbols[random(symbols.length)],
-  ];
-
-  for (let i = pwd.length; i < length; i++) {
-    pwd.push(all[random(all.length)]);
-  }
-
-  for (let i = pwd.length - 1; i > 0; i--) {
-    const j = random(i + 1);
-    [pwd[i], pwd[j]] = [pwd[j], pwd[i]];
-  }
-
-  return pwd.join("");
-};
-
 const getPasswordStrength = (pwd) => {
   if (!pwd) {
     return { score: 0, label: "", color: "" };
@@ -173,10 +133,6 @@ const Login = () => {
     key: () => playTone(700 + Math.random() * 250, 0.03, "square", 0.04),
     toggle: () => playTone(440, 0.05, "sine", 0.08),
     sliderTick: () => playTone(600, 0.02, "sine", 0.04),
-    suggest: () => {
-      playTone(1200, 0.05, "sine", 0.1);
-      setTimeout(() => playTone(1500, 0.08, "sine", 0.1), 60);
-    },
     privacy: () => {
       playTone(300, 0.08, "sine", 0.1);
       setTimeout(() => playTone(400, 0.1, "sine", 0.1), 80);
@@ -363,14 +319,6 @@ const Login = () => {
     }
   };
 
-  const handleSuggestPassword = () => {
-    sounds.suggest();
-    const suggestion = generateStrongPassword(16);
-    setPassword(suggestion);
-    setShowPassword(true);
-    setPeekHidden(false);
-  };
-
   const handlePasswordChange = (e) => {
     setPassword(e.target.value);
     sounds.key();
@@ -440,11 +388,12 @@ const Login = () => {
               rgba(0, 0, 0, 0.55) 0%,
               rgba(0, 0, 0, 0.88) 100%
             ),
+            url("/assets/logo/hero.png"),
             url("https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=1600&q=80");
 
-          background-size: cover;
-          background-position: center;
-          background-repeat: no-repeat;
+          background-size: cover, cover, cover;
+          background-position: center, center, center;
+          background-repeat: no-repeat, no-repeat, no-repeat;
 
           overscroll-behavior: none;
 
@@ -1935,16 +1884,6 @@ const Login = () => {
               )}
 
               <div className="password-tools">
-
-                <button
-                  type="button"
-                  className="password-tool-btn"
-                  onClick={handleSuggestPassword}
-                  disabled={loading}
-                  title="Fill with a strong random password (suggestion)"
-                >
-                  ✨ Suggest password
-                </button>
 
                 <button
                   type="button"
