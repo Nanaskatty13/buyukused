@@ -212,7 +212,7 @@ const Hero = ({ onSearch }) => {
 
 
           .hero-background-image.is-loaded {
-            opacity: 0.99;
+            opacity: 0.9;
           }
 
 
@@ -270,7 +270,7 @@ const Hero = ({ onSearch }) => {
 
             width: 100%;
 
-            max-width: 1200px;
+            max-width: 1255px;
 
             margin: 0 auto;
 
@@ -300,13 +300,13 @@ const Hero = ({ onSearch }) => {
           .hero-shopglowsy-content h1 {
             font-size: 48px;
 
-            font-weight: 800;
+            font-weight: 600;
 
             line-height: 1.15;
 
             margin: 0 0 16px;
 
-            color: #ffffff;
+            color: #e6e6e6;
 
             letter-spacing: -0.8px;
 
