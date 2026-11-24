@@ -1,4 +1,7 @@
+// ============================================================
 // frontend/src/components/Hero.jsx
+// BuyUKUsed — Homepage Hero
+// ============================================================
 
 import React, {
   useState,
@@ -10,16 +13,17 @@ import React, {
 import { Link } from "react-router-dom";
 
 // ============================================================
+// HERO MEDIA (module-level constants)
+// ============================================================
+
+const HERO_VIDEO = "/assets/videos/knherovideo.mp4";
+const HERO_POSTER = "/assets/logo/heroo.png";
+
+// ============================================================
 // HERO
 // ============================================================
 
 const Hero = ({ onSearch }) => {
-  // ==========================================================
-  // HERO BACKGROUND
-  // ==========================================================
-
-  const heroBackground = "/assets/logo/heroo.png";
-
   // ==========================================================
   // CAROUSEL SLIDES
   // ==========================================================
@@ -67,30 +71,44 @@ const Hero = ({ onSearch }) => {
   const [backgroundLoaded, setBackgroundLoaded] = useState(false);
 
   // ==========================================================
-  // HERO IMAGE REF — for cache detection
+  // HERO VIDEO REF — for cache detection + autoplay fallback
   // ==========================================================
 
-  const heroImageRef = useRef(null);
+  const heroVideoRef = useRef(null);
 
   // ==========================================================
-  // FIX: CACHED IMAGE DETECTION
+  // FIX: CACHED VIDEO DETECTION + AUTOPLAY SAFETY
   // ==========================================================
-  // If the image is already in the browser cache when the
-  // component mounts (very common on mobile after the first
-  // visit or when navigating back to "/"), the browser fires
-  // onLoad synchronously — BEFORE React has attached the
-  // handler — so onLoad never runs and the image stays at
-  // opacity: 0 (invisible).
-  //
-  // We fix that by checking img.complete on mount.
+  // If the video is already buffered when the component mounts
+  // (very common on mobile after first visit, or navigating
+  // back to "/"), onLoadedData may fire before React attaches
+  // its handler. We also force muted=true here because some
+  // Safari versions ignore the muted JSX attribute and then
+  // block autoplay. And we kick .play() in case autoplay was
+  // suppressed by the browser's policy.
 
   useEffect(() => {
-    const img = heroImageRef.current;
+    const video = heroVideoRef.current;
+    if (!video) return;
 
-    if (img && img.complete && img.naturalWidth > 0) {
+    // Force muted — required for autoplay on iOS Safari
+    video.muted = true;
+
+    // Cached / already-buffered: readyState >= 2 means the
+    // first frame (HAVE_CURRENT_DATA) is available.
+    if (video.readyState >= 2) {
       setBackgroundLoaded(true);
     }
-  }, [heroBackground]);
+
+    // Attempt autoplay if the attribute was ignored
+    const playPromise = video.play();
+    if (playPromise && typeof playPromise.catch === "function") {
+      playPromise.catch(() => {
+        // Autoplay blocked (Low Power Mode, etc.) — poster
+        // remains visible once opacity kicks in.
+      });
+    }
+  }, []);
 
   // ==========================================================
   // PRELOAD NEXT SLIDE
@@ -175,7 +193,8 @@ const Hero = ({ onSearch }) => {
 
 
           /* =====================================================
-             HERO BACKGROUND IMAGE
+             HERO BACKGROUND MEDIA (video — same rules as prior
+             image: object-fit cover, full-bleed, fade-in)
           ===================================================== */
 
           .hero-background-image {
@@ -218,7 +237,7 @@ const Hero = ({ onSearch }) => {
 
           /* =====================================================
              BACKGROUND FALLBACK
-             Dark solid so text stays readable before image loads
+             Dark solid so text stays readable before video loads
           ===================================================== */
 
           .hero-background-fallback {
@@ -235,7 +254,7 @@ const Hero = ({ onSearch }) => {
 
 
           /* =====================================================
-             IMAGE OVERLAY
+             VIDEO OVERLAY
           ===================================================== */
 
           .hero-shopglowsy::after {
@@ -896,10 +915,10 @@ const Hero = ({ onSearch }) => {
               height: 350px;
             }
 
-            /* FIX: On tall/narrow phones, object-fit: cover
-               with 'center center' crops the image to a tiny
-               zoomed-in sliver. Shifting the crop up to 30%
-               shows the interesting upper-middle of the image. */
+            /* On tall/narrow phones, object-fit: cover
+               with 'center center' crops to a tiny
+               zoomed-in sliver. Shift crop up to 30%
+               to show the interesting upper-middle. */
             .hero-background-image {
               object-position: center 30%;
             }
@@ -1069,29 +1088,37 @@ const Hero = ({ onSearch }) => {
 
 
         {/* ======================================================
-            HERO BACKGROUND IMAGE
-            ref + onLoad + onError + cache detection
+            HERO BACKGROUND VIDEO
+            Full-bleed cinematic loop behind all content.
+            Same .hero-background-image class / positioning /
+            fade-in as the previous <img> background — so
+            layout, spacing, overlay and responsive behaviour
+            are all preserved exactly.
         ====================================================== */}
 
-        <img
-          ref={heroImageRef}
+        <video
+          ref={heroVideoRef}
           className={`hero-background-image ${
             backgroundLoaded ? "is-loaded" : ""
           }`}
-          src={heroBackground}
-          alt=""
+          src={HERO_VIDEO}
+          poster={HERO_POSTER}
+          autoPlay
+          loop
+          muted
+          playsInline
+          preload="auto"
           aria-hidden="true"
-          fetchPriority="high"
-          loading="eager"
-          decoding="async"
-          draggable="false"
-          onLoad={() => setBackgroundLoaded(true)}
+          disablePictureInPicture
+          controlsList="nodownload nofullscreen noremoteplayback"
+          onLoadedData={() => setBackgroundLoaded(true)}
+          onCanPlay={() => setBackgroundLoaded(true)}
           onError={() => setBackgroundLoaded(false)}
         />
 
 
         {/* ======================================================
-            HERO CONTENT
+            HERO CONTENT (unchanged)
         ====================================================== */}
 
         <div className="container">
@@ -1194,7 +1221,7 @@ const Hero = ({ onSearch }) => {
 
 
           {/* ====================================================
-              RIGHT: CAROUSEL
+              RIGHT: CAROUSEL (unchanged)
           ==================================================== */}
 
           <div
