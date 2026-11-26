@@ -1,6 +1,6 @@
 // ============================================================
 // frontend/src/pages/Register.jsx
-// BuyUKUsed - Register Page
+// BuyUKUsed - Register Page (with cinematic video background)
 // ============================================================
 
 import React, { useState, useRef, useEffect } from "react";
@@ -32,6 +32,14 @@ const API_URL = (
 ).replace(/\/+$/, "");
 
 console.log("🔗 Register API_URL:", API_URL);
+
+// ============================================================
+// VIDEO SOURCE
+// ============================================================
+// File lives at:  frontend/public/assets/videos/knherovideo.mp4
+// Vite serves /public at root → browser URL is /assets/videos/knherovideo.mp4
+const REGISTER_VIDEO_SRC = "/assets/videos/knherovideo.mp4";
+const REGISTER_VIDEO_POSTER = "/assets/logo/hero.png"; // fallback frame
 
 // ============================================================
 // REGISTER COMPONENT
@@ -71,6 +79,38 @@ const Register = () => {
   const from = location.state?.from || "/";
 
   const audioCtxRef = useRef(null);
+  const videoRef = useRef(null);
+
+  // ------------------------------------------------------------
+  // Ensure muted autoplay works across browsers
+  // ------------------------------------------------------------
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+
+    // React sometimes fails to apply muted attribute on first render.
+    v.muted = true;
+    v.defaultMuted = true;
+
+    const tryPlay = () => {
+      const p = v.play();
+      if (p && typeof p.catch === "function") {
+        p.catch(() => {
+          /* autoplay blocked – poster/fallback will show */
+        });
+      }
+    };
+
+    tryPlay();
+
+    // Retry once the file can actually play (iOS low-power mode, etc.)
+    const onCanPlay = () => tryPlay();
+    v.addEventListener("canplay", onCanPlay);
+
+    return () => {
+      v.removeEventListener("canplay", onCanPlay);
+    };
+  }, []);
 
   // ============================================================
   // AUDIO
@@ -409,7 +449,7 @@ const Register = () => {
         }
 
         /* ======================================================
-           REGISTER WRAPPER — padded below the navbar
+           REGISTER WRAPPER — cinematic video background
         ======================================================
            The navbar is position:fixed with z-index 99999 and is
            roughly 48px tall on desktop (smaller on mobile).
@@ -437,23 +477,77 @@ const Register = () => {
 
           overflow: hidden;
 
-          background-image:
+          /* Fallback background (visible until video paints) */
+          background:
             radial-gradient(
               circle at center,
-              rgba(0, 0, 0, 0.55) 0%,
-              rgba(0, 0, 0, 0.88) 100%
-            ),
-            url("/assets/logo/hero.png"),
-            url("https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=1600&q=80");
-
-          background-size: cover, cover, cover;
-          background-position: center, center, center;
-          background-repeat: no-repeat, no-repeat, no-repeat;
+              #0b1220 0%,
+              #020617 100%
+            );
 
           overscroll-behavior: none;
 
           touch-action: manipulation;
+
+          isolation: isolate;
         }
+
+        /* ======================================================
+           CINEMATIC VIDEO BACKGROUND
+        ====================================================== */
+
+        .register-video-bg {
+          position: absolute;
+          inset: 0;
+
+          width: 100%;
+          height: 100%;
+
+          object-fit: cover;
+          object-position: center;
+
+          z-index: 0;
+
+          pointer-events: none;
+
+          /* Slow cinematic drift */
+          animation: register-video-drift 32s ease-in-out infinite;
+
+          will-change: transform;
+        }
+
+        @keyframes register-video-drift {
+          0% {
+            transform: scale(1.06) translate3d(0, 0, 0);
+          }
+          50% {
+            transform: scale(1.12) translate3d(-1.2%, -1.2%, 0);
+          }
+          100% {
+            transform: scale(1.06) translate3d(0, 0, 0);
+          }
+        }
+
+        /* Dark vignette so the register card always reads clearly */
+
+        .register-video-overlay {
+          position: absolute;
+          inset: 0;
+
+          z-index: 1;
+
+          pointer-events: none;
+
+          background:
+            radial-gradient(
+              ellipse at center,
+              rgba(0, 0, 0, 0.25) 0%,
+              rgba(0, 0, 0, 0.7) 60%,
+              rgba(0, 0, 0, 0.9) 100%
+            );
+        }
+
+        /* White grid overlay — sits above video, below card */
 
         .register-wrapper::before {
           content: '';
@@ -473,7 +567,7 @@ const Register = () => {
           -webkit-mask-image:
             radial-gradient(ellipse at center, black 25%, transparent 75%);
 
-          z-index: 0;
+          z-index: 1;
         }
 
         /* ======================================================
@@ -481,8 +575,8 @@ const Register = () => {
         ====================================================== */
 
         .flying-plane {
-          position: fixed;
-          z-index: 0;
+          position: absolute;
+          z-index: 2;
           pointer-events: none;
 
           font-size: 56px;
@@ -526,7 +620,7 @@ const Register = () => {
 
         .register-card {
           position: relative;
-          z-index: 1;
+          z-index: 3;
 
           width: 100%;
           max-width: 400px;
@@ -1597,7 +1691,7 @@ const Register = () => {
         }
 
         /* ======================================================
-           REDUCE MOTION
+           REDUCE MOTION — hide video & plane, freeze animations
         ====================================================== */
 
         @media (prefers-reduced-motion: reduce) {
@@ -1615,22 +1709,51 @@ const Register = () => {
             animation: none;
             display: none;
           }
+
+          .register-video-bg {
+            animation: none;
+            display: none;
+          }
         }
 
       `}</style>
 
-      {/* ====================================================
-          FLYING TAKEOVER PLANE
-      ==================================================== */}
-
-      <div
-        className="flying-plane"
-        aria-hidden="true"
-      >
-        <FaPlaneDeparture />
-      </div>
-
       <div className="register-wrapper">
+
+        {/* ====================================================
+            CINEMATIC VIDEO BACKGROUND
+        ==================================================== */}
+
+        <video
+          ref={videoRef}
+          className="register-video-bg"
+          autoPlay
+          muted
+          loop
+          playsInline
+          preload="auto"
+          poster={REGISTER_VIDEO_POSTER}
+          aria-hidden="true"
+          tabIndex={-1}
+          disablePictureInPicture
+        >
+          <source src={REGISTER_VIDEO_SRC} type="video/mp4" />
+        </video>
+
+        {/* Dark vignette overlay for readability */}
+        <div className="register-video-overlay" aria-hidden="true" />
+
+        {/* ====================================================
+            FLYING TAKEOVER PLANE
+        ==================================================== */}
+
+        <div
+          className="flying-plane"
+          aria-hidden="true"
+        >
+          <FaPlaneDeparture />
+        </div>
+
         <div className="register-card">
 
           {/* ====================================================

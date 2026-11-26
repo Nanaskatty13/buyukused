@@ -1,9 +1,14 @@
 // ============================================================
 // frontend/src/pages/Login.jsx
-// BuyUKUsed Login Page
+// BuyUKUsed Login Page — with cinematic video background
 // ============================================================
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+  useRef,
+} from "react";
 import {
   Link,
   useNavigate,
@@ -30,6 +35,14 @@ const API_URL = (
 ).replace(/\/+$/, "");
 
 console.log("🔗 Login API_URL:", API_URL);
+
+// ============================================================
+// VIDEO SOURCE
+// ============================================================
+// File lives at:  frontend/public/assets/videos/knherovideo.mp4
+// Vite serves /public at root → browser URL is /assets/videos/knherovideo.mp4
+const LOGIN_VIDEO_SRC = "/assets/videos/knherovideo.mp4";
+const LOGIN_VIDEO_POSTER = "/assets/logo/hero.png"; // fallback frame
 
 // ============================================================
 // PASSWORD UTILITIES
@@ -78,7 +91,39 @@ const Login = () => {
   const location = useLocation();
   const from = location.state?.from || "/";
 
-  const audioCtxRef = React.useRef(null);
+  const audioCtxRef = useRef(null);
+  const videoRef = useRef(null);
+
+  // ------------------------------------------------------------
+  // Ensure muted autoplay works across browsers
+  // ------------------------------------------------------------
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+
+    // React sometimes fails to apply muted attribute on first render.
+    v.muted = true;
+    v.defaultMuted = true;
+
+    const tryPlay = () => {
+      const p = v.play();
+      if (p && typeof p.catch === "function") {
+        p.catch(() => {
+          /* autoplay blocked – poster/fallback will show */
+        });
+      }
+    };
+
+    tryPlay();
+
+    // Retry once the file can actually play (iOS low-power mode, etc.)
+    const onCanPlay = () => tryPlay();
+    v.addEventListener("canplay", onCanPlay);
+
+    return () => {
+      v.removeEventListener("canplay", onCanPlay);
+    };
+  }, []);
 
   const initAudio = () => {
     if (audioCtxRef.current) return;
@@ -358,7 +403,7 @@ const Login = () => {
         }
 
         /* ======================================================
-           LOGIN WRAPPER — no green, white grid only
+           LOGIN WRAPPER — cinematic video background
         ====================================================== */
 
         .login-wrapper,
@@ -382,25 +427,77 @@ const Login = () => {
 
           overflow: hidden;
 
-          background-image:
+          /* Fallback background (visible until video paints) */
+          background:
             radial-gradient(
               circle at center,
-              rgba(0, 0, 0, 0.55) 0%,
-              rgba(0, 0, 0, 0.88) 100%
-            ),
-            url("/assets/logo/hero.png"),
-            url("https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=1600&q=80");
-
-          background-size: cover, cover, cover;
-          background-position: center, center, center;
-          background-repeat: no-repeat, no-repeat, no-repeat;
+              #0b1220 0%,
+              #020617 100%
+            );
 
           overscroll-behavior: none;
 
           touch-action: manipulation;
+
+          isolation: isolate;
         }
 
-        /* White grid overlay */
+        /* ======================================================
+           CINEMATIC VIDEO BACKGROUND
+        ====================================================== */
+
+        .login-video-bg {
+          position: absolute;
+          inset: 0;
+
+          width: 100%;
+          height: 100%;
+
+          object-fit: cover;
+          object-position: center;
+
+          z-index: 0;
+
+          pointer-events: none;
+
+          /* Slow cinematic drift */
+          animation: login-video-drift 32s ease-in-out infinite;
+
+          will-change: transform;
+        }
+
+        @keyframes login-video-drift {
+          0% {
+            transform: scale(1.06) translate3d(0, 0, 0);
+          }
+          50% {
+            transform: scale(1.12) translate3d(-1.2%, -1.2%, 0);
+          }
+          100% {
+            transform: scale(1.06) translate3d(0, 0, 0);
+          }
+        }
+
+        /* Dark vignette so the login card always reads clearly */
+
+        .login-video-overlay {
+          position: absolute;
+          inset: 0;
+
+          z-index: 1;
+
+          pointer-events: none;
+
+          background:
+            radial-gradient(
+              ellipse at center,
+              rgba(0, 0, 0, 0.25) 0%,
+              rgba(0, 0, 0, 0.7) 60%,
+              rgba(0, 0, 0, 0.9) 100%
+            );
+        }
+
+        /* White grid overlay — sits above video, below card */
 
         .login-wrapper::before {
           content: '';
@@ -420,7 +517,7 @@ const Login = () => {
           -webkit-mask-image:
             radial-gradient(ellipse at center, black 25%, transparent 75%);
 
-          z-index: 0;
+          z-index: 1;
         }
 
         /* ======================================================
@@ -428,8 +525,8 @@ const Login = () => {
         ====================================================== */
 
         .flying-plane {
-          position: fixed;
-          z-index: 0;
+          position: absolute;
+          z-index: 2;
           pointer-events: none;
 
           font-size: 56px;
@@ -470,7 +567,7 @@ const Login = () => {
 
         .login-card {
           position: relative;
-          z-index: 1;
+          z-index: 3;
 
           width: 100%;
           max-width: 400px;
@@ -736,7 +833,6 @@ const Login = () => {
           color: rgba(255, 255, 255, 0.3);
         }
 
-        /* White focus ring (was green) */
         .form-group input:focus {
           border-color:
             rgba(255, 255, 255, 0.4);
@@ -1147,13 +1243,10 @@ const Login = () => {
 
           margin: 4px 0 0;
 
-          /* No fill */
           background: transparent;
 
-          /* White text */
           color: #ffffff;
 
-          /* Hairline border */
           border: 1px solid rgba(255, 255, 255, 0.28);
 
           border-radius: 12px;
@@ -1184,7 +1277,6 @@ const Login = () => {
             box-shadow 0.2s ease,
             opacity 0.2s ease;
 
-          /* Very subtle inner glow, no color */
           box-shadow:
             inset 0 1px 0 0 rgba(255, 255, 255, 0.08),
             0 2px 12px rgba(0, 0, 0, 0.25);
@@ -1681,7 +1773,7 @@ const Login = () => {
         }
 
         /* ======================================================
-           REDUCE MOTION — kill the fly-across animation
+           REDUCE MOTION — hide video & plane, freeze animations
         ====================================================== */
 
         @media (prefers-reduced-motion: reduce) {
@@ -1701,23 +1793,52 @@ const Login = () => {
             animation: none;
             display: none;
           }
+
+          .login-video-bg {
+            animation: none;
+            display: none;
+          }
         }
 
       `}</style>
 
-      {/* ====================================================
-          FLYING TAKEOVER PLANE — flies across repeatedly
-      ==================================================== */}
-
-      <div
-        className="flying-plane"
-        aria-hidden="true"
-        title=""
-      >
-        <FaPlaneDeparture />
-      </div>
-
       <div className="login-wrapper">
+
+        {/* ====================================================
+            CINEMATIC VIDEO BACKGROUND
+        ==================================================== */}
+
+        <video
+          ref={videoRef}
+          className="login-video-bg"
+          autoPlay
+          muted
+          loop
+          playsInline
+          preload="auto"
+          poster={LOGIN_VIDEO_POSTER}
+          aria-hidden="true"
+          tabIndex={-1}
+          disablePictureInPicture
+        >
+          <source src={LOGIN_VIDEO_SRC} type="video/mp4" />
+        </video>
+
+        {/* Dark vignette overlay for readability */}
+        <div className="login-video-overlay" aria-hidden="true" />
+
+        {/* ====================================================
+            FLYING TAKEOVER PLANE — flies across repeatedly
+        ==================================================== */}
+
+        <div
+          className="flying-plane"
+          aria-hidden="true"
+          title=""
+        >
+          <FaPlaneDeparture />
+        </div>
+
         <div className="login-card">
 
           <button
@@ -1970,8 +2091,6 @@ const Login = () => {
                 Forgot Password?
               </Link>
             </div>
-
-            {/* LOGIN BUTTON — transparent, no green */}
 
             <button
               type="submit"
